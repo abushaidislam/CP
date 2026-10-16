@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { useStudioStore } from "@/lib/store/studio-store";
 import { DEFAULT_TEMPLATES } from "@/lib/sandbox/default-templates";
 import { Button } from "@/components/ui/button";
@@ -26,7 +26,6 @@ import {
   Moon,
   Sun,
   ExternalLink,
-  Sparkles,
 } from "lucide-react";
 
 export function StudioHeader() {
@@ -36,12 +35,12 @@ export function StudioHeader() {
     setPublishModalOpen,
   } = useStudioStore();
 
-  const [isDark, setIsDark] = useState(true);
-
-  useEffect(() => {
-    const root = document.documentElement;
-    setIsDark(root.classList.contains("dark"));
-  }, []);
+  const [isDark, setIsDark] = useState(() => {
+    if (typeof document !== "undefined") {
+      return document.documentElement.classList.contains("dark");
+    }
+    return false;
+  });
 
   const toggleTheme = () => {
     const root = document.documentElement;

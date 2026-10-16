@@ -34,7 +34,6 @@ import {
 export function PublishModal() {
   const {
     files,
-    dependencies,
     isPublishModalOpen,
     setPublishModalOpen,
   } = useStudioStore();
@@ -46,8 +45,6 @@ export function PublishModal() {
 
   // Metadata overrides state
   const [authorName, setAuthorName] = useState("Vercel Component Studio");
-  const [customTitle, setCustomTitle] = useState("");
-  const [customDescription, setCustomDescription] = useState("");
 
   // Parse AST
   const ast = useMemo(() => {
@@ -65,12 +62,12 @@ export function PublishModal() {
       files["demo.tsx"],
       files["index.css"],
       {
-        title: customTitle || ast.title,
-        description: customDescription || ast.description,
+        title: ast.title,
+        description: ast.description,
         author: authorName,
       }
     );
-  }, [files, ast, customTitle, customDescription, authorName]);
+  }, [files, ast, authorName]);
 
   const jsonString = useMemo(() => {
     return JSON.stringify(payload, null, 2);
