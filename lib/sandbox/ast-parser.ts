@@ -265,9 +265,14 @@ export function generateTwentyFirstPayload(
   overrides?: Partial<TwentyFirstPublishPayload>
 ): TwentyFirstPublishPayload {
   const ast = parseComponentAST(componentTsx, demoTsx, indexCss);
-  const slug = ast.componentName
-    .replace(/([a-z])([A-Z])/g, "$1-$2")
-    .toLowerCase();
+  const derivedSlug = ast.componentName
+    .replace(/([a-z0-9])([A-Z])/g, "$1-$2")
+    .replace(/([A-Z]+)([A-Z][a-z])/g, "$1-$2")
+    .toLowerCase()
+    .replace(/[^a-z0-9-]/g, "-")
+    .replace(/^-+|-+$/g, "");
+
+  const slug = overrides?.name || derivedSlug || "component";
 
   const files: TwentyFirstPublishPayload["files"] = [
     {
