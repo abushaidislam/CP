@@ -5,6 +5,7 @@ import { DEFAULT_TEMPLATES } from "@/lib/sandbox/default-templates";
 export type StudioFileName = "component.tsx" | "demo.tsx" | "index.css";
 export type StudioViewport = "desktop" | "tablet" | "mobile" | "responsive";
 export type CanvasBackground = "dark" | "black" | "grid" | "light" | "mesh";
+export type PreviewTheme = "dark" | "light";
 
 export interface RecordingConfig {
   duration: 3 | 5 | 8;
@@ -27,6 +28,7 @@ export interface StudioState {
   viewport: StudioViewport;
   customViewportWidth: number;
   canvasBg: CanvasBackground;
+  previewTheme: PreviewTheme;
   zoom: number;
 
   // Dependencies
@@ -49,6 +51,8 @@ export interface StudioState {
   setViewport: (viewport: StudioViewport) => void;
   setCustomViewportWidth: (width: number) => void;
   setCanvasBg: (bg: CanvasBackground) => void;
+  setPreviewTheme: (theme: PreviewTheme) => void;
+  togglePreviewTheme: () => void;
   setZoom: (zoom: number) => void;
 
   toggleDependency: (pkg: string) => void;
@@ -83,6 +87,7 @@ export const useStudioStore = create<StudioState>()(
       viewport: "desktop",
       customViewportWidth: 1200,
       canvasBg: "dark",
+      previewTheme: "dark",
       zoom: 100,
       dependencies: initialTemplate.dependencies,
 
@@ -122,6 +127,13 @@ export const useStudioStore = create<StudioState>()(
       setCustomViewportWidth: (width) => set({ customViewportWidth: width }),
 
       setCanvasBg: (bg) => set({ canvasBg: bg }),
+
+      setPreviewTheme: (theme) => set({ previewTheme: theme }),
+
+      togglePreviewTheme: () =>
+        set((state) => ({
+          previewTheme: state.previewTheme === "dark" ? "light" : "dark",
+        })),
 
       setZoom: (zoom) => set({ zoom }),
 
@@ -215,12 +227,13 @@ export const useStudioStore = create<StudioState>()(
       setDependencyModalOpen: (open) => set({ isDependencyModalOpen: open }),
     }),
     {
-      name: "21st-component-studio-storage-v1",
+      name: "21st-component-studio-storage-v2",
       partialize: (state) => ({
         files: state.files,
         activeTab: state.activeTab,
         viewport: state.viewport,
         canvasBg: state.canvasBg,
+        previewTheme: state.previewTheme,
         zoom: state.zoom,
         dependencies: state.dependencies,
         recordingConfig: state.recordingConfig,

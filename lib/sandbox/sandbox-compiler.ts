@@ -41,22 +41,26 @@ export function transpileTsx(code: string): { js: string; error: string | null }
 }
 
 /**
- * Compiles files into a complete, standalone, sandboxed HTML document
+ * Compiles files into a complete, standalone, sandboxed HTML document with theme support
  */
 export function compileSandboxHtml(
   componentCode: string,
   demoCode: string,
   cssCode: string,
   dependencies: string[],
-  canvasBg: string = "dark"
+  canvasBg: string = "dark",
+  previewTheme: "dark" | "light" = "dark"
 ): CompileResult {
+  const isDark = previewTheme === "dark";
+
   // Transpile component.tsx
   const compTranspiled = transpileTsx(componentCode);
   if (compTranspiled.error) {
     const errHtml = generateErrorHtml(
       "Syntax Error in component.tsx",
       compTranspiled.error,
-      canvasBg
+      canvasBg,
+      previewTheme
     );
     return { html: errHtml, error: compTranspiled.error };
   }
@@ -130,15 +134,24 @@ export function compileSandboxHtml(
   const safeCompJs = JSON.stringify(cleanedComponentJs).replace(/<\/script>/gi, "<\\/script>");
   const safeDemoJs = JSON.stringify(cleanedDemoJs).replace(/<\/script>/gi, "<\\/script>");
 
-  // Base background style inside preview
-  let bgClass = "bg-zinc-950 text-zinc-100";
-  if (canvasBg === "black") bgClass = "bg-black text-white";
-  if (canvasBg === "light") bgClass = "bg-zinc-50 text-zinc-900";
-  if (canvasBg === "grid") bgClass = "bg-zinc-950 text-zinc-100 canvas-grid-dark";
-  if (canvasBg === "mesh") bgClass = "bg-zinc-950 text-zinc-100 canvas-mesh";
+  // Base background style inside preview according to canvasBg and previewTheme
+  let bgClass = isDark ? "bg-zinc-950 text-zinc-100" : "bg-white text-zinc-900";
+  if (canvasBg === "black") {
+    bgClass = isDark ? "bg-black text-white" : "bg-zinc-100 text-zinc-900";
+  } else if (canvasBg === "light") {
+    bgClass = isDark ? "bg-zinc-900 text-zinc-100" : "bg-zinc-50 text-zinc-900";
+  } else if (canvasBg === "grid") {
+    bgClass = isDark
+      ? "bg-zinc-950 text-zinc-100 canvas-grid-dark"
+      : "bg-zinc-50 text-zinc-900 canvas-grid-light";
+  } else if (canvasBg === "mesh") {
+    bgClass = isDark
+      ? "bg-zinc-950 text-zinc-100 canvas-mesh"
+      : "bg-zinc-50 text-zinc-900 canvas-mesh-light";
+  }
 
   const html = `<!DOCTYPE html>
-<html lang="en" class="h-full">
+<html lang="en" class="h-full ${isDark ? "dark" : ""}">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -152,6 +165,39 @@ export function compileSandboxHtml(
       theme: {
         extend: {
           colors: {
+            border: 'var(--border)',
+            input: 'var(--input)',
+            ring: 'var(--ring)',
+            background: 'var(--background)',
+            foreground: 'var(--foreground)',
+            primary: {
+              DEFAULT: 'var(--primary)',
+              foreground: 'var(--primary-foreground)',
+            },
+            secondary: {
+              DEFAULT: 'var(--secondary)',
+              foreground: 'var(--secondary-foreground)',
+            },
+            destructive: {
+              DEFAULT: 'var(--destructive)',
+              foreground: 'var(--destructive-foreground)',
+            },
+            muted: {
+              DEFAULT: 'var(--muted)',
+              foreground: 'var(--muted-foreground)',
+            },
+            accent: {
+              DEFAULT: 'var(--accent)',
+              foreground: 'var(--accent-foreground)',
+            },
+            popover: {
+              DEFAULT: 'var(--popover)',
+              foreground: 'var(--popover-foreground)',
+            },
+            card: {
+              DEFAULT: 'var(--card)',
+              foreground: 'var(--card-foreground)',
+            },
             zinc: {
               950: '#09090b',
               900: '#18181b',
@@ -164,14 +210,60 @@ export function compileSandboxHtml(
     };
   </script>
   
-  <!-- Custom Component CSS -->
+  <!-- Custom Component CSS & Theme Variables -->
   <style>
+    :root {
+      --background: #ffffff;
+      --foreground: #09090b;
+      --card: #ffffff;
+      --card-foreground: #09090b;
+      --popover: #ffffff;
+      --popover-foreground: #09090b;
+      --primary: #18181b;
+      --primary-foreground: #fafafa;
+      --secondary: #f4f4f5;
+      --secondary-foreground: #18181b;
+      --muted: #f4f4f5;
+      --muted-foreground: #71717a;
+      --accent: #f4f4f5;
+      --accent-foreground: #18181b;
+      --destructive: #ef4444;
+      --destructive-foreground: #fafafa;
+      --border: #e4e4e7;
+      --input: #e4e4e7;
+      --ring: #18181b;
+      --radius: 0.5rem;
+    }
+
+    .dark {
+      --background: #09090b;
+      --foreground: #fafafa;
+      --card: #09090b;
+      --card-foreground: #fafafa;
+      --popover: #09090b;
+      --popover-foreground: #fafafa;
+      --primary: #fafafa;
+      --primary-foreground: #18181b;
+      --secondary: #27272a;
+      --secondary-foreground: #fafafa;
+      --muted: #27272a;
+      --muted-foreground: #a1a1aa;
+      --accent: #27272a;
+      --accent-foreground: #fafafa;
+      --destructive: #7f1d1d;
+      --destructive-foreground: #fafafa;
+      --border: #27272a;
+      --input: #27272a;
+      --ring: #d4d4d8;
+    }
+
     *, ::before, ::after { box-sizing: border-box; }
     html, body {
       min-height: 100%;
       margin: 0;
       padding: 0;
       font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      transition: background-color 0.15s ease, color 0.15s ease;
     }
     #root {
       min-height: 100%;
@@ -180,7 +272,7 @@ export function compileSandboxHtml(
       flex-direction: column;
     }
 
-    /* Clean dark scrollbars */
+    /* Clean scrollbars */
     ::-webkit-scrollbar {
       width: 6px;
       height: 6px;
@@ -196,10 +288,22 @@ export function compileSandboxHtml(
       background: rgba(140, 140, 140, 0.45);
     }
     
+    .canvas-grid-light {
+      background-color: #fafafa;
+      background-image: radial-gradient(rgba(0, 0, 0, 0.09) 1px, transparent 1px);
+      background-size: 20px 20px;
+    }
     .canvas-grid-dark {
       background-color: #09090b;
       background-image: radial-gradient(rgba(255, 255, 255, 0.1) 1px, transparent 1px);
       background-size: 20px 20px;
+    }
+    .canvas-mesh-light {
+      background-color: #fafafa;
+      background-image: 
+        radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.12) 0px, transparent 50%),
+        radial-gradient(at 100% 0%, rgba(168, 85, 247, 0.12) 0px, transparent 50%),
+        radial-gradient(at 50% 100%, rgba(236, 72, 153, 0.08) 0px, transparent 50%);
     }
     .canvas-mesh {
       background-color: #09090b;
@@ -331,13 +435,11 @@ export function compileSandboxHtml(
         }
 
         // 4. Determine what component to render
-        // If DemoComponent is missing or invalid, directly render ComponentFromCode
         const rootEl = document.getElementById("root");
         if (!rootEl) return;
         const root = ReactDOM.createRoot(rootEl);
 
         function App() {
-          // If demo.tsx fails or component changed, fallback renders ComponentFromCode directly!
           const renderFallbackComponent = (err) => {
             if (!ComponentFromCode) {
               return React.createElement(
@@ -373,11 +475,20 @@ export function compileSandboxHtml(
 
     bootstrap();
 
-    // Stitch Simulated Interaction Handler
+    // Stitch Simulated Interaction Handler & Real-Time Theme Message Handler
     let simulationTimer = null;
     window.addEventListener("message", (event) => {
       if (event.data && event.data.type === "TRIGGER_SIMULATED_HOVER") {
         runSimulatedHover(event.data.durationMs || 4000);
+      }
+      if (event.data && event.data.type === "SET_PREVIEW_THEME") {
+        const theme = event.data.theme;
+        const html = document.documentElement;
+        if (theme === "dark") {
+          html.classList.add("dark");
+        } else {
+          html.classList.remove("dark");
+        }
       }
     });
 
@@ -434,23 +545,35 @@ export function compileSandboxHtml(
 /**
  * Creates visual error preview instead of a blank white/dark screen
  */
-function generateErrorHtml(title: string, message: string, canvasBg: string): string {
+function generateErrorHtml(
+  title: string,
+  message: string,
+  canvasBg: string,
+  previewTheme: "dark" | "light" = "dark"
+): string {
+  const isDark = previewTheme === "dark";
+  const bgClass = isDark ? "bg-zinc-950 text-zinc-100" : "bg-zinc-50 text-zinc-900";
+  const cardBorder = isDark ? "border-red-500/30 bg-red-500/10" : "border-red-400/40 bg-red-50/90";
+  const titleColor = isDark ? "text-red-400" : "text-red-600";
+  const descColor = isDark ? "text-red-300" : "text-red-700";
+  const hintColor = isDark ? "text-zinc-500 border-red-500/20" : "text-zinc-600 border-red-200";
+
   return `<!DOCTYPE html>
-<html lang="en" class="h-full">
+<html lang="en" class="h-full ${isDark ? "dark" : ""}">
 <head>
   <meta charset="UTF-8" />
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="h-full bg-zinc-950 text-zinc-100 flex items-center justify-center p-6 font-mono select-none">
-  <div class="max-w-md w-full rounded-2xl border border-red-500/30 bg-red-500/10 p-5 shadow-2xl backdrop-blur-md">
-    <div class="flex items-center gap-2 text-red-400 font-semibold text-sm mb-2">
+<body class="h-full ${bgClass} flex items-center justify-center p-6 font-mono select-none">
+  <div class="max-w-md w-full rounded-2xl border ${cardBorder} p-5 shadow-2xl backdrop-blur-md">
+    <div class="flex items-center gap-2 ${titleColor} font-semibold text-sm mb-2">
       <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
       </svg>
       <span>${title}</span>
     </div>
-    <p class="text-xs text-red-300 leading-relaxed whitespace-pre-wrap break-all">${message}</p>
-    <div class="mt-4 pt-3 border-t border-red-500/20 text-[11px] text-zinc-500 font-sans">
+    <p class="text-xs ${descColor} leading-relaxed whitespace-pre-wrap break-all">${message}</p>
+    <div class="mt-4 pt-3 border-t ${hintColor} text-[11px] font-sans">
       Fix the syntax in your editor panel to restore live preview.
     </div>
   </div>

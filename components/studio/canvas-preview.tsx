@@ -5,6 +5,7 @@ import {
   useStudioStore,
   StudioViewport,
   CanvasBackground,
+  PreviewTheme,
 } from "@/lib/store/studio-store";
 import { compileSandboxHtml } from "@/lib/sandbox/sandbox-compiler";
 import { Button } from "@/components/ui/button";
@@ -29,6 +30,8 @@ import {
   Lock,
   Paintbrush,
   Zap,
+  Sun,
+  Moon,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -48,10 +51,13 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
     files,
     viewport,
     canvasBg,
+    previewTheme,
     zoom,
     dependencies,
     setViewport,
     setCanvasBg,
+    setPreviewTheme,
+    togglePreviewTheme,
     setZoom,
     setCompilerState,
   } = useStudioStore();
@@ -77,6 +83,21 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
     setViewport(vp);
   };
 
+  // Change preview theme (Dark / Light) with immediate postMessage to sandbox iframe
+  const handleThemeChange = (nextTheme: PreviewTheme) => {
+    setPreviewTheme(nextTheme);
+
+    if (iframeRef.current && iframeRef.current.contentWindow) {
+      iframeRef.current.contentWindow.postMessage(
+        {
+          type: "SET_PREVIEW_THEME",
+          theme: nextTheme,
+        },
+        "*"
+      );
+    }
+  };
+
   // Compile sandbox HTML when code or settings change
   const { html, error, duration } = useMemo(() => {
     const t0 = typeof performance !== "undefined" ? performance.now() : 0;
@@ -85,11 +106,12 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
       files["demo.tsx"],
       files["index.css"],
       dependencies,
-      canvasBg
+      canvasBg,
+      previewTheme
     );
     const t1 = typeof performance !== "undefined" ? performance.now() : 0;
     return { ...result, duration: Math.max(1, Math.round(t1 - t0)) };
-  }, [files, dependencies, canvasBg, reloadKey]);
+  }, [files, dependencies, canvasBg, previewTheme, reloadKey]);
 
   useEffect(() => {
     if (mounted) {
@@ -212,75 +234,125 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
     >
       {/* Top Toolbar */}
       <div className="flex h-10 shrink-0 items-center justify-between border-b border-border bg-background px-3 select-none">
-        {/* Left: Viewport Segmented Control */}
-        <div className="inline-flex h-7 items-center rounded-md bg-muted/60 p-0.5 text-muted-foreground border border-border/50">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                onClick={() => handleSelectViewport("desktop")}
-                className={`inline-flex items-center gap-1.5 rounded-sm px-2.5 py-1 text-xs font-medium transition-all cursor-pointer ${
-                  viewport === "desktop" && draggedWidth === null
-                    ? "bg-background text-foreground shadow-xs font-semibold"
-                    : "hover:text-foreground hover:bg-background/50"
-                }`}
-              >
-                <Monitor className="size-3.5" />
-                <span className="hidden sm:inline text-[11px]">Desktop</span>
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom">Desktop viewport (1200px)</TooltipContent>
-          </Tooltip>
+        {/* Left: Viewport & Theme Segmented Controls */}
+        <div className="flex items-center gap-2">
+          {/* Viewport Control */}
+          <div className="inline-flex h-7 items-center rounded-md bg-muted/60 p-0.5 text-muted-foreground border border-border/50">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={() => handleSelectViewport("desktop")}
+                  className={`inline-flex items-center gap-1.5 rounded-sm px-2.5 py-1 text-xs font-medium transition-all cursor-pointer ${
+                    viewport === "desktop" && draggedWidth === null
+                      ? "bg-background text-foreground shadow-xs font-semibold"
+                      : "hover:text-foreground hover:bg-background/50"
+                  }`}
+                >
+                  <Monitor className="size-3.5" />
+                  <span className="hidden sm:inline text-[11px]">Desktop</span>
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">Desktop viewport (1200px)</TooltipContent>
+            </Tooltip>
 
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                onClick={() => handleSelectViewport("tablet")}
-                className={`inline-flex items-center gap-1.5 rounded-sm px-2.5 py-1 text-xs font-medium transition-all cursor-pointer ${
-                  viewport === "tablet" && draggedWidth === null
-                    ? "bg-background text-foreground shadow-xs font-semibold"
-                    : "hover:text-foreground hover:bg-background/50"
-                }`}
-              >
-                <Tablet className="size-3.5" />
-                <span className="hidden sm:inline text-[11px]">Tablet</span>
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom">Tablet viewport (768px)</TooltipContent>
-          </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={() => handleSelectViewport("tablet")}
+                  className={`inline-flex items-center gap-1.5 rounded-sm px-2.5 py-1 text-xs font-medium transition-all cursor-pointer ${
+                    viewport === "tablet" && draggedWidth === null
+                      ? "bg-background text-foreground shadow-xs font-semibold"
+                      : "hover:text-foreground hover:bg-background/50"
+                  }`}
+                >
+                  <Tablet className="size-3.5" />
+                  <span className="hidden sm:inline text-[11px]">Tablet</span>
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">Tablet viewport (768px)</TooltipContent>
+            </Tooltip>
 
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                onClick={() => handleSelectViewport("mobile")}
-                className={`inline-flex items-center gap-1.5 rounded-sm px-2.5 py-1 text-xs font-medium transition-all cursor-pointer ${
-                  viewport === "mobile" && draggedWidth === null
-                    ? "bg-background text-foreground shadow-xs font-semibold"
-                    : "hover:text-foreground hover:bg-background/50"
-                }`}
-              >
-                <Smartphone className="size-3.5" />
-                <span className="hidden sm:inline text-[11px]">Mobile</span>
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom">Mobile viewport (375px)</TooltipContent>
-          </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={() => handleSelectViewport("mobile")}
+                  className={`inline-flex items-center gap-1.5 rounded-sm px-2.5 py-1 text-xs font-medium transition-all cursor-pointer ${
+                    viewport === "mobile" && draggedWidth === null
+                      ? "bg-background text-foreground shadow-xs font-semibold"
+                      : "hover:text-foreground hover:bg-background/50"
+                  }`}
+                >
+                  <Smartphone className="size-3.5" />
+                  <span className="hidden sm:inline text-[11px]">Mobile</span>
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">Mobile viewport (375px)</TooltipContent>
+            </Tooltip>
 
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                onClick={() => handleSelectViewport("responsive")}
-                className={`inline-flex items-center gap-1.5 rounded-sm px-2.5 py-1 text-xs font-medium transition-all cursor-pointer ${
-                  isFluidResponsive
-                    ? "bg-background text-foreground shadow-xs font-semibold"
-                    : "hover:text-foreground hover:bg-background/50"
-                }`}
-              >
-                <Layers className="size-3.5" />
-                <span className="hidden sm:inline text-[11px]">Fluid</span>
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom">100% fluid responsive</TooltipContent>
-          </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={() => handleSelectViewport("responsive")}
+                  className={`inline-flex items-center gap-1.5 rounded-sm px-2.5 py-1 text-xs font-medium transition-all cursor-pointer ${
+                    isFluidResponsive
+                      ? "bg-background text-foreground shadow-xs font-semibold"
+                      : "hover:text-foreground hover:bg-background/50"
+                  }`}
+                >
+                  <Layers className="size-3.5" />
+                  <span className="hidden sm:inline text-[11px]">Fluid</span>
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">100% fluid responsive</TooltipContent>
+            </Tooltip>
+          </div>
+
+          <Separator orientation="vertical" className="h-4 hidden sm:block" />
+
+          {/* Component Preview Dark / Light Theme Segmented Control */}
+          <div className="inline-flex h-7 items-center rounded-md bg-muted/60 p-0.5 text-muted-foreground border border-border/50">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={() => handleThemeChange("light")}
+                  className={`inline-flex items-center gap-1.5 rounded-sm px-2.5 py-1 text-xs font-medium transition-all cursor-pointer ${
+                    previewTheme === "light"
+                      ? "bg-background text-foreground shadow-xs font-semibold"
+                      : "hover:text-foreground hover:bg-background/50"
+                  }`}
+                  aria-label="Preview in light theme"
+                >
+                  <Sun className="size-3.5 text-amber-500" />
+                  <span className="hidden sm:inline text-[11px]">Light</span>
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">Switch component preview to light mode</TooltipContent>
+            </Tooltip>
+
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={() => handleThemeChange("dark")}
+                  className={`inline-flex items-center gap-1.5 rounded-sm px-2.5 py-1 text-xs font-medium transition-all cursor-pointer ${
+                    previewTheme === "dark"
+                      ? "bg-background text-foreground shadow-xs font-semibold"
+                      : "hover:text-foreground hover:bg-background/50"
+                  }`}
+                  aria-label="Preview in dark theme"
+                >
+                  <Moon className="size-3.5 text-sky-400" />
+                  <span className="hidden sm:inline text-[11px]">Dark</span>
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">Switch component preview to dark mode</TooltipContent>
+            </Tooltip>
+          </div>
         </div>
 
         {/* Center: Live Indicators */}
@@ -351,7 +423,7 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
                 Mesh Gradient
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => setCanvasBg("grid")}>
-                Light Dot Grid
+                Light/Dark Dot Grid
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => setCanvasBg("light")}>
                 Solid Light
@@ -466,18 +538,50 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
               <span>sandbox://21st.dev/preview</span>
             </div>
 
-            {/* Dimension Badge */}
-            <div className="font-mono text-[10px] text-muted-foreground bg-muted px-2 py-0.5 rounded border border-border/60">
-              {draggedWidth !== null
-                ? `${draggedWidth}px`
-                : isFluidResponsive
-                ? "Fluid 100%"
-                : getComputedWidth()}
+            {/* Dimension Badge & Quick Theme Toggle */}
+            <div className="flex items-center gap-2">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={() => handleThemeChange(previewTheme === "dark" ? "light" : "dark")}
+                    className="inline-flex items-center gap-1 font-mono text-[10px] text-muted-foreground hover:text-foreground bg-background hover:bg-muted/70 px-2 py-0.5 rounded border border-border/60 transition-colors cursor-pointer shadow-2xs"
+                    aria-label="Toggle preview theme"
+                  >
+                    {previewTheme === "dark" ? (
+                      <>
+                        <Moon className="size-2.5 text-sky-400" />
+                        <span>Dark</span>
+                      </>
+                    ) : (
+                      <>
+                        <Sun className="size-2.5 text-amber-500" />
+                        <span>Light</span>
+                      </>
+                    )}
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">
+                  Toggle component preview theme (currently {previewTheme})
+                </TooltipContent>
+              </Tooltip>
+
+              <div className="font-mono text-[10px] text-muted-foreground bg-muted px-2 py-0.5 rounded border border-border/60">
+                {draggedWidth !== null
+                  ? `${draggedWidth}px`
+                  : isFluidResponsive
+                  ? "Fluid 100%"
+                  : getComputedWidth()}
+              </div>
             </div>
           </div>
 
-          {/* Sandboxed Live Iframe */}
-          <div className="relative flex-1 w-full h-full overflow-hidden">
+          {/* Sandboxed Live Iframe with matching theme surface */}
+          <div
+            className={`relative flex-1 w-full h-full overflow-hidden transition-colors ${
+              previewTheme === "dark" ? "bg-zinc-950" : "bg-white"
+            }`}
+          >
             <iframe
               ref={iframeRef}
               key={reloadKey}
