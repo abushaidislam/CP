@@ -78,7 +78,7 @@ export function StudioHeader() {
             21st Studio
           </span>
           <span className="text-muted-foreground/40 text-xs">/</span>
-          <Badge variant="outline" className="text-[10px] py-0 px-1.5 hidden sm:inline-flex text-muted-foreground font-mono">
+          <Badge variant="outline" className="text-[10px] py-0 px-1.5 hidden sm:inline-flex text-muted-foreground">
             v2.0
           </Badge>
         </div>
@@ -136,7 +136,7 @@ export function StudioHeader() {
 
       {/* Center: Live Status Indicator */}
       <div className="hidden lg:flex items-center gap-2">
-        <Badge variant="outline" className="gap-1.5 py-0.5 px-2.5 text-xs font-mono text-muted-foreground bg-muted/40 border-border/70">
+        <Badge variant="outline" className="gap-1.5 py-0.5 px-2.5 text-xs text-muted-foreground bg-muted/40 border-border/70">
           <span className="size-1.5 rounded-full bg-emerald-500" />
           Sandbox Active
         </Badge>

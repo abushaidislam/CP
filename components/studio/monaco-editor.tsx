@@ -158,7 +158,7 @@ export function MonacoCodeEditor({
           bracketPairColorization: { enabled: true },
         }}
         loading={
-          <div className="flex h-full w-full items-center justify-center bg-background text-xs font-mono text-muted-foreground">
+          <div className="flex h-full w-full items-center justify-center bg-background text-xs text-muted-foreground">
             Initializing Monaco Engine...
           </div>
         }

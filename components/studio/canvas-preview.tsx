@@ -285,7 +285,7 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
         {/* Center: Live Indicators */}
         <div className="flex items-center gap-2">
           {isSimulatingHover && (
-            <Badge variant="blue" className="animate-pulse text-[10px] font-mono gap-1">
+            <Badge variant="blue" className="animate-pulse text-[10px] gap-1">
               <CircleDot className="size-3 animate-spin text-sky-500" />
               Stitch Pointer Active
             </Badge>
@@ -295,7 +295,7 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
             <Badge
               variant="outline"
               suppressHydrationWarning
-              className="text-[10px] hidden md:inline-flex font-mono gap-1 text-muted-foreground bg-muted/40"
+              className="text-[10px] hidden md:inline-flex gap-1 text-muted-foreground bg-muted/40"
             >
               <Zap className="size-2.5 text-amber-500" />
               {compileTimeMs > 0 ? `${compileTimeMs}ms` : "Live"}
@@ -373,7 +373,7 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="h-7 px-2 font-mono text-[11px] text-muted-foreground hover:text-foreground"
+                    className="h-7 px-2 text-[11px] text-muted-foreground hover:text-foreground"
                   >
                     {zoom}%
                   </Button>
@@ -458,7 +458,7 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
             </div>
 
             <div className="flex items-center gap-2">
-              <span className="font-mono text-xs text-muted-foreground bg-muted/60 px-2 py-0.5 rounded">
+              <span className="text-xs text-muted-foreground bg-muted/60 px-2 py-0.5 rounded">
                 {draggedWidth !== null
                   ? `${draggedWidth}px`
                   : isFluidResponsive

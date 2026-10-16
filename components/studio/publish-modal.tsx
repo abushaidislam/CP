@@ -162,15 +162,16 @@ export function PublishModal() {
             <div className="mt-1 flex flex-wrap gap-1">
               {payload.dependencies.length > 0 ? (
                 payload.dependencies.map((d) => (
-                  <span
+                  <Badge
                     key={d}
-                    className="rounded-md bg-background border border-border px-1.5 py-0.5 font-mono text-[10px] text-foreground"
+                    variant="outline"
+                    className="font-mono text-[10px]"
                   >
                     {d}
-                  </span>
+                  </Badge>
                 ))
               ) : (
-                <span className="text-muted-foreground">Zero external dependencies</span>
+                <span className="text-muted-foreground text-xs">Zero external dependencies</span>
               )}
             </div>
           </div>
@@ -227,9 +228,13 @@ export function PublishModal() {
                           <td className="py-2 px-2 text-violet-500">{p.type}</td>
                           <td className="py-2 px-2">
                             {p.optional ? (
-                              <span className="text-muted-foreground">optional</span>
+                              <Badge variant="secondary" className="text-[10px] font-normal">
+                                optional
+                              </Badge>
                             ) : (
-                              <span className="text-destructive font-medium">required</span>
+                              <Badge variant="destructive" className="text-[10px] font-normal">
+                                required
+                              </Badge>
                             )}
                           </td>
                           <td className="py-2 px-2 text-muted-foreground">
@@ -244,7 +249,7 @@ export function PublishModal() {
                   </table>
                 </div>
               ) : (
-                <div className="py-6 text-center text-xs text-muted-foreground font-mono">
+                <div className="py-6 text-center text-xs text-muted-foreground">
                   {"No TypeScript interface found in component.tsx. Define `interface ComponentProps { ... }` to automatically populate."}
                 </div>
               )}

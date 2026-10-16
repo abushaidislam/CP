@@ -156,7 +156,7 @@ export function EditorPanel() {
                 <span className="hidden sm:inline">Packages</span>
                 <Badge
                   variant="secondary"
-                  className="size-4 p-0 flex items-center justify-center font-mono text-[10px]"
+                  className="size-4 p-0 flex items-center justify-center text-[10px]"
                 >
                   {dependencies.length}
                 </Badge>
@@ -204,7 +204,7 @@ export function EditorPanel() {
       </div>
 
       {/* Status Footer */}
-      <div className="flex h-7 shrink-0 items-center justify-between border-t border-border bg-muted/20 px-3 text-xs text-muted-foreground font-mono select-none">
+      <div className="flex h-7 shrink-0 items-center justify-between border-t border-border bg-muted/20 px-3 text-xs text-muted-foreground select-none">
         <div className="flex items-center gap-2">
           <span className="flex items-center gap-1.5">
             <span className="size-1.5 rounded-full bg-emerald-500" />

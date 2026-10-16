@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Package,
   Plus,
@@ -157,7 +158,7 @@ export function DependencyModal() {
                   <DialogTitle className="text-base font-semibold tracking-tight text-foreground">
                     Dependency Manager
                   </DialogTitle>
-                  <Badge variant="outline" className="text-[10px] font-mono">
+                  <Badge variant="outline" className="text-[10px]">
                     {dependencies.length} Active
                   </Badge>
                 </div>
@@ -172,7 +173,7 @@ export function DependencyModal() {
         {/* Smart Code Import Sync Bar */}
         <div className="mt-2 rounded-lg border border-border bg-muted/40 p-3 text-xs">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="flex items-center gap-2 font-mono text-[11px]">
+            <div className="flex items-center gap-2 text-[11px]">
               <span className="flex items-center gap-1.5 text-muted-foreground">
                 <span className="size-1.5 rounded-full bg-primary" />
                 Code references: <strong className="text-foreground">{codeImports.length}</strong>
@@ -218,7 +219,7 @@ export function DependencyModal() {
           </div>
 
           {syncSuccessMessage && (
-            <div className="mt-2 text-[11px] font-mono text-emerald-500 flex items-center gap-1 animate-in fade-in">
+            <div className="mt-2 text-[11px] text-emerald-500 flex items-center gap-1 animate-in fade-in">
               <Check className="size-3" />
               {syncSuccessMessage}
             </div>
@@ -330,13 +331,15 @@ export function DependencyModal() {
           <div className="flex items-center justify-between font-mono text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
             <span>Installed Packages ({dependencies.length})</span>
             {dependencies.length > 0 && (
-              <button
+              <Button
+                variant="ghost"
+                size="sm"
                 type="button"
                 onClick={clearAllDependencies}
-                className="hover:text-destructive transition-colors cursor-pointer"
+                className="h-5 px-1.5 text-[10px] text-muted-foreground hover:text-destructive cursor-pointer"
               >
                 Clear all
-              </button>
+              </Button>
             )}
           </div>
 
@@ -345,9 +348,10 @@ export function DependencyModal() {
               dependencies.map((dep) => {
                 const isUsedInCode = codeImports.includes(dep);
                 return (
-                  <div
+                  <Badge
                     key={dep}
-                    className="group flex items-center gap-1.5 rounded-md border border-border bg-card px-2.5 py-1 text-xs text-foreground shadow-xs transition-colors hover:border-border/80"
+                    variant="outline"
+                    className="group flex items-center gap-1.5 rounded-md bg-card px-2.5 py-1 text-xs text-foreground shadow-xs font-normal hover:border-border/80"
                   >
                     <span
                       className={`size-1.5 rounded-full ${
@@ -357,19 +361,21 @@ export function DependencyModal() {
                     />
                     <Package className="size-3 text-primary" />
                     <span className="font-mono text-[11px]">{dep}</span>
-                    <button
+                    <Button
+                      variant="ghost"
+                      size="icon"
                       type="button"
                       onClick={() => removeDependency(dep)}
-                      className="ml-1 text-muted-foreground hover:text-destructive transition-colors cursor-pointer"
+                      className="size-4 p-0 ml-1 text-muted-foreground hover:text-destructive cursor-pointer"
                       title={`Remove ${dep}`}
                     >
                       <Trash2 className="size-3" />
-                    </button>
-                  </div>
+                    </Button>
+                  </Badge>
                 );
               })
             ) : (
-              <div className="py-2 text-xs text-muted-foreground font-mono">
+              <div className="py-2 text-xs text-muted-foreground">
                 No external packages installed. Add from search or curated list below.
               </div>
             )}
@@ -385,30 +391,27 @@ export function DependencyModal() {
               Curated 21st.dev Libraries
             </span>
 
-            {/* Category Filter Pills */}
-            <div className="flex items-center gap-1">
-              {[
-                { id: "all", label: "All" },
-                { id: "animation", label: "Animation" },
-                { id: "ui", label: "UI Primitives" },
-                { id: "icons", label: "Icons" },
-                { id: "utilities", label: "Utils" },
-                { id: "data", label: "Charts" },
-              ].map((cat) => (
-                <button
-                  key={cat.id}
-                  type="button"
-                  onClick={() => setSelectedCategory(cat.id)}
-                  className={`rounded-md px-2 py-0.5 text-[10px] font-medium transition-colors cursor-pointer ${
-                    selectedCategory === cat.id
-                      ? "bg-primary text-primary-foreground font-semibold"
-                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                  }`}
-                >
-                  {cat.label}
-                </button>
-              ))}
-            </div>
+            {/* Category Filter Tabs */}
+            <Tabs value={selectedCategory} onValueChange={setSelectedCategory}>
+              <TabsList className="h-6 p-0.5 bg-muted/60">
+                {[
+                  { id: "all", label: "All" },
+                  { id: "animation", label: "Animation" },
+                  { id: "ui", label: "UI Primitives" },
+                  { id: "icons", label: "Icons" },
+                  { id: "utilities", label: "Utils" },
+                  { id: "data", label: "Charts" },
+                ].map((cat) => (
+                  <TabsTrigger
+                    key={cat.id}
+                    value={cat.id}
+                    className="h-5 px-2 text-[10px] rounded-sm data-[state=active]:bg-background data-[state=active]:shadow-xs"
+                  >
+                    {cat.label}
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+            </Tabs>
           </div>
 
           {/* Curated Cards Grid */}
@@ -463,7 +466,7 @@ export function DependencyModal() {
 
         {/* Modal Footer */}
         <div className="mt-3 flex items-center justify-between border-t border-border pt-3">
-          <div className="font-mono text-[10px] text-muted-foreground">
+          <div className="text-[10px] text-muted-foreground">
             Runtime CDN: <span className="text-foreground">esm.sh (React 19 compatible)</span>
           </div>
           <Button

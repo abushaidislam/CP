@@ -1,16 +1,17 @@
 import React from "react";
 import { Monitor } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 
 export function StudioSkeleton() {
   return (
     <div className="flex h-screen w-screen flex-col overflow-hidden bg-background text-foreground font-sans">
       {/* Top Header Skeleton */}
-      <header className="flex h-13 shrink-0 items-center justify-between border-b border-border bg-background px-4">
+      <header className="flex h-12 shrink-0 items-center justify-between border-b border-border bg-background px-4">
         <div className="flex items-center gap-3">
-          <div className="flex size-7 items-center justify-center rounded-md bg-foreground text-background shadow-xs">
+          <div className="flex size-6 items-center justify-center rounded-md bg-foreground text-background shadow-2xs">
             <svg
               viewBox="0 0 24 24"
-              className="size-3.5 fill-current transform -translate-y-px"
+              className="size-3 fill-current transform -translate-y-px"
             >
               <polygon points="12,2 22,20 2,20" />
             </svg>
@@ -20,10 +21,10 @@ export function StudioSkeleton() {
             <span className="font-semibold text-xs tracking-tight text-foreground">
               21st Studio
             </span>
-            <span className="text-muted-foreground/60 text-xs">/</span>
-            <span className="rounded border border-border px-1.5 py-0 text-[10px] font-mono text-muted-foreground">
+            <span className="text-muted-foreground/40 text-xs">/</span>
+            <Badge variant="outline" className="text-[10px] py-0 px-1.5 hidden sm:inline-flex text-muted-foreground">
               v2.0
-            </span>
+            </Badge>
           </div>
 
           <div className="hidden md:flex h-4 w-px bg-border mx-1" />
@@ -95,13 +96,13 @@ export function StudioSkeleton() {
                 <span className="font-mono text-[10px] text-muted-foreground">
                   sandbox://21st.dev/preview
                 </span>
-                <span className="font-mono text-[10px] text-muted-foreground">1200px</span>
+                <span className="text-[10px] text-muted-foreground">1200px</span>
               </div>
               <div className="flex-1 flex flex-col items-center justify-center gap-3">
                 <div className="flex size-10 items-center justify-center rounded-lg border border-border bg-muted">
                   <Monitor className="size-5 text-primary animate-pulse" />
                 </div>
-                <span className="font-mono text-xs text-muted-foreground">
+                <span className="text-xs text-muted-foreground">
                   Initializing Sandbox Environment...
                 </span>
               </div>
