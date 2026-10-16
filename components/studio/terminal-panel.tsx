@@ -347,7 +347,7 @@ export function TerminalPanel() {
   return (
     <div
       style={{ height: `${terminalHeight}px` }}
-      className="relative flex w-full flex-col border-t border-border bg-zinc-950 text-zinc-100 font-mono text-xs select-none shadow-2xl z-20 transition-[height] duration-75"
+      className="relative flex w-full flex-col border-t border-border bg-zinc-950 text-zinc-100 font-sans text-xs select-none shadow-2xl z-20 transition-[height] duration-75"
     >
       {/* Resizable Top Drag Handle */}
       <div
@@ -369,22 +369,26 @@ export function TerminalPanel() {
 
           {/* Filter Pills */}
           <div className="flex items-center bg-zinc-950/70 p-0.5 rounded-md border border-zinc-800 text-[11px]">
-            <button
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={() => setTerminalFilter("all")}
-              className={`px-2 py-0.5 rounded transition-colors ${
+              className={`h-6 px-2 py-0.5 rounded text-[11px] font-sans transition-colors cursor-pointer ${
                 terminalFilter === "all"
                   ? "bg-zinc-800 text-white font-medium shadow-xs"
-                  : "text-zinc-400 hover:text-zinc-200"
+                  : "text-zinc-400 hover:text-zinc-200 hover:bg-transparent"
               }`}
             >
               All ({terminalLogs.length})
-            </button>
-            <button
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={() => setTerminalFilter("errors")}
-              className={`px-2 py-0.5 rounded transition-colors flex items-center gap-1 ${
+              className={`h-6 px-2 py-0.5 rounded text-[11px] font-sans transition-colors flex items-center gap-1 cursor-pointer ${
                 terminalFilter === "errors"
                   ? "bg-red-950/80 text-red-300 font-medium"
-                  : "text-zinc-400 hover:text-red-400"
+                  : "text-zinc-400 hover:text-red-400 hover:bg-transparent"
               }`}
             >
               <AlertCircle className="size-2.5 text-red-400" />
@@ -394,13 +398,15 @@ export function TerminalPanel() {
                   {counts.errorCount}
                 </span>
               )}
-            </button>
-            <button
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={() => setTerminalFilter("warnings")}
-              className={`px-2 py-0.5 rounded transition-colors flex items-center gap-1 ${
+              className={`h-6 px-2 py-0.5 rounded text-[11px] font-sans transition-colors flex items-center gap-1 cursor-pointer ${
                 terminalFilter === "warnings"
                   ? "bg-amber-950/80 text-amber-300 font-medium"
-                  : "text-zinc-400 hover:text-amber-400"
+                  : "text-zinc-400 hover:text-amber-400 hover:bg-transparent"
               }`}
             >
               <AlertTriangle className="size-2.5 text-amber-400" />
@@ -410,27 +416,31 @@ export function TerminalPanel() {
                   {counts.warnCount}
                 </span>
               )}
-            </button>
-            <button
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={() => setTerminalFilter("logs")}
-              className={`px-2 py-0.5 rounded transition-colors ${
+              className={`h-6 px-2 py-0.5 rounded text-[11px] font-sans transition-colors cursor-pointer ${
                 terminalFilter === "logs"
                   ? "bg-zinc-800 text-white font-medium"
-                  : "text-zinc-400 hover:text-zinc-200"
+                  : "text-zinc-400 hover:text-zinc-200 hover:bg-transparent"
               }`}
             >
               Logs ({counts.logCount})
-            </button>
-            <button
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={() => setTerminalFilter("system")}
-              className={`px-2 py-0.5 rounded transition-colors ${
+              className={`h-6 px-2 py-0.5 rounded text-[11px] font-sans transition-colors cursor-pointer ${
                 terminalFilter === "system"
                   ? "bg-zinc-800 text-white font-medium"
-                  : "text-zinc-400 hover:text-zinc-200"
+                  : "text-zinc-400 hover:text-zinc-200 hover:bg-transparent"
               }`}
             >
               System
-            </button>
+            </Button>
           </div>
         </div>
 
@@ -578,9 +588,11 @@ export function TerminalPanel() {
                 )}
 
                 {/* Copy Button */}
-                <button
+                <Button
+                  variant="ghost"
+                  size="icon"
                   onClick={() => handleCopyLog(log.id, log.message)}
-                  className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 text-zinc-500 hover:text-zinc-200 select-none"
+                  className="size-5 opacity-0 group-hover:opacity-100 transition-opacity p-0 text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800/80 select-none cursor-pointer"
                   title="Copy log entry"
                 >
                   {copiedId === log.id ? (
@@ -588,7 +600,8 @@ export function TerminalPanel() {
                   ) : (
                     <Copy className="size-3" />
                   )}
-                </button>
+                  <span className="sr-only">Copy log entry</span>
+                </Button>
               </div>
             );
           })

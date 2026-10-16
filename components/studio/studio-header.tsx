@@ -169,14 +169,14 @@ export function StudioHeader() {
               {errorCount > 0 ? (
                 <Badge
                   variant="destructive"
-                  className="h-4 px-1 text-[9px] font-mono font-bold"
+                  className="h-4 px-1 text-[9px] font-bold"
                 >
                   {errorCount}
                 </Badge>
               ) : warnCount > 0 ? (
                 <Badge
                   variant="secondary"
-                  className="h-4 px-1 text-[9px] font-mono text-amber-500 bg-amber-500/10"
+                  className="h-4 px-1 text-[9px] text-amber-500 bg-amber-500/10"
                 >
                   {warnCount}
                 </Badge>
