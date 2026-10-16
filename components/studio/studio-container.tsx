@@ -6,6 +6,7 @@ import { EditorPanel } from "./editor-panel";
 import { CanvasPreview } from "./canvas-preview";
 import { PublishModal } from "./publish-modal";
 import { DependencyModal } from "./dependency-modal";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Code, Eye } from "lucide-react";
 
 export function StudioContainer() {
@@ -52,29 +53,23 @@ export function StudioContainer() {
       <StudioHeader />
 
       {/* Mobile Tab Toggle (< md screens) */}
-      <div className="flex md:hidden border-b border-border bg-background p-1.5 gap-1.5">
-        <button
-          onClick={() => setMobileTab("editor")}
-          className={`flex-1 py-1.5 text-xs font-medium rounded-md flex items-center justify-center gap-1.5 transition-colors cursor-pointer ${
-            mobileTab === "editor"
-              ? "bg-muted text-foreground border border-border shadow-xs"
-              : "text-muted-foreground hover:text-foreground"
-          }`}
+      <div className="flex md:hidden border-b border-border bg-background p-2">
+        <Tabs
+          value={mobileTab}
+          onValueChange={(val) => setMobileTab(val as "editor" | "preview")}
+          className="w-full"
         >
-          <Code className="size-3.5" />
-          Editor
-        </button>
-        <button
-          onClick={() => setMobileTab("preview")}
-          className={`flex-1 py-1.5 text-xs font-medium rounded-md flex items-center justify-center gap-1.5 transition-colors cursor-pointer ${
-            mobileTab === "preview"
-              ? "bg-muted text-foreground border border-border shadow-xs"
-              : "text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          <Eye className="size-3.5" />
-          Live Preview
-        </button>
+          <TabsList className="grid grid-cols-2 w-full h-8">
+            <TabsTrigger value="editor" className="gap-2 text-xs">
+              <Code className="size-3.5" />
+              <span>Editor</span>
+            </TabsTrigger>
+            <TabsTrigger value="preview" className="gap-2 text-xs">
+              <Eye className="size-3.5" />
+              <span>Live Preview</span>
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
       </div>
 
       {/* Main Workspace Body */}

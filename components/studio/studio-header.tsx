@@ -59,14 +59,14 @@ export function StudioHeader() {
     DEFAULT_TEMPLATES[0];
 
   return (
-    <header className="flex h-13 shrink-0 items-center justify-between border-b border-border bg-background/95 px-4 backdrop-blur-sm select-none z-30">
+    <header className="flex h-12 shrink-0 items-center justify-between border-b border-border bg-background/95 px-4 backdrop-blur-sm select-none z-30">
       {/* Left: Brand & Template Selector */}
       <div className="flex items-center gap-3">
         {/* Vercel Geometric Triangle Mark */}
-        <div className="flex size-7 items-center justify-center rounded-md bg-foreground text-background shadow-xs">
+        <div className="flex size-6 items-center justify-center rounded-md bg-foreground text-background shadow-2xs">
           <svg
             viewBox="0 0 24 24"
-            className="size-3.5 fill-current transform -translate-y-px"
+            className="size-3 fill-current transform -translate-y-px"
           >
             <polygon points="12,2 22,20 2,20" />
           </svg>
@@ -77,7 +77,7 @@ export function StudioHeader() {
           <span className="font-semibold text-xs tracking-tight text-foreground">
             21st Studio
           </span>
-          <span className="text-muted-foreground/60 text-xs">/</span>
+          <span className="text-muted-foreground/40 text-xs">/</span>
           <Badge variant="outline" className="text-[10px] py-0 px-1.5 hidden sm:inline-flex text-muted-foreground font-mono">
             v2.0
           </Badge>
@@ -94,9 +94,9 @@ export function StudioHeader() {
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="h-8 gap-2 px-2.5 text-xs text-foreground font-normal hover:bg-muted"
+                    className="h-7 gap-2 px-2 text-xs text-foreground font-normal hover:bg-muted"
                   >
-                    <Layers className="size-3.5 text-primary" />
+                    <Layers className="size-3 text-muted-foreground" />
                     <span className="font-medium text-xs">{currentTemplate.name}</span>
                     <ChevronDown className="size-3 text-muted-foreground" />
                   </Button>
@@ -124,7 +124,7 @@ export function StudioHeader() {
                       {tmpl.category}
                     </span>
                   </div>
-                  <span className="line-clamp-1 text-[11px] text-muted-foreground">
+                  <span className="line-clamp-1 text-xs text-muted-foreground">
                     {tmpl.description}
                   </span>
                 </DropdownMenuItem>
@@ -136,8 +136,8 @@ export function StudioHeader() {
 
       {/* Center: Live Status Indicator */}
       <div className="hidden lg:flex items-center gap-2">
-        <Badge variant="outline" className="gap-1.5 py-0.5 px-2.5 text-[11px] font-mono text-muted-foreground bg-muted/40">
-          <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
+        <Badge variant="outline" className="gap-1.5 py-0.5 px-2.5 text-xs font-mono text-muted-foreground bg-muted/40 border-border/70">
+          <span className="size-1.5 rounded-full bg-emerald-500" />
           Sandbox Active
         </Badge>
       </div>

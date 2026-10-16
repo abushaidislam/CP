@@ -11,6 +11,7 @@ import { compileSandboxHtml } from "@/lib/sandbox/sandbox-compiler";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Tooltip,
   TooltipContent,
@@ -233,126 +234,52 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
       }`}
     >
       {/* Top Toolbar */}
-      <div className="flex h-10 shrink-0 items-center justify-between border-b border-border bg-background px-3 select-none">
+      <div className="flex h-11 shrink-0 items-center justify-between border-b border-border bg-background px-3 select-none">
         {/* Left: Viewport & Theme Segmented Controls */}
         <div className="flex items-center gap-2">
-          {/* Viewport Control */}
-          <div className="inline-flex h-7 items-center rounded-md bg-muted/60 p-0.5 text-muted-foreground border border-border/50">
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  type="button"
-                  onClick={() => handleSelectViewport("desktop")}
-                  className={`inline-flex items-center gap-1.5 rounded-sm px-2.5 py-1 text-xs font-medium transition-all cursor-pointer ${
-                    viewport === "desktop" && draggedWidth === null
-                      ? "bg-background text-foreground shadow-xs font-semibold"
-                      : "hover:text-foreground hover:bg-background/50"
-                  }`}
-                >
-                  <Monitor className="size-3.5" />
-                  <span className="hidden sm:inline text-[11px]">Desktop</span>
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom">Desktop viewport (1200px)</TooltipContent>
-            </Tooltip>
-
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  type="button"
-                  onClick={() => handleSelectViewport("tablet")}
-                  className={`inline-flex items-center gap-1.5 rounded-sm px-2.5 py-1 text-xs font-medium transition-all cursor-pointer ${
-                    viewport === "tablet" && draggedWidth === null
-                      ? "bg-background text-foreground shadow-xs font-semibold"
-                      : "hover:text-foreground hover:bg-background/50"
-                  }`}
-                >
-                  <Tablet className="size-3.5" />
-                  <span className="hidden sm:inline text-[11px]">Tablet</span>
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom">Tablet viewport (768px)</TooltipContent>
-            </Tooltip>
-
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  type="button"
-                  onClick={() => handleSelectViewport("mobile")}
-                  className={`inline-flex items-center gap-1.5 rounded-sm px-2.5 py-1 text-xs font-medium transition-all cursor-pointer ${
-                    viewport === "mobile" && draggedWidth === null
-                      ? "bg-background text-foreground shadow-xs font-semibold"
-                      : "hover:text-foreground hover:bg-background/50"
-                  }`}
-                >
-                  <Smartphone className="size-3.5" />
-                  <span className="hidden sm:inline text-[11px]">Mobile</span>
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom">Mobile viewport (375px)</TooltipContent>
-            </Tooltip>
-
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  type="button"
-                  onClick={() => handleSelectViewport("responsive")}
-                  className={`inline-flex items-center gap-1.5 rounded-sm px-2.5 py-1 text-xs font-medium transition-all cursor-pointer ${
-                    isFluidResponsive
-                      ? "bg-background text-foreground shadow-xs font-semibold"
-                      : "hover:text-foreground hover:bg-background/50"
-                  }`}
-                >
-                  <Layers className="size-3.5" />
-                  <span className="hidden sm:inline text-[11px]">Fluid</span>
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom">100% fluid responsive</TooltipContent>
-            </Tooltip>
-          </div>
+          {/* Viewport Control via Shadcn Tabs */}
+          <Tabs
+            value={isFluidResponsive ? "responsive" : viewport}
+            onValueChange={(val) => handleSelectViewport(val as StudioViewport)}
+          >
+            <TabsList className="h-7 bg-muted/60 p-0.5">
+              <TabsTrigger value="desktop" className="h-6 gap-1.5 px-2.5 text-xs">
+                <Monitor className="size-3.5" />
+                <span className="hidden sm:inline">Desktop</span>
+              </TabsTrigger>
+              <TabsTrigger value="tablet" className="h-6 gap-1.5 px-2.5 text-xs">
+                <Tablet className="size-3.5" />
+                <span className="hidden sm:inline">Tablet</span>
+              </TabsTrigger>
+              <TabsTrigger value="mobile" className="h-6 gap-1.5 px-2.5 text-xs">
+                <Smartphone className="size-3.5" />
+                <span className="hidden sm:inline">Mobile</span>
+              </TabsTrigger>
+              <TabsTrigger value="responsive" className="h-6 gap-1.5 px-2.5 text-xs">
+                <Layers className="size-3.5" />
+                <span className="hidden sm:inline">Fluid</span>
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
 
           <Separator orientation="vertical" className="h-4 hidden sm:block" />
 
-          {/* Component Preview Dark / Light Theme Segmented Control */}
-          <div className="inline-flex h-7 items-center rounded-md bg-muted/60 p-0.5 text-muted-foreground border border-border/50">
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  type="button"
-                  onClick={() => handleThemeChange("light")}
-                  className={`inline-flex items-center gap-1.5 rounded-sm px-2.5 py-1 text-xs font-medium transition-all cursor-pointer ${
-                    previewTheme === "light"
-                      ? "bg-background text-foreground shadow-xs font-semibold"
-                      : "hover:text-foreground hover:bg-background/50"
-                  }`}
-                  aria-label="Preview in light theme"
-                >
-                  <Sun className="size-3.5 text-amber-500" />
-                  <span className="hidden sm:inline text-[11px]">Light</span>
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom">Switch component preview to light mode</TooltipContent>
-            </Tooltip>
-
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  type="button"
-                  onClick={() => handleThemeChange("dark")}
-                  className={`inline-flex items-center gap-1.5 rounded-sm px-2.5 py-1 text-xs font-medium transition-all cursor-pointer ${
-                    previewTheme === "dark"
-                      ? "bg-background text-foreground shadow-xs font-semibold"
-                      : "hover:text-foreground hover:bg-background/50"
-                  }`}
-                  aria-label="Preview in dark theme"
-                >
-                  <Moon className="size-3.5 text-sky-400" />
-                  <span className="hidden sm:inline text-[11px]">Dark</span>
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom">Switch component preview to dark mode</TooltipContent>
-            </Tooltip>
-          </div>
+          {/* Component Preview Dark / Light Theme via Shadcn Tabs */}
+          <Tabs
+            value={previewTheme}
+            onValueChange={(val) => handleThemeChange(val as PreviewTheme)}
+          >
+            <TabsList className="h-7 bg-muted/60 p-0.5">
+              <TabsTrigger value="light" className="h-6 gap-1 px-2 text-xs">
+                <Sun className="size-3 text-amber-500" />
+                <span className="hidden sm:inline text-xs">Light</span>
+              </TabsTrigger>
+              <TabsTrigger value="dark" className="h-6 gap-1 px-2 text-xs">
+                <Moon className="size-3 text-sky-400" />
+                <span className="hidden sm:inline text-xs">Dark</span>
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
         </div>
 
         {/* Center: Live Indicators */}
@@ -523,56 +450,21 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
             isFluidResponsive ? "w-full" : ""
           }`}
         >
-          {/* Simulated Browser Window Chrome */}
-          <div className="flex h-8 shrink-0 items-center justify-between border-b border-border bg-muted/40 px-3 select-none">
-            {/* Window Traffic Lights */}
-            <div className="flex items-center gap-1.5">
-              <span className="size-2.5 rounded-full bg-border" />
-              <span className="size-2.5 rounded-full bg-border" />
-              <span className="size-2.5 rounded-full bg-border" />
-            </div>
-
-            {/* Omnibox URL pill */}
-            <div className="flex items-center gap-1.5 rounded-md bg-background px-2.5 py-0.5 text-[10px] font-mono text-muted-foreground border border-border/60 shadow-2xs">
-              <Lock className="size-2.5 text-emerald-500" />
-              <span>sandbox://21st.dev/preview</span>
-            </div>
-
-            {/* Dimension Badge & Quick Theme Toggle */}
+          {/* Clean Vercel Preview Frame Header */}
+          <div className="flex h-8 shrink-0 items-center justify-between border-b border-border bg-muted/20 px-3 select-none">
             <div className="flex items-center gap-2">
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    type="button"
-                    onClick={() => handleThemeChange(previewTheme === "dark" ? "light" : "dark")}
-                    className="inline-flex items-center gap-1 font-mono text-[10px] text-muted-foreground hover:text-foreground bg-background hover:bg-muted/70 px-2 py-0.5 rounded border border-border/60 transition-colors cursor-pointer shadow-2xs"
-                    aria-label="Toggle preview theme"
-                  >
-                    {previewTheme === "dark" ? (
-                      <>
-                        <Moon className="size-2.5 text-sky-400" />
-                        <span>Dark</span>
-                      </>
-                    ) : (
-                      <>
-                        <Sun className="size-2.5 text-amber-500" />
-                        <span>Light</span>
-                      </>
-                    )}
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent side="bottom">
-                  Toggle component preview theme (currently {previewTheme})
-                </TooltipContent>
-              </Tooltip>
+              <span className="size-1.5 rounded-full bg-emerald-500" />
+              <span className="font-mono text-xs text-muted-foreground">preview.tsx</span>
+            </div>
 
-              <div className="font-mono text-[10px] text-muted-foreground bg-muted px-2 py-0.5 rounded border border-border/60">
+            <div className="flex items-center gap-2">
+              <span className="font-mono text-xs text-muted-foreground bg-muted/60 px-2 py-0.5 rounded">
                 {draggedWidth !== null
                   ? `${draggedWidth}px`
                   : isFluidResponsive
                   ? "Fluid 100%"
                   : getComputedWidth()}
-              </div>
+              </span>
             </div>
           </div>
 

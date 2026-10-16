@@ -6,6 +6,7 @@ import { MonacoCodeEditor } from "./monaco-editor";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Tooltip,
   TooltipContent,
@@ -46,17 +47,17 @@ export function EditorPanel() {
     {
       id: "component.tsx",
       label: "component.tsx",
-      icon: <FileCode2 className="size-3.5 text-sky-500" />,
+      icon: <FileCode2 className="size-3.5 text-muted-foreground" />,
     },
     {
       id: "demo.tsx",
       label: "demo.tsx",
-      icon: <FileText className="size-3.5 text-violet-500" />,
+      icon: <FileText className="size-3.5 text-muted-foreground" />,
     },
     {
       id: "index.css",
       label: "index.css",
-      icon: <Palette className="size-3.5 text-pink-500" />,
+      icon: <Palette className="size-3.5 text-muted-foreground" />,
     },
   ];
 
@@ -92,30 +93,25 @@ export function EditorPanel() {
   return (
     <div className="flex h-full w-full flex-col border-r border-border bg-background">
       {/* File Tabs Header */}
-      <div className="flex h-10 shrink-0 items-center justify-between border-b border-border bg-muted/20 px-2 select-none">
-        {/* File Tabs */}
-        <div className="flex items-center gap-1 overflow-x-auto">
-          {tabs.map((tab) => {
-            const isActive = activeTab === tab.id;
-            return (
-              <button
+      <div className="flex h-11 shrink-0 items-center justify-between border-b border-border bg-muted/10 px-3 select-none">
+        {/* Authentic Shadcn Tabs for File Navigation */}
+        <Tabs
+          value={activeTab}
+          onValueChange={(val) => setActiveTab(val as StudioFileName)}
+        >
+          <TabsList className="h-7 bg-muted/60 p-0.5">
+            {tabs.map((tab) => (
+              <TabsTrigger
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`group flex items-center gap-2 rounded-t-md px-3 py-1.5 text-xs font-mono font-medium transition-all cursor-pointer ${
-                  isActive
-                    ? "bg-background text-foreground border border-b-transparent border-border shadow-xs border-t-2 border-t-primary"
-                    : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
-                }`}
+                value={tab.id}
+                className="h-6 gap-1.5 px-2.5 text-xs font-mono"
               >
                 {tab.icon}
-                <span className="text-[11px]">{tab.label}</span>
-                {isActive && (
-                  <span className="size-1.5 rounded-full bg-primary" />
-                )}
-              </button>
-            );
-          })}
-        </div>
+                <span>{tab.label}</span>
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </Tabs>
 
         {/* Action Controls */}
         <div className="flex items-center gap-1">
@@ -130,14 +126,14 @@ export function EditorPanel() {
                 className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground"
               >
                 {isFormatting ? (
-                  <Loader2 className="size-3.5 animate-spin text-primary" />
+                  <Loader2 className="size-3 animate-spin text-primary" />
                 ) : formatSuccess ? (
-                  <Check className="size-3.5 text-emerald-500" />
+                  <Check className="size-3 text-emerald-500" />
                 ) : (
-                  <Sparkles className="size-3.5 text-primary" />
+                  <Sparkles className="size-3" />
                 )}
                 <span className="hidden sm:inline text-xs">Format</span>
-                <kbd className="hidden lg:inline ml-1 font-mono text-[9px] bg-muted px-1 rounded text-muted-foreground">
+                <kbd className="hidden lg:inline ml-1 font-mono text-[10px] bg-muted px-1 rounded text-muted-foreground">
                   Ctrl+S
                 </kbd>
               </Button>
@@ -156,11 +152,11 @@ export function EditorPanel() {
                 onClick={() => setDependencyModalOpen(true)}
                 className="h-7 px-2 text-xs gap-1.5"
               >
-                <Package className="size-3.5 text-primary" />
+                <Package className="size-3" />
                 <span className="hidden sm:inline">Packages</span>
                 <Badge
                   variant="secondary"
-                  className="size-4 p-0 flex items-center justify-center font-mono text-[9px]"
+                  className="size-4 p-0 flex items-center justify-center font-mono text-[10px]"
                 >
                   {dependencies.length}
                 </Badge>
@@ -180,7 +176,7 @@ export function EditorPanel() {
                 onClick={resetCurrentTemplate}
                 className="size-7 text-muted-foreground hover:text-foreground"
               >
-                <RotateCcw className="size-3.5" />
+                <RotateCcw className="size-3" />
                 <span className="sr-only">Reset template</span>
               </Button>
             </TooltipTrigger>
@@ -208,7 +204,7 @@ export function EditorPanel() {
       </div>
 
       {/* Status Footer */}
-      <div className="flex h-7 shrink-0 items-center justify-between border-t border-border bg-muted/30 px-3 text-[11px] text-muted-foreground font-mono select-none">
+      <div className="flex h-7 shrink-0 items-center justify-between border-t border-border bg-muted/20 px-3 text-xs text-muted-foreground font-mono select-none">
         <div className="flex items-center gap-2">
           <span className="flex items-center gap-1.5">
             <span className="size-1.5 rounded-full bg-emerald-500" />
@@ -220,8 +216,8 @@ export function EditorPanel() {
           <span>{byteCount} bytes</span>
         </div>
 
-        <div className="flex items-center gap-2">
-          <span className="hidden sm:inline">Prettier 3.x</span>
+        <div className="flex items-center gap-2 text-[11px]">
+          <span className="hidden sm:inline">Prettier</span>
           <Separator orientation="vertical" className="h-3 hidden sm:block" />
           <span>TypeScript 5.x</span>
           <Separator orientation="vertical" className="h-3" />
