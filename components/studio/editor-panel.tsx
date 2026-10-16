@@ -187,7 +187,7 @@ export function EditorPanel() {
 
       {/* Compiler / Lint Error Notification Banner */}
       {compilerError && (
-        <div className="flex items-center gap-2 border-b border-destructive/20 bg-destructive/10 px-3 py-1.5 text-xs text-destructive font-mono animate-in fade-in">
+        <div className="flex items-center gap-2 border-b border-destructive/20 bg-destructive/10 px-3 py-1.5 text-xs text-destructive font-mono animate-in fade-in duration-150 ease-smooth-out">
           <AlertCircle className="size-3.5 shrink-0" />
           <span className="truncate text-[11px]">{compilerError}</span>
         </div>

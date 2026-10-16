@@ -87,10 +87,10 @@ export function StudioContainer() {
         {/* Resizable Splitter Divider */}
         <div
           onMouseDown={handleMouseDown}
-          className="hidden md:flex relative w-1.5 cursor-col-resize items-center justify-center bg-background hover:bg-primary/20 transition-colors z-20 group"
+          className="hidden md:flex relative w-1.5 cursor-col-resize items-center justify-center bg-background hover:bg-primary/20 transition-colors duration-150 ease-smooth-out z-20 group"
           title="Drag to resize panels"
         >
-          <div className="h-full w-px bg-border group-hover:bg-primary transition-colors" />
+          <div className="h-full w-px bg-border group-hover:bg-primary transition-colors duration-150 ease-smooth-out" />
         </div>
 
         {/* Right Column: Canvas Live Preview */}

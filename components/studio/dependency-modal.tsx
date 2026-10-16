@@ -273,7 +273,7 @@ export function DependencyModal() {
                 return (
                   <div
                     key={result.name}
-                    className="flex items-center justify-between rounded-md p-2 hover:bg-accent transition-colors"
+                    className="flex items-center justify-between rounded-md p-2 hover:bg-accent transition-colors duration-150 ease-smooth-out"
                   >
                     <div className="flex-1 pr-3">
                       <div className="flex items-center gap-2">
@@ -294,7 +294,7 @@ export function DependencyModal() {
                         href={result.npmUrl}
                         target="_blank"
                         rel="noreferrer"
-                        className="rounded p-1 text-muted-foreground hover:text-foreground transition-colors"
+                        className="rounded p-1 text-muted-foreground hover:text-foreground transition-colors duration-150 ease-smooth-out"
                         title="View on npmjs.com"
                       >
                         <ExternalLink className="size-3.5" />
@@ -424,7 +424,7 @@ export function DependencyModal() {
                 <div
                   key={pkg.name}
                   onClick={() => toggleDependency(pkg.name)}
-                  className={`flex cursor-pointer items-start justify-between rounded-lg border p-2.5 transition-all ${
+                  className={`flex cursor-pointer items-start justify-between rounded-lg border p-2.5 transition-all duration-150 ease-smooth-out active:scale-[0.99] ${
                     isInstalled
                       ? "border-primary/40 bg-primary/5 text-foreground shadow-xs"
                       : "border-border bg-card text-muted-foreground hover:bg-muted/40 hover:text-foreground"

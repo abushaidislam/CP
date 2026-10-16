@@ -36,7 +36,7 @@ export default function RootLayout({
         suppressHydrationWarning
         className="h-full bg-background text-foreground flex flex-col font-sans overflow-hidden selection:bg-primary/20 selection:text-foreground"
       >
-        <TooltipProvider delayDuration={150}>
+        <TooltipProvider delayDuration={80}>
           {children}
         </TooltipProvider>
       </body>

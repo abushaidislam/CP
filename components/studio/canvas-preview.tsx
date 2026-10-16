@@ -432,7 +432,7 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
 
       {/* Main Canvas Workspace */}
       <div
-        className={`flex-1 relative overflow-auto p-4 md:p-6 flex items-center justify-center transition-colors ${getCanvasBackgroundClass(
+        className={`flex-1 relative overflow-auto p-4 md:p-6 flex items-center justify-center transition-colors duration-250 ease-smooth-out ${getCanvasBackgroundClass(
           canvasBg
         )}`}
       >
@@ -446,7 +446,9 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
             transform: `scale(${zoom / 100})`,
             transformOrigin: "center center",
           }}
-          className={`relative transition-all duration-150 rounded-xl border border-border shadow-xl overflow-hidden bg-background flex flex-col ${
+          className={`relative ${
+            draggedWidth !== null ? "transition-none" : "transition-all duration-250 ease-smooth-out"
+          } rounded-xl border border-border shadow-xl overflow-hidden bg-background flex flex-col ${
             isFluidResponsive ? "w-full" : ""
           }`}
         >
@@ -470,7 +472,7 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
 
           {/* Sandboxed Live Iframe with matching theme surface */}
           <div
-            className={`relative flex-1 w-full h-full overflow-hidden transition-colors ${
+            className={`relative flex-1 w-full h-full overflow-hidden transition-colors duration-250 ease-smooth-out ${
               previewTheme === "dark" ? "bg-zinc-950" : "bg-white"
             }`}
           >
@@ -488,9 +490,9 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
           <div
             onMouseDown={handleResizeStart}
             title="Drag horizontally to resize preview width"
-            className="absolute right-0 top-8 bottom-0 w-3 cursor-ew-resize hover:bg-primary/10 flex items-center justify-center transition-colors group z-20"
+            className="absolute right-0 top-8 bottom-0 w-3 cursor-ew-resize hover:bg-primary/10 flex items-center justify-center transition-colors duration-150 ease-smooth-out group z-20"
           >
-            <div className="h-8 w-1 rounded-full bg-border group-hover:bg-primary transition-colors" />
+            <div className="h-8 w-1 rounded-full bg-border group-hover:bg-primary transition-colors duration-150 ease-smooth-out" />
           </div>
         </div>
       </div>
