@@ -7,6 +7,25 @@ export type StudioViewport = "desktop" | "tablet" | "mobile" | "responsive";
 export type CanvasBackground = "dark" | "black" | "grid" | "light" | "mesh";
 export type PreviewTheme = "dark" | "light";
 
+export type TerminalLogLevel =
+  | "log"
+  | "info"
+  | "warn"
+  | "error"
+  | "system"
+  | "command"
+  | "result";
+
+export interface TerminalLogEntry {
+  id: string;
+  type: TerminalLogLevel;
+  message: string;
+  timestamp: string;
+  count: number;
+}
+
+export type TerminalFilter = "all" | "logs" | "warnings" | "errors" | "system";
+
 export interface RecordingConfig {
   duration: 3 | 5 | 8;
   fps: 30 | 60;
@@ -45,6 +64,12 @@ export interface StudioState {
   isPublishModalOpen: boolean;
   isDependencyModalOpen: boolean;
 
+  // Terminal & Console
+  terminalLogs: TerminalLogEntry[];
+  isTerminalOpen: boolean;
+  terminalHeight: number;
+  terminalFilter: TerminalFilter;
+
   // Actions
   updateFile: (name: StudioFileName, content: string) => void;
   setActiveTab: (tab: StudioFileName) => void;
@@ -71,6 +96,14 @@ export interface StudioState {
   setRecordingModalOpen: (open: boolean) => void;
   setPublishModalOpen: (open: boolean) => void;
   setDependencyModalOpen: (open: boolean) => void;
+
+  // Terminal Actions
+  addTerminalLog: (entry: { type: TerminalLogLevel; message: string }) => void;
+  clearTerminalLogs: () => void;
+  setTerminalOpen: (open: boolean) => void;
+  toggleTerminal: () => void;
+  setTerminalHeight: (height: number) => void;
+  setTerminalFilter: (filter: TerminalFilter) => void;
 }
 
 const initialTemplate = DEFAULT_TEMPLATES[0];
@@ -105,6 +138,19 @@ export const useStudioStore = create<StudioState>()(
       isRecordingModalOpen: false,
       isPublishModalOpen: false,
       isDependencyModalOpen: false,
+
+      terminalLogs: [
+        {
+          id: "sys-init",
+          type: "system",
+          message: "Terminal & Console active. Ready for live output and commands.",
+          timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }),
+          count: 1,
+        },
+      ],
+      isTerminalOpen: false,
+      terminalHeight: 220,
+      terminalFilter: "all",
 
       updateFile: (name, content) =>
         set((state) => ({
@@ -225,6 +271,52 @@ export const useStudioStore = create<StudioState>()(
       setRecordingModalOpen: (open) => set({ isRecordingModalOpen: open }),
       setPublishModalOpen: (open) => set({ isPublishModalOpen: open }),
       setDependencyModalOpen: (open) => set({ isDependencyModalOpen: open }),
+
+      addTerminalLog: ({ type, message }) =>
+        set((state) => {
+          const logs = state.terminalLogs;
+          const lastLog = logs[logs.length - 1];
+          const time = new Date().toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+            second: "2-digit",
+          });
+
+          // Group repeated identical logs
+          if (lastLog && lastLog.type === type && lastLog.message === message) {
+            const updated = [...logs];
+            updated[updated.length - 1] = {
+              ...lastLog,
+              count: lastLog.count + 1,
+              timestamp: time,
+            };
+            return { terminalLogs: updated };
+          }
+
+          const newEntry: TerminalLogEntry = {
+            id: `log-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+            type,
+            message,
+            timestamp: time,
+            count: 1,
+          };
+
+          // Limit logs to last 300 entries to prevent memory buildup
+          const trimmed = logs.length >= 300 ? logs.slice(logs.length - 299) : logs;
+          return { terminalLogs: [...trimmed, newEntry] };
+        }),
+
+      clearTerminalLogs: () => set({ terminalLogs: [] }),
+
+      setTerminalOpen: (open) => set({ isTerminalOpen: open }),
+
+      toggleTerminal: () =>
+        set((state) => ({ isTerminalOpen: !state.isTerminalOpen })),
+
+      setTerminalHeight: (height) =>
+        set({ terminalHeight: Math.max(120, Math.min(600, height)) }),
+
+      setTerminalFilter: (filter) => set({ terminalFilter: filter }),
     }),
     {
       name: "21st-component-studio-storage-v3",
@@ -238,6 +330,9 @@ export const useStudioStore = create<StudioState>()(
         dependencies: state.dependencies,
         recordingConfig: state.recordingConfig,
         currentTemplateId: state.currentTemplateId,
+        isTerminalOpen: state.isTerminalOpen,
+        terminalHeight: state.terminalHeight,
+        terminalFilter: state.terminalFilter,
       }),
     }
   )

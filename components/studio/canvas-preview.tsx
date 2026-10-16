@@ -61,6 +61,7 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
     togglePreviewTheme,
     setZoom,
     setCompilerState,
+    addTerminalLog,
   } = useStudioStore();
 
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -140,11 +141,30 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
         if (event.data.type === "RUNTIME_ERROR") {
           setCompilerState(false, event.data.message);
         }
+        if (event.data.type === "SANDBOX_CONSOLE") {
+          addTerminalLog({
+            type: event.data.level,
+            message: event.data.message,
+          });
+        }
+        if (event.data.type === "COMMAND_RESULT") {
+          if (event.data.success) {
+            addTerminalLog({
+              type: "result",
+              message: event.data.result,
+            });
+          } else {
+            addTerminalLog({
+              type: "error",
+              message: `Error: ${event.data.error}`,
+            });
+          }
+        }
       }
     }
     window.addEventListener("message", handleMessage);
     return () => window.removeEventListener("message", handleMessage);
-  }, [setCompilerState]);
+  }, [setCompilerState, addTerminalLog]);
 
   // Interactive Drag-to-Resize Handle
   const handleResizeStart = (e: React.MouseEvent) => {
