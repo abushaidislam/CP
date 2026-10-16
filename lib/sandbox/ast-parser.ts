@@ -35,6 +35,13 @@ export interface TwentyFirstPublishPayload {
   title: string;
   description: string;
   author?: string;
+  tags?: string[];
+  registry?: "ui" | "hooks" | "blocks" | "icons";
+  visibility?: "published" | "private";
+  targetLibrary?: string;
+  componentPath?: string;
+  demoPath?: string;
+  hasSeparateDemo?: boolean;
   dependencies: string[];
   devDependencies: string[];
   registryDependencies: string[];
@@ -49,6 +56,19 @@ export interface TwentyFirstPublishPayload {
     config?: Record<string, unknown>;
   };
   cliCommand: string;
+  publishCliCommand: string;
+  publishCliCommandBash: string;
+  publishCliCommandPowerShell: string;
+}
+
+export interface GenerateTwentyFirstPayloadOptions extends Partial<TwentyFirstPublishPayload> {
+  tags?: string[];
+  registry?: "ui" | "hooks" | "blocks" | "icons";
+  visibility?: "published" | "private";
+  componentPath?: string;
+  demoPath?: string;
+  targetLibrary?: string;
+  hasSeparateDemo?: boolean;
 }
 
 /**
@@ -256,13 +276,13 @@ export function parseComponentAST(
 }
 
 /**
- * Creates the exact 21st.dev registry schema payload
+ * Creates the exact 21st.dev registry schema payload and optimized CLI publish commands
  */
 export function generateTwentyFirstPayload(
   componentTsx: string,
   demoTsx: string,
   indexCss?: string,
-  overrides?: Partial<TwentyFirstPublishPayload>
+  overrides?: GenerateTwentyFirstPayloadOptions
 ): TwentyFirstPublishPayload {
   const ast = parseComponentAST(componentTsx, demoTsx, indexCss);
   const derivedSlug = ast.componentName
@@ -273,6 +293,53 @@ export function generateTwentyFirstPayload(
     .replace(/^-+|-+$/g, "");
 
   const slug = overrides?.name || derivedSlug || "component";
+  const title = overrides?.title || ast.title || "Custom Component";
+  const description =
+    overrides?.description ||
+    ast.description ||
+    `A production-ready ${title} component built with Tailwind CSS.`;
+
+  // Auto detect tags if none provided
+  const autoTags = new Set<string>();
+  if (slug.includes("button")) autoTags.add("button");
+  if (slug.includes("card")) autoTags.add("card");
+  if (slug.includes("dialog") || slug.includes("modal")) autoTags.add("dialog");
+  if (slug.includes("input") || slug.includes("form")) autoTags.add("input");
+  if (slug.includes("tab")) autoTags.add("tabs");
+  if (slug.includes("dropdown") || slug.includes("menu")) autoTags.add("dropdown");
+  autoTags.add("tailwind");
+  autoTags.add("ui");
+  for (const dep of [...ast.dependencies, ...(overrides?.dependencies || [])]) {
+    if (dep === "framer-motion") {
+      autoTags.add("framer-motion");
+      autoTags.add("animation");
+    }
+    if (dep === "lucide-react") autoTags.add("icons");
+    if (dep.includes("radix")) autoTags.add("radix");
+  }
+
+  const tags = overrides?.tags && overrides.tags.length > 0
+    ? overrides.tags
+    : Array.from(autoTags);
+  const tagsStr = tags.join(",");
+
+  const targetLibrary = overrides?.targetLibrary || "default";
+  const registry = overrides?.registry || "ui";
+  const visibility = overrides?.visibility || "published";
+  const componentPath = overrides?.componentPath || `./components/ui/${slug}.tsx`;
+  const demoPath = overrides?.demoPath || `./components/demo/${slug}-demo.tsx`;
+  const hasSeparateDemo = overrides?.hasSeparateDemo !== false && !!demoTsx && demoTsx.trim().length > 0;
+
+  // Single-line command (PowerShell, CMD, Bash friendly)
+  const publishCliCommand = `21st publish ${componentPath}${hasSeparateDemo ? ` --demo ${demoPath}` : ""} --name "${title}" --slug "${slug}" --description "${description}" --tags "${tagsStr}" --to ${targetLibrary} --registry ${registry} --visibility ${visibility}`;
+
+  // Multi-line Bash command (\)
+  const demoFlagBash = hasSeparateDemo ? ` \\\n  --demo ${demoPath}` : "";
+  const publishCliCommandBash = `21st publish ${componentPath}${demoFlagBash} \\\n  --name "${title}" \\\n  --slug "${slug}" \\\n  --description "${description}" \\\n  --tags "${tagsStr}" \\\n  --to ${targetLibrary} \\\n  --registry ${registry} \\\n  --visibility ${visibility}`;
+
+  // Multi-line PowerShell command (`)
+  const demoFlagPS = hasSeparateDemo ? ` \`\n  --demo ${demoPath}` : "";
+  const publishCliCommandPowerShell = `21st publish ${componentPath}${demoFlagPS} \`\n  --name "${title}" \`\n  --slug "${slug}" \`\n  --description "${description}" \`\n  --tags "${tagsStr}" \`\n  --to ${targetLibrary} \`\n  --registry ${registry} \`\n  --visibility ${visibility}`;
 
   const files: TwentyFirstPublishPayload["files"] = [
     {
@@ -301,15 +368,25 @@ export function generateTwentyFirstPayload(
     $schema: "https://21st.dev/schema/component.json",
     name: slug,
     type: "registry:ui",
-    title: overrides?.title || ast.title,
-    description: overrides?.description || ast.description,
+    title,
+    description,
     author: overrides?.author || "Component Studio Creator",
+    tags,
+    registry,
+    visibility,
+    targetLibrary,
+    componentPath,
+    demoPath,
+    hasSeparateDemo,
     dependencies: Array.from(new Set([...ast.dependencies, ...(overrides?.dependencies || [])])),
     devDependencies: ast.devDependencies,
     registryDependencies: overrides?.registryDependencies || [],
     files,
     props: ast.props,
     cliCommand: `npx 21st@latest add ${slug}`,
+    publishCliCommand,
+    publishCliCommandBash,
+    publishCliCommandPowerShell,
     ...overrides,
   };
 

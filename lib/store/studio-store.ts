@@ -227,7 +227,7 @@ export const useStudioStore = create<StudioState>()(
       setDependencyModalOpen: (open) => set({ isDependencyModalOpen: open }),
     }),
     {
-      name: "21st-component-studio-storage-v2",
+      name: "21st-component-studio-storage-v3",
       partialize: (state) => ({
         files: state.files,
         activeTab: state.activeTab,
