@@ -78,8 +78,8 @@ function getJSDocComment(node: ts.Node, sourceCode: string): string | undefined 
  */
 export function parseComponentAST(
   tsxCode: string,
-  demoCode?: string,
-  cssCode?: string
+  _demoCode?: string,
+  _cssCode?: string
 ): ParsedComponentAST {
   const sourceFile = ts.createSourceFile(
     "component.tsx",
@@ -95,7 +95,7 @@ export function parseComponentAST(
   const namedExports: ParsedExport[] = [];
   let defaultExport: string | null = null;
   const props: ParsedProp[] = [];
-  let isClientComponent = tsxCode.includes('"use client"') || tsxCode.includes("'use client'");
+  const isClientComponent = tsxCode.includes('"use client"') || tsxCode.includes("'use client'");
 
   // Helper to extract default values from function parameter destructuring
   const defaultValuesMap = new Map<string, string>();

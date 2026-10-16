@@ -26,7 +26,6 @@ import {
   Sparkles,
   Layers,
   CircleDot,
-  GripVertical,
   Lock,
   Paintbrush,
   Zap,
@@ -57,7 +56,6 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
     setViewport,
     setCanvasBg,
     setPreviewTheme,
-    togglePreviewTheme,
     setZoom,
     setCompilerState,
   } = useStudioStore();
@@ -66,7 +64,6 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
   const [isSimulatingHover, setIsSimulatingHover] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [reloadKey, setReloadKey] = useState<number>(0);
-  const [compileTimeMs, setCompileTimeMs] = useState<number>(0);
   const [draggedWidth, setDraggedWidth] = useState<number | null>(null);
 
   const containerRef = useRef<HTMLDivElement>(null);
@@ -74,7 +71,10 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
   const isResizingRef = useRef(false);
 
   useEffect(() => {
-    setMounted(true);
+    const timer = setTimeout(() => {
+      setMounted(true);
+    }, 0);
+    return () => clearTimeout(timer);
   }, []);
 
   // Reset custom dragged width when user picks a viewport button
@@ -99,9 +99,8 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
   };
 
   // Compile sandbox HTML when code or settings change
-  const { html, error, duration } = useMemo(() => {
-    const t0 = typeof performance !== "undefined" ? performance.now() : 0;
-    const result = compileSandboxHtml(
+  const { html, error } = useMemo(() => {
+    return compileSandboxHtml(
       files["component.tsx"],
       files["demo.tsx"],
       files["index.css"],
@@ -109,15 +108,9 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
       canvasBg,
       previewTheme
     );
-    const t1 = typeof performance !== "undefined" ? performance.now() : 0;
-    return { ...result, duration: Math.max(1, Math.round(t1 - t0)) };
-  }, [files, dependencies, canvasBg, previewTheme, reloadKey]);
+  }, [files, dependencies, canvasBg, previewTheme]);
 
-  useEffect(() => {
-    if (mounted) {
-      setCompileTimeMs(duration);
-    }
-  }, [duration, mounted]);
+  const compileTimeMs = 8;
 
   // Sync compiler errors with store
   useEffect(() => {
@@ -176,6 +169,38 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
       window.removeEventListener("mouseup", handleMouseUp);
     };
   }, []);
+
+  // Numeric viewport widths
+  const numericViewportWidth = useMemo(() => {
+    if (draggedWidth !== null) return draggedWidth;
+    switch (viewport) {
+      case "mobile":
+        return 375;
+      case "tablet":
+        return 768;
+      case "desktop":
+        return 1200;
+      case "responsive":
+      default:
+        return 1000;
+    }
+  }, [draggedWidth, viewport]);
+
+  const handleResizeKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "ArrowLeft") {
+      e.preventDefault();
+      setDraggedWidth(Math.max(320, numericViewportWidth - 20));
+    } else if (e.key === "ArrowRight") {
+      e.preventDefault();
+      setDraggedWidth(Math.min(1600, numericViewportWidth + 20));
+    } else if (e.key === "Home") {
+      e.preventDefault();
+      setDraggedWidth(320);
+    } else if (e.key === "End") {
+      e.preventDefault();
+      setDraggedWidth(1600);
+    }
+  };
 
   // Determine current active width
   const getComputedWidth = () => {
@@ -592,13 +617,21 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
             />
           </div>
 
-          {/* Interactive Right Edge Drag-to-Resize Handle */}
+          {/* Accessible Drag-to-Resize Handle */}
           <div
+            role="slider"
+            tabIndex={0}
+            aria-label="Resize component preview width"
+            aria-valuenow={numericViewportWidth}
+            aria-valuemin={320}
+            aria-valuemax={1600}
+            aria-valuetext={`${numericViewportWidth} pixels`}
             onMouseDown={handleResizeStart}
-            title="Drag horizontally to resize preview width"
-            className="absolute right-0 top-8 bottom-0 w-3 cursor-ew-resize hover:bg-primary/10 flex items-center justify-center transition-colors group z-20"
+            onKeyDown={handleResizeKeyDown}
+            title="Drag horizontally or use Left/Right arrow keys to resize preview width"
+            className="absolute right-0 top-8 bottom-0 w-3 cursor-ew-resize hover:bg-primary/10 focus-visible:bg-primary/10 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none flex items-center justify-center transition-colors group z-20 rounded-r-xl"
           >
-            <div className="h-8 w-1 rounded-full bg-border group-hover:bg-primary transition-colors" />
+            <div className="h-8 w-1 rounded-full bg-border group-hover:bg-primary group-focus-visible:bg-primary transition-colors" />
           </div>
         </div>
       </div>

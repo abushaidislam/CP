@@ -4,7 +4,6 @@ import React, { useState, useEffect, useMemo } from "react";
 import { useStudioStore } from "@/lib/store/studio-store";
 import {
   CURATED_PACKAGES,
-  CuratedPackage,
   extractCodeImports,
   isValidPackageName,
 } from "@/lib/sandbox/package-utils";
@@ -27,11 +26,9 @@ import {
   Search,
   ExternalLink,
   Sparkles,
-  RefreshCw,
   Loader2,
   AlertCircle,
   FolderMinus,
-  Layers,
 } from "lucide-react";
 
 interface NpmSearchResult {
@@ -84,8 +81,6 @@ export function DependencyModal() {
   useEffect(() => {
     const trimmed = searchQuery.trim();
     if (trimmed.length < 2) {
-      setSearchResults([]);
-      setIsSearching(false);
       return;
     }
 
@@ -108,6 +103,14 @@ export function DependencyModal() {
 
     return () => clearTimeout(timer);
   }, [searchQuery]);
+
+  const handleSearchChange = (val: string) => {
+    setSearchQuery(val);
+    if (val.trim().length < 2) {
+      setSearchResults([]);
+      setIsSearching(false);
+    }
+  };
 
   const handleAddCustom = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -233,7 +236,7 @@ export function DependencyModal() {
               <Input
                 type="text"
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e) => handleSearchChange(e.target.value)}
                 placeholder="Search npm registry (e.g. vaul, recharts, @radix-ui/react-tooltip)..."
                 className="pl-9 pr-8 h-9 text-xs"
               />
