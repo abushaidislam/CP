@@ -184,46 +184,16 @@ const Marker = React.forwardRef<HTMLDivElement, MarkerProps>(
 );
 Marker.displayName = "Marker";
 
-// Trace & Activity Row Primitive (for AI steps, reasoning & file diffs)
-const Trace = React.forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => (
-  <div
-    ref={ref}
-    className={cn(
-      "flex flex-col gap-1.5 rounded-lg border border-border/60 bg-muted/30 p-2.5 my-1 text-xs",
-      className
-    )}
-    {...props}
-  />
-));
-Trace.displayName = "Trace";
-
-interface TraceLineProps extends React.HTMLAttributes<HTMLDivElement> {
-  status?: "running" | "error" | "done" | "idle";
-}
-
-const TraceLine = React.forwardRef<HTMLDivElement, TraceLineProps>(
-  ({ className, status = "idle", children, ...props }, ref) => {
-    return (
-      <div
-        ref={ref}
-        className={cn(
-          "flex items-center justify-between gap-2 text-[11px]",
-          status === "running" && "text-primary animate-pulse",
-          status === "error" && "text-destructive",
-          status === "done" && "text-muted-foreground",
-          className
-        )}
-        {...props}
-      >
-        {children}
-      </div>
-    );
-  }
-);
-TraceLine.displayName = "TraceLine";
+export {
+  Trace,
+  TraceLine,
+  TraceIcon,
+  TraceTitle,
+  TraceDescription,
+  TraceCollapsible,
+  TraceCollapsibleTrigger,
+  TraceCollapsibleContent,
+} from "./trace";
 
 export {
   Message,
@@ -234,6 +204,5 @@ export {
   Bubble,
   BubbleContent,
   Marker,
-  Trace,
-  TraceLine,
 };
+

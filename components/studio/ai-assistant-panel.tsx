@@ -2,12 +2,10 @@
 
 import React, { useState, useRef, useEffect, useMemo } from "react";
 import { useStudioStore } from "@/lib/store/studio-store";
-import { auditComponentGuidelines, GuidelineCheckItem } from "@/lib/sandbox/guideline-linter";
+import { auditComponentGuidelines } from "@/lib/sandbox/guideline-linter";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   Tooltip,
@@ -35,24 +33,26 @@ import {
   TraceLine,
 } from "@/components/ui/chat";
 import {
+  Reasoning,
+  SuggestionGroup,
+  Suggestion,
+  Plan,
+  PromptInput,
+  TaskItemProps,
+} from "@/components/ui/ai-elements";
+import {
   Sparkles,
   Key,
   Check,
-  CheckCircle2,
-  AlertTriangle,
-  AlertCircle,
-  ChevronDown,
-  ChevronUp,
-  CornerDownLeft,
-  Loader2,
+  ExternalLink,
+  PanelRightClose,
   Trash2,
   FileCode,
-  ExternalLink,
-  ShieldCheck,
-  PanelRightClose,
   Wand2,
   Moon,
   Zap,
+  ShieldCheck,
+  ChevronDown,
 } from "lucide-react";
 
 export function AiAssistantPanel() {
@@ -80,14 +80,14 @@ export function AiAssistantPanel() {
   const [isKeyModalOpen, setIsKeyModalOpen] = useState(false);
   const [tempApiKey, setTempApiKey] = useState(geminiApiKey);
   const [tempModel, setTempModel] = useState(aiModel || "gemini-2.5-flash");
-  const [showChecklist, setShowChecklist] = useState(false);
   const [appliedMessageIds, setAppliedMessageIds] = useState<Record<string, boolean>>({});
+  const [thinkingSeconds, setThinkingSeconds] = useState(0);
 
   const chatScrollRef = useRef<HTMLDivElement>(null);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const isResizingRef = useRef(false);
   const startXRef = useRef(0);
   const startWidthRef = useRef(0);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
 
   // Real-time static guideline audit (runs in 0ms on client keystrokes)
   const auditResult = useMemo(() => {
@@ -98,6 +98,40 @@ export function AiAssistantPanel() {
       dependencies
     );
   }, [files, dependencies]);
+
+  // Map guideline checks to official Plan & Task elements
+  const planTasks = useMemo<TaskItemProps[]>(() => {
+    return auditResult.checks.map((chk) => ({
+      id: chk.id,
+      title: chk.title,
+      description: chk.description,
+      status: chk.passed
+        ? "done"
+        : chk.severity === "error"
+        ? "error"
+        : "pending",
+    }));
+  }, [auditResult]);
+
+  // Timer for reasoning duration
+  useEffect(() => {
+    if (isAiThinking) {
+      setThinkingSeconds(0);
+      timerRef.current = setInterval(() => {
+        setThinkingSeconds((prev) => prev + 1);
+      }, 1000);
+    } else {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+    }
+    return () => {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+      }
+    };
+  }, [isAiThinking]);
 
   // Auto-scroll chat to bottom
   useEffect(() => {
@@ -140,7 +174,10 @@ export function AiAssistantPanel() {
   }, [setAiPanelWidth]);
 
   // Submit AI Prompt (Chat or Auto-Fix)
-  const handleSubmitPrompt = async (customPrompt?: string, action: "chat" | "autofix" | "audit" = "chat") => {
+  const handleSubmitPrompt = async (
+    customPrompt?: string,
+    action: "chat" | "autofix" | "audit" = "chat"
+  ) => {
     const text = (customPrompt || promptInput).trim();
     if (!text && action === "chat") return;
 
@@ -148,10 +185,13 @@ export function AiAssistantPanel() {
       setPromptInput("");
     }
 
-    // Add user message to chat
     addAiChatMessage({
       role: "user",
-      content: text || (action === "autofix" ? "Auto-fix 21st.dev guidelines issues" : "Audit component standards"),
+      content:
+        text ||
+        (action === "autofix"
+          ? "Auto-fix 21st.dev guidelines issues"
+          : "Audit component standards"),
     });
 
     setAiThinking(true);
@@ -182,11 +222,13 @@ export function AiAssistantPanel() {
         return;
       }
 
-      // Add assistant response to chat
       addAiChatMessage({
         role: "assistant",
         content: data.message || "Audit completed.",
-        changedFiles: data.changedFiles && Object.keys(data.changedFiles).length > 0 ? data.changedFiles : undefined,
+        changedFiles:
+          data.changedFiles && Object.keys(data.changedFiles).length > 0
+            ? data.changedFiles
+            : undefined,
       });
     } catch (err: unknown) {
       const errorMsg = err instanceof Error ? err.message : String(err);
@@ -199,16 +241,11 @@ export function AiAssistantPanel() {
     }
   };
 
-  // Keyboard navigation for prompt textarea (Enter to send, Shift+Enter for newline)
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      handleSubmitPrompt();
-    }
-  };
-
   // 1-Click Apply Code Fixes to Editor
-  const handleApplyChanges = (msgId: string, changedFiles: Partial<Record<string, string>>) => {
+  const handleApplyChanges = (
+    msgId: string,
+    changedFiles: Partial<Record<string, string>>
+  ) => {
     applyAiChanges(changedFiles);
     setAppliedMessageIds((prev) => ({ ...prev, [msgId]: true }));
     markAiMessageApplied(msgId);
@@ -222,13 +259,6 @@ export function AiAssistantPanel() {
   };
 
   if (!isAiPanelOpen) return null;
-
-  const scoreColor =
-    auditResult.score >= 90
-      ? "text-emerald-500 bg-emerald-500/10 border-emerald-500/30"
-      : auditResult.score >= 70
-      ? "text-amber-500 bg-amber-500/10 border-amber-500/30"
-      : "text-red-500 bg-red-500/10 border-red-500/30";
 
   return (
     <div
@@ -244,9 +274,9 @@ export function AiAssistantPanel() {
         <div className="h-full w-px bg-border group-hover:bg-primary transition-colors" />
       </div>
 
-      {/* Top Header */}
-      <div className="flex h-11 shrink-0 items-center justify-between border-b border-border bg-muted/20 px-3">
-        {/* Left: Brand / Title */}
+      {/* Top Header (Clean Minimalist shadcn Layout) */}
+      <div className="flex h-11 shrink-0 items-center justify-between border-b border-border bg-card/60 px-3 backdrop-blur-xs">
+        {/* Brand & Model Selector Trigger */}
         <div className="flex items-center gap-2">
           <div className="flex size-6 items-center justify-center rounded-md bg-primary text-primary-foreground shadow-xs">
             <Sparkles className="size-3.5" />
@@ -254,14 +284,24 @@ export function AiAssistantPanel() {
           <span className="font-semibold text-xs text-foreground">
             21st Copilot
           </span>
-          <Badge variant="outline" className="text-[10px] py-0 px-1.5 font-normal text-muted-foreground">
-            AI Assistant
-          </Badge>
+
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              setTempApiKey(geminiApiKey);
+              setTempModel(aiModel);
+              setIsKeyModalOpen(true);
+            }}
+            className="h-6 gap-1 px-1.5 text-[11px] text-muted-foreground hover:text-foreground font-normal"
+          >
+            <span className="truncate max-w-[100px]">{aiModel}</span>
+            <ChevronDown className="size-3 opacity-60" />
+          </Button>
         </div>
 
-        {/* Right: API Status, Clear Chat & Close Button */}
+        {/* Action Controls */}
         <div className="flex items-center gap-1">
-          {/* API Connection Badge / Button */}
           {geminiApiKey ? (
             <Tooltip>
               <TooltipTrigger asChild>
@@ -273,10 +313,10 @@ export function AiAssistantPanel() {
                     setTempModel(aiModel);
                     setIsKeyModalOpen(true);
                   }}
-                  className="h-6 gap-1.5 px-2 text-[11px] text-muted-foreground hover:text-foreground"
+                  className="h-6 gap-1.5 px-2 text-[11px] text-emerald-500 hover:text-emerald-400 hover:bg-emerald-500/10"
                 >
-                  <span className="size-1.5 rounded-full bg-emerald-500" />
-                  <span>Gemini Free</span>
+                  <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  <span>Free Pro API</span>
                 </Button>
               </TooltipTrigger>
               <TooltipContent side="bottom">
@@ -296,16 +336,16 @@ export function AiAssistantPanel() {
                   className="h-6 gap-1 px-2 text-[11px] text-primary border-primary/30 hover:bg-primary/10"
                 >
                   <Key className="size-3" />
-                  <span>Connect Free API</span>
+                  <span>Connect Key</span>
                 </Button>
               </TooltipTrigger>
               <TooltipContent side="bottom">
-                Add free Google AI Studio key for AI generation
+                Add free Google AI Studio key for custom generations
               </TooltipContent>
             </Tooltip>
           )}
 
-          {/* Clear Chat Button */}
+          {/* Clear Chat */}
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
@@ -321,7 +361,7 @@ export function AiAssistantPanel() {
             <TooltipContent side="bottom">Clear chat history</TooltipContent>
           </Tooltip>
 
-          {/* Close Panel Button */}
+          {/* Close Panel */}
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
@@ -339,148 +379,21 @@ export function AiAssistantPanel() {
         </div>
       </div>
 
-      {/* 21st.dev Compliance Scorecard */}
-      <div className="border-b border-border bg-muted/10 p-3 select-text">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <span
-              className={`flex items-center justify-center font-bold text-xs px-2.5 py-1 rounded-md border ${scoreColor}`}
-            >
-              {auditResult.score}/100
-            </span>
-            <div>
-              <div className="font-medium text-xs text-foreground">
-                {auditResult.score >= 90
-                  ? "21st.dev Marketplace Ready"
-                  : auditResult.score >= 70
-                  ? "Good — Minor Polish Needed"
-                  : "Needs Guidelines Attention"}
-              </div>
-              <div className="text-[11px] text-muted-foreground">
-                {auditResult.passedCount} of {auditResult.totalChecks} standards passed
-              </div>
-            </div>
-          </div>
-
-          {/* Checklist Toggle */}
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setShowChecklist(!showChecklist)}
-            className="h-6 px-1.5 text-[11px] text-muted-foreground hover:text-foreground"
-          >
-            <span>{showChecklist ? "Hide" : "Details"}</span>
-            {showChecklist ? (
-              <ChevronUp className="size-3 ml-0.5" />
-            ) : (
-              <ChevronDown className="size-3 ml-0.5" />
-            )}
-          </Button>
-        </div>
-
-        {/* Collapsible Guidelines Detail List */}
-        {showChecklist && (
-          <div className="mt-3 space-y-1.5 pt-2 border-t border-border/60 text-xs animate-in fade-in duration-150">
-            {auditResult.checks.map((chk: GuidelineCheckItem) => (
-              <div
-                key={chk.id}
-                className="flex items-start gap-2 rounded-md p-1.5 hover:bg-muted/30 transition-colors"
-              >
-                {chk.passed ? (
-                  <CheckCircle2 className="size-3.5 text-emerald-500 shrink-0 mt-0.5" />
-                ) : chk.severity === "error" ? (
-                  <AlertCircle className="size-3.5 text-red-500 shrink-0 mt-0.5" />
-                ) : (
-                  <AlertTriangle className="size-3.5 text-amber-500 shrink-0 mt-0.5" />
-                )}
-                <div className="flex-1">
-                  <div className="font-medium text-[11px] text-foreground">
-                    {chk.title}
-                  </div>
-                  <div className="text-[10px] text-muted-foreground leading-normal">
-                    {chk.description}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Quick Action Chips Bar */}
-      <div className="flex items-center gap-1.5 overflow-x-auto p-2 border-b border-border bg-background no-scrollbar">
-        <Button
-          variant="secondary"
-          size="sm"
-          onClick={() =>
-            handleSubmitPrompt(
-              "Inspect component.tsx, demo.tsx, and index.css against all 21st.dev guidelines and auto-fix any missing requirements (like className forwarding, cn(), props interface, use client).",
-              "autofix"
-            )
-          }
-          disabled={isAiThinking}
-          className="h-6 px-2 text-[11px] shrink-0 gap-1 font-normal bg-primary/10 text-primary hover:bg-primary/20 border border-primary/20"
-        >
-          <Wand2 className="size-3" />
-          <span>⚡ Auto-Fix All</span>
-        </Button>
-
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() =>
-            handleSubmitPrompt(
-              "Add comprehensive dark mode support using Tailwind 'dark:' variants to component.tsx and demo.tsx.",
-              "chat"
-            )
-          }
-          disabled={isAiThinking}
-          className="h-6 px-2 text-[11px] shrink-0 gap-1 font-normal text-muted-foreground hover:text-foreground"
-        >
-          <Moon className="size-3" />
-          <span>Dark Mode</span>
-        </Button>
-
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() =>
-            handleSubmitPrompt(
-              "Add smooth Framer Motion entry and hover animations to component.tsx.",
-              "chat"
-            )
-          }
-          disabled={isAiThinking}
-          className="h-6 px-2 text-[11px] shrink-0 gap-1 font-normal text-muted-foreground hover:text-foreground"
-        >
-          <Zap className="size-3" />
-          <span>Spring Motion</span>
-        </Button>
-
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() =>
-            handleSubmitPrompt(
-              "Audit component.tsx for web accessibility (a11y), add appropriate ARIA labels, role attributes, and keyboard focus states.",
-              "chat"
-            )
-          }
-          disabled={isAiThinking}
-          className="h-6 px-2 text-[11px] shrink-0 gap-1 font-normal text-muted-foreground hover:text-foreground"
-        >
-          <ShieldCheck className="size-3" />
-          <span>A11y Audit</span>
-        </Button>
-      </div>
-
-      {/* Advanced shadcn Chat Thread Stream */}
+      {/* Main Chat Thread Area */}
       <div
         ref={chatScrollRef}
-        className="flex-1 overflow-y-auto p-3 space-y-4 select-text"
+        className="flex-1 overflow-y-auto p-3 space-y-4 select-text font-sans scroll-smooth"
       >
-        <Marker variant="separator">21st.dev Session Started</Marker>
+        <Marker variant="separator">21st.dev Audit & Copilot</Marker>
 
+        {/* Live Plan / Standards Checklist Element (Official shadcn Plan) */}
+        <Plan
+          title="21st.dev Component Standards"
+          tasks={planTasks}
+          defaultOpen={auditResult.score < 100}
+        />
+
+        {/* Messages Stream */}
         {aiChatMessages.map((msg) => {
           const isUser = msg.role === "user";
           const hasCodeChanges =
@@ -519,8 +432,13 @@ export function AiAssistantPanel() {
 
               <MessageContent align="start">
                 <MessageHeader>
-                  <span className="font-semibold text-foreground">21st Copilot</span>
-                  <Badge variant="outline" className="text-[9px] py-0 px-1 font-normal text-muted-foreground">
+                  <span className="font-semibold text-foreground">
+                    21st Copilot
+                  </span>
+                  <Badge
+                    variant="outline"
+                    className="text-[9px] py-0 px-1 font-normal text-muted-foreground"
+                  >
                     {aiModel}
                   </Badge>
                 </MessageHeader>
@@ -530,13 +448,16 @@ export function AiAssistantPanel() {
 
                   {/* Trace for AI Activity & 1-Click Code Apply */}
                   {hasCodeChanges && msg.changedFiles && (
-                    <Trace>
+                    <Trace className="mt-2 border-border/80 bg-muted/40">
                       <TraceLine status="done">
                         <div className="flex items-center gap-1.5 font-medium text-foreground">
                           <FileCode className="size-3.5 text-primary" />
                           <span>{Object.keys(msg.changedFiles).join(", ")}</span>
                         </div>
-                        <Badge variant="secondary" className="text-[9px] py-0 px-1 font-mono">
+                        <Badge
+                          variant="secondary"
+                          className="text-[9px] py-0 px-1 font-mono"
+                        >
                           Modified
                         </Badge>
                       </TraceLine>
@@ -548,12 +469,12 @@ export function AiAssistantPanel() {
                           handleApplyChanges(msg.id, msg.changedFiles!)
                         }
                         disabled={isApplied}
-                        className="w-full h-7 text-xs font-medium gap-1.5 mt-1"
+                        className="w-full h-7 text-xs font-medium gap-1.5 mt-1 rounded-md"
                       >
                         {isApplied ? (
                           <>
                             <Check className="size-3 text-emerald-500" />
-                            <span>Applied to Monaco Editor</span>
+                            <span>Applied to Editor</span>
                           </>
                         ) : (
                           <>
@@ -572,74 +493,97 @@ export function AiAssistantPanel() {
           );
         })}
 
-        {/* Real-time Assistant Trace Activity when Thinking */}
+        {/* Real-time Assistant Reasoning Trace (Official shadcn Reasoning) */}
         {isAiThinking && (
-          <Message align="start">
-            <MessageAvatar>
-              <Avatar className="size-6 bg-primary text-primary-foreground shadow-2xs">
-                <AvatarFallback className="bg-primary text-primary-foreground font-semibold">
-                  <Sparkles className="size-3" />
-                </AvatarFallback>
-              </Avatar>
-            </MessageAvatar>
-            <MessageContent align="start">
-              <Bubble variant="muted" align="start" className="w-full">
-                <Trace className="border-none bg-transparent p-0 m-0">
-                  <TraceLine status="running">
-                    <div className="flex items-center gap-2 text-foreground font-medium">
-                      <Loader2 className="size-3.5 animate-spin text-primary" />
-                      <span>Reviewing 21st.dev guidelines & authoring code...</span>
-                    </div>
-                  </TraceLine>
-                </Trace>
-              </Bubble>
-            </MessageContent>
-          </Message>
+          <div className="my-2">
+            <Reasoning isStreaming durationSeconds={thinkingSeconds}>
+              Reviewing component syntax, Tailwind utility classes, and 21st.dev marketplace standards...
+            </Reasoning>
+          </div>
         )}
       </div>
 
-      {/* Advanced Chat Prompt Input Box */}
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          handleSubmitPrompt();
-        }}
-        className="p-2.5 border-t border-border bg-background"
-      >
-        <div className="flex flex-col gap-1.5 rounded-xl border border-border/80 bg-muted/20 p-2 shadow-2xs focus-within:border-primary/40 focus-within:ring-1 focus-within:ring-ring transition-all">
-          <Textarea
-            ref={textareaRef}
-            rows={2}
-            value={promptInput}
-            onChange={(e) => setPromptInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="Ask AI to modify, fix, or add features... (Enter to send, Shift+Enter for newline)"
+      {/* Bottom Area: Official shadcn Suggestions + Prompt Input */}
+      <div className="p-2.5 border-t border-border bg-background/95 space-y-2">
+        {/* Suggestion Group (Official shadcn Suggestion elements) */}
+        <SuggestionGroup>
+          <Suggestion
+            icon={<Wand2 className="size-3 text-primary" />}
+            variant="secondary"
+            onClick={() =>
+              handleSubmitPrompt(
+                "Inspect component.tsx, demo.tsx, and index.css against all 21st.dev guidelines and auto-fix any missing requirements (such as className forwarding, cn(), props interface, use client).",
+                "autofix"
+              )
+            }
             disabled={isAiThinking}
-            className="min-h-[50px] resize-none border-0 p-0 text-xs bg-transparent shadow-none focus-visible:ring-0 placeholder:text-muted-foreground/70"
-          />
+            className="border border-primary/20 bg-primary/10 text-primary hover:bg-primary/20"
+          >
+            ⚡ Auto-Fix All
+          </Suggestion>
 
-          <div className="flex items-center justify-between pt-1 border-t border-border/40 select-none">
-            <span className="text-[10px] text-muted-foreground">
-              Press <kbd className="px-1 py-0.5 rounded bg-muted font-mono text-[9px]">Enter</kbd> to send
-            </span>
+          <Suggestion
+            icon={<Moon className="size-3 text-muted-foreground" />}
+            onClick={() =>
+              handleSubmitPrompt(
+                "Add comprehensive dark mode support using Tailwind 'dark:' variants to component.tsx and demo.tsx.",
+                "chat"
+              )
+            }
+            disabled={isAiThinking}
+          >
+            Dark Mode
+          </Suggestion>
 
-            <Button
-              type="submit"
-              variant="default"
-              size="sm"
-              disabled={isAiThinking || !promptInput.trim()}
-              className="h-6 px-2.5 text-[11px] gap-1 font-medium"
+          <Suggestion
+            icon={<Zap className="size-3 text-muted-foreground" />}
+            onClick={() =>
+              handleSubmitPrompt(
+                "Add smooth Framer Motion entry and hover animations to component.tsx.",
+                "chat"
+              )
+            }
+            disabled={isAiThinking}
+          >
+            Spring Motion
+          </Suggestion>
+
+          <Suggestion
+            icon={<ShieldCheck className="size-3 text-muted-foreground" />}
+            onClick={() =>
+              handleSubmitPrompt(
+                "Audit component.tsx for web accessibility (a11y), add appropriate ARIA labels, role attributes, and keyboard focus states.",
+                "chat"
+              )
+            }
+            disabled={isAiThinking}
+          >
+            A11y Audit
+          </Suggestion>
+        </SuggestionGroup>
+
+        {/* Prompt Input (Official shadcn PromptInput element) */}
+        <PromptInput
+          value={promptInput}
+          onChange={(e) => setPromptInput(e.target.value)}
+          onSubmit={() => handleSubmitPrompt()}
+          isLoading={isAiThinking}
+          placeholder="Ask Copilot to refactor, style, or enhance..."
+          modelBadge={
+            <Badge
+              variant="outline"
+              className="text-[10px] py-0 px-1.5 font-normal text-muted-foreground cursor-pointer hover:bg-muted"
+              onClick={() => {
+                setTempApiKey(geminiApiKey);
+                setTempModel(aiModel);
+                setIsKeyModalOpen(true);
+              }}
             >
-              {isAiThinking ? (
-                <Loader2 className="size-3 animate-spin" />
-              ) : (
-                <CornerDownLeft className="size-3" />
-              )}
-              <span>Send</span>
-            </Button>
-          </div>
-        </div>
-      </form>
+              {aiModel}
+            </Badge>
+          }
+        />
+      </div>
 
       {/* Free Gemini API Key Configuration Dialog */}
       <Dialog open={isKeyModalOpen} onOpenChange={setIsKeyModalOpen}>
@@ -650,7 +594,7 @@ export function AiAssistantPanel() {
               <span>Connect Free Gemini API</span>
             </DialogTitle>
             <DialogDescription className="text-xs text-muted-foreground">
-              Google AI Studio provides a free API key for developers with zero credit card required. Your key is stored locally in your browser.
+              Google AI Studio provides a free API key with zero credit card required. Your key is stored securely in your browser session.
             </DialogDescription>
           </DialogHeader>
 
@@ -688,11 +632,15 @@ export function AiAssistantPanel() {
               <select
                 value={tempModel}
                 onChange={(e) => setTempModel(e.target.value)}
-                className="w-full h-8 px-2 rounded-md border border-input bg-background text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                className="w-full h-8 px-2 rounded-md border border-input bg-background text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring font-sans"
               >
-                <option value="gemini-2.5-flash">Gemini 2.5 Flash (Recommended - Fast & Free)</option>
+                <option value="gemini-2.5-flash">
+                  Gemini 2.5 Flash (Recommended - Fast & Free)
+                </option>
                 <option value="gemini-1.5-flash">Gemini 1.5 Flash (Fast)</option>
-                <option value="gemini-2.5-pro">Gemini 2.5 Pro (Deep Reasoning)</option>
+                <option value="gemini-2.5-pro">
+                  Gemini 2.5 Pro (Deep Reasoning)
+                </option>
               </select>
             </div>
           </div>
