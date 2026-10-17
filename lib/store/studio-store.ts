@@ -26,6 +26,19 @@ export interface TerminalLogEntry {
 
 export type TerminalFilter = "all" | "logs" | "warnings" | "errors" | "system";
 
+export interface AiChatMessage {
+  id: string;
+  role: "user" | "assistant" | "system";
+  content: string;
+  timestamp: string;
+  changedFiles?: Partial<{
+    "component.tsx": string;
+    "demo.tsx": string;
+    "index.css": string;
+  }>;
+  applied?: boolean;
+}
+
 export interface RecordingConfig {
   duration: 3 | 5 | 8;
   fps: 30 | 60;
@@ -70,6 +83,14 @@ export interface StudioState {
   terminalHeight: number;
   terminalFilter: TerminalFilter;
 
+  // AI Assistant Panel
+  isAiPanelOpen: boolean;
+  aiPanelWidth: number;
+  geminiApiKey: string;
+  aiModel: string;
+  aiChatMessages: AiChatMessage[];
+  isAiThinking: boolean;
+
   // Actions
   updateFile: (name: StudioFileName, content: string) => void;
   setActiveTab: (tab: StudioFileName) => void;
@@ -104,6 +125,22 @@ export interface StudioState {
   toggleTerminal: () => void;
   setTerminalHeight: (height: number) => void;
   setTerminalFilter: (filter: TerminalFilter) => void;
+
+  // AI Actions
+  setAiPanelOpen: (open: boolean) => void;
+  toggleAiPanel: () => void;
+  setAiPanelWidth: (width: number) => void;
+  setGeminiApiKey: (key: string) => void;
+  setAiModel: (model: string) => void;
+  addAiChatMessage: (msg: Omit<AiChatMessage, "id" | "timestamp">) => void;
+  markAiMessageApplied: (id: string) => void;
+  clearAiChat: () => void;
+  setAiThinking: (thinking: boolean) => void;
+  applyAiChanges: (files: Partial<{
+    "component.tsx": string;
+    "demo.tsx": string;
+    "index.css": string;
+  }>) => void;
 }
 
 const initialTemplate = DEFAULT_TEMPLATES[0];
@@ -151,6 +188,21 @@ export const useStudioStore = create<StudioState>()(
       isTerminalOpen: false,
       terminalHeight: 220,
       terminalFilter: "all",
+
+      isAiPanelOpen: false,
+      aiPanelWidth: 380,
+      geminiApiKey: "",
+      aiModel: "gemini-2.5-flash",
+      aiChatMessages: [
+        {
+          id: "welcome-1",
+          role: "assistant",
+          content:
+            "Hi! I'm your 21st.dev Component Copilot. I inspect your component against official 21st.dev guidelines, optimize TypeScript & Tailwind, and can auto-fix issues or implement features with 1 click.",
+          timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+        },
+      ],
+      isAiThinking: false,
 
       updateFile: (name, content) =>
         set((state) => ({
@@ -317,6 +369,73 @@ export const useStudioStore = create<StudioState>()(
         set({ terminalHeight: Math.max(120, Math.min(600, height)) }),
 
       setTerminalFilter: (filter) => set({ terminalFilter: filter }),
+
+      // AI Actions
+      setAiPanelOpen: (open) => set({ isAiPanelOpen: open }),
+
+      toggleAiPanel: () =>
+        set((state) => ({ isAiPanelOpen: !state.isAiPanelOpen })),
+
+      setAiPanelWidth: (width) =>
+        set({ aiPanelWidth: Math.max(300, Math.min(700, width)) }),
+
+      setGeminiApiKey: (key) => set({ geminiApiKey: key.trim() }),
+
+      setAiModel: (model) => set({ aiModel: model }),
+
+      addAiChatMessage: (msg) =>
+        set((state) => ({
+          aiChatMessages: [
+            ...state.aiChatMessages,
+            {
+              id: `msg-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+              timestamp: new Date().toLocaleTimeString([], {
+                hour: "2-digit",
+                minute: "2-digit",
+              }),
+              ...msg,
+            },
+          ],
+        })),
+
+      markAiMessageApplied: (id) =>
+        set((state) => ({
+          aiChatMessages: state.aiChatMessages.map((m) =>
+            m.id === id ? { ...m, applied: true } : m
+          ),
+        })),
+
+      clearAiChat: () =>
+        set({
+          aiChatMessages: [
+            {
+              id: `cleared-${Date.now()}`,
+              role: "system",
+              content: "Chat history cleared. Ready for your prompt.",
+              timestamp: new Date().toLocaleTimeString([], {
+                hour: "2-digit",
+                minute: "2-digit",
+              }),
+            },
+          ],
+        }),
+
+      setAiThinking: (thinking) => set({ isAiThinking: thinking }),
+
+      applyAiChanges: (changedFiles) =>
+        set((state) => {
+          const nextFiles = { ...state.files };
+          if (changedFiles["component.tsx"] !== undefined) {
+            nextFiles["component.tsx"] = changedFiles["component.tsx"];
+          }
+          if (changedFiles["demo.tsx"] !== undefined) {
+            nextFiles["demo.tsx"] = changedFiles["demo.tsx"];
+          }
+          if (changedFiles["index.css"] !== undefined) {
+            nextFiles["index.css"] = changedFiles["index.css"];
+          }
+          return { files: nextFiles };
+        }),
     }),
     {
       name: "21st-component-studio-storage-v3",
@@ -333,6 +452,10 @@ export const useStudioStore = create<StudioState>()(
         isTerminalOpen: state.isTerminalOpen,
         terminalHeight: state.terminalHeight,
         terminalFilter: state.terminalFilter,
+        isAiPanelOpen: state.isAiPanelOpen,
+        aiPanelWidth: state.aiPanelWidth,
+        geminiApiKey: state.geminiApiKey,
+        aiModel: state.aiModel,
       }),
     }
   )

@@ -38,6 +38,8 @@ export function StudioHeader() {
     isTerminalOpen,
     toggleTerminal,
     terminalLogs,
+    isAiPanelOpen,
+    toggleAiPanel,
   } = useStudioStore();
 
   const [isDark, setIsDark] = useState(true);
@@ -185,6 +187,30 @@ export function StudioHeader() {
           </TooltipTrigger>
           <TooltipContent side="bottom">
             Toggle Terminal & Dev Console (Ctrl+`)
+          </TooltipContent>
+        </Tooltip>
+
+        <Separator orientation="vertical" className="h-4 mx-0.5" />
+
+        {/* AI Copilot Toggle Button */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant={isAiPanelOpen ? "secondary" : "ghost"}
+              size="sm"
+              onClick={toggleAiPanel}
+              className={`h-8 gap-1.5 px-2.5 text-xs transition-colors ${
+                isAiPanelOpen
+                  ? "bg-primary/10 text-primary border border-primary/25 font-medium"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <Sparkles className={`size-3.5 ${isAiPanelOpen ? "text-primary" : "text-amber-500"}`} />
+              <span className="hidden sm:inline">AI Copilot</span>
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom">
+            Toggle 21st AI Copilot (Ctrl+I)
           </TooltipContent>
         </Tooltip>
 

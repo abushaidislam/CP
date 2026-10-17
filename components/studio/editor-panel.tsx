@@ -34,11 +34,13 @@ export function EditorPanel() {
     compilerError,
     terminalLogs,
     isTerminalOpen,
+    isAiPanelOpen,
     updateFile,
     setActiveTab,
     resetCurrentTemplate,
     setDependencyModalOpen,
     toggleTerminal,
+    toggleAiPanel,
   } = useStudioStore();
 
   const [isFormatting, setIsFormatting] = useState(false);
@@ -239,6 +241,28 @@ export function EditorPanel() {
             </TooltipTrigger>
             <TooltipContent side="bottom">
               Toggle Terminal & Dev Console (Ctrl+`)
+            </TooltipContent>
+          </Tooltip>
+
+          {/* AI Copilot Toggle Button */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant={isAiPanelOpen ? "secondary" : "ghost"}
+                size="sm"
+                onClick={toggleAiPanel}
+                className={`h-7 px-2 text-xs gap-1.5 transition-colors ${
+                  isAiPanelOpen
+                    ? "bg-primary/10 text-primary border border-primary/25 font-medium"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <Sparkles className={`size-3 ${isAiPanelOpen ? "text-primary" : "text-amber-500"}`} />
+                <span className="hidden sm:inline">AI Copilot</span>
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">
+              Toggle 21st AI Copilot (Ctrl+I)
             </TooltipContent>
           </Tooltip>
         </div>
