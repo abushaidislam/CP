@@ -124,13 +124,12 @@ const TraceCollapsibleTrigger = React.forwardRef<
       ref={ref}
       data-slot="trace-collapsible-trigger"
       className={cn(
-        "group/trigger flex w-full items-center justify-between gap-2 text-left select-none text-muted-foreground hover:text-foreground transition-colors",
+        "group/trigger flex items-center justify-between gap-2 text-left select-none text-muted-foreground hover:text-foreground transition-colors",
         className
       )}
       {...props}
     >
       {children}
-      <TraceCollapsibleTriggerChevron />
     </CollapsiblePrimitive.CollapsibleTrigger>
   );
 });
@@ -162,5 +161,6 @@ export {
   TraceDescription,
   TraceCollapsible,
   TraceCollapsibleTrigger,
+  TraceCollapsibleTriggerChevron,
   TraceCollapsibleContent,
 };

@@ -31,6 +31,14 @@ export interface AiChatMessage {
   role: "user" | "assistant" | "system";
   content: string;
   timestamp: string;
+  reasoning?: string;
+  thinkingSeconds?: number;
+  planTasks?: Array<{
+    id: string;
+    title: string;
+    description?: string;
+    status: "done" | "running" | "error" | "pending";
+  }>;
   changedFiles?: Partial<{
     "component.tsx": string;
     "demo.tsx": string;

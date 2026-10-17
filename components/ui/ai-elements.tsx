@@ -1,11 +1,11 @@
 "use client";
 
 import * as React from "react";
+import * as CollapsiblePrimitive from "@radix-ui/react-collapsible";
 import {
   Brain,
   CheckCircle2,
   AlertCircle,
-  AlertTriangle,
   Loader2,
   ChevronDown,
   Sparkles,
@@ -15,11 +15,6 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  TraceCollapsible,
-  TraceCollapsibleTrigger,
-  TraceCollapsibleContent,
-} from "@/components/ui/trace";
 
 // ==========================================
 // 1. REASONING (Official shadcn AI Element)
@@ -57,30 +52,30 @@ export function Reasoning({
   }, [isStreaming]);
 
   return (
-    <div className={cn("w-full my-1 select-none font-sans", className)}>
-      <TraceCollapsible open={isOpen} onOpenChange={setIsOpen}>
-        <TraceCollapsibleTrigger className="group/trigger inline-flex items-center gap-1.5 py-1 px-2 -ml-1 rounded-md text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/30 transition-colors cursor-pointer select-none">
+    <div className={cn("w-fit my-1 font-sans select-none", className)}>
+      <CollapsiblePrimitive.Root open={isOpen} onOpenChange={setIsOpen}>
+        <CollapsiblePrimitive.Trigger className="group/trigger inline-flex items-center gap-1.5 py-1 px-2 -ml-2 rounded-md text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors cursor-pointer select-none">
           <Brain
             className={cn(
               "size-3.5 shrink-0 transition-colors",
               isStreaming ? "text-primary animate-pulse" : "text-muted-foreground/70"
             )}
           />
-          <span className="text-xs font-medium">
+          <span className="text-xs">
             {isStreaming ? (activeStep || "Thinking...") : "Thought"}
           </span>
           {durationSeconds !== undefined && durationSeconds > 0 && (
-            <span className="text-[11px] text-muted-foreground/70 font-normal">
+            <span className="text-[11px] text-muted-foreground/60 font-normal">
               {durationSeconds}s
             </span>
           )}
-          <ChevronDown className="size-3 text-muted-foreground/60 transition-transform duration-200 group-data-[state=open]/trigger:rotate-180" />
-        </TraceCollapsibleTrigger>
+          <ChevronDown className="size-3 text-muted-foreground/50 transition-transform duration-200 group-data-[state=open]/trigger:rotate-180" />
+        </CollapsiblePrimitive.Trigger>
 
-        <TraceCollapsibleContent className="pt-1 pb-1">
-          <div className="border-l-2 border-primary/30 pl-3 py-1 space-y-2 text-xs text-muted-foreground">
-            {steps && steps.length > 0 ? (
-              <div className="space-y-1.5">
+        <CollapsiblePrimitive.Content className="pt-1 pb-1">
+          <div className="border-l-2 border-primary/40 pl-3 py-1 space-y-1.5 text-xs text-muted-foreground">
+            {steps && steps.length > 0 && (
+              <div className="space-y-1">
                 {steps.map((st, i) => (
                   <div key={i} className="flex items-center gap-2 text-xs">
                     {st.status === "done" && (
@@ -90,7 +85,7 @@ export function Reasoning({
                       <Loader2 className="size-3 text-primary animate-spin shrink-0" />
                     )}
                     {st.status === "pending" && (
-                      <div className="size-2 rounded-full border border-muted-foreground/40 shrink-0 ml-0.5 mr-0.5" />
+                      <div className="size-1.5 rounded-full bg-muted-foreground/30 shrink-0 mx-0.5" />
                     )}
                     <span
                       className={cn(
@@ -105,16 +100,15 @@ export function Reasoning({
                   </div>
                 ))}
               </div>
-            ) : null}
-
+            )}
             {children && (
               <div className="text-[11px] text-muted-foreground/90 whitespace-pre-wrap leading-relaxed">
                 {children}
               </div>
             )}
           </div>
-        </TraceCollapsibleContent>
-      </TraceCollapsible>
+        </CollapsiblePrimitive.Content>
+      </CollapsiblePrimitive.Root>
     </div>
   );
 }
@@ -204,9 +198,9 @@ export function Plan({
   const isDone = completedCount === totalCount;
 
   return (
-    <div className={cn("rounded-xl border border-border/70 bg-card/60 p-2.5 my-1 font-sans transition-all", className)}>
-      <TraceCollapsible open={isOpen} onOpenChange={setIsOpen}>
-        <TraceCollapsibleTrigger className="group/trigger flex w-full items-center justify-between text-left hover:no-underline select-none">
+    <div className={cn("rounded-xl border border-border/70 bg-card/60 p-2.5 my-1.5 font-sans transition-all", className)}>
+      <CollapsiblePrimitive.Root open={isOpen} onOpenChange={setIsOpen}>
+        <CollapsiblePrimitive.Trigger className="group/trigger flex w-full items-center justify-between text-left hover:no-underline select-none cursor-pointer">
           <div className="flex items-center gap-2">
             {isDone ? (
               <CheckCircle2 className="size-4 text-emerald-500" />
@@ -224,9 +218,9 @@ export function Plan({
             </Badge>
             <ChevronDown className="size-3 text-muted-foreground/60 transition-transform duration-200 group-data-[state=open]/trigger:rotate-180" />
           </div>
-        </TraceCollapsibleTrigger>
+        </CollapsiblePrimitive.Trigger>
 
-        <TraceCollapsibleContent className="pt-2.5 mt-2 border-t border-border/50">
+        <CollapsiblePrimitive.Content className="pt-2.5 mt-2 border-t border-border/50">
           <div className="space-y-1.5">
             {tasks.map((task) => (
               <div
@@ -265,8 +259,8 @@ export function Plan({
               </div>
             ))}
           </div>
-        </TraceCollapsibleContent>
-      </TraceCollapsible>
+        </CollapsiblePrimitive.Content>
+      </CollapsiblePrimitive.Root>
     </div>
   );
 }
@@ -290,7 +284,7 @@ export function PromptInput({
   onChange,
   onSubmit,
   isLoading = false,
-  placeholder = "Ask AI to edit, fix guidelines, or add components...",
+  placeholder = "Ask Copilot to edit, fix guidelines, or add components...",
   modelBadge,
   onModelClick,
   className,
@@ -321,7 +315,7 @@ export function PromptInput({
         onKeyDown={handleKeyDown}
         placeholder={placeholder}
         disabled={isLoading}
-        className="min-h-[50px] resize-none border-0 p-1 text-xs bg-transparent shadow-none focus-visible:ring-0 placeholder:text-muted-foreground/60 font-sans"
+        className="min-h-[44px] resize-none border-0 p-1 text-xs bg-transparent shadow-none focus-visible:ring-0 placeholder:text-muted-foreground/60 font-sans"
       />
 
       <div className="flex items-center justify-between pt-1.5 border-t border-border/40 select-none">

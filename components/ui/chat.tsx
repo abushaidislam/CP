@@ -192,6 +192,7 @@ export {
   TraceDescription,
   TraceCollapsible,
   TraceCollapsibleTrigger,
+  TraceCollapsibleTriggerChevron,
   TraceCollapsibleContent,
 } from "./trace";
 

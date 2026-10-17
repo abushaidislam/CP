@@ -28,7 +28,6 @@ import {
   MessageFooter,
   Bubble,
   BubbleContent,
-  Marker,
   Trace,
   TraceLine,
 } from "@/components/ui/chat";
@@ -39,6 +38,7 @@ import {
   Plan,
   PromptInput,
   TaskItemProps,
+  ReasoningStep,
 } from "@/components/ui/ai-elements";
 import {
   Sparkles,
@@ -53,7 +53,9 @@ import {
   Zap,
   ShieldCheck,
   ChevronDown,
+  ListCheck,
 } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 export function AiAssistantPanel() {
   const {
@@ -114,24 +116,24 @@ export function AiAssistantPanel() {
   }, [auditResult]);
 
   // Real-time progressive working steps during thinking
-  const workingSteps = useMemo(() => {
+  const workingSteps = useMemo<ReasoningStep[]>(() => {
     if (thinkingSeconds < 2) {
       return [
-        { title: "Analyzing AST tree & TypeScript interfaces...", status: "running" as const },
-        { title: "Auditing 21st.dev marketplace guidelines...", status: "pending" as const },
-        { title: "Synthesizing code refactor & suggestions...", status: "pending" as const },
+        { title: "Analyzing AST tree & TypeScript interfaces...", status: "running" },
+        { title: "Auditing 21st.dev marketplace guidelines...", status: "pending" },
+        { title: "Synthesizing code refactor & suggestions...", status: "pending" },
       ];
     } else if (thinkingSeconds < 4) {
       return [
-        { title: "Analyzed AST tree & TypeScript interfaces", status: "done" as const },
-        { title: "Auditing 21st.dev marketplace guidelines...", status: "running" as const },
-        { title: "Synthesizing code refactor & suggestions...", status: "pending" as const },
+        { title: "Analyzed AST tree & TypeScript interfaces", status: "done" },
+        { title: "Auditing 21st.dev marketplace guidelines...", status: "running" },
+        { title: "Synthesizing code refactor & suggestions...", status: "pending" },
       ];
     } else {
       return [
-        { title: "Analyzed AST tree & TypeScript interfaces", status: "done" as const },
-        { title: "Audited 21st.dev marketplace guidelines", status: "done" as const },
-        { title: "Synthesizing code refactor & suggestions...", status: "running" as const },
+        { title: "Analyzed AST tree & TypeScript interfaces", status: "done" },
+        { title: "Audited 21st.dev marketplace guidelines", status: "done" },
+        { title: "Synthesizing code refactor & suggestions...", status: "running" },
       ];
     }
   }, [thinkingSeconds]);
@@ -202,7 +204,7 @@ export function AiAssistantPanel() {
     };
   }, [setAiPanelWidth]);
 
-  // Submit AI Prompt (Chat or Auto-Fix)
+  // Submit AI Prompt (Chat, Auto-Fix, or Audit)
   const handleSubmitPrompt = async (
     customPrompt?: string,
     action: "chat" | "autofix" | "audit" = "chat"
@@ -253,7 +255,17 @@ export function AiAssistantPanel() {
 
       addAiChatMessage({
         role: "assistant",
-        content: data.message || "Audit completed.",
+        content:
+          data.message ||
+          (action === "audit"
+            ? `Here is the current 21st.dev marketplace compliance audit (${auditResult.score}/100):`
+            : "Review completed."),
+        reasoning:
+          action === "audit"
+            ? `Audited ${auditResult.totalChecks} standards against AST tree, checked Tailwind utility classes, and verified TypeScript types.`
+            : `Reviewed syntax and applied guidelines.`,
+        thinkingSeconds: Math.max(1, thinkingSeconds),
+        planTasks: action === "audit" ? planTasks : undefined,
         changedFiles:
           data.changedFiles && Object.keys(data.changedFiles).length > 0
             ? data.changedFiles
@@ -289,6 +301,13 @@ export function AiAssistantPanel() {
 
   if (!isAiPanelOpen) return null;
 
+  const scoreBadgeColor =
+    auditResult.score >= 90
+      ? "text-emerald-500 border-emerald-500/30 bg-emerald-500/5 hover:bg-emerald-500/10"
+      : auditResult.score >= 70
+      ? "text-amber-500 border-amber-500/30 bg-amber-500/5 hover:bg-amber-500/10"
+      : "text-red-500 border-red-500/30 bg-red-500/5 hover:bg-red-500/10";
+
   return (
     <div
       style={{ width: `${aiPanelWidth}px` }}
@@ -303,9 +322,9 @@ export function AiAssistantPanel() {
         <div className="h-full w-px bg-border group-hover:bg-primary transition-colors" />
       </div>
 
-      {/* Top Header (Clean Minimalist shadcn Layout) */}
+      {/* Top Header: Clean & Compact */}
       <div className="flex h-11 shrink-0 items-center justify-between border-b border-border bg-card/60 px-3 backdrop-blur-xs">
-        {/* Brand & Model Selector Trigger */}
+        {/* Left: Brand + Status Pill */}
         <div className="flex items-center gap-2">
           <div className="flex size-6 items-center justify-center rounded-md bg-primary text-primary-foreground shadow-xs">
             <Sparkles className="size-3.5" />
@@ -314,22 +333,34 @@ export function AiAssistantPanel() {
             21st Copilot
           </span>
 
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => {
-              setTempApiKey(geminiApiKey);
-              setTempModel(aiModel);
-              setIsKeyModalOpen(true);
-            }}
-            className="h-6 gap-1 px-1.5 text-[11px] text-muted-foreground hover:text-foreground font-normal"
-          >
-            <span className="truncate max-w-[100px]">{aiModel}</span>
-            <ChevronDown className="size-3 opacity-60" />
-          </Button>
+          {/* Interactive Compliance Score Badge */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Badge
+                variant="outline"
+                onClick={() =>
+                  handleSubmitPrompt(
+                    "Audit my component against all 21st.dev guidelines and standards",
+                    "audit"
+                  )
+                }
+                className={cn(
+                  "text-[10px] gap-1 px-1.5 py-0 cursor-pointer font-medium transition-colors select-none",
+                  scoreBadgeColor
+                )}
+              >
+                <span>{auditResult.score}/100</span>
+                <span className="opacity-40">·</span>
+                <span>{auditResult.passedCount}/{auditResult.totalChecks}</span>
+              </Badge>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">
+              21st.dev standards compliance. Click to audit in chat.
+            </TooltipContent>
+          </Tooltip>
         </div>
 
-        {/* Action Controls */}
+        {/* Right: API Key, Clear Chat, Close */}
         <div className="flex items-center gap-1">
           {geminiApiKey ? (
             <Tooltip>
@@ -342,10 +373,10 @@ export function AiAssistantPanel() {
                     setTempModel(aiModel);
                     setIsKeyModalOpen(true);
                   }}
-                  className="h-6 gap-1.5 px-2 text-[11px] text-emerald-500 hover:text-emerald-400 hover:bg-emerald-500/10"
+                  className="h-6 gap-1.5 px-2 text-[11px] text-emerald-500 hover:text-emerald-400 hover:bg-emerald-500/10 font-normal"
                 >
                   <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                  <span>Free Pro API</span>
+                  <span>Pro API</span>
                 </Button>
               </TooltipTrigger>
               <TooltipContent side="bottom">
@@ -408,20 +439,11 @@ export function AiAssistantPanel() {
         </div>
       </div>
 
-      {/* Main Chat Thread Area */}
+      {/* Main Chat Thread Area: Clean & Spacious */}
       <div
         ref={chatScrollRef}
         className="flex-1 overflow-y-auto p-3 space-y-4 select-text font-sans scroll-smooth"
       >
-        <Marker variant="separator">21st.dev Audit & Copilot</Marker>
-
-        {/* Live Plan / Standards Checklist Element (Official shadcn Plan) */}
-        <Plan
-          title="21st.dev Component Standards"
-          tasks={planTasks}
-          defaultOpen={auditResult.score < 100}
-        />
-
         {/* Messages Stream */}
         {aiChatMessages.map((msg) => {
           const isUser = msg.role === "user";
@@ -464,25 +486,36 @@ export function AiAssistantPanel() {
                   <span className="font-semibold text-foreground">
                     21st Copilot
                   </span>
-                  <Badge
-                    variant="outline"
-                    className="text-[9px] py-0 px-1 font-normal text-muted-foreground"
-                  >
+                  <span className="text-[10px] text-muted-foreground font-normal">
                     {aiModel}
-                  </Badge>
+                  </span>
                 </MessageHeader>
 
-                {/* Inline Reasoning Trace (Official shadcn Reasoning) */}
-                <Reasoning durationSeconds={2} defaultOpen={false}>
-                  Audited component AST syntax, verified 21st.dev marketplace standards, and checked Tailwind utility classes.
-                </Reasoning>
+                {/* Show Reasoning ONLY if the message actually produced thoughts */}
+                {msg.reasoning && (
+                  <Reasoning
+                    durationSeconds={msg.thinkingSeconds}
+                    defaultOpen={false}
+                  >
+                    {msg.reasoning}
+                  </Reasoning>
+                )}
+
+                {/* Show Audit Plan ONLY if this message includes planTasks */}
+                {msg.planTasks && msg.planTasks.length > 0 && (
+                  <Plan
+                    title="21st.dev Component Standards"
+                    tasks={msg.planTasks}
+                    defaultOpen={true}
+                  />
+                )}
 
                 <Bubble variant="outline" align="start" className="w-full">
                   <BubbleContent>{msg.content}</BubbleContent>
 
                   {/* Trace for AI Activity & 1-Click Code Apply */}
                   {hasCodeChanges && msg.changedFiles && (
-                    <Trace className="mt-2 border-border/80 bg-muted/40">
+                    <Trace className="mt-2 border border-border/80 bg-muted/40 p-2 rounded-lg">
                       <TraceLine status="done">
                         <div className="flex items-center gap-1.5 font-medium text-foreground">
                           <FileCode className="size-3.5 text-primary" />
@@ -543,12 +576,9 @@ export function AiAssistantPanel() {
                 <span className="font-semibold text-foreground">
                   21st Copilot
                 </span>
-                <Badge
-                  variant="outline"
-                  className="text-[9px] py-0 px-1 font-normal text-muted-foreground"
-                >
+                <span className="text-[10px] text-muted-foreground font-normal">
                   {aiModel}
-                </Badge>
+                </span>
               </MessageHeader>
 
               <Reasoning
@@ -564,9 +594,9 @@ export function AiAssistantPanel() {
         )}
       </div>
 
-      {/* Bottom Area: Official shadcn Suggestions + Prompt Input */}
+      {/* Bottom Area: Suggestions + Prompt Input */}
       <div className="p-2.5 border-t border-border bg-background/95 space-y-2">
-        {/* Suggestion Group (Official shadcn Suggestion elements) */}
+        {/* Suggestion Group: Clean Pills */}
         <SuggestionGroup>
           <Suggestion
             icon={<Wand2 className="size-3 text-primary" />}
@@ -581,6 +611,19 @@ export function AiAssistantPanel() {
             className="border border-primary/20 bg-primary/10 text-primary hover:bg-primary/20"
           >
             ⚡ Auto-Fix All
+          </Suggestion>
+
+          <Suggestion
+            icon={<ListCheck className="size-3 text-muted-foreground" />}
+            onClick={() =>
+              handleSubmitPrompt(
+                "Audit my component against all 21st.dev marketplace standards and provide actionable feedback.",
+                "audit"
+              )
+            }
+            disabled={isAiThinking}
+          >
+            Audit Standards
           </Suggestion>
 
           <Suggestion
@@ -619,17 +662,17 @@ export function AiAssistantPanel() {
             }
             disabled={isAiThinking}
           >
-            A11y Audit
+            A11y
           </Suggestion>
         </SuggestionGroup>
 
-        {/* Prompt Input (Official shadcn PromptInput element) */}
+        {/* Prompt Input */}
         <PromptInput
           value={promptInput}
           onChange={(e) => setPromptInput(e.target.value)}
           onSubmit={() => handleSubmitPrompt()}
           isLoading={isAiThinking}
-          placeholder="Ask Copilot to refactor, style, or enhance..."
+          placeholder="Ask Copilot to edit, fix guidelines, or add components..."
           modelBadge={
             <Badge
               variant="outline"
