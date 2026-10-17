@@ -4,14 +4,17 @@ import React, { useRef, useState, useEffect } from "react";
 import { StudioHeader } from "./studio-header";
 import { EditorPanel } from "./editor-panel";
 import { CanvasPreview } from "./canvas-preview";
+import { AiAssistantPanel } from "./ai-assistant-panel";
 import { PublishModal } from "./publish-modal";
 import { DependencyModal } from "./dependency-modal";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Code, Eye } from "lucide-react";
+import { Code, Eye, Sparkles } from "lucide-react";
+import { useStudioStore } from "@/lib/store/studio-store";
 
 export function StudioContainer() {
+  const { isAiPanelOpen, toggleAiPanel } = useStudioStore();
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
-  const [mobileTab, setMobileTab] = useState<"editor" | "preview">("preview");
+  const [mobileTab, setMobileTab] = useState<"editor" | "preview" | "ai">("preview");
   const [splitRatio, setSplitRatio] = useState(48); // Left width percentage on desktop
   const isDraggingRef = useRef(false);
 
@@ -47,6 +50,18 @@ export function StudioContainer() {
     };
   }, []);
 
+  // Global shortcut to toggle AI Copilot (Ctrl+I or Cmd+I)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "i") {
+        e.preventDefault();
+        toggleAiPanel();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [toggleAiPanel]);
+
   return (
     <div className="flex h-screen w-screen flex-col overflow-hidden bg-background text-foreground font-sans">
       {/* Top Header */}
@@ -56,17 +71,21 @@ export function StudioContainer() {
       <div className="flex md:hidden border-b border-border bg-background p-2">
         <Tabs
           value={mobileTab}
-          onValueChange={(val) => setMobileTab(val as "editor" | "preview")}
+          onValueChange={(val) => setMobileTab(val as "editor" | "preview" | "ai")}
           className="w-full"
         >
-          <TabsList className="grid grid-cols-2 w-full h-8">
-            <TabsTrigger value="editor" className="gap-2 text-xs">
+          <TabsList className="grid grid-cols-3 w-full h-8">
+            <TabsTrigger value="editor" className="gap-1.5 text-xs">
               <Code className="size-3.5" />
               <span>Editor</span>
             </TabsTrigger>
-            <TabsTrigger value="preview" className="gap-2 text-xs">
+            <TabsTrigger value="preview" className="gap-1.5 text-xs">
               <Eye className="size-3.5" />
-              <span>Live Preview</span>
+              <span>Preview</span>
+            </TabsTrigger>
+            <TabsTrigger value="ai" className="gap-1.5 text-xs">
+              <Sparkles className="size-3.5 text-primary" />
+              <span>Copilot</span>
             </TabsTrigger>
           </TabsList>
         </Tabs>
@@ -93,14 +112,22 @@ export function StudioContainer() {
           <div className="h-full w-px bg-border group-hover:bg-primary transition-colors duration-150 ease-smooth-out" />
         </div>
 
-        {/* Right Column: Canvas Live Preview */}
+        {/* Center / Right Column: Canvas Live Preview */}
         <div
-          style={{ width: `${100 - splitRatio}%` }}
-          className={`h-full flex-1 md:flex ${
+          className={`h-full flex-1 md:flex overflow-hidden ${
             mobileTab === "preview" ? "flex w-full" : "hidden"
           }`}
         >
           <CanvasPreview iframeRef={iframeRef} />
+        </div>
+
+        {/* Rightmost Docked Column: AI Assistant Panel */}
+        <div
+          className={`h-full ${
+            mobileTab === "ai" ? "flex w-full" : isAiPanelOpen ? "hidden md:flex" : "hidden"
+          }`}
+        >
+          <AiAssistantPanel />
         </div>
       </div>
 
