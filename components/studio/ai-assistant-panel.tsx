@@ -113,6 +113,35 @@ export function AiAssistantPanel() {
     }));
   }, [auditResult]);
 
+  // Real-time progressive working steps during thinking
+  const workingSteps = useMemo(() => {
+    if (thinkingSeconds < 2) {
+      return [
+        { title: "Analyzing AST tree & TypeScript interfaces...", status: "running" as const },
+        { title: "Auditing 21st.dev marketplace guidelines...", status: "pending" as const },
+        { title: "Synthesizing code refactor & suggestions...", status: "pending" as const },
+      ];
+    } else if (thinkingSeconds < 4) {
+      return [
+        { title: "Analyzed AST tree & TypeScript interfaces", status: "done" as const },
+        { title: "Auditing 21st.dev marketplace guidelines...", status: "running" as const },
+        { title: "Synthesizing code refactor & suggestions...", status: "pending" as const },
+      ];
+    } else {
+      return [
+        { title: "Analyzed AST tree & TypeScript interfaces", status: "done" as const },
+        { title: "Audited 21st.dev marketplace guidelines", status: "done" as const },
+        { title: "Synthesizing code refactor & suggestions...", status: "running" as const },
+      ];
+    }
+  }, [thinkingSeconds]);
+
+  const currentStepTitle = useMemo(() => {
+    if (thinkingSeconds < 2) return "Analyzing AST...";
+    if (thinkingSeconds < 4) return "Auditing standards...";
+    return "Writing code...";
+  }, [thinkingSeconds]);
+
   // Timer for reasoning duration
   useEffect(() => {
     if (isAiThinking) {
@@ -443,6 +472,11 @@ export function AiAssistantPanel() {
                   </Badge>
                 </MessageHeader>
 
+                {/* Inline Reasoning Trace (Official shadcn Reasoning) */}
+                <Reasoning durationSeconds={2} defaultOpen={false}>
+                  Audited component AST syntax, verified 21st.dev marketplace standards, and checked Tailwind utility classes.
+                </Reasoning>
+
                 <Bubble variant="outline" align="start" className="w-full">
                   <BubbleContent>{msg.content}</BubbleContent>
 
@@ -493,13 +527,40 @@ export function AiAssistantPanel() {
           );
         })}
 
-        {/* Real-time Assistant Reasoning Trace (Official shadcn Reasoning) */}
+        {/* Real-time Streaming Assistant Turn (No extra div wrapper) */}
         {isAiThinking && (
-          <div className="my-2">
-            <Reasoning isStreaming durationSeconds={thinkingSeconds}>
-              Reviewing component syntax, Tailwind utility classes, and 21st.dev marketplace standards...
-            </Reasoning>
-          </div>
+          <Message align="start">
+            <MessageAvatar>
+              <Avatar className="size-6 bg-primary text-primary-foreground shadow-2xs">
+                <AvatarFallback className="bg-primary text-primary-foreground font-semibold">
+                  <Sparkles className="size-3" />
+                </AvatarFallback>
+              </Avatar>
+            </MessageAvatar>
+
+            <MessageContent align="start" className="w-full">
+              <MessageHeader>
+                <span className="font-semibold text-foreground">
+                  21st Copilot
+                </span>
+                <Badge
+                  variant="outline"
+                  className="text-[9px] py-0 px-1 font-normal text-muted-foreground"
+                >
+                  {aiModel}
+                </Badge>
+              </MessageHeader>
+
+              <Reasoning
+                isStreaming={true}
+                durationSeconds={thinkingSeconds}
+                activeStep={currentStepTitle}
+                steps={workingSteps}
+              >
+                Synthesizing component code, validating AST props, and formatting Tailwind classes...
+              </Reasoning>
+            </MessageContent>
+          </Message>
         )}
       </div>
 

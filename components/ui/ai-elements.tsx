@@ -10,18 +10,12 @@ import {
   ChevronDown,
   Sparkles,
   Send,
-  CornerDownLeft,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  Trace,
-  TraceLine,
-  TraceIcon,
-  TraceTitle,
-  TraceDescription,
   TraceCollapsible,
   TraceCollapsibleTrigger,
   TraceCollapsibleContent,
@@ -30,11 +24,18 @@ import {
 // ==========================================
 // 1. REASONING (Official shadcn AI Element)
 // ==========================================
+export interface ReasoningStep {
+  title: string;
+  status: "done" | "running" | "pending";
+}
+
 export interface ReasoningProps {
   children?: React.ReactNode;
   isStreaming?: boolean;
   durationSeconds?: number;
   defaultOpen?: boolean;
+  activeStep?: string;
+  steps?: ReasoningStep[];
   className?: string;
 }
 
@@ -43,9 +44,11 @@ export function Reasoning({
   isStreaming = false,
   durationSeconds,
   defaultOpen = false,
+  activeStep,
+  steps,
   className,
 }: ReasoningProps) {
-  const [isOpen, setIsOpen] = React.useState(defaultOpen || isStreaming);
+  const [isOpen, setIsOpen] = React.useState(defaultOpen);
 
   React.useEffect(() => {
     if (isStreaming) {
@@ -53,33 +56,66 @@ export function Reasoning({
     }
   }, [isStreaming]);
 
-  if (!children && !isStreaming) return null;
-
   return (
-    <Trace className={cn("border border-border/70 bg-muted/20 my-1 font-sans", className)}>
+    <div className={cn("w-full my-1 select-none font-sans", className)}>
       <TraceCollapsible open={isOpen} onOpenChange={setIsOpen}>
-        <TraceCollapsibleTrigger>
-          <TraceLine status={isStreaming ? "running" : undefined}>
-            <TraceIcon>
-              {isStreaming ? (
-                <Brain className="size-3.5 text-primary animate-pulse" />
-              ) : (
-                <Brain className="size-3.5 text-muted-foreground" />
-              )}
-            </TraceIcon>
-            <TraceTitle className="text-xs font-medium text-foreground">
-              {isStreaming ? "Thinking..." : "Thought"}
-            </TraceTitle>
-            {durationSeconds !== undefined && durationSeconds > 0 && !isStreaming && (
-              <TraceDescription>{durationSeconds}s</TraceDescription>
+        <TraceCollapsibleTrigger className="group/trigger inline-flex items-center gap-1.5 py-1 px-2 -ml-1 rounded-md text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/30 transition-colors cursor-pointer select-none">
+          <Brain
+            className={cn(
+              "size-3.5 shrink-0 transition-colors",
+              isStreaming ? "text-primary animate-pulse" : "text-muted-foreground/70"
             )}
-          </TraceLine>
+          />
+          <span className="text-xs font-medium">
+            {isStreaming ? (activeStep || "Thinking...") : "Thought"}
+          </span>
+          {durationSeconds !== undefined && durationSeconds > 0 && (
+            <span className="text-[11px] text-muted-foreground/70 font-normal">
+              {durationSeconds}s
+            </span>
+          )}
+          <ChevronDown className="size-3 text-muted-foreground/60 transition-transform duration-200 group-data-[state=open]/trigger:rotate-180" />
         </TraceCollapsibleTrigger>
-        <TraceCollapsibleContent className="whitespace-pre-wrap text-xs text-muted-foreground pt-2 border-t border-border/40 mt-1 font-sans">
-          {children || "Analyzing code structure and guidelines..."}
+
+        <TraceCollapsibleContent className="pt-1 pb-1">
+          <div className="border-l-2 border-primary/30 pl-3 py-1 space-y-2 text-xs text-muted-foreground">
+            {steps && steps.length > 0 ? (
+              <div className="space-y-1.5">
+                {steps.map((st, i) => (
+                  <div key={i} className="flex items-center gap-2 text-xs">
+                    {st.status === "done" && (
+                      <CheckCircle2 className="size-3 text-emerald-500 shrink-0" />
+                    )}
+                    {st.status === "running" && (
+                      <Loader2 className="size-3 text-primary animate-spin shrink-0" />
+                    )}
+                    {st.status === "pending" && (
+                      <div className="size-2 rounded-full border border-muted-foreground/40 shrink-0 ml-0.5 mr-0.5" />
+                    )}
+                    <span
+                      className={cn(
+                        "text-[11px]",
+                        st.status === "running" && "text-foreground font-medium",
+                        st.status === "done" && "text-muted-foreground/80",
+                        st.status === "pending" && "text-muted-foreground/50"
+                      )}
+                    >
+                      {st.title}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            ) : null}
+
+            {children && (
+              <div className="text-[11px] text-muted-foreground/90 whitespace-pre-wrap leading-relaxed">
+                {children}
+              </div>
+            )}
+          </div>
         </TraceCollapsibleContent>
       </TraceCollapsible>
-    </Trace>
+    </div>
   );
 }
 
@@ -168,26 +204,26 @@ export function Plan({
   const isDone = completedCount === totalCount;
 
   return (
-    <Trace className={cn("border border-border/80 bg-card p-3 my-1 font-sans shadow-2xs", className)}>
+    <div className={cn("rounded-xl border border-border/70 bg-card/60 p-2.5 my-1 font-sans transition-all", className)}>
       <TraceCollapsible open={isOpen} onOpenChange={setIsOpen}>
-        <TraceCollapsibleTrigger className="hover:no-underline">
-          <TraceLine>
-            <TraceIcon>
-              {isDone ? (
-                <CheckCircle2 className="size-4 text-emerald-500" />
-              ) : (
-                <Sparkles className="size-4 text-primary" />
-              )}
-            </TraceIcon>
-            <TraceTitle className="text-xs font-semibold text-foreground">
+        <TraceCollapsibleTrigger className="group/trigger flex w-full items-center justify-between text-left hover:no-underline select-none">
+          <div className="flex items-center gap-2">
+            {isDone ? (
+              <CheckCircle2 className="size-4 text-emerald-500" />
+            ) : (
+              <Sparkles className="size-4 text-primary" />
+            )}
+            <span className="text-xs font-semibold text-foreground">
               {title}
-            </TraceTitle>
-            <TraceDescription>
-              <Badge variant={isDone ? "secondary" : "outline"} className="text-[10px] px-1.5 py-0 font-normal">
-                {completedCount} / {totalCount} completed
-              </Badge>
-            </TraceDescription>
-          </TraceLine>
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Badge variant={isDone ? "secondary" : "outline"} className="text-[10px] px-1.5 py-0 font-normal">
+              {completedCount} / {totalCount} passed
+            </Badge>
+            <ChevronDown className="size-3 text-muted-foreground/60 transition-transform duration-200 group-data-[state=open]/trigger:rotate-180" />
+          </div>
         </TraceCollapsibleTrigger>
 
         <TraceCollapsibleContent className="pt-2.5 mt-2 border-t border-border/50">
@@ -231,7 +267,7 @@ export function Plan({
           </div>
         </TraceCollapsibleContent>
       </TraceCollapsible>
-    </Trace>
+    </div>
   );
 }
 

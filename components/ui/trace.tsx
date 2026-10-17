@@ -13,10 +13,7 @@ const Trace = React.forwardRef<
     <div
       ref={ref}
       data-slot="trace"
-      className={cn(
-        "flex flex-col gap-1 rounded-lg border border-border/60 bg-muted/30 p-2.5 text-xs font-sans",
-        className
-      )}
+      className={cn("flex flex-col gap-1 text-xs font-sans", className)}
       {...props}
     />
   );
