@@ -6,7 +6,9 @@ import { auditComponentGuidelines, GuidelineCheckItem } from "@/lib/sandbox/guid
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   Tooltip,
   TooltipContent,
@@ -21,18 +23,29 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import {
+  Message,
+  MessageAvatar,
+  MessageContent,
+  MessageHeader,
+  MessageFooter,
+  Bubble,
+  BubbleContent,
+  Marker,
+  Trace,
+  TraceLine,
+} from "@/components/ui/chat";
+import {
   Sparkles,
   Key,
   Check,
   CheckCircle2,
   AlertTriangle,
   AlertCircle,
-  X,
   ChevronDown,
   ChevronUp,
-  Send,
+  CornerDownLeft,
   Loader2,
-  RotateCcw,
+  Trash2,
   FileCode,
   ExternalLink,
   ShieldCheck,
@@ -71,6 +84,7 @@ export function AiAssistantPanel() {
   const [appliedMessageIds, setAppliedMessageIds] = useState<Record<string, boolean>>({});
 
   const chatScrollRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const isResizingRef = useRef(false);
   const startXRef = useRef(0);
   const startWidthRef = useRef(0);
@@ -178,10 +192,18 @@ export function AiAssistantPanel() {
       const errorMsg = err instanceof Error ? err.message : String(err);
       addAiChatMessage({
         role: "assistant",
-        content: `Connection error: ${errorMsg}. Please check network or your Gemini API Key.`,
+        content: `Connection error: ${errorMsg}. Please check your internet connection or Gemini API Key.`,
       });
     } finally {
       setAiThinking(false);
+    }
+  };
+
+  // Keyboard navigation for prompt textarea (Enter to send, Shift+Enter for newline)
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSubmitPrompt();
     }
   };
 
@@ -226,7 +248,7 @@ export function AiAssistantPanel() {
       <div className="flex h-11 shrink-0 items-center justify-between border-b border-border bg-muted/20 px-3">
         {/* Left: Brand / Title */}
         <div className="flex items-center gap-2">
-          <div className="flex size-6 items-center justify-center rounded-md bg-primary text-primary-foreground">
+          <div className="flex size-6 items-center justify-center rounded-md bg-primary text-primary-foreground shadow-xs">
             <Sparkles className="size-3.5" />
           </div>
           <span className="font-semibold text-xs text-foreground">
@@ -237,8 +259,8 @@ export function AiAssistantPanel() {
           </Badge>
         </div>
 
-        {/* Right: API Status & Close Button */}
-        <div className="flex items-center gap-1.5">
+        {/* Right: API Status, Clear Chat & Close Button */}
+        <div className="flex items-center gap-1">
           {/* API Connection Badge / Button */}
           {geminiApiKey ? (
             <Tooltip>
@@ -283,6 +305,22 @@ export function AiAssistantPanel() {
             </Tooltip>
           )}
 
+          {/* Clear Chat Button */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={clearAiChat}
+                className="size-7 text-muted-foreground hover:text-foreground"
+              >
+                <Trash2 className="size-3.5" />
+                <span className="sr-only">Clear chat</span>
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">Clear chat history</TooltipContent>
+          </Tooltip>
+
           {/* Close Panel Button */}
           <Tooltip>
             <TooltipTrigger asChild>
@@ -304,9 +342,9 @@ export function AiAssistantPanel() {
       {/* 21st.dev Compliance Scorecard */}
       <div className="border-b border-border bg-muted/10 p-3 select-text">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2.5">
             <span
-              className={`flex items-center justify-center font-bold text-xs px-2 py-0.5 rounded-md border ${scoreColor}`}
+              className={`flex items-center justify-center font-bold text-xs px-2.5 py-1 rounded-md border ${scoreColor}`}
             >
               {auditResult.score}/100
             </span>
@@ -436,119 +474,171 @@ export function AiAssistantPanel() {
         </Button>
       </div>
 
-      {/* Interactive Chat & Suggestions Stream */}
+      {/* Advanced shadcn Chat Thread Stream */}
       <div
         ref={chatScrollRef}
-        className="flex-1 overflow-y-auto p-3 space-y-3 select-text"
+        className="flex-1 overflow-y-auto p-3 space-y-4 select-text"
       >
+        <Marker variant="separator">21st.dev Session Started</Marker>
+
         {aiChatMessages.map((msg) => {
           const isUser = msg.role === "user";
           const hasCodeChanges =
             msg.changedFiles && Object.keys(msg.changedFiles).length > 0;
           const isApplied = appliedMessageIds[msg.id] || msg.applied;
 
+          if (isUser) {
+            return (
+              <Message key={msg.id} align="end">
+                <MessageContent align="end">
+                  <Bubble variant="default" align="end">
+                    <BubbleContent>{msg.content}</BubbleContent>
+                  </Bubble>
+                  <MessageFooter>{msg.timestamp}</MessageFooter>
+                </MessageContent>
+                <MessageAvatar>
+                  <Avatar className="size-6 text-[10px]">
+                    <AvatarFallback className="bg-primary/20 text-primary font-medium">
+                      U
+                    </AvatarFallback>
+                  </Avatar>
+                </MessageAvatar>
+              </Message>
+            );
+          }
+
           return (
-            <div
-              key={msg.id}
-              className={`flex flex-col ${
-                isUser ? "items-end" : "items-start"
-              }`}
-            >
-              <div
-                className={`max-w-[90%] rounded-xl px-3 py-2 text-xs leading-relaxed ${
-                  isUser
-                    ? "bg-primary text-primary-foreground font-medium"
-                    : "bg-muted/50 border border-border text-foreground"
-                }`}
-              >
-                {/* Content */}
-                <div className="whitespace-pre-wrap">{msg.content}</div>
+            <Message key={msg.id} align="start">
+              <MessageAvatar>
+                <Avatar className="size-6 bg-primary text-primary-foreground shadow-2xs">
+                  <AvatarFallback className="bg-primary text-primary-foreground font-semibold">
+                    <Sparkles className="size-3" />
+                  </AvatarFallback>
+                </Avatar>
+              </MessageAvatar>
 
-                {/* 1-Click Code Apply Card */}
-                {hasCodeChanges && msg.changedFiles && (
-                  <div className="mt-2.5 pt-2 border-t border-border/60">
-                    <div className="flex items-center justify-between gap-2 mb-2">
-                      <div className="flex items-center gap-1 text-[11px] text-muted-foreground font-medium">
-                        <FileCode className="size-3" />
-                        <span>
-                          {Object.keys(msg.changedFiles).join(", ")}
-                        </span>
-                      </div>
-                      <Badge variant="outline" className="text-[10px] py-0 px-1 text-emerald-500 border-emerald-500/30">
-                        Ready
-                      </Badge>
-                    </div>
+              <MessageContent align="start">
+                <MessageHeader>
+                  <span className="font-semibold text-foreground">21st Copilot</span>
+                  <Badge variant="outline" className="text-[9px] py-0 px-1 font-normal text-muted-foreground">
+                    {aiModel}
+                  </Badge>
+                </MessageHeader>
 
-                    <Button
-                      variant={isApplied ? "outline" : "default"}
-                      size="sm"
-                      onClick={() =>
-                        handleApplyChanges(msg.id, msg.changedFiles!)
-                      }
-                      disabled={isApplied}
-                      className="w-full h-7 text-xs font-medium gap-1.5"
-                    >
-                      {isApplied ? (
-                        <>
-                          <Check className="size-3 text-emerald-500" />
-                          <span>Applied to Editor</span>
-                        </>
-                      ) : (
-                        <>
-                          <Sparkles className="size-3" />
-                          <span>Apply to Editor</span>
-                        </>
-                      )}
-                    </Button>
-                  </div>
-                )}
-              </div>
-              <span className="text-[10px] text-muted-foreground mt-1 px-1">
-                {msg.timestamp}
-              </span>
-            </div>
+                <Bubble variant="outline" align="start" className="w-full">
+                  <BubbleContent>{msg.content}</BubbleContent>
+
+                  {/* Trace for AI Activity & 1-Click Code Apply */}
+                  {hasCodeChanges && msg.changedFiles && (
+                    <Trace>
+                      <TraceLine status="done">
+                        <div className="flex items-center gap-1.5 font-medium text-foreground">
+                          <FileCode className="size-3.5 text-primary" />
+                          <span>{Object.keys(msg.changedFiles).join(", ")}</span>
+                        </div>
+                        <Badge variant="secondary" className="text-[9px] py-0 px-1 font-mono">
+                          Modified
+                        </Badge>
+                      </TraceLine>
+
+                      <Button
+                        variant={isApplied ? "outline" : "default"}
+                        size="sm"
+                        onClick={() =>
+                          handleApplyChanges(msg.id, msg.changedFiles!)
+                        }
+                        disabled={isApplied}
+                        className="w-full h-7 text-xs font-medium gap-1.5 mt-1"
+                      >
+                        {isApplied ? (
+                          <>
+                            <Check className="size-3 text-emerald-500" />
+                            <span>Applied to Monaco Editor</span>
+                          </>
+                        ) : (
+                          <>
+                            <Sparkles className="size-3" />
+                            <span>Apply Changes to Editor</span>
+                          </>
+                        )}
+                      </Button>
+                    </Trace>
+                  )}
+                </Bubble>
+
+                <MessageFooter>{msg.timestamp}</MessageFooter>
+              </MessageContent>
+            </Message>
           );
         })}
 
-        {/* Thinking Indicator */}
+        {/* Real-time Assistant Trace Activity when Thinking */}
         {isAiThinking && (
-          <div className="flex items-center gap-2 rounded-xl bg-muted/40 border border-border p-3 text-xs text-muted-foreground animate-pulse">
-            <Loader2 className="size-3.5 animate-spin text-primary" />
-            <span>21st Copilot is reviewing and generating code...</span>
-          </div>
+          <Message align="start">
+            <MessageAvatar>
+              <Avatar className="size-6 bg-primary text-primary-foreground shadow-2xs">
+                <AvatarFallback className="bg-primary text-primary-foreground font-semibold">
+                  <Sparkles className="size-3" />
+                </AvatarFallback>
+              </Avatar>
+            </MessageAvatar>
+            <MessageContent align="start">
+              <Bubble variant="muted" align="start" className="w-full">
+                <Trace className="border-none bg-transparent p-0 m-0">
+                  <TraceLine status="running">
+                    <div className="flex items-center gap-2 text-foreground font-medium">
+                      <Loader2 className="size-3.5 animate-spin text-primary" />
+                      <span>Reviewing 21st.dev guidelines & authoring code...</span>
+                    </div>
+                  </TraceLine>
+                </Trace>
+              </Bubble>
+            </MessageContent>
+          </Message>
         )}
       </div>
 
-      {/* Chat Prompt Input Box */}
+      {/* Advanced Chat Prompt Input Box */}
       <form
         onSubmit={(e) => {
           e.preventDefault();
           handleSubmitPrompt();
         }}
-        className="flex shrink-0 items-center gap-2 border-t border-border bg-background p-2.5"
+        className="p-2.5 border-t border-border bg-background"
       >
-        <Input
-          type="text"
-          value={promptInput}
-          onChange={(e) => setPromptInput(e.target.value)}
-          placeholder="Ask AI to modify, fix, or add features..."
-          disabled={isAiThinking}
-          className="h-8 text-xs bg-muted/40"
-        />
-        <Button
-          type="submit"
-          variant="default"
-          size="icon"
-          disabled={isAiThinking || !promptInput.trim()}
-          className="size-8 shrink-0"
-        >
-          {isAiThinking ? (
-            <Loader2 className="size-3.5 animate-spin" />
-          ) : (
-            <Send className="size-3.5" />
-          )}
-          <span className="sr-only">Send</span>
-        </Button>
+        <div className="flex flex-col gap-1.5 rounded-xl border border-border/80 bg-muted/20 p-2 shadow-2xs focus-within:border-primary/40 focus-within:ring-1 focus-within:ring-ring transition-all">
+          <Textarea
+            ref={textareaRef}
+            rows={2}
+            value={promptInput}
+            onChange={(e) => setPromptInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="Ask AI to modify, fix, or add features... (Enter to send, Shift+Enter for newline)"
+            disabled={isAiThinking}
+            className="min-h-[50px] resize-none border-0 p-0 text-xs bg-transparent shadow-none focus-visible:ring-0 placeholder:text-muted-foreground/70"
+          />
+
+          <div className="flex items-center justify-between pt-1 border-t border-border/40 select-none">
+            <span className="text-[10px] text-muted-foreground">
+              Press <kbd className="px-1 py-0.5 rounded bg-muted font-mono text-[9px]">Enter</kbd> to send
+            </span>
+
+            <Button
+              type="submit"
+              variant="default"
+              size="sm"
+              disabled={isAiThinking || !promptInput.trim()}
+              className="h-6 px-2.5 text-[11px] gap-1 font-medium"
+            >
+              {isAiThinking ? (
+                <Loader2 className="size-3 animate-spin" />
+              ) : (
+                <CornerDownLeft className="size-3" />
+              )}
+              <span>Send</span>
+            </Button>
+          </div>
+        </div>
       </form>
 
       {/* Free Gemini API Key Configuration Dialog */}
