@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useStudioStore, StudioFileName } from "@/lib/store/studio-store";
 import { MonacoCodeEditor } from "./monaco-editor";
 import { Button } from "@/components/ui/button";
@@ -22,7 +22,9 @@ import {
   Check,
   AlertCircle,
   Loader2,
+  Terminal,
 } from "lucide-react";
+import { TerminalPanel } from "./terminal-panel";
 
 export function EditorPanel() {
   const {
@@ -30,14 +32,32 @@ export function EditorPanel() {
     activeTab,
     dependencies,
     compilerError,
+    terminalLogs,
+    isTerminalOpen,
     updateFile,
     setActiveTab,
     resetCurrentTemplate,
     setDependencyModalOpen,
+    toggleTerminal,
   } = useStudioStore();
 
   const [isFormatting, setIsFormatting] = useState(false);
   const [formatSuccess, setFormatSuccess] = useState(false);
+
+  // Global shortcut to toggle terminal (Ctrl+` or Cmd+`)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "`") {
+        e.preventDefault();
+        toggleTerminal();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [toggleTerminal]);
+
+  const errorCount = terminalLogs.filter((l) => l.type === "error").reduce((acc, l) => acc + l.count, 0);
+  const warnCount = terminalLogs.filter((l) => l.type === "warn").reduce((acc, l) => acc + l.count, 0);
 
   const tabs: Array<{
     id: StudioFileName;
@@ -182,6 +202,45 @@ export function EditorPanel() {
             </TooltipTrigger>
             <TooltipContent side="bottom">Reset code to starter blueprint</TooltipContent>
           </Tooltip>
+
+          <Separator orientation="vertical" className="h-3.5 mx-0.5" />
+
+          {/* Terminal / Console Toggle Button */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant={isTerminalOpen ? "secondary" : "ghost"}
+                size="sm"
+                onClick={toggleTerminal}
+                className={`h-7 px-2 text-xs gap-1.5 transition-colors ${
+                  isTerminalOpen
+                    ? "bg-muted text-foreground font-medium"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <Terminal className="size-3 text-emerald-500" />
+                <span className="hidden sm:inline">Terminal</span>
+                {errorCount > 0 ? (
+                  <Badge
+                    variant="destructive"
+                    className="h-4 px-1 text-[9px] font-bold"
+                  >
+                    {errorCount}
+                  </Badge>
+                ) : warnCount > 0 ? (
+                  <Badge
+                    variant="secondary"
+                    className="h-4 px-1 text-[9px] text-amber-500 bg-amber-500/10"
+                  >
+                    {warnCount}
+                  </Badge>
+                ) : null}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">
+              Toggle Terminal & Dev Console (Ctrl+`)
+            </TooltipContent>
+          </Tooltip>
         </div>
       </div>
 
@@ -203,9 +262,39 @@ export function EditorPanel() {
         />
       </div>
 
+      {/* Interactive Bottom Terminal & Console Drawer */}
+      <TerminalPanel />
+
       {/* Status Footer */}
       <div className="flex h-7 shrink-0 items-center justify-between border-t border-border bg-muted/20 px-3 text-xs text-muted-foreground select-none">
         <div className="flex items-center gap-2">
+          {/* Terminal Toggle Quick Button in Status Bar */}
+          <button
+            onClick={toggleTerminal}
+            className={`flex items-center gap-1.5 px-1.5 py-0.5 rounded text-[11px] transition-colors cursor-pointer ${
+              isTerminalOpen
+                ? "bg-muted text-foreground font-medium"
+                : "hover:bg-muted text-muted-foreground hover:text-foreground"
+            }`}
+            title="Toggle Console & Terminal (Ctrl+`)"
+          >
+            <Terminal className="size-3 text-emerald-500" />
+            <span>Console</span>
+            {errorCount > 0 && (
+              <span className="flex items-center gap-0.5 bg-red-500/15 text-red-500 text-[10px] font-bold px-1 rounded-sm">
+                <AlertCircle className="size-2.5" />
+                {errorCount}
+              </span>
+            )}
+            {warnCount > 0 && errorCount === 0 && (
+              <span className="text-amber-500 text-[10px] bg-amber-500/15 font-bold px-1 rounded-sm">
+                {warnCount}
+              </span>
+            )}
+          </button>
+
+          <Separator orientation="vertical" className="h-3" />
+
           <span className="flex items-center gap-1.5">
             <span className="size-1.5 rounded-full bg-emerald-500" />
             <span className="text-foreground font-medium">{activeTab}</span>

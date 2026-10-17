@@ -27,6 +27,7 @@ import {
   Sun,
   ExternalLink,
   Sparkles,
+  Terminal,
 } from "lucide-react";
 
 export function StudioHeader() {
@@ -34,9 +35,15 @@ export function StudioHeader() {
     currentTemplateId,
     loadTemplate,
     setPublishModalOpen,
+    isTerminalOpen,
+    toggleTerminal,
+    terminalLogs,
   } = useStudioStore();
 
   const [isDark, setIsDark] = useState(true);
+
+  const errorCount = terminalLogs.filter((l) => l.type === "error").reduce((acc, l) => acc + l.count, 0);
+  const warnCount = terminalLogs.filter((l) => l.type === "warn").reduce((acc, l) => acc + l.count, 0);
 
   useEffect(() => {
     const root = document.documentElement;
@@ -144,6 +151,45 @@ export function StudioHeader() {
 
       {/* Right: Actions */}
       <div className="flex items-center gap-2">
+        {/* Terminal Toggle Button */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant={isTerminalOpen ? "secondary" : "ghost"}
+              size="sm"
+              onClick={toggleTerminal}
+              className={`h-8 gap-1.5 px-2.5 text-xs transition-colors ${
+                isTerminalOpen
+                  ? "bg-muted text-foreground font-medium"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <Terminal className="size-3.5 text-emerald-500" />
+              <span className="hidden sm:inline">Terminal</span>
+              {errorCount > 0 ? (
+                <Badge
+                  variant="destructive"
+                  className="h-4 px-1 text-[9px] font-bold"
+                >
+                  {errorCount}
+                </Badge>
+              ) : warnCount > 0 ? (
+                <Badge
+                  variant="secondary"
+                  className="h-4 px-1 text-[9px] text-amber-500 bg-amber-500/10"
+                >
+                  {warnCount}
+                </Badge>
+              ) : null}
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom">
+            Toggle Terminal & Dev Console (Ctrl+`)
+          </TooltipContent>
+        </Tooltip>
+
+        <Separator orientation="vertical" className="h-4 mx-0.5" />
+
         {/* 21st.dev Publish Button */}
         <Tooltip>
           <TooltipTrigger asChild>

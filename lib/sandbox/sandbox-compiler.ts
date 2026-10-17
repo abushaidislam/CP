@@ -335,8 +335,64 @@ export function compileSandboxHtml(
       } catch (e) {}
     }
 
+    function serializeArg(arg) {
+      if (arg === null) return "null";
+      if (arg === undefined) return "undefined";
+      if (arg instanceof Error) return arg.stack || arg.message;
+      if (typeof arg === "function") return arg.toString();
+      if (typeof arg === "object") {
+        const seen = new WeakSet();
+        try {
+          return JSON.stringify(arg, (key, value) => {
+            if (typeof value === "object" && value !== null) {
+              if (seen.has(value)) return "[Circular]";
+              seen.add(value);
+            }
+            if (typeof value === "function") return "[Function]";
+            return value;
+          }, 2);
+        } catch (e) {
+          return Object.prototype.toString.call(arg);
+        }
+      }
+      return String(arg);
+    }
+
+    function sendConsoleLog(level, args) {
+      try {
+        const message = args.map(serializeArg).join(" ");
+        notifyParent({
+          type: "SANDBOX_CONSOLE",
+          level: level,
+          message: message,
+        });
+      } catch (e) {}
+    }
+
+    const _origLog = console.log;
+    const _origWarn = console.warn;
+    const _origError = console.error;
+    const _origInfo = console.info;
+
+    console.log = function(...args) {
+      _origLog.apply(console, args);
+      sendConsoleLog("log", args);
+    };
+    console.warn = function(...args) {
+      _origWarn.apply(console, args);
+      sendConsoleLog("warn", args);
+    };
+    console.error = function(...args) {
+      _origError.apply(console, args);
+      sendConsoleLog("error", args);
+    };
+    console.info = function(...args) {
+      _origInfo.apply(console, args);
+      sendConsoleLog("info", args);
+    };
+
     function renderErrorOverlay(title, msg) {
-      console.error("[Runtime Error]:", msg);
+      _origError("[Runtime Error]:", msg);
       const rootEl = document.getElementById("root");
       if (rootEl) {
         rootEl.innerHTML = \`
@@ -353,11 +409,15 @@ export function compileSandboxHtml(
     }
 
     window.addEventListener("error", (e) => {
-      renderErrorOverlay("Runtime JavaScript Error", e.error ? e.error.message : e.message);
+      const errMsg = e.error ? (e.error.stack || e.error.message) : e.message;
+      renderErrorOverlay("Runtime JavaScript Error", errMsg);
+      sendConsoleLog("error", [errMsg]);
     });
 
     window.addEventListener("unhandledrejection", (e) => {
-      renderErrorOverlay("Unhandled Promise Rejection", String(e.reason && e.reason.message ? e.reason.message : e.reason));
+      const reason = e.reason ? (e.reason.stack || e.reason.message || String(e.reason)) : "Unknown rejection";
+      renderErrorOverlay("Unhandled Promise Rejection", String(reason));
+      sendConsoleLog("error", [String(reason)]);
     });
 
     // Error boundary for React tree
@@ -475,7 +535,7 @@ export function compileSandboxHtml(
 
     bootstrap();
 
-    // Stitch Simulated Interaction Handler & Real-Time Theme Message Handler
+    // Stitch Simulated Interaction, Theme, and Interactive Command REPL Handler
     let simulationTimer = null;
     window.addEventListener("message", (event) => {
       if (event.data && event.data.type === "TRIGGER_SIMULATED_HOVER") {
@@ -488,6 +548,26 @@ export function compileSandboxHtml(
           html.classList.add("dark");
         } else {
           html.classList.remove("dark");
+        }
+      }
+      if (event.data && event.data.type === "EVAL_COMMAND") {
+        const { code, id } = event.data;
+        try {
+          // Evaluate in global context
+          const evalResult = (0, eval)(code);
+          notifyParent({
+            type: "COMMAND_RESULT",
+            id: id,
+            success: true,
+            result: serializeArg(evalResult),
+          });
+        } catch (err) {
+          notifyParent({
+            type: "COMMAND_RESULT",
+            id: id,
+            success: false,
+            error: err instanceof Error ? err.message : String(err),
+          });
         }
       }
     });

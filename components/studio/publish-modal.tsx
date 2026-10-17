@@ -292,14 +292,14 @@ export function PublishModal() {
                 Component Metadata & Settings
               </span>
               <div className="flex items-center gap-2">
-                <span className="text-[11px] text-muted-foreground font-mono">
+                <span className="text-[11px] text-muted-foreground font-sans">
                   Visibility:
                 </span>
-                <div className="inline-flex rounded-md border border-border bg-background p-0.5 text-xs font-mono">
+                <div className="inline-flex rounded-md border border-border bg-background p-0.5 text-xs font-sans">
                   <button
                     type="button"
                     onClick={() => setVisibility("published")}
-                    className={`px-2 py-0.5 rounded text-[11px] transition-colors ${
+                    className={`px-2 py-0.5 rounded text-[11px] transition-colors font-sans ${
                       visibility === "published"
                         ? "bg-primary text-primary-foreground font-medium"
                         : "text-muted-foreground hover:text-foreground"
@@ -310,7 +310,7 @@ export function PublishModal() {
                   <button
                     type="button"
                     onClick={() => setVisibility("private")}
-                    className={`px-2 py-0.5 rounded text-[11px] transition-colors ${
+                    className={`px-2 py-0.5 rounded text-[11px] transition-colors font-sans ${
                       visibility === "private"
                         ? "bg-primary text-primary-foreground font-medium"
                         : "text-muted-foreground hover:text-foreground"
@@ -323,9 +323,9 @@ export function PublishModal() {
             </div>
 
             {/* Row 1: Title, Slug, Registry */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 font-sans">
               <div>
-                <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
+                <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider font-sans">
                   Title / Name
                 </label>
                 <Input
@@ -333,12 +333,12 @@ export function PublishModal() {
                   value={customTitle}
                   onChange={(e) => setCustomTitle(e.target.value)}
                   placeholder={ast.title || "Interactive Button"}
-                  className="mt-1 h-8 text-xs bg-background"
+                  className="mt-1 h-8 text-xs bg-background font-sans"
                 />
               </div>
 
               <div>
-                <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
+                <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider font-sans">
                   Slug
                 </label>
                 <Input
@@ -351,16 +351,16 @@ export function PublishModal() {
               </div>
 
               <div>
-                <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
+                <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider font-sans">
                   Registry Type
                 </label>
-                <div className="mt-1 flex rounded-md border border-border bg-background p-0.5 h-8">
+                <div className="mt-1 flex rounded-md border border-border bg-background p-0.5 h-8 font-sans">
                   {(["ui", "hooks", "blocks", "icons"] as const).map((t) => (
                     <button
                       key={t}
                       type="button"
                       onClick={() => setRegistryType(t)}
-                      className={`flex-1 rounded text-[11px] font-mono transition-colors ${
+                      className={`flex-1 rounded text-[11px] font-sans transition-colors ${
                         registryType === t
                           ? "bg-primary text-primary-foreground font-medium shadow-2xs"
                           : "text-muted-foreground hover:text-foreground"
