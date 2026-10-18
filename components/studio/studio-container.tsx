@@ -13,7 +13,7 @@ import { Code, Eye, Code2 } from "lucide-react";
 import { useStudioStore } from "@/lib/store/studio-store";
 
 export function StudioContainer() {
-  const { isAiPanelOpen, toggleAiPanel, layoutMode, isTerminalOpen } = useStudioStore();
+  const { isAiPanelOpen, toggleAiPanel, setAiPanelOpen, layoutMode, isTerminalOpen } = useStudioStore();
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const [mobileTab, setMobileTab] = useState<"editor" | "preview" | "ai">("preview");
   const [splitRatio, setSplitRatio] = useState(48); // Left width percentage on desktop
@@ -72,7 +72,13 @@ export function StudioContainer() {
       <div className="flex md:hidden border-b border-border bg-background p-2">
         <Tabs
           value={mobileTab}
-          onValueChange={(val) => setMobileTab(val as "editor" | "preview" | "ai")}
+          onValueChange={(val) => {
+            const next = val as "editor" | "preview" | "ai";
+            setMobileTab(next);
+            if (next === "ai") {
+              setAiPanelOpen(true);
+            }
+          }}
           className="w-full"
         >
           <TabsList className="grid grid-cols-3 w-full h-8">
@@ -150,7 +156,15 @@ export function StudioContainer() {
                 : "hidden"
             }`}
           >
-            <AiAssistantPanel />
+            <AiAssistantPanel
+              isMobile={mobileTab === "ai"}
+              onClose={() => {
+                setAiPanelOpen(false);
+                if (mobileTab === "ai") {
+                  setMobileTab("preview");
+                }
+              }}
+            />
           </div>
         </div>
 

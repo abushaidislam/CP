@@ -101,7 +101,10 @@ export function Reasoning({
   return (
     <div className={cn("w-full my-1.5 select-none font-sans", className)}>
       <TraceCollapsible open={isOpen} onOpenChange={setIsOpen}>
-        <TraceCollapsibleTrigger className="group/trigger inline-flex items-center gap-2 py-1 px-2 -ml-2 rounded-md text-xs text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors cursor-pointer select-none">
+        <TraceCollapsibleTrigger
+          hideChevron={true}
+          className="group/trigger inline-flex items-center gap-2 py-1 px-2 -ml-2 rounded-md text-xs text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors cursor-pointer select-none"
+        >
           {isStreaming ? (
             <>
               <span className="relative flex size-2 shrink-0">
@@ -326,6 +329,7 @@ export function ChangeApprovalCard({
   const [isExpanded, setIsExpanded] = React.useState<boolean>(false);
   const [viewMode, setViewMode] = React.useState<"diff" | "full">("diff");
   const [copied, setCopied] = React.useState<boolean>(false);
+  const [confirmRevert, setConfirmRevert] = React.useState<boolean>(false);
 
   React.useEffect(() => {
     if (fileNames.length > 0 && !fileNames.includes(selectedFile)) {
@@ -628,15 +632,43 @@ export function ChangeApprovalCard({
               </span>
             </div>
 
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={onRevert}
-              className="h-6.5 px-2 text-[11px] font-medium text-muted-foreground hover:text-foreground gap-1 rounded-md font-sans shrink-0"
-            >
-              <RotateCcw className="size-3" />
-              <span>Revert</span>
-            </Button>
+            {confirmRevert ? (
+              <div className="flex items-center gap-1.5 shrink-0 animate-in fade-in duration-150">
+                <span className="text-[10px] text-rose-500 font-sans hidden sm:inline">
+                  Overwrite current edits?
+                </span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setConfirmRevert(false)}
+                  className="h-6 px-1.5 text-[10px] text-muted-foreground hover:text-foreground font-sans rounded-md"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => {
+                    setConfirmRevert(false);
+                    onRevert();
+                  }}
+                  className="h-6 px-2 text-[10px] font-sans rounded-md gap-1"
+                >
+                  <RotateCcw className="size-2.5" />
+                  <span>Confirm Revert</span>
+                </Button>
+              </div>
+            ) : (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setConfirmRevert(true)}
+                className="h-6.5 px-2 text-[11px] font-medium text-muted-foreground hover:text-foreground gap-1 rounded-md font-sans shrink-0"
+              >
+                <RotateCcw className="size-3" />
+                <span>Revert</span>
+              </Button>
+            )}
           </>
         )}
 
@@ -758,7 +790,10 @@ export function Plan({
       )}
     >
       <TraceCollapsible open={isOpen} onOpenChange={setIsOpen}>
-        <TraceCollapsibleTrigger className="group/trigger flex w-full items-center justify-between text-left hover:no-underline select-none cursor-pointer">
+        <TraceCollapsibleTrigger
+          hideChevron={true}
+          className="group/trigger flex w-full items-center justify-between text-left hover:no-underline select-none cursor-pointer"
+        >
           <div className="flex items-center gap-2">
             {isDone ? (
               <CheckCircle2 className="size-3.5 text-emerald-500" />
@@ -1259,7 +1294,7 @@ export function PromptInput({
     >
       {/* Attached Files & Snippets Tray */}
       {hasAttachments && (
-        <div className="flex flex-wrap items-center gap-1.5 pb-2 mb-1.5 border-b border-border/40 select-none animate-in fade-in duration-150">
+        <div className="flex flex-wrap items-center gap-1.5 pb-2 mb-1.5 border-b border-border/40 select-none animate-in fade-in duration-150 max-h-24 overflow-y-auto pr-1">
           {/* Images */}
           {attachedImages.map((img) => (
             <div

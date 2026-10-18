@@ -115,10 +115,17 @@ const TraceCollapsibleTriggerChevron = React.forwardRef<
 ));
 TraceCollapsibleTriggerChevron.displayName = "TraceCollapsibleTriggerChevron";
 
+interface TraceCollapsibleTriggerProps
+  extends React.ComponentPropsWithoutRef<
+    typeof CollapsiblePrimitive.CollapsibleTrigger
+  > {
+  hideChevron?: boolean;
+}
+
 const TraceCollapsibleTrigger = React.forwardRef<
   HTMLButtonElement,
-  React.ComponentPropsWithoutRef<typeof CollapsiblePrimitive.CollapsibleTrigger>
->(({ className, children, ...props }, ref) => {
+  TraceCollapsibleTriggerProps
+>(({ className, children, hideChevron = false, ...props }, ref) => {
   return (
     <CollapsiblePrimitive.CollapsibleTrigger
       ref={ref}
@@ -130,7 +137,7 @@ const TraceCollapsibleTrigger = React.forwardRef<
       {...props}
     >
       {children}
-      <TraceCollapsibleTriggerChevron />
+      {!hideChevron && <TraceCollapsibleTriggerChevron />}
     </CollapsiblePrimitive.CollapsibleTrigger>
   );
 });

@@ -45,6 +45,7 @@ import {
   CodePreviewDialog,
 } from "@/components/ui/ai-elements";
 import { MarkdownContent } from "@/components/ui/markdown-content";
+import { cn } from "@/lib/utils";
 import {
   Check,
   PanelRightClose,
@@ -62,6 +63,8 @@ import {
   ArrowRight,
   Code2,
   Eye,
+  AlertCircle,
+  X,
 } from "lucide-react";
 
 const MODEL_OPTIONS = [
@@ -120,7 +123,12 @@ const ROLE_OPTIONS: Array<{
   },
 ];
 
-export function AiAssistantPanel() {
+export interface AiAssistantPanelProps {
+  isMobile?: boolean;
+  onClose?: () => void;
+}
+
+export function AiAssistantPanel({ isMobile = false, onClose }: AiAssistantPanelProps = {}) {
   const {
     files,
     dependencies,
@@ -130,6 +138,7 @@ export function AiAssistantPanel() {
     aiRole,
     aiChatMessages,
     isAiThinking,
+    geminiApiKey,
     setAiPanelOpen,
     setAiPanelWidth,
     setAiModel,
@@ -152,6 +161,7 @@ export function AiAssistantPanel() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [thinkingSeconds, setThinkingSeconds] = useState(0);
   const [showGuidelinesDrawer, setShowGuidelinesDrawer] = useState(false);
+  const [attachmentNotice, setAttachmentNotice] = useState<string | null>(null);
 
   const chatScrollRef = useRef<HTMLDivElement>(null);
   const isResizingRef = useRef(false);
@@ -162,12 +172,25 @@ export function AiAssistantPanel() {
 
   // Handle uploaded or clipboard-pasted image files
   const handleImageFilesAdded = (fileList: File[]) => {
-    const validFiles = fileList.filter((f) => f.type.startsWith("image/"));
+    const imageFiles = fileList.filter((f) => f.type.startsWith("image/"));
+    if (imageFiles.length === 0 && fileList.length > 0) {
+      setAttachmentNotice("Only image files (PNG, JPG, WebP, GIF) are supported.");
+      setTimeout(() => setAttachmentNotice(null), 4000);
+      return;
+    }
+
+    const oversized = imageFiles.filter((f) => f.size > 8 * 1024 * 1024);
+    if (oversized.length > 0) {
+      setAttachmentNotice(
+        `"${oversized[0].name}" exceeds 8MB limit (${(oversized[0].size / (1024 * 1024)).toFixed(1)}MB). Please attach a smaller image.`
+      );
+      setTimeout(() => setAttachmentNotice(null), 5000);
+    }
+
+    const validFiles = imageFiles.filter((f) => f.size <= 8 * 1024 * 1024);
     if (validFiles.length === 0) return;
 
     validFiles.forEach((file) => {
-      // 8MB limit per image
-      if (file.size > 8 * 1024 * 1024) return;
       const reader = new FileReader();
       reader.onload = (e) => {
         const dataUrl = e.target?.result as string;
@@ -180,6 +203,7 @@ export function AiAssistantPanel() {
             sizeBytes: file.size,
           };
           setAttachedImages((prev) => [...prev, newImg]);
+          setAttachmentNotice(null);
         }
       };
       reader.readAsDataURL(file);
@@ -418,6 +442,7 @@ export function AiAssistantPanel() {
             language: cs.language,
             code: cs.code,
           })),
+          apiKey: geminiApiKey || undefined,
         }),
       });
 
@@ -490,21 +515,26 @@ export function AiAssistantPanel() {
     }
   };
 
-  if (!isAiPanelOpen) return null;
+  if (!isAiPanelOpen && !isMobile) return null;
 
   return (
     <div
-      style={{ width: `${aiPanelWidth}px` }}
-      className="relative flex h-full flex-col border-l border-border bg-background text-foreground font-sans select-none z-20 shrink-0"
+      style={isMobile ? { width: "100%" } : { width: `${aiPanelWidth}px` }}
+      className={cn(
+        "relative flex h-full flex-col bg-background text-foreground font-sans select-none z-20 shrink-0",
+        isMobile ? "w-full border-0" : "border-l border-border"
+      )}
     >
-      {/* Resizable Left Edge Drag Handle */}
-      <div
-        onMouseDown={handleResizeStart}
-        className="absolute left-0 top-0 bottom-0 w-1.5 cursor-ew-resize hover:bg-border/80 transition-colors z-30 group"
-        title="Drag left/right to resize Copilot panel"
-      >
-        <div className="h-full w-px bg-border group-hover:bg-foreground/30 transition-colors" />
-      </div>
+      {/* Resizable Left Edge Drag Handle (desktop only) */}
+      {!isMobile && (
+        <div
+          onMouseDown={handleResizeStart}
+          className="absolute left-0 top-0 bottom-0 w-1.5 cursor-ew-resize hover:bg-border/80 transition-colors z-30 group"
+          title="Drag left/right to resize Copilot panel"
+        >
+          <div className="h-full w-px bg-border group-hover:bg-foreground/30 transition-colors" />
+        </div>
+      )}
 
       {/* Top Header - Editorial, Clean & Polished */}
       <div className="flex h-11 shrink-0 items-center justify-between border-b border-border bg-card/40 px-3 select-none">
@@ -680,7 +710,10 @@ export function AiAssistantPanel() {
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={() => setAiPanelOpen(false)}
+                onClick={() => {
+                  setAiPanelOpen(false);
+                  onClose?.();
+                }}
                 className="size-7 text-muted-foreground hover:text-foreground rounded-md"
               >
                 <PanelRightClose className="size-3.5" />
@@ -694,7 +727,7 @@ export function AiAssistantPanel() {
 
       {/* Collapsible Guidelines Drawer Banner */}
       {showGuidelinesDrawer && (
-        <div className="border-b border-border bg-card/60 p-3 select-none font-sans animate-in slide-in-from-top-1 duration-150">
+        <div className="border-b border-border bg-card/70 p-3 select-none font-sans animate-in slide-in-from-top-1 duration-150 max-h-[38vh] overflow-y-auto">
           <Plan
             title="21st.dev Component Standards"
             tasks={planTasks}
@@ -1045,6 +1078,24 @@ export function AiAssistantPanel() {
 
       {/* Bottom Area: Command-Grade Prompt Input with Attachments */}
       <div className="p-3 border-t border-border bg-card/30 select-none">
+        {attachmentNotice && (
+          <div className="mb-2 flex items-center justify-between gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-2.5 py-1.5 text-xs text-amber-600 dark:text-amber-400 font-sans animate-in fade-in duration-150">
+            <div className="flex items-center gap-1.5 min-w-0">
+              <AlertCircle className="size-3.5 shrink-0" />
+              <span className="truncate">{attachmentNotice}</span>
+            </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setAttachmentNotice(null)}
+              className="size-4 p-0 text-amber-600 dark:text-amber-400 hover:bg-transparent shrink-0"
+            >
+              <X className="size-3" />
+              <span className="sr-only">Dismiss</span>
+            </Button>
+          </div>
+        )}
+
         <PromptInput
           value={promptInput}
           onChange={(e) => setPromptInput(e.target.value)}

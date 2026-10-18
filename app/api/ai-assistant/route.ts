@@ -31,6 +31,7 @@ interface RequestBody {
   history?: ChatHistoryItem[];
   images?: AttachedImagePayload[];
   codeSnippets?: AttachedCodePayload[];
+  apiKey?: string;
 }
 
 // Supported official Gemini models matching instructions
@@ -107,7 +108,7 @@ export async function POST(req: NextRequest) {
       dependencies
     );
 
-    const apiKey = process.env.GEMINI_API_KEY?.trim();
+    const apiKey = (body.apiKey || process.env.GEMINI_API_KEY)?.trim();
 
     // If server has no API key configured, return static analysis fallback
     if (!apiKey) {

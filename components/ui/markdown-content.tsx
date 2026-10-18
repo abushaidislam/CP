@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { Check, Copy, FileCode2 } from "lucide-react";
+import { Check, Copy, FileCode2, ExternalLink } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 
@@ -233,11 +233,14 @@ export function MarkdownContent({ content, className }: MarkdownContentProps) {
 
 // Parses inline bold **text** and inline code `code`
 function renderInlineMarkdown(str: string): React.ReactNode {
-  // Regex to match `code` or **bold**
-  const regex = /(`[^`]+`|\*\*[^*]+\*\*)/g;
+  // Regex to match `code` or **bold** or [text](url) or *italic*
+  const regex = /(`[^`]+`|\*\*[^*]+\*\*|\[[^\]]+\]\([^)]+\)|\*[^*]+\*)/g;
   const parts = str.split(regex);
 
   return parts.map((part, index) => {
+    if (!part) return null;
+
+    // Inline code
     if (part.startsWith("`") && part.endsWith("`") && part.length >= 2) {
       return (
         <code
@@ -248,6 +251,8 @@ function renderInlineMarkdown(str: string): React.ReactNode {
         </code>
       );
     }
+
+    // Bold text
     if (part.startsWith("**") && part.endsWith("**") && part.length >= 4) {
       return (
         <strong key={index} className="font-semibold text-foreground font-sans">
@@ -255,6 +260,40 @@ function renderInlineMarkdown(str: string): React.ReactNode {
         </strong>
       );
     }
+
+    // Markdown link: [text](url)
+    if (part.startsWith("[") && part.includes("](") && part.endsWith(")")) {
+      const match = part.match(/^\[(.*?)\]\((.*?)\)$/);
+      if (match) {
+        const [, label, rawUrl] = match;
+        const isSafeUrl =
+          rawUrl.startsWith("http://") ||
+          rawUrl.startsWith("https://") ||
+          rawUrl.startsWith("#");
+        return (
+          <a
+            key={index}
+            href={isSafeUrl ? rawUrl : "#"}
+            target={rawUrl.startsWith("http") ? "_blank" : undefined}
+            rel={rawUrl.startsWith("http") ? "noopener noreferrer" : undefined}
+            className="inline-flex items-center gap-0.5 text-primary hover:underline font-medium font-sans"
+          >
+            <span>{label}</span>
+            {rawUrl.startsWith("http") && <ExternalLink className="size-2.5 opacity-70" />}
+          </a>
+        );
+      }
+    }
+
+    // Italic text
+    if (part.startsWith("*") && part.endsWith("*") && part.length >= 2) {
+      return (
+        <em key={index} className="italic text-foreground/90 font-sans">
+          {part.slice(1, -1)}
+        </em>
+      );
+    }
+
     return <span key={index}>{part}</span>;
   });
 }
