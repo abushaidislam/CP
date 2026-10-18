@@ -88,7 +88,7 @@ export interface RecordingConfig {
   resolution: "1080p" | "720p" | "square";
 }
 
-export type AiChatRole = "architect" | "designer" | "auditor" | "optimizer";
+export type AiChatRole = "copilot" | "architect" | "designer" | "auditor" | "optimizer";
 
 export interface StudioState {
   // Files
@@ -251,7 +251,7 @@ export const useStudioStore = create<StudioState>()(
       aiPanelWidth: 380,
       geminiApiKey: "",
       aiModel: "gemini-3.8-flash",
-      aiRole: "architect",
+      aiRole: "copilot",
       aiChatMessages: [],
       isAiThinking: false,
 

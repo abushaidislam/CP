@@ -3,7 +3,6 @@
 import React, { useState, useRef, useEffect, useMemo } from "react";
 import {
   useStudioStore,
-  AiChatRole,
   AttachedImage,
   AttachedCodeSnippet,
 } from "@/lib/store/studio-store";
@@ -91,37 +90,7 @@ const MODEL_OPTIONS = [
   },
 ];
 
-const ROLE_OPTIONS: Array<{
-  id: AiChatRole;
-  name: string;
-  short: string;
-  tagline: string;
-}> = [
-  {
-    id: "architect",
-    name: "Frontend Architect",
-    short: "Architect",
-    tagline: "Component APIs, TypeScript interfaces & 21st.dev standards",
-  },
-  {
-    id: "designer",
-    name: "UI/UX & Motion Designer",
-    short: "Designer",
-    tagline: "Tailwind aesthetics, clean typography & Framer Motion springs",
-  },
-  {
-    id: "auditor",
-    name: "Code & A11y Auditor",
-    short: "Auditor",
-    tagline: "Bug prevention, WCAG accessibility & error boundaries",
-  },
-  {
-    id: "optimizer",
-    name: "Performance Optimizer",
-    short: "Optimizer",
-    tagline: "Bundle efficiency, re-render avoidance & speed",
-  },
-];
+
 
 export interface AiAssistantPanelProps {
   isMobile?: boolean;
@@ -135,14 +104,12 @@ export function AiAssistantPanel({ isMobile = false, onClose }: AiAssistantPanel
     isAiPanelOpen,
     aiPanelWidth,
     aiModel,
-    aiRole,
     aiChatMessages,
     isAiThinking,
     geminiApiKey,
     setAiPanelOpen,
     setAiPanelWidth,
     setAiModel,
-    setAiRole,
     addAiChatMessage,
     approveAiMessageChanges,
     rejectAiMessageChanges,
@@ -285,12 +252,12 @@ export function AiAssistantPanel({ isMobile = false, onClose }: AiAssistantPanel
 
     const step3: ReasoningStep = {
       title: "Drafting architectural response & code updates",
-      description: `Synthesizing complete, compilable code changes and implementation notes aligned with ${ROLE_OPTIONS.find((r) => r.id === aiRole)?.name || "Frontend Architect"} standards.`,
+      description: "Synthesizing complete, compilable code changes and implementation notes aligned with Component Studio Co-Pilot standards.",
       status: thinkingSeconds < 4 ? "pending" : "running",
     };
 
     return [step1, step2, step3];
-  }, [thinkingSeconds, compLinesCount, passedCount, planTasks.length, aiRole]);
+  }, [thinkingSeconds, compLinesCount, passedCount, planTasks.length]);
 
   const currentStepTitle = useMemo(() => {
     if (thinkingSeconds < 2) return "Reading component structure & exports...";
@@ -359,7 +326,6 @@ export function AiAssistantPanel({ isMobile = false, onClose }: AiAssistantPanel
     };
   }, [setAiPanelWidth]);
 
-  const currentRoleObj = ROLE_OPTIONS.find((r) => r.id === aiRole) || ROLE_OPTIONS[0];
   const currentModelObj = MODEL_OPTIONS.find((m) => m.id === aiModel) || MODEL_OPTIONS[0];
 
   // Submit AI Prompt
@@ -430,7 +396,7 @@ export function AiAssistantPanel({ isMobile = false, onClose }: AiAssistantPanel
           cssCode: files["index.css"],
           dependencies,
           model: aiModel,
-          role: aiRole,
+          role: "copilot",
           history: historyPayload,
           images: currentImages.map((img) => ({
             name: img.name,
@@ -455,7 +421,7 @@ export function AiAssistantPanel({ isMobile = false, onClose }: AiAssistantPanel
       if (!res.ok) {
         addAiChatMessage({
           role: "assistant",
-          authorRole: currentRoleObj.name,
+          authorRole: "Co-Pilot",
           modelUsed: aiModel,
           content: data.error || "Failed to process request with Gemini AI.",
         });
@@ -489,7 +455,7 @@ export function AiAssistantPanel({ isMobile = false, onClose }: AiAssistantPanel
 
       addAiChatMessage({
         role: "assistant",
-        authorRole: currentRoleObj.name,
+        authorRole: "Co-Pilot",
         modelUsed: aiModel,
         content: data.message || "I've reviewed your component.",
         reasoning: {
@@ -506,7 +472,7 @@ export function AiAssistantPanel({ isMobile = false, onClose }: AiAssistantPanel
       const errorMsg = err instanceof Error ? err.message : String(err);
       addAiChatMessage({
         role: "assistant",
-        authorRole: currentRoleObj.name,
+        authorRole: "Co-Pilot",
         modelUsed: aiModel,
         content: `Connection error: ${errorMsg}. Please verify your network connection and server configuration.`,
       });
@@ -547,57 +513,12 @@ export function AiAssistantPanel({ isMobile = false, onClose }: AiAssistantPanel
             <span className="text-xs font-semibold tracking-tight text-foreground font-sans">
               Copilot
             </span>
+            <Badge variant="secondary" className="text-[10px] py-0 px-1.5 font-normal text-muted-foreground font-sans">
+              Co-Assistant
+            </Badge>
           </div>
 
           <div className="h-3.5 w-px bg-border/70 mx-0.5" />
-
-          {/* Role Dropdown */}
-          <DropdownMenu>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-6.5 gap-1 px-2 text-xs font-medium text-foreground/90 hover:bg-muted/70 hover:text-foreground font-sans rounded-md"
-                  >
-                    <span>{currentRoleObj.short}</span>
-                    <ChevronDown className="size-2.5 opacity-60" />
-                  </Button>
-                </DropdownMenuTrigger>
-              </TooltipTrigger>
-              <TooltipContent side="bottom">Switch Copilot persona</TooltipContent>
-            </Tooltip>
-            <DropdownMenuContent align="start" className="w-64 font-sans">
-              <DropdownMenuLabel className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
-                Copilot Persona
-              </DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              {ROLE_OPTIONS.map((r) => (
-                <DropdownMenuItem
-                  key={r.id}
-                  onClick={() => {
-                    setAiRole(r.id);
-                    addAiChatMessage({
-                      role: "system",
-                      content: `Persona switched to **${r.name}**. Guidelines focused on ${r.tagline}.`,
-                    });
-                  }}
-                  className="flex flex-col items-start gap-0.5 py-1.5 cursor-pointer font-sans"
-                >
-                  <div className="flex items-center justify-between w-full">
-                    <span className="font-medium text-xs text-foreground">
-                      {r.name}
-                    </span>
-                    {aiRole === r.id && <Check className="size-3.5 text-foreground" />}
-                  </div>
-                  <span className="text-[10px] text-muted-foreground leading-tight">
-                    {r.tagline}
-                  </span>
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
 
           {/* Model Dropdown */}
           <DropdownMenu>
@@ -769,22 +690,22 @@ export function AiAssistantPanel({ isMobile = false, onClose }: AiAssistantPanel
                 variant="outline"
                 onClick={() =>
                   handleSubmitPrompt(
-                    "Inspect component.tsx, demo.tsx, and index.css against all 21st.dev guidelines and auto-fix any issues.",
-                    "autofix"
+                    "Check component.tsx and demo.tsx for any runtime, syntax, or rendering errors, and fix them cleanly without changing existing styling.",
+                    "chat"
                   )
                 }
                 className="h-auto w-full flex items-start justify-start gap-2.5 p-2.5 rounded-lg border-border/70 bg-card/50 hover:bg-card hover:border-border text-left transition-all group whitespace-normal font-sans"
               >
                 <div className="size-6 rounded-md bg-muted flex items-center justify-center text-muted-foreground group-hover:text-foreground shrink-0 mt-0.5">
-                  <SlidersHorizontal className="size-3" />
+                  <ShieldCheck className="size-3" />
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="text-xs font-medium text-foreground flex items-center justify-between">
-                    <span>Auto-Fix Guidelines</span>
+                    <span>Fix Code & Runtime Errors</span>
                     <ArrowRight className="size-3 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground" />
                   </div>
                   <div className="text-[11px] font-normal text-muted-foreground leading-normal mt-0.5">
-                    Ensure cn(), typed Props, and client directives.
+                    Surgical fixes preserving your styling.
                   </div>
                 </div>
               </Button>
@@ -979,7 +900,7 @@ export function AiAssistantPanel({ isMobile = false, onClose }: AiAssistantPanel
               <MessageContent align="start">
                 <MessageHeader>
                   <span className="font-semibold text-foreground text-xs font-sans">
-                    {msg.authorRole || currentRoleObj.name}
+                    {msg.authorRole || "Co-Pilot"}
                   </span>
                   <span className="text-[10px] text-muted-foreground/60">•</span>
                   <Badge
@@ -1053,7 +974,7 @@ export function AiAssistantPanel({ isMobile = false, onClose }: AiAssistantPanel
             <MessageContent align="start" className="w-full">
               <MessageHeader>
                 <span className="font-semibold text-foreground text-xs font-sans">
-                  {currentRoleObj.name}
+                  Co-Pilot
                 </span>
                 <span className="text-[10px] text-muted-foreground/60">•</span>
                 <Badge
@@ -1069,7 +990,7 @@ export function AiAssistantPanel({ isMobile = false, onClose }: AiAssistantPanel
                 durationSeconds={thinkingSeconds}
                 activeStep={currentStepTitle}
                 steps={workingSteps}
-                summary={`Executing multi-turn analysis with ${currentModelObj.name} under ${currentRoleObj.name} constraints.`}
+                summary={`Executing multi-turn analysis with ${currentModelObj.name} under Component Studio standards.`}
               />
             </MessageContent>
           </Message>
@@ -1101,7 +1022,7 @@ export function AiAssistantPanel({ isMobile = false, onClose }: AiAssistantPanel
           onChange={(e) => setPromptInput(e.target.value)}
           onSubmit={() => handleSubmitPrompt()}
           isLoading={isAiThinking}
-          placeholder={`Ask ${currentRoleObj.short}... (paste image or code)`}
+          placeholder="Ask Copilot... (paste image or code)"
           attachedImages={attachedImages}
           onRemoveImage={handleRemoveImage}
           onPreviewImage={(img) =>
