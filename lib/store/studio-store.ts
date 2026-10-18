@@ -26,17 +26,58 @@ export interface TerminalLogEntry {
 
 export type TerminalFilter = "all" | "logs" | "warnings" | "errors" | "system";
 
+export interface AiReasoningStepItem {
+  title: string;
+  description?: string;
+  detail?: string;
+  status: "done" | "running" | "pending";
+}
+
+export interface AiReasoningTrace {
+  durationSeconds: number;
+  steps: AiReasoningStepItem[];
+  summary?: string;
+}
+
+export interface AttachedImage {
+  id: string;
+  name: string;
+  dataUrl: string;
+  mimeType: string;
+  sizeBytes?: number;
+}
+
+export interface AttachedCodeSnippet {
+  id: string;
+  title: string;
+  language: string;
+  code: string;
+}
+
 export interface AiChatMessage {
   id: string;
   role: "user" | "assistant" | "system";
   content: string;
   timestamp: string;
+  authorRole?: string;
+  modelUsed?: string;
+  reasoning?: AiReasoningTrace;
+  attachments?: {
+    images?: AttachedImage[];
+    codeSnippets?: AttachedCodeSnippet[];
+  };
   changedFiles?: Partial<{
     "component.tsx": string;
     "demo.tsx": string;
     "index.css": string;
   }>;
+  previousFiles?: Partial<{
+    "component.tsx": string;
+    "demo.tsx": string;
+    "index.css": string;
+  }>;
   applied?: boolean;
+  approvalStatus?: "pending" | "approved" | "rejected";
 }
 
 export interface RecordingConfig {
@@ -140,6 +181,16 @@ export interface StudioState {
   setAiRole: (role: AiChatRole) => void;
   addAiChatMessage: (msg: Omit<AiChatMessage, "id" | "timestamp">) => void;
   markAiMessageApplied: (id: string) => void;
+  approveAiMessageChanges: (
+    id: string,
+    changedFiles: Partial<{
+      "component.tsx": string;
+      "demo.tsx": string;
+      "index.css": string;
+    }>
+  ) => void;
+  rejectAiMessageChanges: (id: string) => void;
+  revertAiMessageChanges: (id: string) => void;
   clearAiChat: () => void;
   setAiThinking: (thinking: boolean) => void;
   applyAiChanges: (files: Partial<{
@@ -405,23 +456,95 @@ export const useStudioStore = create<StudioState>()(
       markAiMessageApplied: (id) =>
         set((state) => ({
           aiChatMessages: state.aiChatMessages.map((m) =>
-            m.id === id ? { ...m, applied: true } : m
+            m.id === id
+              ? { ...m, applied: true, approvalStatus: "approved" }
+              : m
           ),
         })),
 
+      approveAiMessageChanges: (id, changedFiles) =>
+        set((state) => {
+          const previousSnapshot: Partial<{
+            "component.tsx": string;
+            "demo.tsx": string;
+            "index.css": string;
+          }> = {};
+          const nextFiles = { ...state.files };
+
+          if (changedFiles["component.tsx"] !== undefined && changedFiles["component.tsx"] !== null) {
+            previousSnapshot["component.tsx"] = state.files["component.tsx"];
+            nextFiles["component.tsx"] = changedFiles["component.tsx"];
+          }
+          if (changedFiles["demo.tsx"] !== undefined && changedFiles["demo.tsx"] !== null) {
+            previousSnapshot["demo.tsx"] = state.files["demo.tsx"];
+            nextFiles["demo.tsx"] = changedFiles["demo.tsx"];
+          }
+          if (changedFiles["index.css"] !== undefined && changedFiles["index.css"] !== null) {
+            previousSnapshot["index.css"] = state.files["index.css"];
+            nextFiles["index.css"] = changedFiles["index.css"];
+          }
+
+          return {
+            files: nextFiles,
+            aiChatMessages: state.aiChatMessages.map((m) =>
+              m.id === id
+                ? {
+                    ...m,
+                    applied: true,
+                    approvalStatus: "approved",
+                    previousFiles: m.previousFiles || previousSnapshot,
+                  }
+                : m
+            ),
+          };
+        }),
+
+      rejectAiMessageChanges: (id) =>
+        set((state) => ({
+          aiChatMessages: state.aiChatMessages.map((m) =>
+            m.id === id
+              ? { ...m, applied: false, approvalStatus: "rejected" }
+              : m
+          ),
+        })),
+
+      revertAiMessageChanges: (id) =>
+        set((state) => {
+          const targetMsg = state.aiChatMessages.find((m) => m.id === id);
+          if (!targetMsg || !targetMsg.previousFiles) {
+            return {
+              aiChatMessages: state.aiChatMessages.map((m) =>
+                m.id === id
+                  ? { ...m, applied: false, approvalStatus: "pending" }
+                  : m
+              ),
+            };
+          }
+
+          const nextFiles = { ...state.files };
+          if (targetMsg.previousFiles["component.tsx"] !== undefined) {
+            nextFiles["component.tsx"] = targetMsg.previousFiles["component.tsx"];
+          }
+          if (targetMsg.previousFiles["demo.tsx"] !== undefined) {
+            nextFiles["demo.tsx"] = targetMsg.previousFiles["demo.tsx"];
+          }
+          if (targetMsg.previousFiles["index.css"] !== undefined) {
+            nextFiles["index.css"] = targetMsg.previousFiles["index.css"];
+          }
+
+          return {
+            files: nextFiles,
+            aiChatMessages: state.aiChatMessages.map((m) =>
+              m.id === id
+                ? { ...m, applied: false, approvalStatus: "pending" }
+                : m
+            ),
+          };
+        }),
+
       clearAiChat: () =>
         set({
-          aiChatMessages: [
-            {
-              id: `cleared-${Date.now()}`,
-              role: "system",
-              content: "Chat history cleared. Ready for your prompt.",
-              timestamp: new Date().toLocaleTimeString([], {
-                hour: "2-digit",
-                minute: "2-digit",
-              }),
-            },
-          ],
+          aiChatMessages: [],
         }),
 
       setAiThinking: (thinking) => set({ isAiThinking: thinking }),
@@ -429,13 +552,13 @@ export const useStudioStore = create<StudioState>()(
       applyAiChanges: (changedFiles) =>
         set((state) => {
           const nextFiles = { ...state.files };
-          if (changedFiles["component.tsx"] !== undefined) {
+          if (changedFiles["component.tsx"] !== undefined && changedFiles["component.tsx"] !== null) {
             nextFiles["component.tsx"] = changedFiles["component.tsx"];
           }
-          if (changedFiles["demo.tsx"] !== undefined) {
+          if (changedFiles["demo.tsx"] !== undefined && changedFiles["demo.tsx"] !== null) {
             nextFiles["demo.tsx"] = changedFiles["demo.tsx"];
           }
-          if (changedFiles["index.css"] !== undefined) {
+          if (changedFiles["index.css"] !== undefined && changedFiles["index.css"] !== null) {
             nextFiles["index.css"] = changedFiles["index.css"];
           }
           return { files: nextFiles };

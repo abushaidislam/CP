@@ -1,7 +1,12 @@
 "use client";
 
 import React, { useState, useRef, useEffect, useMemo } from "react";
-import { useStudioStore, AiChatRole } from "@/lib/store/studio-store";
+import {
+  useStudioStore,
+  AiChatRole,
+  AttachedImage,
+  AttachedCodeSnippet,
+} from "@/lib/store/studio-store";
 import { auditComponentGuidelines } from "@/lib/sandbox/guideline-linter";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -30,28 +35,33 @@ import {
 } from "@/components/ui/chat";
 import {
   Reasoning,
+  ChangeApprovalCard,
   Plan,
   PromptInput,
   TaskItemProps,
+  ReasoningStep,
+  AttachCodeDialog,
+  ImagePreviewDialog,
+  CodePreviewDialog,
 } from "@/components/ui/ai-elements";
 import { MarkdownContent } from "@/components/ui/markdown-content";
 import {
   Check,
   PanelRightClose,
   Trash2,
-  FileCode,
-  Wand2,
+  SlidersHorizontal,
   Moon,
   Zap,
   ShieldCheck,
   ChevronDown,
   ChevronUp,
   Cpu,
-  BrainCircuit,
+  Layers,
   Gauge,
   User,
   ArrowRight,
   Code2,
+  Eye,
 } from "lucide-react";
 
 const MODEL_OPTIONS = [
@@ -67,7 +77,7 @@ const MODEL_OPTIONS = [
     name: "Gemini 4 Argon",
     tag: "Deep Reasoning",
     description: "Advanced reasoning for complex state, algorithms, and tricky edge-cases.",
-    icon: BrainCircuit,
+    icon: Layers,
   },
   {
     id: "gemini-3.1-flash-lite",
@@ -125,23 +135,78 @@ export function AiAssistantPanel() {
     setAiModel,
     setAiRole,
     addAiChatMessage,
-    markAiMessageApplied,
+    approveAiMessageChanges,
+    rejectAiMessageChanges,
+    revertAiMessageChanges,
     clearAiChat,
     setAiThinking,
-    applyAiChanges,
   } = useStudioStore();
 
   const [promptInput, setPromptInput] = useState("");
-  const [appliedMessageIds, setAppliedMessageIds] = useState<Record<string, boolean>>({});
+  const [attachedImages, setAttachedImages] = useState<AttachedImage[]>([]);
+  const [attachedCodeSnippets, setAttachedCodeSnippets] = useState<AttachedCodeSnippet[]>([]);
+  const [isAttachCodeDialogOpen, setIsAttachCodeDialogOpen] = useState(false);
+  const [previewImage, setPreviewImage] = useState<{ url: string; name?: string } | null>(null);
+  const [previewSnippet, setPreviewSnippet] = useState<AttachedCodeSnippet | null>(null);
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [thinkingSeconds, setThinkingSeconds] = useState(0);
   const [showGuidelinesDrawer, setShowGuidelinesDrawer] = useState(false);
-  const [expandedPreviewMsgId, setExpandedPreviewMsgId] = useState<string | null>(null);
 
   const chatScrollRef = useRef<HTMLDivElement>(null);
   const isResizingRef = useRef(false);
   const startXRef = useRef(0);
   const startWidthRef = useRef(0);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const requestStartTimeRef = useRef<number>(0);
+
+  // Handle uploaded or clipboard-pasted image files
+  const handleImageFilesAdded = (fileList: File[]) => {
+    const validFiles = fileList.filter((f) => f.type.startsWith("image/"));
+    if (validFiles.length === 0) return;
+
+    validFiles.forEach((file) => {
+      // 8MB limit per image
+      if (file.size > 8 * 1024 * 1024) return;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const dataUrl = e.target?.result as string;
+        if (dataUrl) {
+          const newImg: AttachedImage = {
+            id: `img-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+            name: file.name || "image.png",
+            dataUrl,
+            mimeType: file.type || "image/png",
+            sizeBytes: file.size,
+          };
+          setAttachedImages((prev) => [...prev, newImg]);
+        }
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const handleRemoveImage = (id: string) => {
+    setAttachedImages((prev) => prev.filter((img) => img.id !== id));
+  };
+
+  const handleRemoveCodeSnippet = (id: string) => {
+    setAttachedCodeSnippets((prev) => prev.filter((s) => s.id !== id));
+  };
+
+  const handleAttachCodeSnippet = (snippet: {
+    title: string;
+    language: string;
+    code: string;
+  }) => {
+    const newSnippet: AttachedCodeSnippet = {
+      id: `snip-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      title: snippet.title,
+      language: snippet.language,
+      code: snippet.code,
+    };
+    setAttachedCodeSnippets((prev) => [...prev, newSnippet]);
+  };
 
   // Real-time static guideline audit
   const auditResult = useMemo(() => {
@@ -170,33 +235,43 @@ export function AiAssistantPanel() {
   const passedCount = planTasks.filter((t) => t.status === "done").length;
   const allPassed = passedCount === planTasks.length;
 
-  // Progressive reasoning steps
-  const workingSteps = useMemo(() => {
-    if (thinkingSeconds < 2) {
-      return [
-        { title: "Analyzing AST structure & editor files...", status: "running" as const },
-        { title: "Validating 21st.dev component guidelines...", status: "pending" as const },
-        { title: "Synthesizing code refactor with Gemini...", status: "pending" as const },
-      ];
-    } else if (thinkingSeconds < 4) {
-      return [
-        { title: "Analyzed AST structure & editor files", status: "done" as const },
-        { title: "Validating 21st.dev component guidelines...", status: "running" as const },
-        { title: "Synthesizing code refactor with Gemini...", status: "pending" as const },
-      ];
-    } else {
-      return [
-        { title: "Analyzed AST structure & editor files", status: "done" as const },
-        { title: "Validated 21st.dev component guidelines", status: "done" as const },
-        { title: "Synthesizing code refactor with Gemini...", status: "running" as const },
-      ];
-    }
-  }, [thinkingSeconds]);
+  const compLinesCount = useMemo(
+    () => files["component.tsx"].split("\n").length,
+    [files]
+  );
+
+  // Progressive sequential chain-of-thought (Notion / ChatGPT / Gemini style)
+  const workingSteps = useMemo<ReasoningStep[]>(() => {
+    const step1: ReasoningStep = {
+      title: "Reading component structure & exports",
+      description: `Inspecting the exported React component, TypeScript props interface, and layout hierarchy across ${compLinesCount} lines in component.tsx.`,
+      status: thinkingSeconds < 2 ? "running" : "done",
+    };
+
+    const step2: ReasoningStep = {
+      title: "Evaluating styling, motion & 21st.dev compliance",
+      description: `Checking className forwarding with cn(), Tailwind dark/light theme tokens, and interactive state transitions (${passedCount}/${planTasks.length} static rules verified).`,
+      status:
+        thinkingSeconds < 2
+          ? "pending"
+          : thinkingSeconds < 4
+          ? "running"
+          : "done",
+    };
+
+    const step3: ReasoningStep = {
+      title: "Drafting architectural response & code updates",
+      description: `Synthesizing complete, compilable code changes and implementation notes aligned with ${ROLE_OPTIONS.find((r) => r.id === aiRole)?.name || "Frontend Architect"} standards.`,
+      status: thinkingSeconds < 4 ? "pending" : "running",
+    };
+
+    return [step1, step2, step3];
+  }, [thinkingSeconds, compLinesCount, passedCount, planTasks.length, aiRole]);
 
   const currentStepTitle = useMemo(() => {
-    if (thinkingSeconds < 2) return "Analyzing code...";
-    if (thinkingSeconds < 4) return "Auditing standards...";
-    return "Generating response...";
+    if (thinkingSeconds < 2) return "Reading component structure & exports...";
+    if (thinkingSeconds < 4) return "Evaluating styling & compliance...";
+    return "Drafting architectural response & code updates...";
   }, [thinkingSeconds]);
 
   // Timer for reasoning duration
@@ -260,29 +335,58 @@ export function AiAssistantPanel() {
     };
   }, [setAiPanelWidth]);
 
+  const currentRoleObj = ROLE_OPTIONS.find((r) => r.id === aiRole) || ROLE_OPTIONS[0];
+  const currentModelObj = MODEL_OPTIONS.find((m) => m.id === aiModel) || MODEL_OPTIONS[0];
+
   // Submit AI Prompt
   const handleSubmitPrompt = async (
     customPrompt?: string,
     action: "chat" | "autofix" | "audit" = "chat"
   ) => {
     const text = (customPrompt || promptInput).trim();
-    if (!text && action === "chat") return;
+    const hasAttachments =
+      attachedImages.length > 0 || attachedCodeSnippets.length > 0;
+    if (!text && !hasAttachments && action === "chat") return;
+
+    // Snapshot attached items and reset input
+    const currentImages = [...attachedImages];
+    const currentCodeSnippets = [...attachedCodeSnippets];
 
     if (!customPrompt) {
       setPromptInput("");
+      setAttachedImages([]);
+      setAttachedCodeSnippets([]);
     }
 
     const userMessageContent =
       text ||
       (action === "autofix"
         ? "Auto-fix any guideline violations and polish the component code."
-        : "Perform a full standards and quality audit.");
+        : action === "audit"
+        ? "Perform a full standards and quality audit."
+        : "Please review and incorporate the attached images and code references.");
+
+    // Capture baseline snapshot before request
+    const baselineSnapshot = {
+      "component.tsx": files["component.tsx"],
+      "demo.tsx": files["demo.tsx"],
+      "index.css": files["index.css"],
+    };
 
     addAiChatMessage({
       role: "user",
       content: userMessageContent,
+      attachments:
+        currentImages.length > 0 || currentCodeSnippets.length > 0
+          ? {
+              images: currentImages.length > 0 ? currentImages : undefined,
+              codeSnippets:
+                currentCodeSnippets.length > 0 ? currentCodeSnippets : undefined,
+            }
+          : undefined,
     });
 
+    requestStartTimeRef.current = Date.now();
     setAiThinking(true);
 
     try {
@@ -304,50 +408,87 @@ export function AiAssistantPanel() {
           model: aiModel,
           role: aiRole,
           history: historyPayload,
+          images: currentImages.map((img) => ({
+            name: img.name,
+            dataUrl: img.dataUrl,
+            mimeType: img.mimeType,
+          })),
+          codeSnippets: currentCodeSnippets.map((cs) => ({
+            title: cs.title,
+            language: cs.language,
+            code: cs.code,
+          })),
         }),
       });
 
       const data = await res.json();
+      const elapsedSeconds = Math.max(
+        1,
+        Math.round((Date.now() - requestStartTimeRef.current) / 1000)
+      );
 
       if (!res.ok) {
         addAiChatMessage({
           role: "assistant",
+          authorRole: currentRoleObj.name,
+          modelUsed: aiModel,
           content: data.error || "Failed to process request with Gemini AI.",
         });
         return;
       }
 
+      const hasChangedFiles =
+        data.changedFiles && Object.keys(data.changedFiles).length > 0;
+
+      const recordedSteps: ReasoningStep[] = Array.isArray(data.reasoningSteps)
+        ? data.reasoningSteps.map(
+            (st: { title: string; description?: string; detail?: string }) => ({
+              title: st.title,
+              description: st.description,
+              detail: st.detail,
+              status: "done" as const,
+            })
+          )
+        : [
+            {
+              title: "Reading component structure & exports",
+              description: `Examined exported React component, TypeScript props interface, and layout hierarchy across ${compLinesCount} lines in component.tsx.`,
+              status: "done" as const,
+            },
+            {
+              title: "Evaluating styling & 21st.dev compliance",
+              description: `Verified ${passedCount} of ${planTasks.length} static guideline checks including className merging and dark/light theme support.`,
+              status: "done" as const,
+            },
+          ];
+
       addAiChatMessage({
         role: "assistant",
+        authorRole: currentRoleObj.name,
+        modelUsed: aiModel,
         content: data.message || "I've reviewed your component.",
-        changedFiles:
-          data.changedFiles && Object.keys(data.changedFiles).length > 0
-            ? data.changedFiles
-            : undefined,
+        reasoning: {
+          durationSeconds: elapsedSeconds,
+          steps: recordedSteps,
+          summary: data.reasoningSummary,
+        },
+        changedFiles: hasChangedFiles ? data.changedFiles : undefined,
+        previousFiles: hasChangedFiles ? baselineSnapshot : undefined,
+        approvalStatus: hasChangedFiles ? "pending" : undefined,
+        applied: false,
       });
     } catch (err: unknown) {
       const errorMsg = err instanceof Error ? err.message : String(err);
       addAiChatMessage({
         role: "assistant",
+        authorRole: currentRoleObj.name,
+        modelUsed: aiModel,
         content: `Connection error: ${errorMsg}. Please verify your network connection and server configuration.`,
       });
     } finally {
       setAiThinking(false);
     }
   };
-
-  // 1-Click Apply Code Fixes to Editor
-  const handleApplyChanges = (
-    msgId: string,
-    changedFiles: Partial<Record<string, string>>
-  ) => {
-    applyAiChanges(changedFiles);
-    setAppliedMessageIds((prev) => ({ ...prev, [msgId]: true }));
-    markAiMessageApplied(msgId);
-  };
-
-  const currentRoleObj = ROLE_OPTIONS.find((r) => r.id === aiRole) || ROLE_OPTIONS[0];
-  const currentModelObj = MODEL_OPTIONS.find((m) => m.id === aiModel) || MODEL_OPTIONS[0];
 
   if (!isAiPanelOpen) return null;
 
@@ -367,7 +508,6 @@ export function AiAssistantPanel() {
 
       {/* Top Header - Editorial, Clean & Polished */}
       <div className="flex h-11 shrink-0 items-center justify-between border-b border-border bg-card/40 px-3 select-none">
-        {/* Brand & Multi-Turn Role/Model Controls */}
         <div className="flex items-center gap-2">
           {/* Subtle Copilot Mark */}
           <div className="flex items-center gap-1.5">
@@ -439,7 +579,9 @@ export function AiAssistantPanel() {
                     size="sm"
                     className="h-6 gap-1 px-1.5 text-[11px] font-normal text-muted-foreground border-border/80 hover:text-foreground hover:border-border font-sans rounded-md bg-transparent"
                   >
-                    <span className="truncate max-w-[85px]">{currentModelObj.name.replace("Gemini ", "")}</span>
+                    <span className="truncate max-w-[85px]">
+                      {currentModelObj.name.replace("Gemini ", "")}
+                    </span>
                     <ChevronDown className="size-2.5 opacity-50" />
                   </Button>
                 </DropdownMenuTrigger>
@@ -588,41 +730,41 @@ export function AiAssistantPanel() {
               </p>
             </div>
 
-            {/* Quick Starter Cards */}
+            {/* Quick Starter Cards using official Button primitive */}
             <div className="grid grid-cols-1 gap-2 w-full pt-2">
-              <button
-                type="button"
+              <Button
+                variant="outline"
                 onClick={() =>
                   handleSubmitPrompt(
                     "Inspect component.tsx, demo.tsx, and index.css against all 21st.dev guidelines and auto-fix any issues.",
                     "autofix"
                   )
                 }
-                className="flex items-start gap-2.5 p-2.5 rounded-lg border border-border/70 bg-card/50 hover:bg-card hover:border-border text-left transition-all group cursor-pointer"
+                className="h-auto w-full flex items-start justify-start gap-2.5 p-2.5 rounded-lg border-border/70 bg-card/50 hover:bg-card hover:border-border text-left transition-all group whitespace-normal font-sans"
               >
                 <div className="size-6 rounded-md bg-muted flex items-center justify-center text-muted-foreground group-hover:text-foreground shrink-0 mt-0.5">
-                  <Wand2 className="size-3" />
+                  <SlidersHorizontal className="size-3" />
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="text-xs font-medium text-foreground flex items-center justify-between">
                     <span>Auto-Fix Guidelines</span>
                     <ArrowRight className="size-3 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground" />
                   </div>
-                  <div className="text-[11px] text-muted-foreground leading-normal mt-0.5">
+                  <div className="text-[11px] font-normal text-muted-foreground leading-normal mt-0.5">
                     Ensure cn(), typed Props, and client directives.
                   </div>
                 </div>
-              </button>
+              </Button>
 
-              <button
-                type="button"
+              <Button
+                variant="outline"
                 onClick={() =>
                   handleSubmitPrompt(
                     "Add smooth Framer Motion spring entry, hover scaling, and tap micro-interactions to component.tsx.",
                     "chat"
                   )
                 }
-                className="flex items-start gap-2.5 p-2.5 rounded-lg border border-border/70 bg-card/50 hover:bg-card hover:border-border text-left transition-all group cursor-pointer"
+                className="h-auto w-full flex items-start justify-start gap-2.5 p-2.5 rounded-lg border-border/70 bg-card/50 hover:bg-card hover:border-border text-left transition-all group whitespace-normal font-sans"
               >
                 <div className="size-6 rounded-md bg-muted flex items-center justify-center text-muted-foreground group-hover:text-foreground shrink-0 mt-0.5">
                   <Zap className="size-3" />
@@ -632,21 +774,21 @@ export function AiAssistantPanel() {
                     <span>Spring Motion & Physics</span>
                     <ArrowRight className="size-3 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground" />
                   </div>
-                  <div className="text-[11px] text-muted-foreground leading-normal mt-0.5">
+                  <div className="text-[11px] font-normal text-muted-foreground leading-normal mt-0.5">
                     Integrate natural Framer Motion gestures.
                   </div>
                 </div>
-              </button>
+              </Button>
 
-              <button
-                type="button"
+              <Button
+                variant="outline"
                 onClick={() =>
                   handleSubmitPrompt(
                     "Add complete dark and light mode support with Tailwind dark: classes and elegant contrast.",
                     "chat"
                   )
                 }
-                className="flex items-start gap-2.5 p-2.5 rounded-lg border border-border/70 bg-card/50 hover:bg-card hover:border-border text-left transition-all group cursor-pointer"
+                className="h-auto w-full flex items-start justify-start gap-2.5 p-2.5 rounded-lg border-border/70 bg-card/50 hover:bg-card hover:border-border text-left transition-all group whitespace-normal font-sans"
               >
                 <div className="size-6 rounded-md bg-muted flex items-center justify-center text-muted-foreground group-hover:text-foreground shrink-0 mt-0.5">
                   <Moon className="size-3" />
@@ -656,21 +798,21 @@ export function AiAssistantPanel() {
                     <span>Dark & Light Mode Polish</span>
                     <ArrowRight className="size-3 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground" />
                   </div>
-                  <div className="text-[11px] text-muted-foreground leading-normal mt-0.5">
+                  <div className="text-[11px] font-normal text-muted-foreground leading-normal mt-0.5">
                     Verify high-contrast dark: variants.
                   </div>
                 </div>
-              </button>
+              </Button>
 
-              <button
-                type="button"
+              <Button
+                variant="outline"
                 onClick={() =>
                   handleSubmitPrompt(
                     "Audit component.tsx for web accessibility (a11y), add ARIA labels, role attributes, and keyboard focus states.",
                     "chat"
                   )
                 }
-                className="flex items-start gap-2.5 p-2.5 rounded-lg border border-border/70 bg-card/50 hover:bg-card hover:border-border text-left transition-all group cursor-pointer"
+                className="h-auto w-full flex items-start justify-start gap-2.5 p-2.5 rounded-lg border-border/70 bg-card/50 hover:bg-card hover:border-border text-left transition-all group whitespace-normal font-sans"
               >
                 <div className="size-6 rounded-md bg-muted flex items-center justify-center text-muted-foreground group-hover:text-foreground shrink-0 mt-0.5">
                   <ShieldCheck className="size-3" />
@@ -680,11 +822,11 @@ export function AiAssistantPanel() {
                     <span>A11y & ARIA Standards</span>
                     <ArrowRight className="size-3 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground" />
                   </div>
-                  <div className="text-[11px] text-muted-foreground leading-normal mt-0.5">
+                  <div className="text-[11px] font-normal text-muted-foreground leading-normal mt-0.5">
                     Ensure keyboard focus rings and screen-reader tags.
                   </div>
                 </div>
-              </button>
+              </Button>
             </div>
           </div>
         ) : null}
@@ -695,8 +837,8 @@ export function AiAssistantPanel() {
           const isSystem = msg.role === "system";
           const hasCodeChanges =
             msg.changedFiles && Object.keys(msg.changedFiles).length > 0;
-          const isApplied = appliedMessageIds[msg.id] || msg.applied;
-          const isPreviewExpanded = expandedPreviewMsgId === msg.id;
+          const resolvedStatus: "pending" | "approved" | "rejected" =
+            msg.approvalStatus || (msg.applied ? "approved" : "pending");
 
           if (isSystem) {
             return (
@@ -704,16 +846,77 @@ export function AiAssistantPanel() {
                 key={msg.id}
                 className="my-2 py-1 px-2.5 rounded-md bg-muted/30 border border-border/40 text-[11px] text-muted-foreground text-center font-sans"
               >
-                {msg.content}
+                <MarkdownContent content={msg.content} />
               </div>
             );
           }
 
           if (isUser) {
+            const userImages = msg.attachments?.images || [];
+            const userSnippets = msg.attachments?.codeSnippets || [];
+
             return (
               <Message key={msg.id} align="end">
-                <MessageContent align="end">
-                  <Bubble variant="user" align="end">
+                <MessageContent align="end" className="max-w-[85%]">
+                  <Bubble variant="user" align="end" className="space-y-2">
+                    {/* Attached Images Grid */}
+                    {userImages.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5 justify-end">
+                        {userImages.map((img) => (
+                          <div
+                            key={img.id}
+                            onClick={() =>
+                              setPreviewImage({
+                                url: img.dataUrl,
+                                name: img.name,
+                              })
+                            }
+                            className="group relative cursor-pointer overflow-hidden rounded-lg border border-border/70 bg-muted/60 transition-all hover:ring-2 hover:ring-foreground/40"
+                            title={`${img.name} (Click to zoom)`}
+                          >
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={img.dataUrl}
+                              alt={img.name}
+                              className="size-16 object-cover rounded transition-transform group-hover:scale-105"
+                            />
+                            <div className="absolute inset-0 bg-black/25 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                              <Eye className="size-3.5 text-white drop-shadow" />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Attached Code Snippets Pills */}
+                    {userSnippets.length > 0 && (
+                      <div className="space-y-1 w-full">
+                        {userSnippets.map((snip) => (
+                          <div
+                            key={snip.id}
+                            onClick={() => setPreviewSnippet(snip)}
+                            className="flex items-center justify-between gap-2 p-1.5 px-2 rounded-md border border-border/70 bg-muted/70 hover:bg-muted cursor-pointer transition-colors text-left"
+                          >
+                            <div className="flex items-center gap-1.5 min-w-0">
+                              <Code2 className="size-3 text-foreground/75 shrink-0" />
+                              <span className="text-xs font-medium text-foreground truncate font-sans">
+                                {snip.title}
+                              </span>
+                              <Badge
+                                variant="outline"
+                                className="text-[9px] py-0 px-1 font-sans font-normal"
+                              >
+                                {snip.language.toUpperCase()}
+                              </Badge>
+                            </div>
+                            <span className="text-[10px] text-muted-foreground shrink-0 font-sans">
+                              {snip.code.split("\n").length}L • View
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
                     <BubbleContent>{msg.content}</BubbleContent>
                   </Bubble>
                   <MessageFooter>{msg.timestamp}</MessageFooter>
@@ -743,99 +946,57 @@ export function AiAssistantPanel() {
               <MessageContent align="start">
                 <MessageHeader>
                   <span className="font-semibold text-foreground text-xs font-sans">
-                    {currentRoleObj.name}
+                    {msg.authorRole || currentRoleObj.name}
                   </span>
                   <span className="text-[10px] text-muted-foreground/60">•</span>
                   <Badge
                     variant="outline"
                     className="text-[9px] py-0 px-1 font-normal text-muted-foreground font-sans border-border/60"
                   >
-                    {aiModel.replace("gemini-", "")}
+                    {(msg.modelUsed || aiModel).replace("gemini-", "")}
                   </Badge>
                 </MessageHeader>
 
+                {/* Recorded Reasoning Trace for this Turn (if present) */}
+                {msg.reasoning && (
+                  <Reasoning
+                    isStreaming={false}
+                    durationSeconds={msg.reasoning.durationSeconds}
+                    steps={msg.reasoning.steps}
+                    summary={msg.reasoning.summary}
+                    defaultOpen={false}
+                  />
+                )}
+
                 {/* Main Response Content with Real Markdown & Code Blocks */}
-                <Bubble variant="editorial" align="start" className="w-full mt-1">
+                <Bubble variant="editorial" align="start" className="w-full mt-0.5">
                   <MarkdownContent content={msg.content} />
 
-                  {/* Code Diff & 1-Click Code Apply Card */}
+                  {/* Structured Change Approval Request Card */}
                   {hasCodeChanges && msg.changedFiles && (
-                    <div className="mt-3 rounded-lg border border-border/80 bg-card/90 overflow-hidden shadow-2xs font-sans">
-                      <div className="flex items-center justify-between px-3 py-2 border-b border-border/60 bg-muted/40">
-                        <div className="flex items-center gap-2 font-sans text-xs font-medium text-foreground">
-                          <FileCode className="size-3.5 text-muted-foreground" />
-                          <span>Proposed File Changes</span>
-                          <span className="text-[10px] text-muted-foreground font-mono">
-                            ({Object.keys(msg.changedFiles).join(", ")})
-                          </span>
-                        </div>
-
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() =>
-                            setExpandedPreviewMsgId(
-                              isPreviewExpanded ? null : msg.id
-                            )
-                          }
-                          className="h-6 px-1.5 text-[11px] text-muted-foreground hover:text-foreground font-sans gap-1"
-                        >
-                          <span>{isPreviewExpanded ? "Hide diff" : "Preview diff"}</span>
-                          {isPreviewExpanded ? (
-                            <ChevronUp className="size-3" />
-                          ) : (
-                            <ChevronDown className="size-3" />
-                          )}
-                        </Button>
-                      </div>
-
-                      {/* Expandable Preview of Modified Code */}
-                      {isPreviewExpanded && (
-                        <div className="p-2.5 bg-background/60 border-b border-border/60 max-h-64 overflow-y-auto space-y-2.5">
-                          {Object.entries(msg.changedFiles).map(([fname, code]) => (
-                            <div key={fname} className="space-y-1">
-                              <div className="flex items-center justify-between text-[11px] font-mono text-foreground/80 px-1">
-                                <span className="font-semibold">{fname}</span>
-                                <span className="text-[10px] text-muted-foreground">{code.split("\n").length} lines</span>
-                              </div>
-                              <pre className="p-2.5 rounded-md bg-muted/50 border border-border/50 text-[11px] font-mono leading-relaxed overflow-x-auto whitespace-pre text-foreground/90">
-                                {code}
-                              </pre>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-
-                      <div className="p-2 bg-muted/20">
-                        <Button
-                          variant={isApplied ? "outline" : "default"}
-                          size="sm"
-                          onClick={() =>
-                            handleApplyChanges(msg.id, msg.changedFiles!)
-                          }
-                          disabled={isApplied}
-                          className="w-full h-7 text-xs font-medium gap-1.5 rounded-md font-sans transition-all"
-                        >
-                          {isApplied ? (
-                            <>
-                              <Check className="size-3.5 text-emerald-500" />
-                              <span className="text-emerald-500 font-medium">
-                                Changes Applied to Editor
-                              </span>
-                            </>
-                          ) : (
-                            <>
-                              <Code2 className="size-3.5" />
-                              <span>
-                                {Object.keys(msg.changedFiles).length === 1
-                                  ? `Apply to ${Object.keys(msg.changedFiles)[0]}`
-                                  : `Apply ${Object.keys(msg.changedFiles).length} files to Editor`}
-                              </span>
-                            </>
-                          )}
-                        </Button>
-                      </div>
-                    </div>
+                    <ChangeApprovalCard
+                      changedFiles={msg.changedFiles}
+                      baselineFiles={
+                        msg.previousFiles
+                          ? {
+                              "component.tsx":
+                                msg.previousFiles["component.tsx"] ??
+                                files["component.tsx"],
+                              "demo.tsx":
+                                msg.previousFiles["demo.tsx"] ?? files["demo.tsx"],
+                              "index.css":
+                                msg.previousFiles["index.css"] ??
+                                files["index.css"],
+                            }
+                          : files
+                      }
+                      approvalStatus={resolvedStatus}
+                      onApprove={() =>
+                        approveAiMessageChanges(msg.id, msg.changedFiles!)
+                      }
+                      onReject={() => rejectAiMessageChanges(msg.id)}
+                      onRevert={() => revertAiMessageChanges(msg.id)}
+                    />
                   )}
                 </Bubble>
 
@@ -875,22 +1036,32 @@ export function AiAssistantPanel() {
                 durationSeconds={thinkingSeconds}
                 activeStep={currentStepTitle}
                 steps={workingSteps}
-              >
-                Synthesizing response with {currentModelObj.name} for {currentRoleObj.name}...
-              </Reasoning>
+                summary={`Executing multi-turn analysis with ${currentModelObj.name} under ${currentRoleObj.name} constraints.`}
+              />
             </MessageContent>
           </Message>
         )}
       </div>
 
-      {/* Bottom Area: Command-Grade Prompt Input */}
+      {/* Bottom Area: Command-Grade Prompt Input with Attachments */}
       <div className="p-3 border-t border-border bg-card/30 select-none">
         <PromptInput
           value={promptInput}
           onChange={(e) => setPromptInput(e.target.value)}
           onSubmit={() => handleSubmitPrompt()}
           isLoading={isAiThinking}
-          placeholder={`Ask ${currentRoleObj.short}...`}
+          placeholder={`Ask ${currentRoleObj.short}... (paste image or code)`}
+          attachedImages={attachedImages}
+          onRemoveImage={handleRemoveImage}
+          onPreviewImage={(img) =>
+            setPreviewImage({ url: img.dataUrl, name: img.name })
+          }
+          attachedCodeSnippets={attachedCodeSnippets}
+          onRemoveCodeSnippet={handleRemoveCodeSnippet}
+          onPreviewCodeSnippet={(snip) => setPreviewSnippet(snip)}
+          onAttachImageClick={() => fileInputRef.current?.click()}
+          onAttachCodeClick={() => setIsAttachCodeDialogOpen(true)}
+          onImageFilesPasted={handleImageFilesAdded}
           modelBadge={
             <Badge
               variant="outline"
@@ -899,6 +1070,42 @@ export function AiAssistantPanel() {
               {currentModelObj.name.replace("Gemini ", "")}
             </Badge>
           }
+        />
+
+        {/* Hidden File Input for Image Upload */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/png,image/jpeg,image/webp,image/gif"
+          multiple
+          className="hidden"
+          onChange={(e) => {
+            if (e.target.files) {
+              handleImageFilesAdded(Array.from(e.target.files));
+              e.target.value = "";
+            }
+          }}
+        />
+
+        {/* Attach Code Snippet Modal */}
+        <AttachCodeDialog
+          open={isAttachCodeDialogOpen}
+          onOpenChange={setIsAttachCodeDialogOpen}
+          onAttach={handleAttachCodeSnippet}
+          currentDemoCode={files["demo.tsx"]}
+          currentCssCode={files["index.css"]}
+        />
+
+        {/* Full Image Preview Zoom Modal */}
+        <ImagePreviewDialog
+          image={previewImage}
+          onClose={() => setPreviewImage(null)}
+        />
+
+        {/* Code Snippet Preview Modal */}
+        <CodePreviewDialog
+          snippet={previewSnippet}
+          onClose={() => setPreviewSnippet(null)}
         />
       </div>
     </div>

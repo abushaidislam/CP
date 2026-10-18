@@ -7,6 +7,18 @@ interface ChatHistoryItem {
   content: string;
 }
 
+interface AttachedImagePayload {
+  name?: string;
+  dataUrl: string;
+  mimeType?: string;
+}
+
+interface AttachedCodePayload {
+  title?: string;
+  language?: string;
+  code: string;
+}
+
 interface RequestBody {
   prompt?: string;
   action?: "audit" | "chat" | "autofix";
@@ -17,6 +29,8 @@ interface RequestBody {
   model?: string;
   role?: "architect" | "designer" | "auditor" | "optimizer";
   history?: ChatHistoryItem[];
+  images?: AttachedImagePayload[];
+  codeSnippets?: AttachedCodePayload[];
 }
 
 // Supported official Gemini models matching instructions
@@ -71,6 +85,8 @@ export async function POST(req: NextRequest) {
       model: requestedModel = "gemini-3.8-flash",
       role: requestedRole = "architect",
       history = [],
+      images = [],
+      codeSnippets = [],
     } = body;
 
     // Sanitize and validate model choice
@@ -107,6 +123,19 @@ export async function POST(req: NextRequest) {
         checks: staticAudit.checks,
         modelUsed: activeModel,
         roleUsed: requestedRole,
+        reasoningSteps: [
+          {
+            title: "Reading component structure",
+            description: `Examined exported React component, TypeScript props interface, and hook usage across ${componentCode.split("\n").length} lines in component.tsx.`,
+            detail: "component.tsx",
+          },
+          {
+            title: "Auditing 21st.dev standards",
+            description: `Verified ${staticAudit.checks.filter((c) => c.passed).length} of ${staticAudit.checks.length} static guideline checks including className merging and theme tokens.`,
+            detail: `${staticAudit.score}/100`,
+          },
+        ],
+        reasoningSummary: `Executed static guideline verification across component.tsx, demo.tsx, and index.css (score: ${staticAudit.score}/100).`,
         message:
           action === "audit"
             ? `Static 21st.dev compliance score: ${staticAudit.score}/100. ${
@@ -138,11 +167,22 @@ export async function POST(req: NextRequest) {
 CONVERSATION & RESPONSE INSTRUCTIONS:
 - You are engaged in a multi-turn conversation with the developer. Maintain full context across previous turns.
 - Provide insightful, friendly, and technically precise feedback.
+- Document your internal chain-of-thought in "reasoningSteps" (3 to 4 sequential thoughts where each step has a short "title", a natural 1-sentence "description" of the work/analysis done in that step, and an optional "detail" like a filename) and a 1-sentence "reasoningSummary".
+- MULTIMODAL CAPABILITY: If image attachments are provided (mockups, wireframes, screenshots), carefully analyze their visual hierarchy, typography, colors, padding, alignment, and motion cues, and implement matching production React + Tailwind code.
+- CODE ATTACHMENT CAPABILITY: If external code snippets or references are attached, analyze their logic, interfaces, or styles and integrate them into component.tsx / demo.tsx / index.css.
 - If the user asks for code changes, enhancements, fixes, or styling, you MUST supply the COMPLETE updated file code in the "changedFiles" object.
 - If the user asks a general question, advice, or brainstorming without requiring code changes, leave "changedFiles" as an empty object {}.
 
 JSON Output Format (Strictly enforce valid JSON):
 {
+  "reasoningSteps": [
+    {
+      "title": "Short thought heading (e.g., Inspecting component props & state)",
+      "description": "Natural 1-sentence explanation of what you examined or decided in this step.",
+      "detail": "Optional file or target (e.g., component.tsx)"
+    }
+  ],
+  "reasoningSummary": "One concise sentence summarizing the architectural approach taken.",
   "message": "Conversational markdown response answering the user, explaining your reasoning and code changes",
   "complianceScore": <number 0-100 indicating quality and guideline compliance>,
   "issuesFound": ["Short descriptions of issues found, if any"],
@@ -156,7 +196,13 @@ JSON Output Format (Strictly enforce valid JSON):
 CRITICAL: Never output partial code with placeholders like '// rest of code'. Changed files must be complete and compilable.`;
 
     // Filter and build multi-turn contents from conversation history
-    const contents: Array<{ role: "user" | "model"; parts: Array<{ text: string }> }> = [];
+    const contents: Array<{
+      role: "user" | "model";
+      parts: Array<
+        | { text: string }
+        | { inlineData: { mimeType: string; data: string } }
+      >;
+    }> = [];
 
     // Add prior valid conversation turns (limiting to last 10 turns for token efficiency)
     const recentHistory = history.slice(-10);
@@ -173,7 +219,7 @@ CRITICAL: Never output partial code with placeholders like '// rest of code'. Ch
 
     // Construct the current turn message with live editor context
     const userPrompt = prompt || (action === "autofix" ? "Auto-fix any guideline violations" : "Audit this component");
-    const currentTurnText = `Current Editor Context:
+    let currentTurnText = `Current Editor Context:
 Active Dependencies: ${JSON.stringify(dependencies)}
 
 --- component.tsx ---
@@ -188,9 +234,45 @@ ${cssCode}
 User Request (${action}):
 ${userPrompt}`;
 
+    // Append attached code snippets if any
+    if (codeSnippets && Array.isArray(codeSnippets) && codeSnippets.length > 0) {
+      const snippetsSection = codeSnippets
+        .map(
+          (cs, idx) =>
+            `### Attached Code Reference #${idx + 1}: ${cs.title || "Snippet"} [${cs.language || "text"}]\n\`\`\`${cs.language || ""}\n${cs.code}\n\`\`\``
+        )
+        .join("\n\n");
+      currentTurnText += `\n\n--- User Attached External Code Snippets ---\n${snippetsSection}`;
+    }
+
+    const userParts: Array<
+      | { text: string }
+      | { inlineData: { mimeType: string; data: string } }
+    > = [];
+
+    // Add image attachments as inlineData (base64)
+    if (images && Array.isArray(images) && images.length > 0) {
+      for (const img of images) {
+        if (img.dataUrl) {
+          const commaIdx = img.dataUrl.indexOf(",");
+          const base64Data = commaIdx !== -1 ? img.dataUrl.slice(commaIdx + 1) : img.dataUrl;
+          const mimeMatch = img.dataUrl.match(/data:([^;]+);base64/);
+          const mimeType = img.mimeType || (mimeMatch ? mimeMatch[1] : "image/png");
+          userParts.push({
+            inlineData: {
+              mimeType,
+              data: base64Data,
+            },
+          });
+        }
+      }
+    }
+
+    userParts.push({ text: currentTurnText });
+
     contents.push({
       role: "user",
-      parts: [{ text: currentTurnText }],
+      parts: userParts,
     });
 
     // Invoke Gemini multi-turn generation
@@ -205,11 +287,13 @@ ${userPrompt}`;
 
     const textOutput = response.text || "";
     let parsedResult: {
+      reasoningSteps?: Array<{ title: string; description?: string; detail?: string }>;
+      reasoningSummary?: string;
       message?: string;
       complianceScore?: number;
       issuesFound?: string[];
       issuesFixed?: string[];
-      changedFiles?: Partial<Record<string, string>>;
+      changedFiles?: Partial<Record<string, string | null>>;
     };
 
     try {
@@ -220,6 +304,50 @@ ${userPrompt}`;
       parsedResult = JSON.parse(cleaned);
     }
 
+    // Filter changedFiles so only non-null, non-empty modified files are returned
+    const sanitizedChangedFiles: Partial<Record<string, string>> = {};
+    if (parsedResult.changedFiles && typeof parsedResult.changedFiles === "object") {
+      const origMap: Record<string, string> = {
+        "component.tsx": componentCode,
+        "demo.tsx": demoCode,
+        "index.css": cssCode,
+      };
+      for (const [k, val] of Object.entries(parsedResult.changedFiles)) {
+        if (
+          typeof val === "string" &&
+          val.trim().length > 0 &&
+          val !== "null" &&
+          val.trim() !== (origMap[k] || "").trim()
+        ) {
+          sanitizedChangedFiles[k] = val;
+        }
+      }
+    }
+
+    const defaultSteps = [
+      {
+        title: "Inspecting component structure",
+        description: `Examined exported React component, props interface, and layout hierarchy in component.tsx (${componentCode.split("\n").length} lines).`,
+        detail: "component.tsx",
+      },
+      {
+        title: "Evaluating design & accessibility standards",
+        description: `Checked 21st.dev compliance rules (${staticAudit.checks.filter((c) => c.passed).length}/${staticAudit.checks.length} passed), Tailwind tokens, and contrast states.`,
+        detail: `${staticAudit.score}/100`,
+      },
+      {
+        title:
+          Object.keys(sanitizedChangedFiles).length > 0
+            ? "Synthesizing code modifications"
+            : "Formulating architectural guidance",
+        description:
+          Object.keys(sanitizedChangedFiles).length > 0
+            ? `Prepared complete, compilable updates for ${Object.keys(sanitizedChangedFiles).join(", ")}.`
+            : `Synthesized response aligned with ${requestedRole} best practices.`,
+        detail: activeModel.replace("gemini-", ""),
+      },
+    ];
+
     return NextResponse.json({
       success: true,
       source: "gemini-api",
@@ -227,10 +355,17 @@ ${userPrompt}`;
       modelUsed: activeModel,
       roleUsed: requestedRole,
       complianceScore: parsedResult.complianceScore ?? staticAudit.score,
+      reasoningSteps:
+        Array.isArray(parsedResult.reasoningSteps) && parsedResult.reasoningSteps.length > 0
+          ? parsedResult.reasoningSteps
+          : defaultSteps,
+      reasoningSummary:
+        parsedResult.reasoningSummary ||
+        `Evaluated component architecture under ${requestedRole} guidelines.`,
       message: parsedResult.message || "Response generated successfully.",
       issuesFound: parsedResult.issuesFound || [],
       issuesFixed: parsedResult.issuesFixed || [],
-      changedFiles: parsedResult.changedFiles || {},
+      changedFiles: sanitizedChangedFiles,
       checks: staticAudit.checks,
     });
   } catch (err: unknown) {
