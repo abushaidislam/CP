@@ -16,7 +16,7 @@ const Message = React.forwardRef<HTMLDivElement, MessageProps>(
         ref={ref}
         data-align={align}
         className={cn(
-          "flex w-full gap-2.5",
+          "flex w-full gap-2.5 items-start",
           align === "end" ? "justify-end" : "justify-start",
           className
         )}
@@ -46,8 +46,8 @@ const MessageContent = React.forwardRef<HTMLDivElement, MessageContentProps>(
     <div
       ref={ref}
       className={cn(
-        "flex max-w-[88%] flex-col gap-1",
-        align === "end" ? "items-end" : "items-start",
+        "flex flex-col gap-1 min-w-0",
+        align === "end" ? "items-end max-w-[85%]" : "items-start w-full max-w-full",
         className
       )}
       {...props}
@@ -78,7 +78,7 @@ const MessageFooter = React.forwardRef<
   <div
     ref={ref}
     className={cn(
-      "flex items-center gap-1.5 text-[10px] text-muted-foreground/80 px-1 pt-0.5",
+      "flex items-center gap-1.5 text-[10px] text-muted-foreground/70 px-1 pt-0.5 font-sans",
       className
     )}
     {...props}
@@ -86,30 +86,34 @@ const MessageFooter = React.forwardRef<
 ));
 MessageFooter.displayName = "MessageFooter";
 
-// Bubble Surface Primitive
+// Bubble Surface Primitive - Sleek, refined, non-cheap
 const bubbleVariants = cva(
-  "relative rounded-2xl px-3.5 py-2.5 text-xs transition-colors duration-150",
+  "relative text-xs transition-colors duration-150 leading-relaxed font-sans",
   {
     variants: {
       variant: {
+        editorial:
+          "w-full bg-transparent text-foreground py-0.5 px-0 border-0 shadow-none",
+        user:
+          "rounded-xl bg-muted/80 dark:bg-muted/50 text-foreground border border-border/60 px-3.5 py-2 shadow-2xs",
         default:
-          "bg-primary text-primary-foreground shadow-xs font-normal",
+          "rounded-xl bg-primary text-primary-foreground shadow-2xs font-normal px-3.5 py-2",
         secondary:
-          "bg-secondary text-secondary-foreground border border-border/40",
+          "rounded-xl bg-secondary text-secondary-foreground border border-border/50 px-3.5 py-2",
         muted:
-          "bg-muted/70 text-foreground border border-border/50",
+          "rounded-xl bg-muted/60 text-foreground border border-border/40 px-3.5 py-2",
         outline:
-          "bg-background text-foreground border border-border shadow-2xs",
+          "rounded-xl bg-background text-foreground border border-border/80 px-3.5 py-2.5 shadow-2xs",
         tinted:
-          "bg-primary/10 text-foreground border border-primary/20",
+          "rounded-xl bg-primary/5 text-foreground border border-primary/20 px-3.5 py-2",
       },
       align: {
-        start: "rounded-tl-xs",
-        end: "rounded-tr-xs",
+        start: "text-left",
+        end: "text-left",
       },
     },
     defaultVariants: {
-      variant: "muted",
+      variant: "editorial",
       align: "start",
     },
   }
@@ -138,7 +142,7 @@ const BubbleContent = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <div
     ref={ref}
-    className={cn("whitespace-pre-wrap break-words leading-relaxed", className)}
+    className={cn("break-words leading-relaxed font-sans", className)}
     {...props}
   />
 ));
@@ -156,14 +160,14 @@ const Marker = React.forwardRef<HTMLDivElement, MarkerProps>(
         <div
           ref={ref}
           className={cn(
-            "flex w-full items-center gap-3 py-2 text-[10px] font-medium text-muted-foreground",
+            "flex w-full items-center gap-2.5 py-2 text-[10px] font-medium text-muted-foreground/70 select-none",
             className
           )}
           {...props}
         >
-          <div className="h-px flex-1 bg-border/60" />
-          <span>{children}</span>
-          <div className="h-px flex-1 bg-border/60" />
+          <div className="h-px flex-1 bg-border/50" />
+          <span className="font-sans uppercase tracking-wider text-[9px] text-muted-foreground/60">{children}</span>
+          <div className="h-px flex-1 bg-border/50" />
         </div>
       );
     }
@@ -172,7 +176,7 @@ const Marker = React.forwardRef<HTMLDivElement, MarkerProps>(
       <div
         ref={ref}
         className={cn(
-          "flex items-center justify-center gap-1.5 py-1 text-[11px] text-muted-foreground text-center",
+          "flex items-center justify-center gap-1.5 py-1 text-[11px] text-muted-foreground text-center font-sans",
           className
         )}
         {...props}
@@ -205,4 +209,3 @@ export {
   BubbleContent,
   Marker,
 };
-

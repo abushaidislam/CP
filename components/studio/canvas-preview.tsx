@@ -23,7 +23,7 @@ import {
   Maximize2,
   Minimize2,
   RefreshCw,
-  Sparkles,
+  MousePointerClick,
   Layers,
   Paintbrush,
   Sun,
@@ -294,7 +294,7 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
                 disabled={isSimulatingHover}
                 className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground"
               >
-                <Sparkles className="size-3.5" />
+                <MousePointerClick className="size-3.5" />
                 <span className="hidden lg:inline text-xs">Simulate</span>
               </Button>
             </TooltipTrigger>

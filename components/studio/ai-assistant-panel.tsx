@@ -27,20 +27,15 @@ import {
   MessageFooter,
   Bubble,
   BubbleContent,
-  Marker,
-  Trace,
-  TraceLine,
 } from "@/components/ui/chat";
 import {
   Reasoning,
-  SuggestionGroup,
-  Suggestion,
   Plan,
   PromptInput,
   TaskItemProps,
 } from "@/components/ui/ai-elements";
+import { MarkdownContent } from "@/components/ui/markdown-content";
 import {
-  Sparkles,
   Check,
   PanelRightClose,
   Trash2,
@@ -50,32 +45,35 @@ import {
   Zap,
   ShieldCheck,
   ChevronDown,
-  Bot,
+  ChevronUp,
+  Cpu,
   BrainCircuit,
   Gauge,
   User,
+  ArrowRight,
+  Code2,
 } from "lucide-react";
 
 const MODEL_OPTIONS = [
   {
     id: "gemini-3.8-flash",
     name: "Gemini 3.8 Flash",
-    tag: "General Tasks",
-    description: "Best for general coding, component design, and daily refactoring.",
-    icon: Sparkles,
+    tag: "Standard",
+    description: "Best for component design, TypeScript architecture, and fast edits.",
+    icon: Cpu,
   },
   {
     id: "gemini-4-argon",
     name: "Gemini 4 Argon",
-    tag: "Complex Tasks",
-    description: "Advanced reasoning for complex architecture, state logic, and intricate algorithms.",
+    tag: "Deep Reasoning",
+    description: "Advanced reasoning for complex state, algorithms, and tricky edge-cases.",
     icon: BrainCircuit,
   },
   {
     id: "gemini-3.1-flash-lite",
     name: "Gemini 3.1 Flash Lite",
-    tag: "Fast Tasks",
-    description: "Lightning-fast turnaround for quick questions and straightforward edits.",
+    tag: "Fast Lite",
+    description: "Instant turnaround for quick questions and straightforward CSS edits.",
     icon: Gauge,
   },
 ];
@@ -96,7 +94,7 @@ const ROLE_OPTIONS: Array<{
     id: "designer",
     name: "UI/UX & Motion Designer",
     short: "Designer",
-    tagline: "Tailwind aesthetics, typography & Framer Motion springs",
+    tagline: "Tailwind aesthetics, clean typography & Framer Motion springs",
   },
   {
     id: "auditor",
@@ -136,6 +134,8 @@ export function AiAssistantPanel() {
   const [promptInput, setPromptInput] = useState("");
   const [appliedMessageIds, setAppliedMessageIds] = useState<Record<string, boolean>>({});
   const [thinkingSeconds, setThinkingSeconds] = useState(0);
+  const [showGuidelinesDrawer, setShowGuidelinesDrawer] = useState(false);
+  const [expandedPreviewMsgId, setExpandedPreviewMsgId] = useState<string | null>(null);
 
   const chatScrollRef = useRef<HTMLDivElement>(null);
   const isResizingRef = useRef(false);
@@ -167,33 +167,36 @@ export function AiAssistantPanel() {
     }));
   }, [auditResult]);
 
+  const passedCount = planTasks.filter((t) => t.status === "done").length;
+  const allPassed = passedCount === planTasks.length;
+
   // Progressive reasoning steps
   const workingSteps = useMemo(() => {
     if (thinkingSeconds < 2) {
       return [
-        { title: "Analyzing conversation history & editor state...", status: "running" as const },
-        { title: "Synthesizing role-specific directives...", status: "pending" as const },
-        { title: "Generating response & component code...", status: "pending" as const },
+        { title: "Analyzing AST structure & editor files...", status: "running" as const },
+        { title: "Validating 21st.dev component guidelines...", status: "pending" as const },
+        { title: "Synthesizing code refactor with Gemini...", status: "pending" as const },
       ];
     } else if (thinkingSeconds < 4) {
       return [
-        { title: "Analyzed conversation history & editor state", status: "done" as const },
-        { title: "Synthesizing role-specific directives...", status: "running" as const },
-        { title: "Generating response & component code...", status: "pending" as const },
+        { title: "Analyzed AST structure & editor files", status: "done" as const },
+        { title: "Validating 21st.dev component guidelines...", status: "running" as const },
+        { title: "Synthesizing code refactor with Gemini...", status: "pending" as const },
       ];
     } else {
       return [
-        { title: "Analyzed conversation history & editor state", status: "done" as const },
-        { title: "Synthesized role-specific directives", status: "done" as const },
-        { title: "Generating response & component code...", status: "running" as const },
+        { title: "Analyzed AST structure & editor files", status: "done" as const },
+        { title: "Validated 21st.dev component guidelines", status: "done" as const },
+        { title: "Synthesizing code refactor with Gemini...", status: "running" as const },
       ];
     }
   }, [thinkingSeconds]);
 
   const currentStepTitle = useMemo(() => {
-    if (thinkingSeconds < 2) return "Processing context...";
-    if (thinkingSeconds < 4) return "Reasoning...";
-    return "Writing response...";
+    if (thinkingSeconds < 2) return "Analyzing code...";
+    if (thinkingSeconds < 4) return "Auditing standards...";
+    return "Generating response...";
   }, [thinkingSeconds]);
 
   // Timer for reasoning duration
@@ -237,7 +240,8 @@ export function AiAssistantPanel() {
     const handleMouseMove = (e: MouseEvent) => {
       if (!isResizingRef.current) return;
       const deltaX = startXRef.current - e.clientX;
-      setAiPanelWidth(startWidthRef.current + deltaX);
+      const newWidth = Math.max(340, Math.min(680, startWidthRef.current + deltaX));
+      setAiPanelWidth(newWidth);
     };
 
     const handleMouseUp = () => {
@@ -256,7 +260,7 @@ export function AiAssistantPanel() {
     };
   }, [setAiPanelWidth]);
 
-  // Submit AI Prompt (Multi-turn chat)
+  // Submit AI Prompt
   const handleSubmitPrompt = async (
     customPrompt?: string,
     action: "chat" | "autofix" | "audit" = "chat"
@@ -274,7 +278,6 @@ export function AiAssistantPanel() {
         ? "Auto-fix any guideline violations and polish the component code."
         : "Perform a full standards and quality audit.");
 
-    // 1. Append user turn to local multi-turn history
     addAiChatMessage({
       role: "user",
       content: userMessageContent,
@@ -283,7 +286,6 @@ export function AiAssistantPanel() {
     setAiThinking(true);
 
     try {
-      // 2. Transmit conversation history + current editor state to server API
       const historyPayload = aiChatMessages.map((m) => ({
         role: m.role,
         content: m.content,
@@ -315,7 +317,6 @@ export function AiAssistantPanel() {
         return;
       }
 
-      // 3. Append assistant multi-turn response
       addAiChatMessage({
         role: "assistant",
         content: data.message || "I've reviewed your component.",
@@ -358,19 +359,27 @@ export function AiAssistantPanel() {
       {/* Resizable Left Edge Drag Handle */}
       <div
         onMouseDown={handleResizeStart}
-        className="absolute left-0 top-0 bottom-0 w-1.5 cursor-ew-resize hover:bg-primary/20 transition-colors z-30 group"
-        title="Drag left/right to resize AI panel"
+        className="absolute left-0 top-0 bottom-0 w-1.5 cursor-ew-resize hover:bg-border/80 transition-colors z-30 group"
+        title="Drag left/right to resize Copilot panel"
       >
-        <div className="h-full w-px bg-border group-hover:bg-primary transition-colors" />
+        <div className="h-full w-px bg-border group-hover:bg-foreground/30 transition-colors" />
       </div>
 
-      {/* Top Header */}
-      <div className="flex h-11 shrink-0 items-center justify-between border-b border-border bg-card/60 px-3 backdrop-blur-xs">
+      {/* Top Header - Editorial, Clean & Polished */}
+      <div className="flex h-11 shrink-0 items-center justify-between border-b border-border bg-card/40 px-3 select-none">
         {/* Brand & Multi-Turn Role/Model Controls */}
-        <div className="flex items-center gap-1.5">
-          <div className="flex size-6 items-center justify-center rounded-md bg-primary text-primary-foreground shadow-xs">
-            <Bot className="size-3.5" />
+        <div className="flex items-center gap-2">
+          {/* Subtle Copilot Mark */}
+          <div className="flex items-center gap-1.5">
+            <div className="flex size-5.5 items-center justify-center rounded-md bg-foreground text-background shadow-2xs">
+              <Code2 className="size-3 stroke-[2.2]" />
+            </div>
+            <span className="text-xs font-semibold tracking-tight text-foreground font-sans">
+              Copilot
+            </span>
           </div>
+
+          <div className="h-3.5 w-px bg-border/70 mx-0.5" />
 
           {/* Role Dropdown */}
           <DropdownMenu>
@@ -380,18 +389,18 @@ export function AiAssistantPanel() {
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="h-7 gap-1 px-2 text-xs font-medium text-foreground hover:bg-muted/60"
+                    className="h-6.5 gap-1 px-2 text-xs font-medium text-foreground/90 hover:bg-muted/70 hover:text-foreground font-sans rounded-md"
                   >
                     <span>{currentRoleObj.short}</span>
-                    <ChevronDown className="size-3 opacity-60" />
+                    <ChevronDown className="size-2.5 opacity-60" />
                   </Button>
                 </DropdownMenuTrigger>
               </TooltipTrigger>
-              <TooltipContent side="bottom">Switch Chatbot Persona / Role</TooltipContent>
+              <TooltipContent side="bottom">Switch Copilot persona</TooltipContent>
             </Tooltip>
             <DropdownMenuContent align="start" className="w-64 font-sans">
-              <DropdownMenuLabel className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
-                Chatbot Role
+              <DropdownMenuLabel className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+                Copilot Persona
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
               {ROLE_OPTIONS.map((r) => (
@@ -401,16 +410,16 @@ export function AiAssistantPanel() {
                     setAiRole(r.id);
                     addAiChatMessage({
                       role: "system",
-                      content: `Persona switched to **${r.name}**. System instruction updated for ${r.tagline}.`,
+                      content: `Persona switched to **${r.name}**. Guidelines focused on ${r.tagline}.`,
                     });
                   }}
-                  className="flex flex-col items-start gap-0.5 py-1.5 cursor-pointer"
+                  className="flex flex-col items-start gap-0.5 py-1.5 cursor-pointer font-sans"
                 >
                   <div className="flex items-center justify-between w-full">
                     <span className="font-medium text-xs text-foreground">
                       {r.name}
                     </span>
-                    {aiRole === r.id && <Check className="size-3.5 text-primary" />}
+                    {aiRole === r.id && <Check className="size-3.5 text-foreground" />}
                   </div>
                   <span className="text-[10px] text-muted-foreground leading-tight">
                     {r.tagline}
@@ -428,18 +437,18 @@ export function AiAssistantPanel() {
                   <Button
                     variant="outline"
                     size="sm"
-                    className="h-6 gap-1 px-1.5 text-[11px] font-normal text-muted-foreground border-border hover:text-foreground"
+                    className="h-6 gap-1 px-1.5 text-[11px] font-normal text-muted-foreground border-border/80 hover:text-foreground hover:border-border font-sans rounded-md bg-transparent"
                   >
-                    <span className="truncate max-w-[90px]">{currentModelObj.tag}</span>
-                    <ChevronDown className="size-2.5 opacity-60" />
+                    <span className="truncate max-w-[85px]">{currentModelObj.name.replace("Gemini ", "")}</span>
+                    <ChevronDown className="size-2.5 opacity-50" />
                   </Button>
                 </DropdownMenuTrigger>
               </TooltipTrigger>
-              <TooltipContent side="bottom">Select Gemini Model</TooltipContent>
+              <TooltipContent side="bottom">Active Gemini model</TooltipContent>
             </Tooltip>
-            <DropdownMenuContent align="start" className="w-72 font-sans">
-              <DropdownMenuLabel className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
-                Gemini Model Selection
+            <DropdownMenuContent align="start" className="w-68 font-sans">
+              <DropdownMenuLabel className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+                Gemini Model
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
               {MODEL_OPTIONS.map((m) => {
@@ -448,19 +457,19 @@ export function AiAssistantPanel() {
                   <DropdownMenuItem
                     key={m.id}
                     onClick={() => setAiModel(m.id)}
-                    className="flex flex-col items-start gap-1 py-2 cursor-pointer"
+                    className="flex flex-col items-start gap-1 py-1.5 cursor-pointer font-sans"
                   >
                     <div className="flex items-center justify-between w-full">
                       <div className="flex items-center gap-1.5">
-                        <IconComponent className="size-3.5 text-primary" />
+                        <IconComponent className="size-3.5 text-muted-foreground" />
                         <span className="font-medium text-xs text-foreground">
                           {m.name}
                         </span>
-                        <Badge variant="secondary" className="text-[9px] py-0 px-1 font-normal">
+                        <Badge variant="secondary" className="text-[9px] py-0 px-1 font-normal font-sans">
                           {m.tag}
                         </Badge>
                       </div>
-                      {aiModel === m.id && <Check className="size-3.5 text-primary" />}
+                      {aiModel === m.id && <Check className="size-3.5 text-foreground" />}
                     </div>
                     <span className="text-[10px] text-muted-foreground leading-snug">
                       {m.description}
@@ -474,6 +483,39 @@ export function AiAssistantPanel() {
 
         {/* Action Controls */}
         <div className="flex items-center gap-1">
+          {/* Live Guidelines Status Button */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowGuidelinesDrawer((prev) => !prev)}
+                className={`h-6.5 gap-1.5 px-2 text-[11px] font-sans rounded-md transition-colors ${
+                  allPassed
+                    ? "text-muted-foreground hover:text-foreground"
+                    : "text-amber-500 bg-amber-500/10 hover:bg-amber-500/20 font-medium"
+                }`}
+              >
+                <span
+                  className={`size-1.5 rounded-full ${
+                    allPassed ? "bg-emerald-500" : "bg-amber-500"
+                  }`}
+                />
+                <span className="hidden sm:inline">
+                  {passedCount}/{planTasks.length}
+                </span>
+                {showGuidelinesDrawer ? (
+                  <ChevronUp className="size-2.5 opacity-60" />
+                ) : (
+                  <ChevronDown className="size-2.5 opacity-60" />
+                )}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">
+              Toggle 21st.dev component standards inspector
+            </TooltipContent>
+          </Tooltip>
+
           {/* Clear Chat */}
           <Tooltip>
             <TooltipTrigger asChild>
@@ -481,13 +523,13 @@ export function AiAssistantPanel() {
                 variant="ghost"
                 size="icon"
                 onClick={clearAiChat}
-                className="size-7 text-muted-foreground hover:text-foreground"
+                className="size-7 text-muted-foreground hover:text-foreground rounded-md"
               >
                 <Trash2 className="size-3.5" />
                 <span className="sr-only">Clear chat history</span>
               </Button>
             </TooltipTrigger>
-            <TooltipContent side="bottom">Clear conversation history</TooltipContent>
+            <TooltipContent side="bottom">Clear conversation</TooltipContent>
           </Tooltip>
 
           {/* Close Panel */}
@@ -497,10 +539,10 @@ export function AiAssistantPanel() {
                 variant="ghost"
                 size="icon"
                 onClick={() => setAiPanelOpen(false)}
-                className="size-7 text-muted-foreground hover:text-foreground"
+                className="size-7 text-muted-foreground hover:text-foreground rounded-md"
               >
                 <PanelRightClose className="size-3.5" />
-                <span className="sr-only">Close assistant panel</span>
+                <span className="sr-only">Close Copilot panel</span>
               </Button>
             </TooltipTrigger>
             <TooltipContent side="bottom">Close panel (Ctrl+I)</TooltipContent>
@@ -508,21 +550,144 @@ export function AiAssistantPanel() {
         </div>
       </div>
 
+      {/* Collapsible Guidelines Drawer Banner */}
+      {showGuidelinesDrawer && (
+        <div className="border-b border-border bg-card/60 p-3 select-none font-sans animate-in slide-in-from-top-1 duration-150">
+          <Plan
+            title="21st.dev Component Standards"
+            tasks={planTasks}
+            defaultOpen={true}
+            onAutoFix={() =>
+              handleSubmitPrompt(
+                "Audit component.tsx, demo.tsx, and index.css against all 21st.dev guidelines and auto-fix all missing requirements (className forwarding, cn(), props interface, use client).",
+                "autofix"
+              )
+            }
+          />
+        </div>
+      )}
+
       {/* Main Multi-Turn Chat Thread */}
       <div
         ref={chatScrollRef}
-        className="flex-1 overflow-y-auto p-3 space-y-4 select-text font-sans scroll-smooth"
+        className="flex-1 overflow-y-auto p-4 space-y-4 select-text font-sans scroll-smooth"
       >
-        <Marker variant="separator">
-          Gemini Assistant • {currentRoleObj.name}
-        </Marker>
+        {/* Empty State / Welcome Screen */}
+        {aiChatMessages.length === 0 ? (
+          <div className="py-6 px-2 flex flex-col items-center text-center space-y-4 select-none">
+            <div className="size-10 rounded-xl bg-card border border-border flex items-center justify-center text-foreground shadow-2xs">
+              <Code2 className="size-5" />
+            </div>
 
-        {/* Standards Checklist Element */}
-        <Plan
-          title="Component Standards"
-          tasks={planTasks}
-          defaultOpen={false}
-        />
+            <div className="space-y-1 max-w-[280px]">
+              <h3 className="text-sm font-semibold tracking-tight text-foreground font-sans">
+                Copilot
+              </h3>
+              <p className="text-xs text-muted-foreground leading-relaxed font-sans">
+                Grounded engineering assistant for React components, Tailwind styling, and Framer Motion springs.
+              </p>
+            </div>
+
+            {/* Quick Starter Cards */}
+            <div className="grid grid-cols-1 gap-2 w-full pt-2">
+              <button
+                type="button"
+                onClick={() =>
+                  handleSubmitPrompt(
+                    "Inspect component.tsx, demo.tsx, and index.css against all 21st.dev guidelines and auto-fix any issues.",
+                    "autofix"
+                  )
+                }
+                className="flex items-start gap-2.5 p-2.5 rounded-lg border border-border/70 bg-card/50 hover:bg-card hover:border-border text-left transition-all group cursor-pointer"
+              >
+                <div className="size-6 rounded-md bg-muted flex items-center justify-center text-muted-foreground group-hover:text-foreground shrink-0 mt-0.5">
+                  <Wand2 className="size-3" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="text-xs font-medium text-foreground flex items-center justify-between">
+                    <span>Auto-Fix Guidelines</span>
+                    <ArrowRight className="size-3 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground" />
+                  </div>
+                  <div className="text-[11px] text-muted-foreground leading-normal mt-0.5">
+                    Ensure cn(), typed Props, and client directives.
+                  </div>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() =>
+                  handleSubmitPrompt(
+                    "Add smooth Framer Motion spring entry, hover scaling, and tap micro-interactions to component.tsx.",
+                    "chat"
+                  )
+                }
+                className="flex items-start gap-2.5 p-2.5 rounded-lg border border-border/70 bg-card/50 hover:bg-card hover:border-border text-left transition-all group cursor-pointer"
+              >
+                <div className="size-6 rounded-md bg-muted flex items-center justify-center text-muted-foreground group-hover:text-foreground shrink-0 mt-0.5">
+                  <Zap className="size-3" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="text-xs font-medium text-foreground flex items-center justify-between">
+                    <span>Spring Motion & Physics</span>
+                    <ArrowRight className="size-3 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground" />
+                  </div>
+                  <div className="text-[11px] text-muted-foreground leading-normal mt-0.5">
+                    Integrate natural Framer Motion gestures.
+                  </div>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() =>
+                  handleSubmitPrompt(
+                    "Add complete dark and light mode support with Tailwind dark: classes and elegant contrast.",
+                    "chat"
+                  )
+                }
+                className="flex items-start gap-2.5 p-2.5 rounded-lg border border-border/70 bg-card/50 hover:bg-card hover:border-border text-left transition-all group cursor-pointer"
+              >
+                <div className="size-6 rounded-md bg-muted flex items-center justify-center text-muted-foreground group-hover:text-foreground shrink-0 mt-0.5">
+                  <Moon className="size-3" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="text-xs font-medium text-foreground flex items-center justify-between">
+                    <span>Dark & Light Mode Polish</span>
+                    <ArrowRight className="size-3 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground" />
+                  </div>
+                  <div className="text-[11px] text-muted-foreground leading-normal mt-0.5">
+                    Verify high-contrast dark: variants.
+                  </div>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() =>
+                  handleSubmitPrompt(
+                    "Audit component.tsx for web accessibility (a11y), add ARIA labels, role attributes, and keyboard focus states.",
+                    "chat"
+                  )
+                }
+                className="flex items-start gap-2.5 p-2.5 rounded-lg border border-border/70 bg-card/50 hover:bg-card hover:border-border text-left transition-all group cursor-pointer"
+              >
+                <div className="size-6 rounded-md bg-muted flex items-center justify-center text-muted-foreground group-hover:text-foreground shrink-0 mt-0.5">
+                  <ShieldCheck className="size-3" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="text-xs font-medium text-foreground flex items-center justify-between">
+                    <span>A11y & ARIA Standards</span>
+                    <ArrowRight className="size-3 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground" />
+                  </div>
+                  <div className="text-[11px] text-muted-foreground leading-normal mt-0.5">
+                    Ensure keyboard focus rings and screen-reader tags.
+                  </div>
+                </div>
+              </button>
+            </div>
+          </div>
+        ) : null}
 
         {/* Multi-Turn Messages Stream */}
         {aiChatMessages.map((msg) => {
@@ -531,12 +696,13 @@ export function AiAssistantPanel() {
           const hasCodeChanges =
             msg.changedFiles && Object.keys(msg.changedFiles).length > 0;
           const isApplied = appliedMessageIds[msg.id] || msg.applied;
+          const isPreviewExpanded = expandedPreviewMsgId === msg.id;
 
           if (isSystem) {
             return (
               <div
                 key={msg.id}
-                className="my-2 py-1.5 px-3 rounded-lg bg-muted/40 border border-border/50 text-[11px] text-muted-foreground text-center"
+                className="my-2 py-1 px-2.5 rounded-md bg-muted/30 border border-border/40 text-[11px] text-muted-foreground text-center font-sans"
               >
                 {msg.content}
               </div>
@@ -547,14 +713,14 @@ export function AiAssistantPanel() {
             return (
               <Message key={msg.id} align="end">
                 <MessageContent align="end">
-                  <Bubble variant="default" align="end">
+                  <Bubble variant="user" align="end">
                     <BubbleContent>{msg.content}</BubbleContent>
                   </Bubble>
                   <MessageFooter>{msg.timestamp}</MessageFooter>
                 </MessageContent>
                 <MessageAvatar>
-                  <Avatar className="size-6 text-[10px]">
-                    <AvatarFallback className="bg-primary/20 text-primary font-medium">
+                  <Avatar className="size-6 text-[10px] rounded-md">
+                    <AvatarFallback className="bg-muted text-muted-foreground font-medium rounded-md">
                       <User className="size-3" />
                     </AvatarFallback>
                   </Avatar>
@@ -563,75 +729,113 @@ export function AiAssistantPanel() {
             );
           }
 
+          // Assistant Message - Editorial & Clean
           return (
-            <Message key={msg.id} align="start">
+            <Message key={msg.id} align="start" className="pt-1">
               <MessageAvatar>
-                <Avatar className="size-6 bg-primary text-primary-foreground shadow-2xs">
-                  <AvatarFallback className="bg-primary text-primary-foreground font-semibold">
-                    <Sparkles className="size-3" />
+                <Avatar className="size-6 rounded-md bg-foreground text-background shadow-2xs">
+                  <AvatarFallback className="bg-foreground text-background font-semibold rounded-md">
+                    <Code2 className="size-3" />
                   </AvatarFallback>
                 </Avatar>
               </MessageAvatar>
 
               <MessageContent align="start">
                 <MessageHeader>
-                  <span className="font-semibold text-foreground text-xs">
+                  <span className="font-semibold text-foreground text-xs font-sans">
                     {currentRoleObj.name}
                   </span>
+                  <span className="text-[10px] text-muted-foreground/60">•</span>
                   <Badge
                     variant="outline"
-                    className="text-[9px] py-0 px-1 font-normal text-muted-foreground"
+                    className="text-[9px] py-0 px-1 font-normal text-muted-foreground font-sans border-border/60"
                   >
-                    {aiModel}
+                    {aiModel.replace("gemini-", "")}
                   </Badge>
                 </MessageHeader>
 
-                {/* Inline Reasoning Trace */}
-                <Reasoning durationSeconds={1} defaultOpen={false}>
-                  Analyzed multi-turn history, audited AST props and Tailwind classes, and aligned output with {currentRoleObj.name} persona guidelines.
-                </Reasoning>
+                {/* Main Response Content with Real Markdown & Code Blocks */}
+                <Bubble variant="editorial" align="start" className="w-full mt-1">
+                  <MarkdownContent content={msg.content} />
 
-                <Bubble variant="outline" align="start" className="w-full">
-                  <BubbleContent>{msg.content}</BubbleContent>
-
-                  {/* Code Diff & 1-Click Code Apply Trace */}
+                  {/* Code Diff & 1-Click Code Apply Card */}
                   {hasCodeChanges && msg.changedFiles && (
-                    <Trace className="mt-2 border-border/80 bg-muted/40">
-                      <TraceLine status="done">
-                        <div className="flex items-center gap-1.5 font-medium text-foreground">
-                          <FileCode className="size-3.5 text-primary" />
-                          <span>{Object.keys(msg.changedFiles).join(", ")}</span>
+                    <div className="mt-3 rounded-lg border border-border/80 bg-card/90 overflow-hidden shadow-2xs font-sans">
+                      <div className="flex items-center justify-between px-3 py-2 border-b border-border/60 bg-muted/40">
+                        <div className="flex items-center gap-2 font-sans text-xs font-medium text-foreground">
+                          <FileCode className="size-3.5 text-muted-foreground" />
+                          <span>Proposed File Changes</span>
+                          <span className="text-[10px] text-muted-foreground font-mono">
+                            ({Object.keys(msg.changedFiles).join(", ")})
+                          </span>
                         </div>
-                        <Badge
-                          variant="secondary"
-                          className="text-[9px] py-0 px-1 font-mono"
-                        >
-                          Code Ready
-                        </Badge>
-                      </TraceLine>
 
-                      <Button
-                        variant={isApplied ? "outline" : "default"}
-                        size="sm"
-                        onClick={() =>
-                          handleApplyChanges(msg.id, msg.changedFiles!)
-                        }
-                        disabled={isApplied}
-                        className="w-full h-7 text-xs font-medium gap-1.5 mt-1 rounded-md"
-                      >
-                        {isApplied ? (
-                          <>
-                            <Check className="size-3 text-emerald-500" />
-                            <span>Applied to Editor</span>
-                          </>
-                        ) : (
-                          <>
-                            <Sparkles className="size-3" />
-                            <span>Apply Changes to Editor</span>
-                          </>
-                        )}
-                      </Button>
-                    </Trace>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() =>
+                            setExpandedPreviewMsgId(
+                              isPreviewExpanded ? null : msg.id
+                            )
+                          }
+                          className="h-6 px-1.5 text-[11px] text-muted-foreground hover:text-foreground font-sans gap-1"
+                        >
+                          <span>{isPreviewExpanded ? "Hide diff" : "Preview diff"}</span>
+                          {isPreviewExpanded ? (
+                            <ChevronUp className="size-3" />
+                          ) : (
+                            <ChevronDown className="size-3" />
+                          )}
+                        </Button>
+                      </div>
+
+                      {/* Expandable Preview of Modified Code */}
+                      {isPreviewExpanded && (
+                        <div className="p-2.5 bg-background/60 border-b border-border/60 max-h-64 overflow-y-auto space-y-2.5">
+                          {Object.entries(msg.changedFiles).map(([fname, code]) => (
+                            <div key={fname} className="space-y-1">
+                              <div className="flex items-center justify-between text-[11px] font-mono text-foreground/80 px-1">
+                                <span className="font-semibold">{fname}</span>
+                                <span className="text-[10px] text-muted-foreground">{code.split("\n").length} lines</span>
+                              </div>
+                              <pre className="p-2.5 rounded-md bg-muted/50 border border-border/50 text-[11px] font-mono leading-relaxed overflow-x-auto whitespace-pre text-foreground/90">
+                                {code}
+                              </pre>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      <div className="p-2 bg-muted/20">
+                        <Button
+                          variant={isApplied ? "outline" : "default"}
+                          size="sm"
+                          onClick={() =>
+                            handleApplyChanges(msg.id, msg.changedFiles!)
+                          }
+                          disabled={isApplied}
+                          className="w-full h-7 text-xs font-medium gap-1.5 rounded-md font-sans transition-all"
+                        >
+                          {isApplied ? (
+                            <>
+                              <Check className="size-3.5 text-emerald-500" />
+                              <span className="text-emerald-500 font-medium">
+                                Changes Applied to Editor
+                              </span>
+                            </>
+                          ) : (
+                            <>
+                              <Code2 className="size-3.5" />
+                              <span>
+                                {Object.keys(msg.changedFiles).length === 1
+                                  ? `Apply to ${Object.keys(msg.changedFiles)[0]}`
+                                  : `Apply ${Object.keys(msg.changedFiles).length} files to Editor`}
+                              </span>
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                    </div>
                   )}
                 </Bubble>
 
@@ -643,25 +847,26 @@ export function AiAssistantPanel() {
 
         {/* Real-time Streaming Assistant Turn */}
         {isAiThinking && (
-          <Message align="start">
+          <Message align="start" className="pt-1">
             <MessageAvatar>
-              <Avatar className="size-6 bg-primary text-primary-foreground shadow-2xs">
-                <AvatarFallback className="bg-primary text-primary-foreground font-semibold">
-                  <Sparkles className="size-3" />
+              <Avatar className="size-6 rounded-md bg-foreground text-background shadow-2xs">
+                <AvatarFallback className="bg-foreground text-background font-semibold rounded-md">
+                  <Code2 className="size-3" />
                 </AvatarFallback>
               </Avatar>
             </MessageAvatar>
 
             <MessageContent align="start" className="w-full">
               <MessageHeader>
-                <span className="font-semibold text-foreground text-xs">
+                <span className="font-semibold text-foreground text-xs font-sans">
                   {currentRoleObj.name}
                 </span>
+                <span className="text-[10px] text-muted-foreground/60">•</span>
                 <Badge
                   variant="outline"
-                  className="text-[9px] py-0 px-1 font-normal text-muted-foreground"
+                  className="text-[9px] py-0 px-1 font-normal text-muted-foreground font-sans border-border/60"
                 >
-                  {aiModel}
+                  {aiModel.replace("gemini-", "")}
                 </Badge>
               </MessageHeader>
 
@@ -671,85 +876,27 @@ export function AiAssistantPanel() {
                 activeStep={currentStepTitle}
                 steps={workingSteps}
               >
-                Synthesizing response with {currentModelObj.name} in persona of {currentRoleObj.name}...
+                Synthesizing response with {currentModelObj.name} for {currentRoleObj.name}...
               </Reasoning>
             </MessageContent>
           </Message>
         )}
       </div>
 
-      {/* Bottom Area: Suggestions + Multi-Turn Prompt Input */}
-      <div className="p-2.5 border-t border-border bg-background/95 space-y-2">
-        {/* Suggestion Group */}
-        <SuggestionGroup>
-          <Suggestion
-            icon={<Wand2 className="size-3 text-primary" />}
-            variant="secondary"
-            onClick={() =>
-              handleSubmitPrompt(
-                "Inspect component.tsx, demo.tsx, and index.css against all 21st.dev guidelines and auto-fix missing requirements (className forwarding, cn(), props interface, use client).",
-                "autofix"
-              )
-            }
-            disabled={isAiThinking}
-            className="border border-primary/20 bg-primary/10 text-primary hover:bg-primary/20"
-          >
-            ⚡ Auto-Fix All
-          </Suggestion>
-
-          <Suggestion
-            icon={<Moon className="size-3 text-muted-foreground" />}
-            onClick={() =>
-              handleSubmitPrompt(
-                "Add complete dark and light mode support with Tailwind dark: classes and elegant contrast.",
-                "chat"
-              )
-            }
-            disabled={isAiThinking}
-          >
-            Dark Mode
-          </Suggestion>
-
-          <Suggestion
-            icon={<Zap className="size-3 text-muted-foreground" />}
-            onClick={() =>
-              handleSubmitPrompt(
-                "Add smooth Framer Motion spring entry, hover, and tap micro-interactions to component.tsx.",
-                "chat"
-              )
-            }
-            disabled={isAiThinking}
-          >
-            Spring Motion
-          </Suggestion>
-
-          <Suggestion
-            icon={<ShieldCheck className="size-3 text-muted-foreground" />}
-            onClick={() =>
-              handleSubmitPrompt(
-                "Audit component.tsx for web accessibility (a11y), add ARIA labels, role attributes, and keyboard focus states.",
-                "chat"
-              )
-            }
-            disabled={isAiThinking}
-          >
-            A11y Audit
-          </Suggestion>
-        </SuggestionGroup>
-
-        {/* Multi-Turn Prompt Input */}
+      {/* Bottom Area: Command-Grade Prompt Input */}
+      <div className="p-3 border-t border-border bg-card/30 select-none">
         <PromptInput
           value={promptInput}
           onChange={(e) => setPromptInput(e.target.value)}
           onSubmit={() => handleSubmitPrompt()}
           isLoading={isAiThinking}
-          placeholder={`Ask ${currentRoleObj.short} (${currentModelObj.tag})...`}
+          placeholder={`Ask ${currentRoleObj.short}...`}
           modelBadge={
             <Badge
               variant="outline"
-              className="text-[10px] py-0 px-1.5 font-normal text-muted-foreground"
+              className="text-[10px] py-0 px-1 font-normal text-muted-foreground border-border/60 font-sans"
             >
-              {currentModelObj.name}
+              {currentModelObj.name.replace("Gemini ", "")}
             </Badge>
           }
         />

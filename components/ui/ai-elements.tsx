@@ -5,11 +5,10 @@ import {
   Brain,
   CheckCircle2,
   AlertCircle,
-  AlertTriangle,
   Loader2,
   ChevronDown,
-  Sparkles,
-  Send,
+  ArrowUp,
+  FileCode,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -22,7 +21,7 @@ import {
 } from "@/components/ui/trace";
 
 // ==========================================
-// 1. REASONING (Official shadcn AI Element)
+// 1. REASONING (Clean, Polished Thought Process)
 // ==========================================
 export interface ReasoningStep {
   title: string;
@@ -57,46 +56,45 @@ export function Reasoning({
   }, [isStreaming]);
 
   return (
-    <div className={cn("w-full my-1 select-none font-sans", className)}>
+    <div className={cn("w-full my-1.5 select-none font-sans", className)}>
       <TraceCollapsible open={isOpen} onOpenChange={setIsOpen}>
-        <TraceCollapsibleTrigger className="group/trigger inline-flex items-center gap-1.5 py-1 px-2 -ml-1 rounded-md text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/30 transition-colors cursor-pointer select-none">
+        <TraceCollapsibleTrigger className="group/trigger inline-flex items-center gap-1.5 py-1 px-2 -ml-1 rounded-md text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors cursor-pointer select-none border border-transparent hover:border-border/40">
           <Brain
             className={cn(
               "size-3.5 shrink-0 transition-colors",
               isStreaming ? "text-primary animate-pulse" : "text-muted-foreground/70"
             )}
           />
-          <span className="text-xs font-medium">
-            {isStreaming ? (activeStep || "Thinking...") : "Thought"}
+          <span className="text-xs font-medium text-foreground/80">
+            {isStreaming
+              ? activeStep || "Thinking..."
+              : durationSeconds !== undefined && durationSeconds > 0
+              ? `Thought for ${durationSeconds}s`
+              : "Thought process"}
           </span>
-          {durationSeconds !== undefined && durationSeconds > 0 && (
-            <span className="text-[11px] text-muted-foreground/70 font-normal">
-              {durationSeconds}s
-            </span>
-          )}
           <ChevronDown className="size-3 text-muted-foreground/60 transition-transform duration-200 group-data-[state=open]/trigger:rotate-180" />
         </TraceCollapsibleTrigger>
 
-        <TraceCollapsibleContent className="pt-1 pb-1">
-          <div className="border-l-2 border-primary/30 pl-3 py-1 space-y-2 text-xs text-muted-foreground">
+        <TraceCollapsibleContent className="pt-1.5 pb-1">
+          <div className="rounded-lg border border-border/50 bg-muted/20 p-2.5 space-y-2 text-xs text-muted-foreground">
             {steps && steps.length > 0 ? (
               <div className="space-y-1.5">
                 {steps.map((st, i) => (
                   <div key={i} className="flex items-center gap-2 text-xs">
                     {st.status === "done" && (
-                      <CheckCircle2 className="size-3 text-emerald-500 shrink-0" />
+                      <CheckCircle2 className="size-3.5 text-emerald-500 shrink-0" />
                     )}
                     {st.status === "running" && (
-                      <Loader2 className="size-3 text-primary animate-spin shrink-0" />
+                      <Loader2 className="size-3.5 text-primary animate-spin shrink-0" />
                     )}
                     {st.status === "pending" && (
-                      <div className="size-2 rounded-full border border-muted-foreground/40 shrink-0 ml-0.5 mr-0.5" />
+                      <div className="size-2 rounded-full border border-muted-foreground/40 shrink-0 ml-0.5 mr-1" />
                     )}
                     <span
                       className={cn(
-                        "text-[11px]",
+                        "text-[11px] font-sans",
                         st.status === "running" && "text-foreground font-medium",
-                        st.status === "done" && "text-muted-foreground/80",
+                        st.status === "done" && "text-muted-foreground",
                         st.status === "pending" && "text-muted-foreground/50"
                       )}
                     >
@@ -108,7 +106,7 @@ export function Reasoning({
             ) : null}
 
             {children && (
-              <div className="text-[11px] text-muted-foreground/90 whitespace-pre-wrap leading-relaxed">
+              <div className="text-[11px] text-muted-foreground leading-relaxed pt-1 border-t border-border/40 font-sans">
                 {children}
               </div>
             )}
@@ -120,7 +118,7 @@ export function Reasoning({
 }
 
 // ==========================================
-// 2. SUGGESTIONS (Official shadcn AI Element)
+// 2. SUGGESTIONS (Subtle, High-Signal Developer Chips)
 // ==========================================
 export interface SuggestionGroupProps
   extends React.HTMLAttributes<HTMLDivElement> {
@@ -135,7 +133,7 @@ export function SuggestionGroup({
   return (
     <div
       className={cn(
-        "flex w-full items-center gap-1.5 overflow-x-auto py-1 scrollbar-none",
+        "flex w-full items-center gap-1.5 overflow-x-auto py-1 scrollbar-none select-none",
         className
       )}
       {...props}
@@ -164,19 +162,19 @@ export function Suggestion({
       variant={variant}
       size="sm"
       className={cn(
-        "h-7 shrink-0 gap-1.5 rounded-full px-3 text-[11px] font-normal transition-all hover:bg-muted/80",
+        "h-6.5 shrink-0 gap-1.5 rounded-md px-2.5 text-[11px] font-medium border-border/60 hover:border-border hover:bg-muted/70 text-muted-foreground hover:text-foreground transition-all duration-150 select-none",
         className
       )}
       {...props}
     >
-      {icon && <span className="size-3.5 shrink-0">{icon}</span>}
+      {icon && <span className="size-3 shrink-0">{icon}</span>}
       <span className="truncate">{children}</span>
     </Button>
   );
 }
 
 // ==========================================
-// 3. PLAN & TASK (Official shadcn AI Element)
+// 3. PLAN & STANDARDS AUDIT (Refined & Compact)
 // ==========================================
 export interface TaskItemProps {
   id: string;
@@ -189,49 +187,66 @@ export interface PlanProps {
   title: string;
   tasks: TaskItemProps[];
   defaultOpen?: boolean;
+  onAutoFix?: () => void;
   className?: string;
 }
 
 export function Plan({
   title,
   tasks,
-  defaultOpen = true,
+  defaultOpen = false,
+  onAutoFix,
   className,
 }: PlanProps) {
   const [isOpen, setIsOpen] = React.useState(defaultOpen);
   const completedCount = tasks.filter((t) => t.status === "done").length;
   const totalCount = tasks.length;
   const isDone = completedCount === totalCount;
+  const errorCount = tasks.filter((t) => t.status === "error").length;
 
   return (
-    <div className={cn("rounded-xl border border-border/70 bg-card/60 p-2.5 my-1 font-sans transition-all", className)}>
+    <div
+      className={cn(
+        "rounded-lg border border-border/70 bg-card/50 p-2.5 font-sans transition-all",
+        isDone ? "border-emerald-500/30 bg-emerald-500/5" : "",
+        className
+      )}
+    >
       <TraceCollapsible open={isOpen} onOpenChange={setIsOpen}>
-        <TraceCollapsibleTrigger className="group/trigger flex w-full items-center justify-between text-left hover:no-underline select-none">
+        <TraceCollapsibleTrigger className="group/trigger flex w-full items-center justify-between text-left hover:no-underline select-none cursor-pointer">
           <div className="flex items-center gap-2">
             {isDone ? (
-              <CheckCircle2 className="size-4 text-emerald-500" />
+              <CheckCircle2 className="size-3.5 text-emerald-500" />
+            ) : errorCount > 0 ? (
+              <AlertCircle className="size-3.5 text-amber-500" />
             ) : (
-              <Sparkles className="size-4 text-primary" />
+              <FileCode className="size-3.5 text-muted-foreground" />
             )}
-            <span className="text-xs font-semibold text-foreground">
+            <span className="text-xs font-medium text-foreground">
               {title}
             </span>
           </div>
 
-          <div className="flex items-center gap-2">
-            <Badge variant={isDone ? "secondary" : "outline"} className="text-[10px] px-1.5 py-0 font-normal">
-              {completedCount} / {totalCount} passed
+          <div className="flex items-center gap-1.5">
+            <Badge
+              variant={isDone ? "secondary" : "outline"}
+              className={cn(
+                "text-[10px] px-1.5 py-0 font-normal font-sans",
+                isDone && "text-emerald-500 bg-emerald-500/10 border-emerald-500/20"
+              )}
+            >
+              {completedCount}/{totalCount} passed
             </Badge>
             <ChevronDown className="size-3 text-muted-foreground/60 transition-transform duration-200 group-data-[state=open]/trigger:rotate-180" />
           </div>
         </TraceCollapsibleTrigger>
 
-        <TraceCollapsibleContent className="pt-2.5 mt-2 border-t border-border/50">
+        <TraceCollapsibleContent className="pt-2.5 mt-2 border-t border-border/40">
           <div className="space-y-1.5">
             {tasks.map((task) => (
               <div
                 key={task.id}
-                className="flex items-start gap-2.5 rounded-md p-1.5 transition-colors hover:bg-muted/40"
+                className="flex items-start gap-2 rounded-md p-1.5 transition-colors hover:bg-muted/40"
               >
                 <div className="mt-0.5 shrink-0">
                   {task.status === "done" && (
@@ -241,23 +256,23 @@ export function Plan({
                     <Loader2 className="size-3.5 animate-spin text-primary" />
                   )}
                   {task.status === "error" && (
-                    <AlertCircle className="size-3.5 text-destructive" />
+                    <AlertCircle className="size-3.5 text-amber-500" />
                   )}
                   {task.status === "pending" && (
-                    <div className="size-3.5 rounded-full border border-muted-foreground/40" />
+                    <div className="size-3 rounded-full border border-muted-foreground/40 mt-0.5" />
                   )}
                 </div>
                 <div className="min-w-0 flex-1">
                   <div
                     className={cn(
-                      "text-xs font-medium text-foreground",
-                      task.status === "done" && "text-muted-foreground line-through opacity-80"
+                      "text-xs font-medium text-foreground font-sans",
+                      task.status === "done" && "text-muted-foreground"
                     )}
                   >
                     {task.title}
                   </div>
                   {task.description && (
-                    <div className="text-[11px] text-muted-foreground leading-normal mt-0.5">
+                    <div className="text-[11px] text-muted-foreground/80 leading-normal mt-0.5 font-sans">
                       {task.description}
                     </div>
                   )}
@@ -265,6 +280,19 @@ export function Plan({
               </div>
             ))}
           </div>
+
+          {!isDone && onAutoFix && (
+            <div className="mt-2.5 pt-2 border-t border-border/40">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onAutoFix}
+                className="w-full h-7 text-xs font-medium font-sans gap-1.5"
+              >
+                Auto-Fix Guidelines
+              </Button>
+            </div>
+          )}
         </TraceCollapsibleContent>
       </TraceCollapsible>
     </div>
@@ -272,7 +300,7 @@ export function Plan({
 }
 
 // ==========================================
-// 4. PROMPT INPUT (Official shadcn AI Element)
+// 4. PROMPT INPUT (Command-Grade Workspace Input)
 // ==========================================
 export interface PromptInputProps {
   value: string;
@@ -290,9 +318,8 @@ export function PromptInput({
   onChange,
   onSubmit,
   isLoading = false,
-  placeholder = "Ask AI to edit, fix guidelines, or add components...",
+  placeholder = "Ask Copilot to refactor code, audit guidelines, or add components...",
   modelBadge,
-  onModelClick,
   className,
 }: PromptInputProps) {
   const textareaRef = React.useRef<HTMLTextAreaElement>(null);
@@ -309,7 +336,7 @@ export function PromptInput({
   return (
     <div
       className={cn(
-        "flex flex-col rounded-xl border border-border/80 bg-background p-2 shadow-2xs transition-all focus-within:border-primary/50 focus-within:ring-1 focus-within:ring-primary/20",
+        "flex flex-col rounded-xl border border-border/70 bg-card/70 p-2 shadow-2xs transition-all duration-150 focus-within:border-border focus-within:ring-1 focus-within:ring-ring/20 focus-within:bg-background",
         className
       )}
     >
@@ -321,32 +348,40 @@ export function PromptInput({
         onKeyDown={handleKeyDown}
         placeholder={placeholder}
         disabled={isLoading}
-        className="min-h-[50px] resize-none border-0 p-1 text-xs bg-transparent shadow-none focus-visible:ring-0 placeholder:text-muted-foreground/60 font-sans"
+        className="min-h-[48px] max-h-[140px] resize-none border-0 p-1 text-xs bg-transparent shadow-none focus-visible:ring-0 placeholder:text-muted-foreground/60 font-sans leading-relaxed text-foreground"
       />
 
       <div className="flex items-center justify-between pt-1.5 border-t border-border/40 select-none">
         <div className="flex items-center gap-1.5">
           {modelBadge}
-          <span className="text-[10px] text-muted-foreground hidden sm:inline-block">
-            <kbd className="px-1 py-0.5 rounded bg-muted font-mono text-[9px]">Enter</kbd> to send
-          </span>
+          <div className="flex items-center gap-1 text-[10px] text-muted-foreground/80 font-sans">
+            <FileCode className="size-3 text-muted-foreground/60" />
+            <span className="font-mono text-[10px]">component.tsx</span>
+          </div>
         </div>
 
-        <Button
-          type="button"
-          variant="default"
-          size="sm"
-          onClick={onSubmit}
-          disabled={isLoading || !value.trim()}
-          className="h-7 px-2.5 text-xs gap-1.5 font-medium rounded-lg"
-        >
-          {isLoading ? (
-            <Loader2 className="size-3.5 animate-spin" />
-          ) : (
-            <Send className="size-3.5" />
-          )}
-          <span>Send</span>
-        </Button>
+        <div className="flex items-center gap-1.5">
+          <span className="text-[10px] text-muted-foreground/60 hidden sm:inline-block font-sans">
+            <kbd className="px-1 py-0.5 rounded bg-muted/80 font-mono text-[9px] border border-border/40">Enter</kbd> to send
+          </span>
+
+          <Button
+            type="button"
+            variant="default"
+            size="sm"
+            onClick={onSubmit}
+            disabled={isLoading || !value.trim()}
+            className="size-7 p-0 rounded-lg shrink-0 font-sans transition-transform active:scale-95"
+            title="Send prompt (Enter)"
+          >
+            {isLoading ? (
+              <Loader2 className="size-3.5 animate-spin" />
+            ) : (
+              <ArrowUp className="size-3.5 stroke-[2.5]" />
+            )}
+            <span className="sr-only">Send prompt</span>
+          </Button>
+        </div>
       </div>
     </div>
   );

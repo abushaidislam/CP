@@ -15,7 +15,7 @@ import {
   FileCode2,
   FileText,
   Palette,
-  Sparkles,
+  AlignLeft,
   Package,
   RotateCcw,
   Check,
@@ -141,7 +141,7 @@ export function EditorPanel() {
                 ) : formatSuccess ? (
                   <Check className="size-3 text-emerald-500" />
                 ) : (
-                  <Sparkles className="size-3" />
+                  <AlignLeft className="size-3" />
                 )}
                 <span className="hidden sm:inline text-xs">Format</span>
                 <kbd className="hidden lg:inline ml-1 font-mono text-[10px] bg-muted px-1 rounded text-muted-foreground">

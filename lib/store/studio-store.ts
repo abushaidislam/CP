@@ -201,15 +201,7 @@ export const useStudioStore = create<StudioState>()(
       geminiApiKey: "",
       aiModel: "gemini-3.8-flash",
       aiRole: "architect",
-      aiChatMessages: [
-        {
-          id: "welcome-1",
-          role: "assistant",
-          content:
-            "Hi! I'm your Gemini Component Assistant. I can help you build, refine, and audit React components with multi-turn conversation memory, live guidelines auditing, and instant 1-click code application. Ask me to refactor code, add animations, fix a11y, or optimize performance!",
-          timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-        },
-      ],
+      aiChatMessages: [],
       isAiThinking: false,
 
       updateFile: (name, content) =>

@@ -9,7 +9,7 @@ import { PublishModal } from "./publish-modal";
 import { DependencyModal } from "./dependency-modal";
 import { TerminalPanel } from "./terminal-panel";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Code, Eye, Sparkles } from "lucide-react";
+import { Code, Eye, Code2 } from "lucide-react";
 import { useStudioStore } from "@/lib/store/studio-store";
 
 export function StudioContainer() {
@@ -85,7 +85,7 @@ export function StudioContainer() {
               <span>Preview</span>
             </TabsTrigger>
             <TabsTrigger value="ai" className="gap-1.5 text-xs">
-              <Sparkles className="size-3.5 text-primary" />
+              <Code2 className="size-3.5" />
               <span>Copilot</span>
             </TabsTrigger>
           </TabsList>

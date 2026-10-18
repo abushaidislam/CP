@@ -26,7 +26,6 @@ import {
   Moon,
   Sun,
   ExternalLink,
-  Sparkles,
   Terminal,
   Columns2,
   Code2,
@@ -86,19 +85,14 @@ export function StudioHeader() {
           </svg>
         </div>
 
-        {/* Breadcrumb Title */}
-        <div className="flex items-center gap-2">
+        {/* Unified Logical Breadcrumb Navigation */}
+        <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 text-xs font-sans">
           <span className="font-semibold text-xs tracking-tight text-foreground">
             Component Studio
           </span>
-          <span className="text-muted-foreground/40 text-xs">/</span>
-          <span className="text-xs text-muted-foreground font-normal">Sandbox</span>
-        </div>
+          <span className="text-muted-foreground/40 font-mono text-xs">/</span>
 
-        <Separator orientation="vertical" className="h-4 hidden md:block" />
-
-        {/* Blueprint Template Selector */}
-        <div className="hidden md:flex items-center">
+          {/* Active Template Selector as Breadcrumb Leaf */}
           <DropdownMenu>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -106,44 +100,44 @@ export function StudioHeader() {
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="h-7 gap-2 px-2 text-xs text-foreground font-normal hover:bg-muted"
+                    className="h-7 gap-1.5 px-2 text-xs font-medium text-foreground hover:bg-muted/70 rounded-md font-sans"
                   >
                     <Layers className="size-3 text-muted-foreground" />
                     <span className="font-medium text-xs">{currentTemplate.name}</span>
-                    <ChevronDown className="size-3 text-muted-foreground" />
+                    <ChevronDown className="size-3 text-muted-foreground opacity-60" />
                   </Button>
                 </DropdownMenuTrigger>
               </TooltipTrigger>
               <TooltipContent side="bottom">Switch component template</TooltipContent>
             </Tooltip>
 
-            <DropdownMenuContent align="start" className="w-68">
-              <DropdownMenuLabel className="text-[10px] uppercase text-muted-foreground">
-                Starter Blueprints
+            <DropdownMenuContent align="start" className="w-68 font-sans">
+              <DropdownMenuLabel className="text-[10px] uppercase font-semibold text-muted-foreground tracking-wider">
+                Component Templates
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
               {DEFAULT_TEMPLATES.map((tmpl) => (
                 <DropdownMenuItem
                   key={tmpl.id}
                   onClick={() => loadTemplate(tmpl.id)}
-                  className="flex flex-col items-start gap-0.5 py-2 cursor-pointer"
+                  className="flex flex-col items-start gap-0.5 py-2 cursor-pointer font-sans"
                 >
                   <div className="flex items-center justify-between w-full">
                     <span className="font-medium text-xs text-foreground">
                       {tmpl.name}
                     </span>
-                    <span className="text-[10px] text-muted-foreground">
+                    <Badge variant="secondary" className="text-[9px] py-0 px-1 font-normal font-sans">
                       {tmpl.category}
-                    </span>
+                    </Badge>
                   </div>
-                  <span className="line-clamp-1 text-xs text-muted-foreground">
+                  <span className="line-clamp-1 text-[11px] text-muted-foreground">
                     {tmpl.description}
                   </span>
                 </DropdownMenuItem>
               ))}
             </DropdownMenuContent>
           </DropdownMenu>
-        </div>
+        </nav>
       </div>
 
       {/* Center: Layout View Mode Switcher */}
@@ -241,16 +235,19 @@ export function StudioHeader() {
               onClick={toggleAiPanel}
               className={`h-8 gap-1.5 px-2.5 text-xs font-sans transition-colors ${
                 isAiPanelOpen
-                  ? "bg-primary/10 text-primary border border-primary/25 font-medium"
+                  ? "bg-muted text-foreground font-medium border border-border"
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
-              <Sparkles className={`size-3.5 ${isAiPanelOpen ? "text-primary" : "text-amber-500"}`} />
+              <Code2 className="size-3.5" />
               <span className="hidden sm:inline">Copilot</span>
+              <kbd className="hidden lg:inline-block ml-0.5 px-1 py-0.2 rounded bg-muted-foreground/10 text-[9px] font-mono text-muted-foreground">
+                Ctrl+I
+              </kbd>
             </Button>
           </TooltipTrigger>
           <TooltipContent side="bottom">
-            Toggle AI Copilot (Ctrl+I)
+            Toggle Copilot Assistant (Ctrl+I)
           </TooltipContent>
         </Tooltip>
 
