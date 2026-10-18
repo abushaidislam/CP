@@ -130,24 +130,15 @@
   }
 }
 
-/* Vercel Multi-Stop Mesh Gradient Hero Flourish */
+/* Restrained Subtle Studio Canvas Backdrops */
 .vercel-mesh-gradient {
-  background-color: #fafafa;
-  background-image:
-    radial-gradient(at 0% 0%, rgba(0, 124, 240, 0.12) 0px, transparent 50%),
-    radial-gradient(at 100% 0%, rgba(121, 40, 202, 0.14) 0px, transparent 50%),
-    radial-gradient(at 50% 100%, rgba(255, 0, 128, 0.08) 0px, transparent 50%),
-    radial-gradient(at 100% 100%, rgba(249, 203, 40, 0.08) 0px, transparent 50%),
-    radial-gradient(at 0% 100%, rgba(80, 227, 194, 0.1) 0px, transparent 50%);
+  background-color: #f4f4f5;
+  background-image: radial-gradient(at 50% 0%, rgba(0, 0, 0, 0.03) 0px, transparent 70%);
 }
 
 .vercel-mesh-gradient-dark {
-  background-color: #000000;
-  background-image:
-    radial-gradient(at 0% 0%, rgba(0, 124, 240, 0.22) 0px, transparent 50%),
-    radial-gradient(at 100% 0%, rgba(121, 40, 202, 0.24) 0px, transparent 50%),
-    radial-gradient(at 50% 100%, rgba(255, 0, 128, 0.16) 0px, transparent 50%),
-    radial-gradient(at 100% 100%, rgba(249, 203, 40, 0.12) 0px, transparent 50%);
+  background-color: #09090b;
+  background-image: radial-gradient(at 50% 0%, rgba(255, 255, 255, 0.03) 0px, transparent 70%);
 }
 
 /* Canvas checkerboard patterns */

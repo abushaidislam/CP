@@ -47,6 +47,8 @@ export interface RecordingConfig {
   resolution: "1080p" | "720p" | "square";
 }
 
+export type AiChatRole = "architect" | "designer" | "auditor" | "optimizer";
+
 export interface StudioState {
   // Files
   files: {
@@ -57,6 +59,7 @@ export interface StudioState {
   activeTab: StudioFileName;
 
   // Canvas & Preview Controls
+  layoutMode: "split" | "editor" | "preview";
   viewport: StudioViewport;
   customViewportWidth: number;
   canvasBg: CanvasBackground;
@@ -88,12 +91,14 @@ export interface StudioState {
   aiPanelWidth: number;
   geminiApiKey: string;
   aiModel: string;
+  aiRole: AiChatRole;
   aiChatMessages: AiChatMessage[];
   isAiThinking: boolean;
 
   // Actions
   updateFile: (name: StudioFileName, content: string) => void;
   setActiveTab: (tab: StudioFileName) => void;
+  setLayoutMode: (mode: "split" | "editor" | "preview") => void;
   setViewport: (viewport: StudioViewport) => void;
   setCustomViewportWidth: (width: number) => void;
   setCanvasBg: (bg: CanvasBackground) => void;
@@ -132,6 +137,7 @@ export interface StudioState {
   setAiPanelWidth: (width: number) => void;
   setGeminiApiKey: (key: string) => void;
   setAiModel: (model: string) => void;
+  setAiRole: (role: AiChatRole) => void;
   addAiChatMessage: (msg: Omit<AiChatMessage, "id" | "timestamp">) => void;
   markAiMessageApplied: (id: string) => void;
   clearAiChat: () => void;
@@ -154,6 +160,7 @@ export const useStudioStore = create<StudioState>()(
         "index.css": initialTemplate.files["index.css"],
       },
       activeTab: "component.tsx",
+      layoutMode: "split",
       viewport: "desktop",
       customViewportWidth: 1200,
       canvasBg: "dark",
@@ -192,13 +199,14 @@ export const useStudioStore = create<StudioState>()(
       isAiPanelOpen: false,
       aiPanelWidth: 380,
       geminiApiKey: "",
-      aiModel: "gemini-2.5-flash",
+      aiModel: "gemini-3.8-flash",
+      aiRole: "architect",
       aiChatMessages: [
         {
           id: "welcome-1",
           role: "assistant",
           content:
-            "Hi! I'm your 21st.dev Component Copilot. I inspect your component against official 21st.dev guidelines, optimize TypeScript & Tailwind, and can auto-fix issues or implement features with 1 click.",
+            "Hi! I'm your Gemini Component Assistant. I can help you build, refine, and audit React components with multi-turn conversation memory, live guidelines auditing, and instant 1-click code application. Ask me to refactor code, add animations, fix a11y, or optimize performance!",
           timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
         },
       ],
@@ -213,6 +221,8 @@ export const useStudioStore = create<StudioState>()(
         })),
 
       setActiveTab: (tab) => set({ activeTab: tab }),
+
+      setLayoutMode: (mode) => set({ layoutMode: mode }),
 
       setViewport: (viewport) => {
         let width = 1200;
@@ -383,6 +393,8 @@ export const useStudioStore = create<StudioState>()(
 
       setAiModel: (model) => set({ aiModel: model }),
 
+      setAiRole: (role) => set({ aiRole: role }),
+
       addAiChatMessage: (msg) =>
         set((state) => ({
           aiChatMessages: [
@@ -442,6 +454,7 @@ export const useStudioStore = create<StudioState>()(
       partialize: (state) => ({
         files: state.files,
         activeTab: state.activeTab,
+        layoutMode: state.layoutMode,
         viewport: state.viewport,
         canvasBg: state.canvasBg,
         previewTheme: state.previewTheme,
@@ -456,6 +469,7 @@ export const useStudioStore = create<StudioState>()(
         aiPanelWidth: state.aiPanelWidth,
         geminiApiKey: state.geminiApiKey,
         aiModel: state.aiModel,
+        aiRole: state.aiRole,
       }),
     }
   )

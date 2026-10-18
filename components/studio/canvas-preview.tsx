@@ -9,7 +9,6 @@ import {
 } from "@/lib/store/studio-store";
 import { compileSandboxHtml } from "@/lib/sandbox/sandbox-compiler";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -26,11 +25,7 @@ import {
   RefreshCw,
   Sparkles,
   Layers,
-  CircleDot,
-  GripVertical,
-  Lock,
   Paintbrush,
-  Zap,
   Sun,
   Moon,
 } from "lucide-react";
@@ -58,7 +53,6 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
     setViewport,
     setCanvasBg,
     setPreviewTheme,
-    togglePreviewTheme,
     setZoom,
     setCompilerState,
     addTerminalLog,
@@ -66,18 +60,12 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
 
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isSimulatingHover, setIsSimulatingHover] = useState(false);
-  const [mounted, setMounted] = useState(false);
   const [reloadKey, setReloadKey] = useState<number>(0);
-  const [compileTimeMs, setCompileTimeMs] = useState<number>(0);
   const [draggedWidth, setDraggedWidth] = useState<number | null>(null);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const cardRef = useRef<HTMLDivElement>(null);
   const isResizingRef = useRef(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   // Reset custom dragged width when user picks a viewport button
   const handleSelectViewport = (vp: StudioViewport) => {
@@ -101,9 +89,8 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
   };
 
   // Compile sandbox HTML when code or settings change
-  const { html, error, duration } = useMemo(() => {
-    const t0 = typeof performance !== "undefined" ? performance.now() : 0;
-    const result = compileSandboxHtml(
+  const { html, error } = useMemo(() => {
+    return compileSandboxHtml(
       files["component.tsx"],
       files["demo.tsx"],
       files["index.css"],
@@ -111,15 +98,7 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
       canvasBg,
       previewTheme
     );
-    const t1 = typeof performance !== "undefined" ? performance.now() : 0;
-    return { ...result, duration: Math.max(1, Math.round(t1 - t0)) };
   }, [files, dependencies, canvasBg, previewTheme, reloadKey]);
-
-  useEffect(() => {
-    if (mounted) {
-      setCompileTimeMs(duration);
-    }
-  }, [duration, mounted]);
 
   // Sync compiler errors with store
   useEffect(() => {
@@ -263,63 +242,43 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
             onValueChange={(val) => handleSelectViewport(val as StudioViewport)}
           >
             <TabsList className="h-7 bg-muted/60 p-0.5">
-              <TabsTrigger value="desktop" className="h-6 gap-1.5 px-2.5 text-xs">
+              <TabsTrigger value="responsive" className="h-6 gap-1.5 px-2.5 text-xs font-sans">
+                <Layers className="size-3.5" />
+                <span className="hidden sm:inline">Fluid</span>
+              </TabsTrigger>
+              <TabsTrigger value="desktop" className="h-6 gap-1.5 px-2.5 text-xs font-sans">
                 <Monitor className="size-3.5" />
                 <span className="hidden sm:inline">Desktop</span>
               </TabsTrigger>
-              <TabsTrigger value="tablet" className="h-6 gap-1.5 px-2.5 text-xs">
+              <TabsTrigger value="tablet" className="h-6 gap-1.5 px-2.5 text-xs font-sans">
                 <Tablet className="size-3.5" />
                 <span className="hidden sm:inline">Tablet</span>
               </TabsTrigger>
-              <TabsTrigger value="mobile" className="h-6 gap-1.5 px-2.5 text-xs">
+              <TabsTrigger value="mobile" className="h-6 gap-1.5 px-2.5 text-xs font-sans">
                 <Smartphone className="size-3.5" />
                 <span className="hidden sm:inline">Mobile</span>
-              </TabsTrigger>
-              <TabsTrigger value="responsive" className="h-6 gap-1.5 px-2.5 text-xs">
-                <Layers className="size-3.5" />
-                <span className="hidden sm:inline">Fluid</span>
               </TabsTrigger>
             </TabsList>
           </Tabs>
 
           <Separator orientation="vertical" className="h-4 hidden sm:block" />
 
-          {/* Component Preview Dark / Light Theme via Shadcn Tabs */}
-          <Tabs
-            value={previewTheme}
-            onValueChange={(val) => handleThemeChange(val as PreviewTheme)}
-          >
-            <TabsList className="h-7 bg-muted/60 p-0.5">
-              <TabsTrigger value="light" className="h-6 gap-1 px-2 text-xs">
-                <Sun className="size-3 text-amber-500" />
-                <span className="hidden sm:inline text-xs">Light</span>
-              </TabsTrigger>
-              <TabsTrigger value="dark" className="h-6 gap-1 px-2 text-xs">
-                <Moon className="size-3 text-sky-400" />
-                <span className="hidden sm:inline text-xs">Dark</span>
-              </TabsTrigger>
-            </TabsList>
-          </Tabs>
+          {/* Width Indicator */}
+          <span className="hidden sm:inline text-xs text-muted-foreground tabular-nums select-none">
+            {draggedWidth !== null
+              ? `${draggedWidth}px`
+              : isFluidResponsive
+              ? "100% Fluid"
+              : getComputedWidth()}
+          </span>
         </div>
 
-        {/* Center: Live Indicators */}
+        {/* Center: Subtle Status */}
         <div className="flex items-center gap-2">
           {isSimulatingHover && (
-            <Badge variant="blue" className="animate-pulse text-[10px] gap-1">
-              <CircleDot className="size-3 animate-spin text-sky-500" />
-              Stitch Pointer Active
-            </Badge>
-          )}
-
-          {mounted && (
-            <Badge
-              variant="outline"
-              suppressHydrationWarning
-              className="text-[10px] hidden md:inline-flex gap-1 text-muted-foreground bg-muted/40"
-            >
-              <Zap className="size-2.5 text-amber-500" />
-              {compileTimeMs > 0 ? `${compileTimeMs}ms` : "Live"}
-            </Badge>
+            <span className="text-[11px] text-muted-foreground animate-pulse">
+              Simulating pointer...
+            </span>
           )}
         </div>
 
@@ -335,12 +294,34 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
                 disabled={isSimulatingHover}
                 className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground"
               >
-                <Sparkles className="size-3.5 text-primary" />
+                <Sparkles className="size-3.5" />
                 <span className="hidden lg:inline text-xs">Simulate</span>
               </Button>
             </TooltipTrigger>
             <TooltipContent side="bottom">
-              Simulate pointer hover & clicks inside sandbox
+              Simulate pointer hover & interactions inside sandbox
+            </TooltipContent>
+          </Tooltip>
+
+          {/* Component Preview Dark / Light Theme Toggle */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => handleThemeChange(previewTheme === "dark" ? "light" : "dark")}
+                className="size-7 text-muted-foreground hover:text-foreground"
+              >
+                {previewTheme === "dark" ? (
+                  <Sun className="size-3.5 text-amber-500" />
+                ) : (
+                  <Moon className="size-3.5 text-sky-400" />
+                )}
+                <span className="sr-only">Toggle preview theme</span>
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">
+              Preview theme: {previewTheme === "dark" ? "Dark (click for Light)" : "Light (click for Dark)"}
             </TooltipContent>
           </Tooltip>
 
@@ -361,26 +342,26 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
               </TooltipTrigger>
               <TooltipContent side="bottom">Canvas background style</TooltipContent>
             </Tooltip>
-            <DropdownMenuContent align="end" className="w-48">
-              <DropdownMenuLabel className="font-mono text-[10px] uppercase text-muted-foreground">
-                Canvas Backdrop
+            <DropdownMenuContent align="end" className="w-40 font-sans">
+              <DropdownMenuLabel className="text-[10px] uppercase text-muted-foreground">
+                Backdrop
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={() => setCanvasBg("mesh")}>
-                Mesh Gradient
+                Subtle Ambient
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => setCanvasBg("grid")}>
-                Light/Dark Dot Grid
+                Dot Grid
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => setCanvasBg("light")}>
                 Solid Light
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => setCanvasBg("dark")}>
-                Default Neutral
+                Neutral Dark
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={() => setCanvasBg("black")}>
-                Pure Black OLED
+                Pure Black
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -462,34 +443,17 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
           style={{
             width: getComputedWidth(),
             maxWidth: isFluidResponsive ? "100%" : "none",
-            height: isFluidResponsive ? "100%" : "88vh",
+            height: "100%",
+            maxHeight: "100%",
             transform: `scale(${zoom / 100})`,
             transformOrigin: "center center",
           }}
           className={`relative ${
             draggedWidth !== null ? "transition-none" : "transition-all duration-250 ease-smooth-out"
-          } rounded-xl border border-border shadow-xl overflow-hidden bg-background flex flex-col ${
+          } rounded-xl border border-border shadow-md overflow-hidden bg-background flex flex-col ${
             isFluidResponsive ? "w-full" : ""
           }`}
         >
-          {/* Clean Vercel Preview Frame Header */}
-          <div className="flex h-8 shrink-0 items-center justify-between border-b border-border bg-muted/20 px-3 select-none">
-            <div className="flex items-center gap-2">
-              <span className="size-1.5 rounded-full bg-emerald-500" />
-              <span className="font-mono text-xs text-muted-foreground">preview.tsx</span>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-muted-foreground bg-muted/60 px-2 py-0.5 rounded">
-                {draggedWidth !== null
-                  ? `${draggedWidth}px`
-                  : isFluidResponsive
-                  ? "Fluid 100%"
-                  : getComputedWidth()}
-              </span>
-            </div>
-          </div>
-
           {/* Sandboxed Live Iframe with matching theme surface */}
           <div
             className={`relative flex-1 w-full h-full overflow-hidden transition-colors duration-250 ease-smooth-out ${
@@ -510,7 +474,7 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
           <div
             onMouseDown={handleResizeStart}
             title="Drag horizontally to resize preview width"
-            className="absolute right-0 top-8 bottom-0 w-3 cursor-ew-resize hover:bg-primary/10 flex items-center justify-center transition-colors duration-150 ease-smooth-out group z-20"
+            className="absolute right-0 top-0 bottom-0 w-3 cursor-ew-resize hover:bg-primary/10 flex items-center justify-center transition-colors duration-150 ease-smooth-out group z-20"
           >
             <div className="h-8 w-1 rounded-full bg-border group-hover:bg-primary transition-colors duration-150 ease-smooth-out" />
           </div>

@@ -1,18 +1,4 @@
-"use client";
-
-import dynamic from "next/dynamic";
-import { StudioSkeleton } from "@/components/studio/studio-skeleton";
-
-const StudioContainer = dynamic(
-  () =>
-    import("@/components/studio/studio-container").then(
-      (mod) => mod.StudioContainer
-    ),
-  {
-    ssr: false,
-    loading: () => <StudioSkeleton />,
-  }
-);
+import { StudioContainer } from "@/components/studio/studio-container";
 
 export default function Home() {
   return <StudioContainer />;

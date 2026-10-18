@@ -7,12 +7,13 @@ import { CanvasPreview } from "./canvas-preview";
 import { AiAssistantPanel } from "./ai-assistant-panel";
 import { PublishModal } from "./publish-modal";
 import { DependencyModal } from "./dependency-modal";
+import { TerminalPanel } from "./terminal-panel";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Code, Eye, Sparkles } from "lucide-react";
 import { useStudioStore } from "@/lib/store/studio-store";
 
 export function StudioContainer() {
-  const { isAiPanelOpen, toggleAiPanel } = useStudioStore();
+  const { isAiPanelOpen, toggleAiPanel, layoutMode, isTerminalOpen } = useStudioStore();
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const [mobileTab, setMobileTab] = useState<"editor" | "preview" | "ai">("preview");
   const [splitRatio, setSplitRatio] = useState(48); // Left width percentage on desktop
@@ -92,43 +93,69 @@ export function StudioContainer() {
       </div>
 
       {/* Main Workspace Body */}
-      <div className="flex flex-1 relative overflow-hidden">
-        {/* Left Column: Editor Panel */}
-        <div
-          style={{ width: `${splitRatio}%` }}
-          className={`h-full flex-col md:flex ${
-            mobileTab === "editor" ? "flex w-full" : "hidden"
-          }`}
-        >
-          <EditorPanel />
+      <div className="relative flex flex-1 flex-col overflow-hidden">
+        {/* Workspace Split Area (Editor + Splitter + Canvas) */}
+        <div className="relative flex flex-1 overflow-hidden">
+          {/* Editor Column */}
+          {(layoutMode === "split" || layoutMode === "editor") && (
+            <div
+              style={{
+                width: layoutMode === "editor" ? "100%" : `${splitRatio}%`,
+              }}
+              className={`h-full flex-col md:flex ${
+                mobileTab === "editor"
+                  ? "flex w-full"
+                  : layoutMode === "editor"
+                  ? "flex"
+                  : "hidden"
+              }`}
+            >
+              <EditorPanel />
+            </div>
+          )}
+
+          {/* Resizable Splitter Divider (only when split) */}
+          {layoutMode === "split" && (
+            <div
+              onMouseDown={handleMouseDown}
+              className="hidden md:flex relative w-1.5 cursor-col-resize items-center justify-center bg-background hover:bg-primary/20 transition-colors duration-150 ease-smooth-out z-20 group"
+              title="Drag to resize panels"
+            >
+              <div className="h-full w-px bg-border group-hover:bg-primary transition-colors duration-150 ease-smooth-out" />
+            </div>
+          )}
+
+          {/* Center / Right Column: Canvas Live Preview */}
+          {(layoutMode === "split" || layoutMode === "preview") && (
+            <div
+              className={`h-full flex-1 md:flex overflow-hidden ${
+                mobileTab === "preview"
+                  ? "flex w-full"
+                  : layoutMode === "preview"
+                  ? "flex"
+                  : "hidden"
+              }`}
+            >
+              <CanvasPreview iframeRef={iframeRef} />
+            </div>
+          )}
+
+          {/* AI Assistant Panel: Smooth slide-over drawer on desktop, tab view on mobile */}
+          <div
+            className={`transition-transform duration-250 ease-smooth-out ${
+              mobileTab === "ai"
+                ? "flex w-full h-full"
+                : isAiPanelOpen
+                ? "hidden md:flex absolute top-0 right-0 bottom-0 z-30 shadow-2xl animate-in slide-in-from-right duration-200"
+                : "hidden"
+            }`}
+          >
+            <AiAssistantPanel />
+          </div>
         </div>
 
-        {/* Resizable Splitter Divider */}
-        <div
-          onMouseDown={handleMouseDown}
-          className="hidden md:flex relative w-1.5 cursor-col-resize items-center justify-center bg-background hover:bg-primary/20 transition-colors duration-150 ease-smooth-out z-20 group"
-          title="Drag to resize panels"
-        >
-          <div className="h-full w-px bg-border group-hover:bg-primary transition-colors duration-150 ease-smooth-out" />
-        </div>
-
-        {/* Center / Right Column: Canvas Live Preview */}
-        <div
-          className={`h-full flex-1 md:flex overflow-hidden ${
-            mobileTab === "preview" ? "flex w-full" : "hidden"
-          }`}
-        >
-          <CanvasPreview iframeRef={iframeRef} />
-        </div>
-
-        {/* Rightmost Docked Column: AI Assistant Panel */}
-        <div
-          className={`h-full ${
-            mobileTab === "ai" ? "flex w-full" : isAiPanelOpen ? "hidden md:flex" : "hidden"
-          }`}
-        >
-          <AiAssistantPanel />
-        </div>
+        {/* Full-Width Bottom Terminal Shelf */}
+        {isTerminalOpen && <TerminalPanel />}
       </div>
 
       {/* Modals & Dialogs */}

@@ -19,6 +19,11 @@ export const metadata: Metadata = {
   title: "Vercel / 21st Studio - Component Studio & Design Sandbox",
   description:
     "An implementation of Vercel's Geist design language. Author React & Tailwind components in real-time with AST analysis and publish directly to 21st.dev.",
+  openGraph: {
+    title: "Vercel / 21st Studio - Component Studio & Design Sandbox",
+    description:
+      "An implementation of Vercel's Geist design language. Author React & Tailwind components in real-time with AST analysis and publish directly to 21st.dev.",
+  },
 };
 
 export default function RootLayout({

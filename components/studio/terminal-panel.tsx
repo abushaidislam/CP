@@ -3,8 +3,6 @@
 import React, { useState, useRef, useEffect, useMemo } from "react";
 import {
   useStudioStore,
-  TerminalFilter,
-  TerminalLogLevel,
   StudioViewport,
   PreviewTheme,
 } from "@/lib/store/studio-store";
@@ -18,14 +16,10 @@ import {
 import {
   Terminal,
   Trash2,
-  X,
   ChevronDown,
-  ChevronUp,
   CornerDownLeft,
   AlertCircle,
   AlertTriangle,
-  Info,
-  Sparkles,
   Copy,
   Check,
   HelpCircle,
@@ -452,7 +446,24 @@ export function TerminalPanel() {
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={() => handleExecute({ preventDefault: () => {} } as any)}
+                onClick={() => {
+                  addTerminalLog({
+                    type: "system",
+                    message: [
+                      "Available Studio Commands:",
+                      "  help                          - Show this command reference",
+                      "  clear                         - Clear all terminal logs",
+                      "  install <pkg> | add <pkg>     - Add npm package to dependencies (esm.sh)",
+                      "  remove <pkg>                  - Remove npm package from dependencies",
+                      "  deps | packages               - List active dependencies",
+                      "  theme <dark|light>            - Switch canvas preview theme",
+                      "  viewport <desktop|tablet|mobile|responsive>",
+                      "  zoom <50|75|100|125|150>      - Change canvas preview zoom",
+                      "  reset                         - Reset code to initial template",
+                      "  <any javascript>              - Evaluate JavaScript expression in sandbox",
+                    ].join("\n"),
+                  });
+                }}
                 className="size-6 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800"
               >
                 <HelpCircle className="size-3" />

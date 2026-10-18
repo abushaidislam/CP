@@ -1,0 +1,8 @@
+{
+  "name": "Vercel / 21st Studio - Component Studio & Design Sandbox",
+  "description": "An implementation of Vercel's Geist design language. Author React & Tailwind components in real-time with AST analysis and publish directly to 21st.dev.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

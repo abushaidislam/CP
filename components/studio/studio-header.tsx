@@ -28,6 +28,9 @@ import {
   ExternalLink,
   Sparkles,
   Terminal,
+  Columns2,
+  Code2,
+  Eye,
 } from "lucide-react";
 
 export function StudioHeader() {
@@ -40,6 +43,8 @@ export function StudioHeader() {
     terminalLogs,
     isAiPanelOpen,
     toggleAiPanel,
+    layoutMode,
+    setLayoutMode,
   } = useStudioStore();
 
   const [isDark, setIsDark] = useState(true);
@@ -84,12 +89,10 @@ export function StudioHeader() {
         {/* Breadcrumb Title */}
         <div className="flex items-center gap-2">
           <span className="font-semibold text-xs tracking-tight text-foreground">
-            21st Studio
+            Component Studio
           </span>
           <span className="text-muted-foreground/40 text-xs">/</span>
-          <Badge variant="outline" className="text-[10px] py-0 px-1.5 hidden sm:inline-flex text-muted-foreground">
-            v2.0
-          </Badge>
+          <span className="text-xs text-muted-foreground font-normal">Sandbox</span>
         </div>
 
         <Separator orientation="vertical" className="h-4 hidden md:block" />
@@ -115,7 +118,7 @@ export function StudioHeader() {
             </Tooltip>
 
             <DropdownMenuContent align="start" className="w-68">
-              <DropdownMenuLabel className="text-[10px] font-mono uppercase text-muted-foreground">
+              <DropdownMenuLabel className="text-[10px] uppercase text-muted-foreground">
                 Starter Blueprints
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
@@ -129,7 +132,7 @@ export function StudioHeader() {
                     <span className="font-medium text-xs text-foreground">
                       {tmpl.name}
                     </span>
-                    <span className="font-mono text-[9px] uppercase text-muted-foreground">
+                    <span className="text-[10px] text-muted-foreground">
                       {tmpl.category}
                     </span>
                   </div>
@@ -143,16 +146,55 @@ export function StudioHeader() {
         </div>
       </div>
 
-      {/* Center: Live Status Indicator */}
-      <div className="hidden lg:flex items-center gap-2">
-        <Badge variant="outline" className="gap-1.5 py-0.5 px-2.5 text-xs text-muted-foreground bg-muted/40 border-border/70">
-          <span className="size-1.5 rounded-full bg-emerald-500" />
-          Sandbox Active
-        </Badge>
+      {/* Center: Layout View Mode Switcher */}
+      <div className="hidden sm:flex items-center">
+        <div className="flex items-center bg-muted/50 p-0.5 rounded-lg border border-border">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setLayoutMode("split")}
+            className={`h-7 px-2.5 text-xs gap-1.5 rounded-md font-sans transition-all ${
+              layoutMode === "split"
+                ? "bg-background text-foreground shadow-2xs font-medium"
+                : "text-muted-foreground hover:text-foreground hover:bg-transparent"
+            }`}
+          >
+            <Columns2 className="size-3.5" />
+            <span>Split</span>
+          </Button>
+
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setLayoutMode("editor")}
+            className={`h-7 px-2.5 text-xs gap-1.5 rounded-md font-sans transition-all ${
+              layoutMode === "editor"
+                ? "bg-background text-foreground shadow-2xs font-medium"
+                : "text-muted-foreground hover:text-foreground hover:bg-transparent"
+            }`}
+          >
+            <Code2 className="size-3.5" />
+            <span>Code</span>
+          </Button>
+
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setLayoutMode("preview")}
+            className={`h-7 px-2.5 text-xs gap-1.5 rounded-md font-sans transition-all ${
+              layoutMode === "preview"
+                ? "bg-background text-foreground shadow-2xs font-medium"
+                : "text-muted-foreground hover:text-foreground hover:bg-transparent"
+            }`}
+          >
+            <Eye className="size-3.5" />
+            <span>Preview</span>
+          </Button>
+        </div>
       </div>
 
       {/* Right: Actions */}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1.5">
         {/* Terminal Toggle Button */}
         <Tooltip>
           <TooltipTrigger asChild>
@@ -160,7 +202,7 @@ export function StudioHeader() {
               variant={isTerminalOpen ? "secondary" : "ghost"}
               size="sm"
               onClick={toggleTerminal}
-              className={`h-8 gap-1.5 px-2.5 text-xs transition-colors ${
+              className={`h-8 gap-1.5 px-2.5 text-xs font-sans transition-colors ${
                 isTerminalOpen
                   ? "bg-muted text-foreground font-medium"
                   : "text-muted-foreground hover:text-foreground"
@@ -171,14 +213,14 @@ export function StudioHeader() {
               {errorCount > 0 ? (
                 <Badge
                   variant="destructive"
-                  className="h-4 px-1 text-[9px] font-bold"
+                  className="h-4 px-1 text-[9px] font-semibold font-sans"
                 >
                   {errorCount}
                 </Badge>
               ) : warnCount > 0 ? (
                 <Badge
                   variant="secondary"
-                  className="h-4 px-1 text-[9px] text-amber-500 bg-amber-500/10"
+                  className="h-4 px-1 text-[9px] text-amber-500 bg-amber-500/10 font-sans"
                 >
                   {warnCount}
                 </Badge>
@@ -190,8 +232,6 @@ export function StudioHeader() {
           </TooltipContent>
         </Tooltip>
 
-        <Separator orientation="vertical" className="h-4 mx-0.5" />
-
         {/* AI Copilot Toggle Button */}
         <Tooltip>
           <TooltipTrigger asChild>
@@ -199,42 +239,22 @@ export function StudioHeader() {
               variant={isAiPanelOpen ? "secondary" : "ghost"}
               size="sm"
               onClick={toggleAiPanel}
-              className={`h-8 gap-1.5 px-2.5 text-xs transition-colors ${
+              className={`h-8 gap-1.5 px-2.5 text-xs font-sans transition-colors ${
                 isAiPanelOpen
                   ? "bg-primary/10 text-primary border border-primary/25 font-medium"
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
               <Sparkles className={`size-3.5 ${isAiPanelOpen ? "text-primary" : "text-amber-500"}`} />
-              <span className="hidden sm:inline">AI Copilot</span>
+              <span className="hidden sm:inline">Copilot</span>
             </Button>
           </TooltipTrigger>
           <TooltipContent side="bottom">
-            Toggle 21st AI Copilot (Ctrl+I)
+            Toggle AI Copilot (Ctrl+I)
           </TooltipContent>
         </Tooltip>
 
-        <Separator orientation="vertical" className="h-4 mx-0.5" />
-
-        {/* 21st.dev Publish Button */}
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="default"
-              size="sm"
-              onClick={() => setPublishModalOpen(true)}
-              className="h-8 gap-2 px-3 text-xs font-medium"
-            >
-              <UploadCloud className="size-3.5" />
-              <span>Publish Package</span>
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent side="bottom">
-            Generate AST metadata & 21st.dev publish package
-          </TooltipContent>
-        </Tooltip>
-
-        <Separator orientation="vertical" className="h-4 mx-0.5" />
+        <Separator orientation="vertical" className="h-4 mx-1" />
 
         {/* Theme Switcher */}
         <Tooltip>
@@ -251,6 +271,24 @@ export function StudioHeader() {
           </TooltipTrigger>
           <TooltipContent side="bottom">
             {isDark ? "Switch to light mode" : "Switch to dark mode"}
+          </TooltipContent>
+        </Tooltip>
+
+        {/* 21st.dev Publish Button */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="default"
+              size="sm"
+              onClick={() => setPublishModalOpen(true)}
+              className="h-8 gap-2 px-3 text-xs font-medium font-sans"
+            >
+              <UploadCloud className="size-3.5" />
+              <span>Publish</span>
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom">
+            Generate AST metadata & publish package
           </TooltipContent>
         </Tooltip>
 
