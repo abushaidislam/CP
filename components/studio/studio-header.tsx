@@ -30,7 +30,10 @@ import {
   Columns2,
   Code2,
   Eye,
+  Sparkles,
 } from "lucide-react";
+import { motion } from "framer-motion";
+import { cn } from "@/lib/utils";
 
 export function StudioHeader() {
   const {
@@ -90,7 +93,7 @@ export function StudioHeader() {
           <span className="font-semibold text-xs tracking-tight text-foreground">
             Component Studio
           </span>
-          <span className="text-muted-foreground/40 font-mono text-xs">/</span>
+          <span className="text-muted-foreground/40 font-sans text-xs">/</span>
 
           {/* Active Template Selector as Breadcrumb Leaf */}
           <DropdownMenu>
@@ -140,50 +143,39 @@ export function StudioHeader() {
         </nav>
       </div>
 
-      {/* Center: Layout View Mode Switcher */}
+      {/* Center: Layout View Mode Switcher with sliding indicator */}
       <div className="hidden sm:flex items-center">
-        <div className="flex items-center bg-muted/50 p-0.5 rounded-lg border border-border">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setLayoutMode("split")}
-            className={`h-7 px-2.5 text-xs gap-1.5 rounded-md font-sans transition-all ${
-              layoutMode === "split"
-                ? "bg-background text-foreground shadow-2xs font-medium"
-                : "text-muted-foreground hover:text-foreground hover:bg-transparent"
-            }`}
-          >
-            <Columns2 className="size-3.5" />
-            <span>Split</span>
-          </Button>
-
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setLayoutMode("editor")}
-            className={`h-7 px-2.5 text-xs gap-1.5 rounded-md font-sans transition-all ${
-              layoutMode === "editor"
-                ? "bg-background text-foreground shadow-2xs font-medium"
-                : "text-muted-foreground hover:text-foreground hover:bg-transparent"
-            }`}
-          >
-            <Code2 className="size-3.5" />
-            <span>Code</span>
-          </Button>
-
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setLayoutMode("preview")}
-            className={`h-7 px-2.5 text-xs gap-1.5 rounded-md font-sans transition-all ${
-              layoutMode === "preview"
-                ? "bg-background text-foreground shadow-2xs font-medium"
-                : "text-muted-foreground hover:text-foreground hover:bg-transparent"
-            }`}
-          >
-            <Eye className="size-3.5" />
-            <span>Preview</span>
-          </Button>
+        <div className="relative flex items-center bg-muted/50 p-0.5 rounded-lg border border-border">
+          {(["split", "editor", "preview"] as const).map((mode) => {
+            const isActive = layoutMode === mode;
+            return (
+              <button
+                key={mode}
+                type="button"
+                onClick={() => setLayoutMode(mode)}
+                className={cn(
+                  "relative z-10 flex h-7 items-center gap-1.5 px-2.5 text-xs font-sans font-medium transition-colors cursor-pointer select-none",
+                  isActive
+                    ? "text-foreground font-medium"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                {isActive && (
+                  <motion.div
+                    layoutId="active-header-layout-pill"
+                    className="absolute inset-0 rounded-md bg-background shadow-2xs z-[-1]"
+                    transition={{ type: "spring", bounce: 0, duration: 0.22 }}
+                  />
+                )}
+                {mode === "split" && <Columns2 className="size-3.5" />}
+                {mode === "editor" && <Code2 className="size-3.5" />}
+                {mode === "preview" && <Eye className="size-3.5" />}
+                <span>
+                  {mode === "editor" ? "Code" : mode === "split" ? "Split" : "Preview"}
+                </span>
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -207,14 +199,14 @@ export function StudioHeader() {
               {errorCount > 0 ? (
                 <Badge
                   variant="destructive"
-                  className="h-4 px-1 text-[9px] font-semibold font-sans"
+                  className="h-4 px-1 text-[9px] font-semibold font-sans tabular-nums animate-in zoom-in-75 duration-150"
                 >
                   {errorCount}
                 </Badge>
               ) : warnCount > 0 ? (
                 <Badge
                   variant="secondary"
-                  className="h-4 px-1 text-[9px] text-amber-500 bg-amber-500/10 font-sans"
+                  className="h-4 px-1 text-[9px] text-amber-500 bg-amber-500/10 font-sans tabular-nums animate-in zoom-in-75 duration-150"
                 >
                   {warnCount}
                 </Badge>
@@ -226,7 +218,7 @@ export function StudioHeader() {
           </TooltipContent>
         </Tooltip>
 
-        {/* AI Copilot Toggle Button */}
+        {/* AI Copilot Toggle Button with Sparkles */}
         <Tooltip>
           <TooltipTrigger asChild>
             <Button
@@ -239,7 +231,7 @@ export function StudioHeader() {
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
-              <Code2 className="size-3.5" />
+              <Sparkles className="size-3.5 text-sky-400" />
               <span className="hidden sm:inline">Copilot</span>
               <kbd className="hidden lg:inline-block ml-0.5 px-1 py-0.2 rounded bg-muted-foreground/10 text-[9px] font-mono text-muted-foreground">
                 Ctrl+I
@@ -253,7 +245,7 @@ export function StudioHeader() {
 
         <Separator orientation="vertical" className="h-4 mx-1" />
 
-        {/* Theme Switcher */}
+        {/* Theme Switcher with motion icon swap */}
         <Tooltip>
           <TooltipTrigger asChild>
             <Button
@@ -262,7 +254,15 @@ export function StudioHeader() {
               onClick={toggleTheme}
               className="size-8 text-muted-foreground hover:text-foreground"
             >
-              {isDark ? <Sun className="size-3.5" /> : <Moon className="size-3.5" />}
+              <motion.div
+                key={isDark ? "sun" : "moon"}
+                initial={{ scale: 0.5, rotate: -30, opacity: 0 }}
+                animate={{ scale: 1, rotate: 0, opacity: 1 }}
+                transition={{ duration: 0.18, ease: "easeOut" }}
+                className="flex items-center justify-center"
+              >
+                {isDark ? <Sun className="size-3.5" /> : <Moon className="size-3.5" />}
+              </motion.div>
               <span className="sr-only">Toggle theme</span>
             </Button>
           </TooltipTrigger>

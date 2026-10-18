@@ -146,7 +146,7 @@ export function DependencyModal() {
 
   return (
     <Dialog open={isDependencyModalOpen} onOpenChange={setDependencyModalOpen}>
-      <DialogContent className="max-w-2xl border-border bg-background shadow-xl rounded-xl p-6">
+      <DialogContent className="max-w-2xl w-[calc(100vw-2rem)] max-h-[90vh] overflow-y-auto flex flex-col border-border bg-background shadow-xl rounded-xl p-6">
         <DialogHeader>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -328,15 +328,17 @@ export function DependencyModal() {
 
         {/* Active Installed Packages */}
         <div className="mt-3">
-          <div className="flex items-center justify-between font-mono text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-            <span>Installed Packages ({dependencies.length})</span>
+          <div className="flex items-center justify-between text-muted-foreground font-sans">
+            <span className="font-mono text-[10px] font-medium uppercase tracking-wider">
+              Installed Packages ({dependencies.length})
+            </span>
             {dependencies.length > 0 && (
               <Button
                 variant="ghost"
                 size="sm"
                 type="button"
                 onClick={clearAllDependencies}
-                className="h-5 px-1.5 text-[10px] text-muted-foreground hover:text-destructive cursor-pointer"
+                className="h-5 px-1.5 text-[10px] text-muted-foreground hover:text-destructive cursor-pointer font-sans"
               >
                 Clear all
               </Button>
@@ -421,10 +423,11 @@ export function DependencyModal() {
               const isUsedInCode = codeImports.includes(pkg.name);
 
               return (
-                <div
+                <button
                   key={pkg.name}
+                  type="button"
                   onClick={() => toggleDependency(pkg.name)}
-                  className={`flex cursor-pointer items-start justify-between rounded-lg border p-2.5 transition-all duration-150 ease-smooth-out active:scale-[0.99] ${
+                  className={`text-left w-full flex cursor-pointer items-start justify-between rounded-lg border p-2.5 transition-all duration-150 ease-smooth-out active:scale-[0.98] select-none ${
                     isInstalled
                       ? "border-primary/40 bg-primary/5 text-foreground shadow-xs"
                       : "border-border bg-card text-muted-foreground hover:bg-muted/40 hover:text-foreground"
@@ -458,7 +461,7 @@ export function DependencyModal() {
                       <Plus className="size-4 text-muted-foreground" />
                     )}
                   </div>
-                </div>
+                </button>
               );
             })}
           </div>

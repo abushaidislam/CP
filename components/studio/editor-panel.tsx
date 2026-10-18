@@ -22,6 +22,8 @@ import {
   AlertCircle,
   Loader2,
 } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { cn } from "@/lib/utils";
 
 export function EditorPanel() {
   const {
@@ -105,24 +107,35 @@ export function EditorPanel() {
     <div className="flex h-full w-full flex-col border-r border-border bg-background">
       {/* File Tabs Header */}
       <div className="flex h-11 shrink-0 items-center justify-between border-b border-border bg-muted/10 px-3 select-none">
-        {/* Authentic Shadcn Tabs for File Navigation */}
-        <Tabs
-          value={activeTab}
-          onValueChange={(val) => setActiveTab(val as StudioFileName)}
-        >
-          <TabsList className="h-7 bg-muted/60 p-0.5">
-            {tabs.map((tab) => (
-              <TabsTrigger
+        {/* File Navigation with sliding active pill */}
+        <div className="relative flex items-center bg-muted/60 p-0.5 rounded-md border border-border/40">
+          {tabs.map((tab) => {
+            const isActive = activeTab === tab.id;
+            return (
+              <button
                 key={tab.id}
-                value={tab.id}
-                className="h-6 gap-1.5 px-2.5 text-xs font-mono"
+                type="button"
+                onClick={() => setActiveTab(tab.id as StudioFileName)}
+                className={cn(
+                  "relative z-10 flex h-6 items-center gap-1.5 px-2.5 text-xs font-mono transition-colors cursor-pointer select-none rounded-sm",
+                  isActive
+                    ? "text-foreground font-medium"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
               >
+                {isActive && (
+                  <motion.div
+                    layoutId="active-editor-file-tab-pill"
+                    className="absolute inset-0 rounded-sm bg-background shadow-2xs z-[-1]"
+                    transition={{ type: "spring", bounce: 0, duration: 0.2 }}
+                  />
+                )}
                 {tab.icon}
                 <span>{tab.label}</span>
-              </TabsTrigger>
-            ))}
-          </TabsList>
-        </Tabs>
+              </button>
+            );
+          })}
+        </div>
 
         {/* Action Controls */}
         <div className="flex items-center gap-1">
@@ -196,13 +209,23 @@ export function EditorPanel() {
         </div>
       </div>
 
-      {/* Compiler / Lint Error Notification Banner */}
-      {compilerError && (
-        <div className="flex items-center gap-2 border-b border-destructive/20 bg-destructive/10 px-3 py-1.5 text-xs text-destructive font-mono animate-in fade-in duration-150 ease-smooth-out">
-          <AlertCircle className="size-3.5 shrink-0" />
-          <span className="truncate text-[11px]">{compilerError}</span>
-        </div>
-      )}
+      {/* Compiler / Lint Error Notification Banner with smooth exit */}
+      <AnimatePresence>
+        {compilerError && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.18, ease: "easeOut" }}
+            className="overflow-hidden"
+          >
+            <div className="flex items-center gap-2 border-b border-destructive/20 bg-destructive/10 px-3 py-1.5 text-xs text-destructive">
+              <AlertCircle className="size-3.5 shrink-0" />
+              <span className="truncate text-[11px] font-sans">{compilerError}</span>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Editor Body */}
       <div className="flex-1 relative overflow-hidden bg-background">

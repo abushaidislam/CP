@@ -37,6 +37,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
+import { cn } from "@/lib/utils";
 
 interface CanvasPreviewProps {
   iframeRef: React.RefObject<HTMLIFrameElement | null>;
@@ -62,6 +63,17 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
   const [isSimulatingHover, setIsSimulatingHover] = useState(false);
   const [reloadKey, setReloadKey] = useState<number>(0);
   const [draggedWidth, setDraggedWidth] = useState<number | null>(null);
+  const [isResizing, setIsResizing] = useState(false);
+  const [isReloading, setIsReloading] = useState(false);
+
+  // Debounce files (200ms) to ensure butter-smooth 60fps typing in Monaco without compiling on every single keystroke
+  const [debouncedFiles, setDebouncedFiles] = useState(files);
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedFiles(files);
+    }, 200);
+    return () => clearTimeout(timer);
+  }, [files]);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const cardRef = useRef<HTMLDivElement>(null);
@@ -88,17 +100,17 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
     }
   };
 
-  // Compile sandbox HTML when code or settings change
+  // Compile sandbox HTML when code or settings change (using debounced files)
   const { html, error } = useMemo(() => {
     return compileSandboxHtml(
-      files["component.tsx"],
-      files["demo.tsx"],
-      files["index.css"],
+      debouncedFiles["component.tsx"],
+      debouncedFiles["demo.tsx"],
+      debouncedFiles["index.css"],
       dependencies,
       canvasBg,
       previewTheme
     );
-  }, [files, dependencies, canvasBg, previewTheme, reloadKey]);
+  }, [debouncedFiles, dependencies, canvasBg, previewTheme, reloadKey]);
 
   // Sync compiler errors with store
   useEffect(() => {
@@ -149,6 +161,7 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
   const handleResizeStart = (e: React.MouseEvent) => {
     e.preventDefault();
     isResizingRef.current = true;
+    setIsResizing(true);
     document.body.style.cursor = "ew-resize";
     document.body.style.userSelect = "none";
   };
@@ -164,6 +177,7 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
     const handleMouseUp = () => {
       if (isResizingRef.current) {
         isResizingRef.current = false;
+        setIsResizing(false);
         document.body.style.cursor = "";
         document.body.style.userSelect = "";
       }
@@ -397,10 +411,19 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={() => setReloadKey((k) => k + 1)}
+                onClick={() => {
+                  setIsReloading(true);
+                  setReloadKey((k) => k + 1);
+                  setTimeout(() => setIsReloading(false), 500);
+                }}
                 className="size-7 text-muted-foreground hover:text-foreground"
               >
-                <RefreshCw className="size-3.5" />
+                <RefreshCw
+                  className={cn(
+                    "size-3.5 transition-transform duration-500 ease-smooth-out",
+                    isReloading && "rotate-180"
+                  )}
+                />
                 <span className="sr-only">Reload sandbox</span>
               </Button>
             </TooltipTrigger>
@@ -437,6 +460,11 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
           canvasBg
         )}`}
       >
+        {/* Full-screen drag overlay when resizing canvas width */}
+        {isResizing && (
+          <div className="fixed inset-0 z-50 cursor-ew-resize select-none bg-transparent" />
+        )}
+
         {/* Elevated Canvas Card */}
         <div
           ref={cardRef}
@@ -448,11 +476,13 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
             transform: `scale(${zoom / 100})`,
             transformOrigin: "center center",
           }}
-          className={`relative ${
-            draggedWidth !== null ? "transition-none" : "transition-all duration-250 ease-smooth-out"
-          } rounded-xl border border-border shadow-md overflow-hidden bg-background flex flex-col ${
-            isFluidResponsive ? "w-full" : ""
-          }`}
+          className={cn(
+            "relative rounded-xl border border-border shadow-md overflow-hidden bg-background flex flex-col",
+            isFluidResponsive ? "w-full" : "",
+            draggedWidth !== null
+              ? "transition-none"
+              : "transition-[width,transform] duration-250 ease-smooth-out"
+          )}
         >
           {/* Sandboxed Live Iframe with matching theme surface */}
           <div
@@ -466,7 +496,10 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
               srcDoc={html}
               title="21st.dev Live Component Preview"
               sandbox="allow-scripts allow-same-origin allow-modals allow-popups"
-              className="w-full h-full border-none bg-transparent"
+              className={cn(
+                "w-full h-full border-none bg-transparent",
+                isResizing && "pointer-events-none"
+              )}
             />
           </div>
 
@@ -476,7 +509,12 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
             title="Drag horizontally to resize preview width"
             className="absolute right-0 top-0 bottom-0 w-3 cursor-ew-resize hover:bg-primary/10 flex items-center justify-center transition-colors duration-150 ease-smooth-out group z-20"
           >
-            <div className="h-8 w-1 rounded-full bg-border group-hover:bg-primary transition-colors duration-150 ease-smooth-out" />
+            <div
+              className={cn(
+                "h-8 w-1 rounded-full transition-colors duration-150 ease-smooth-out",
+                isResizing ? "bg-primary" : "bg-border group-hover:bg-primary"
+              )}
+            />
           </div>
         </div>
       </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect, useMemo } from "react";
+import { motion } from "framer-motion";
 import {
   useStudioStore,
   StudioViewport,
@@ -24,6 +25,7 @@ import {
   Check,
   HelpCircle,
 } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 export function TerminalPanel() {
   const {
@@ -49,6 +51,7 @@ export function TerminalPanel() {
   const [commandHistory, setCommandHistory] = useState<string[]>([]);
   const [historyIndex, setHistoryIndex] = useState<number>(-1);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [isResizing, setIsResizing] = useState(false);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -67,6 +70,7 @@ export function TerminalPanel() {
   const handleMouseDown = (e: React.MouseEvent) => {
     e.preventDefault();
     isResizingRef.current = true;
+    setIsResizing(true);
     startYRef.current = e.clientY;
     startHeightRef.current = terminalHeight;
     document.body.style.cursor = "ns-resize";
@@ -84,6 +88,7 @@ export function TerminalPanel() {
     const handleMouseUp = () => {
       if (isResizingRef.current) {
         isResizingRef.current = false;
+        setIsResizing(false);
         document.body.style.cursor = "";
         document.body.style.userSelect = "";
       }
@@ -341,15 +346,31 @@ export function TerminalPanel() {
   return (
     <div
       style={{ height: `${terminalHeight}px` }}
-      className="relative flex w-full flex-col border-t border-border bg-zinc-950 text-zinc-100 font-sans text-xs select-none shadow-2xl z-20 transition-[height] duration-75"
+      className={cn(
+        "relative flex w-full flex-col border-t border-border bg-zinc-950 text-zinc-100 font-sans text-xs select-none shadow-2xl z-20",
+        isResizing ? "transition-none" : "transition-[height] duration-200 ease-smooth-out"
+      )}
     >
       {/* Resizable Top Drag Handle */}
       <div
+        role="separator"
+        aria-orientation="horizontal"
+        aria-label="Terminal height divider"
+        tabIndex={0}
         onMouseDown={handleMouseDown}
-        className="absolute top-0 left-0 right-0 h-1.5 cursor-ns-resize hover:bg-primary/40 transition-colors z-30 group"
-        title="Drag up/down to resize terminal"
+        onKeyDown={(e) => {
+          if (e.key === "ArrowUp") setTerminalHeight(terminalHeight + 24);
+          if (e.key === "ArrowDown") setTerminalHeight(terminalHeight - 24);
+        }}
+        className="absolute top-0 left-0 right-0 h-1.5 cursor-ns-resize hover:bg-primary/40 transition-colors z-30 group focus-visible:outline-none"
+        title="Drag up/down or use arrow keys to resize terminal"
       >
-        <div className="mx-auto h-0.5 w-12 rounded-full bg-border group-hover:bg-primary transition-colors mt-0.5" />
+        <div
+          className={cn(
+            "mx-auto h-0.5 w-12 rounded-full transition-colors mt-0.5",
+            isResizing ? "bg-primary" : "bg-border group-hover:bg-primary"
+          )}
+        />
       </div>
 
       {/* Terminal Header & Filter Tabs */}
@@ -361,80 +382,69 @@ export function TerminalPanel() {
             <span>Terminal</span>
           </div>
 
-          {/* Filter Pills */}
-          <div className="flex items-center bg-zinc-950/70 p-0.5 rounded-md border border-zinc-800 text-[11px]">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setTerminalFilter("all")}
-              className={`h-6 px-2 py-0.5 rounded text-[11px] font-sans transition-colors cursor-pointer ${
-                terminalFilter === "all"
-                  ? "bg-zinc-800 text-white font-medium shadow-xs"
-                  : "text-zinc-400 hover:text-zinc-200 hover:bg-transparent"
-              }`}
-            >
-              All ({terminalLogs.length})
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setTerminalFilter("errors")}
-              className={`h-6 px-2 py-0.5 rounded text-[11px] font-sans transition-colors flex items-center gap-1 cursor-pointer ${
-                terminalFilter === "errors"
-                  ? "bg-red-950/80 text-red-300 font-medium"
-                  : "text-zinc-400 hover:text-red-400 hover:bg-transparent"
-              }`}
-            >
-              <AlertCircle className="size-2.5 text-red-400" />
-              <span>Errors</span>
-              {counts.errorCount > 0 && (
-                <span className="text-[10px] bg-red-500/20 text-red-400 px-1 rounded-full font-bold">
-                  {counts.errorCount}
-                </span>
-              )}
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setTerminalFilter("warnings")}
-              className={`h-6 px-2 py-0.5 rounded text-[11px] font-sans transition-colors flex items-center gap-1 cursor-pointer ${
-                terminalFilter === "warnings"
-                  ? "bg-amber-950/80 text-amber-300 font-medium"
-                  : "text-zinc-400 hover:text-amber-400 hover:bg-transparent"
-              }`}
-            >
-              <AlertTriangle className="size-2.5 text-amber-400" />
-              <span>Warnings</span>
-              {counts.warnCount > 0 && (
-                <span className="text-[10px] bg-amber-500/20 text-amber-400 px-1 rounded-full font-bold">
-                  {counts.warnCount}
-                </span>
-              )}
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setTerminalFilter("logs")}
-              className={`h-6 px-2 py-0.5 rounded text-[11px] font-sans transition-colors cursor-pointer ${
-                terminalFilter === "logs"
-                  ? "bg-zinc-800 text-white font-medium"
-                  : "text-zinc-400 hover:text-zinc-200 hover:bg-transparent"
-              }`}
-            >
-              Logs ({counts.logCount})
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setTerminalFilter("system")}
-              className={`h-6 px-2 py-0.5 rounded text-[11px] font-sans transition-colors cursor-pointer ${
-                terminalFilter === "system"
-                  ? "bg-zinc-800 text-white font-medium"
-                  : "text-zinc-400 hover:text-zinc-200 hover:bg-transparent"
-              }`}
-            >
-              System
-            </Button>
+          {/* Filter Pills with sliding indicator */}
+          <div className="relative flex items-center bg-zinc-950/70 p-0.5 rounded-md border border-zinc-800 text-[11px]">
+            {(
+              [
+                { id: "all", label: `All (${terminalLogs.length})` },
+                {
+                  id: "errors",
+                  label: "Errors",
+                  count: counts.errorCount,
+                  icon: AlertCircle,
+                  color: "text-red-400",
+                },
+                {
+                  id: "warnings",
+                  label: "Warnings",
+                  count: counts.warnCount,
+                  icon: AlertTriangle,
+                  color: "text-amber-400",
+                },
+                { id: "logs", label: `Logs (${counts.logCount})` },
+                { id: "system", label: "System" },
+              ] as const
+            ).map((tab) => {
+              const isActive = terminalFilter === tab.id;
+              const Icon = "icon" in tab ? tab.icon : null;
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setTerminalFilter(tab.id as any)}
+                  className={cn(
+                    "relative z-10 flex h-6 items-center gap-1 px-2 py-0.5 rounded text-[11px] font-sans font-medium transition-colors cursor-pointer",
+                    isActive ? "text-white" : "text-zinc-400 hover:text-zinc-200"
+                  )}
+                >
+                  {isActive && (
+                    <motion.div
+                      layoutId="active-terminal-filter-pill"
+                      className="absolute inset-0 rounded bg-zinc-800 shadow-xs z-[-1]"
+                      transition={{ type: "spring", bounce: 0, duration: 0.2 }}
+                    />
+                  )}
+                  {Icon && (
+                    <Icon
+                      className={cn("size-2.5", "color" in tab ? tab.color : "")}
+                    />
+                  )}
+                  <span>{tab.label}</span>
+                  {"count" in tab && tab.count > 0 && (
+                    <span
+                      className={cn(
+                        "text-[10px] px-1 py-0 rounded-full font-bold tabular-nums",
+                        tab.id === "errors"
+                          ? "bg-red-500/20 text-red-300"
+                          : "bg-amber-500/20 text-amber-300"
+                      )}
+                    >
+                      {tab.count}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
           </div>
         </div>
 
@@ -529,9 +539,9 @@ export function TerminalPanel() {
                 key={log.id}
                 className={`group relative flex items-start gap-2 rounded px-2 py-1 leading-relaxed transition-colors hover:bg-zinc-900/60 ${
                   isError
-                    ? "bg-red-500/10 text-red-300 border-l-2 border-red-500"
+                    ? "bg-red-500/10 text-red-300 border-l border-red-500/50"
                     : isWarn
-                    ? "bg-amber-500/10 text-amber-300 border-l-2 border-amber-500"
+                    ? "bg-amber-500/10 text-amber-300 border-l border-amber-500/50"
                     : isCommand
                     ? "text-emerald-400 font-semibold"
                     : isResult

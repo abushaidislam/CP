@@ -261,7 +261,7 @@ export function PublishModal() {
 
   return (
     <Dialog open={isPublishModalOpen} onOpenChange={setPublishModalOpen}>
-      <DialogContent className="max-w-4xl max-h-[92vh] flex flex-col border-border bg-background p-6 shadow-2xl rounded-2xl overflow-hidden">
+      <DialogContent className="max-w-4xl w-[calc(100vw-2rem)] max-h-[90vh] flex flex-col border-border bg-background p-6 shadow-2xl rounded-2xl overflow-hidden">
         {/* Header */}
         <DialogHeader className="pr-8 shrink-0">
           <div className="flex items-center gap-3">
@@ -271,7 +271,7 @@ export function PublishModal() {
             <div>
               <DialogTitle className="flex items-center gap-2 text-lg font-bold tracking-tight text-foreground">
                 <span>Publish to 21st.dev</span>
-                <Badge variant="blue" className="font-mono text-[11px] font-normal">
+                <Badge variant="blue" className="font-sans text-[11px] font-normal">
                   CLI & Registry Generator
                 </Badge>
               </DialogTitle>
@@ -296,28 +296,24 @@ export function PublishModal() {
                   Visibility:
                 </span>
                 <div className="inline-flex rounded-md border border-border bg-background p-0.5 text-xs font-sans">
-                  <button
+                  <Button
+                    variant={visibility === "published" ? "default" : "ghost"}
+                    size="sm"
                     type="button"
                     onClick={() => setVisibility("published")}
-                    className={`px-2 py-0.5 rounded text-[11px] transition-colors font-sans ${
-                      visibility === "published"
-                        ? "bg-primary text-primary-foreground font-medium"
-                        : "text-muted-foreground hover:text-foreground"
-                    }`}
+                    className="h-6 px-2.5 text-[11px] font-sans"
                   >
                     published
-                  </button>
-                  <button
+                  </Button>
+                  <Button
+                    variant={visibility === "private" ? "default" : "ghost"}
+                    size="sm"
                     type="button"
                     onClick={() => setVisibility("private")}
-                    className={`px-2 py-0.5 rounded text-[11px] transition-colors font-sans ${
-                      visibility === "private"
-                        ? "bg-primary text-primary-foreground font-medium"
-                        : "text-muted-foreground hover:text-foreground"
-                    }`}
+                    className="h-6 px-2.5 text-[11px] font-sans"
                   >
                     private
-                  </button>
+                  </Button>
                 </div>
               </div>
             </div>
@@ -325,10 +321,14 @@ export function PublishModal() {
             {/* Row 1: Title, Slug, Registry */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 font-sans">
               <div>
-                <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider font-sans">
+                <label
+                  htmlFor="publish-title"
+                  className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider font-sans"
+                >
                   Title / Name
                 </label>
                 <Input
+                  id="publish-title"
                   type="text"
                   value={customTitle}
                   onChange={(e) => setCustomTitle(e.target.value)}
@@ -338,10 +338,14 @@ export function PublishModal() {
               </div>
 
               <div>
-                <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider font-sans">
+                <label
+                  htmlFor="publish-slug"
+                  className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider font-sans"
+                >
                   Slug
                 </label>
                 <Input
+                  id="publish-slug"
                   type="text"
                   value={customSlug}
                   onChange={(e) => setCustomSlug(e.target.value)}
@@ -354,20 +358,18 @@ export function PublishModal() {
                 <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider font-sans">
                   Registry Type
                 </label>
-                <div className="mt-1 flex rounded-md border border-border bg-background p-0.5 h-8 font-sans">
+                <div className="mt-1 flex rounded-md border border-border bg-background p-0.5 h-8 font-sans gap-0.5">
                   {(["ui", "hooks", "blocks", "icons"] as const).map((t) => (
-                    <button
+                    <Button
                       key={t}
+                      variant={registryType === t ? "default" : "ghost"}
+                      size="sm"
                       type="button"
                       onClick={() => setRegistryType(t)}
-                      className={`flex-1 rounded text-[11px] font-sans transition-colors ${
-                        registryType === t
-                          ? "bg-primary text-primary-foreground font-medium shadow-2xs"
-                          : "text-muted-foreground hover:text-foreground"
-                      }`}
+                      className="flex-1 h-full text-[11px] font-sans px-1"
                     >
                       {t}
-                    </button>
+                    </Button>
                   ))}
                 </div>
               </div>
@@ -427,19 +429,17 @@ export function PublishModal() {
                 {QUICK_TAGS.map((tag) => {
                   const isActive = (payload.tags || []).includes(tag);
                   return (
-                    <button
+                    <Button
                       key={tag}
                       type="button"
+                      variant={isActive ? "secondary" : "outline"}
+                      size="sm"
                       onClick={() => handleAddQuickTag(tag)}
                       disabled={isActive}
-                      className={`rounded px-1.5 py-0.5 text-[10px] font-mono transition-all ${
-                        isActive
-                          ? "bg-primary/20 text-primary font-medium opacity-60 cursor-default"
-                          : "bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground border border-border/60"
-                      }`}
+                      className="h-5 px-1.5 py-0 text-[10px] font-sans"
                     >
                       +{tag}
-                    </button>
+                    </Button>
                   );
                 })}
               </div>
@@ -523,39 +523,33 @@ export function PublishModal() {
 
                   {/* Format Selector Pills */}
                   <div className="flex items-center gap-1 rounded-lg border border-border bg-background p-0.5">
-                    <button
+                    <Button
+                      variant={cliFormat === "oneline" ? "default" : "ghost"}
+                      size="sm"
                       type="button"
                       onClick={() => setCliFormat("oneline")}
-                      className={`px-2 py-0.5 rounded text-[10px] font-mono transition-colors ${
-                        cliFormat === "oneline"
-                          ? "bg-primary text-primary-foreground font-medium"
-                          : "text-muted-foreground hover:text-foreground"
-                      }`}
+                      className="h-6 px-2 text-[10px] font-sans"
                     >
-                      One-Liner (PowerShell/CMD/Bash)
-                    </button>
-                    <button
+                      One-Liner
+                    </Button>
+                    <Button
+                      variant={cliFormat === "powershell" ? "default" : "ghost"}
+                      size="sm"
                       type="button"
                       onClick={() => setCliFormat("powershell")}
-                      className={`px-2 py-0.5 rounded text-[10px] font-mono transition-colors ${
-                        cliFormat === "powershell"
-                          ? "bg-primary text-primary-foreground font-medium"
-                          : "text-muted-foreground hover:text-foreground"
-                      }`}
+                      className="h-6 px-2 text-[10px] font-sans"
                     >
-                      PowerShell (`)
-                    </button>
-                    <button
+                      PowerShell
+                    </Button>
+                    <Button
+                      variant={cliFormat === "bash" ? "default" : "ghost"}
+                      size="sm"
                       type="button"
                       onClick={() => setCliFormat("bash")}
-                      className={`px-2 py-0.5 rounded text-[10px] font-mono transition-colors ${
-                        cliFormat === "bash"
-                          ? "bg-primary text-primary-foreground font-medium"
-                          : "text-muted-foreground hover:text-foreground"
-                      }`}
+                      className="h-6 px-2 text-[10px] font-sans"
                     >
-                      Bash (\)
-                    </button>
+                      Bash
+                    </Button>
                   </div>
                 </div>
 

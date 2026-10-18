@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useRef, useState, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { StudioHeader } from "./studio-header";
 import { EditorPanel } from "./editor-panel";
 import { CanvasPreview } from "./canvas-preview";
@@ -9,7 +10,7 @@ import { PublishModal } from "./publish-modal";
 import { DependencyModal } from "./dependency-modal";
 import { TerminalPanel } from "./terminal-panel";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Code, Eye, Code2 } from "lucide-react";
+import { Code, Eye, Sparkles } from "lucide-react";
 import { useStudioStore } from "@/lib/store/studio-store";
 
 export function StudioContainer() {
@@ -18,10 +19,12 @@ export function StudioContainer() {
   const [mobileTab, setMobileTab] = useState<"editor" | "preview" | "ai">("preview");
   const [splitRatio, setSplitRatio] = useState(48); // Left width percentage on desktop
   const isDraggingRef = useRef(false);
+  const [isDragging, setIsDragging] = useState(false);
 
   // Allow dragging the center splitter divider
   const handleMouseDown = () => {
     isDraggingRef.current = true;
+    setIsDragging(true);
     document.body.style.cursor = "col-resize";
     document.body.style.userSelect = "none";
   };
@@ -38,6 +41,7 @@ export function StudioContainer() {
     const handleMouseUp = () => {
       if (isDraggingRef.current) {
         isDraggingRef.current = false;
+        setIsDragging(false);
         document.body.style.cursor = "";
         document.body.style.userSelect = "";
       }
@@ -91,7 +95,7 @@ export function StudioContainer() {
               <span>Preview</span>
             </TabsTrigger>
             <TabsTrigger value="ai" className="gap-1.5 text-xs">
-              <Code2 className="size-3.5" />
+              <Sparkles className="size-3.5" />
               <span>Copilot</span>
             </TabsTrigger>
           </TabsList>
@@ -100,6 +104,11 @@ export function StudioContainer() {
 
       {/* Main Workspace Body */}
       <div className="relative flex flex-1 flex-col overflow-hidden">
+        {/* Full-screen drag overlay to prevent iframe event interception */}
+        {isDragging && (
+          <div className="fixed inset-0 z-50 cursor-col-resize select-none bg-transparent" />
+        )}
+
         {/* Workspace Split Area (Editor + Splitter + Canvas) */}
         <div className="relative flex flex-1 overflow-hidden">
           {/* Editor Column */}
@@ -123,11 +132,28 @@ export function StudioContainer() {
           {/* Resizable Splitter Divider (only when split) */}
           {layoutMode === "split" && (
             <div
+              role="separator"
+              aria-orientation="vertical"
+              aria-valuenow={Math.round(splitRatio)}
+              aria-valuemin={25}
+              aria-valuemax={75}
+              aria-label="Panel size divider"
+              tabIndex={0}
               onMouseDown={handleMouseDown}
-              className="hidden md:flex relative w-1.5 cursor-col-resize items-center justify-center bg-background hover:bg-primary/20 transition-colors duration-150 ease-smooth-out z-20 group"
-              title="Drag to resize panels"
+              onKeyDown={(e) => {
+                if (e.key === "ArrowLeft") setSplitRatio((r) => Math.max(25, r - 2));
+                if (e.key === "ArrowRight") setSplitRatio((r) => Math.min(75, r + 2));
+              }}
+              className={`hidden md:flex relative w-1.5 cursor-col-resize items-center justify-center bg-background transition-colors duration-150 ease-smooth-out z-20 group focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring ${
+                isDragging ? "bg-primary/20" : "hover:bg-primary/20"
+              }`}
+              title="Drag or use arrow keys to resize panels"
             >
-              <div className="h-full w-px bg-border group-hover:bg-primary transition-colors duration-150 ease-smooth-out" />
+              <div
+                className={`h-full w-px transition-colors duration-150 ease-smooth-out ${
+                  isDragging ? "bg-primary shadow-[0_0_8px_rgba(0,112,243,0.5)]" : "bg-border group-hover:bg-primary"
+                }`}
+              />
             </div>
           )}
 
@@ -146,30 +172,59 @@ export function StudioContainer() {
             </div>
           )}
 
-          {/* AI Assistant Panel: Smooth slide-over drawer on desktop, tab view on mobile */}
-          <div
-            className={`transition-transform duration-250 ease-smooth-out ${
-              mobileTab === "ai"
-                ? "flex w-full h-full"
-                : isAiPanelOpen
-                ? "hidden md:flex absolute top-0 right-0 bottom-0 z-30 shadow-2xl animate-in slide-in-from-right duration-200"
-                : "hidden"
-            }`}
-          >
-            <AiAssistantPanel
-              isMobile={mobileTab === "ai"}
-              onClose={() => {
-                setAiPanelOpen(false);
-                if (mobileTab === "ai") {
+          {/* Desktop AI Assistant Slide-over with AnimatePresence */}
+          <AnimatePresence>
+            {isAiPanelOpen && mobileTab !== "ai" && (
+              <motion.div
+                key="desktop-ai-copilot-drawer"
+                initial={{ x: "100%", opacity: 0.8 }}
+                animate={{ x: 0, opacity: 1 }}
+                exit={{ x: "100%", opacity: 0.8 }}
+                transition={{
+                  type: "spring",
+                  damping: 30,
+                  stiffness: 320,
+                  mass: 0.8,
+                }}
+                className="hidden md:flex absolute top-0 right-0 bottom-0 z-30 shadow-2xl"
+              >
+                <AiAssistantPanel
+                  isMobile={false}
+                  onClose={() => setAiPanelOpen(false)}
+                />
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Mobile AI Panel View */}
+          {mobileTab === "ai" && (
+            <div className="flex md:hidden w-full h-full">
+              <AiAssistantPanel
+                isMobile={true}
+                onClose={() => {
+                  setAiPanelOpen(false);
                   setMobileTab("preview");
-                }
-              }}
-            />
-          </div>
+                }}
+              />
+            </div>
+          )}
         </div>
 
         {/* Full-Width Bottom Terminal Shelf */}
-        {isTerminalOpen && <TerminalPanel />}
+        <AnimatePresence>
+          {isTerminalOpen && (
+            <motion.div
+              key="studio-terminal-shelf"
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+              className="overflow-hidden"
+            >
+              <TerminalPanel />
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       {/* Modals & Dialogs */}
