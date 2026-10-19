@@ -78,17 +78,24 @@ export function VersionHistorySheet() {
   // Selected checkpoint for diff comparison
   const selectedCp = checkpoints.find((cp) => cp.id === selectedCheckpointId);
 
+  // Close sheet and reset selected diff checkpoint
+  const handleClose = React.useCallback(() => {
+    setSelectedCheckpointId(null);
+    setHistorySheetOpen(false);
+  }, [setSelectedCheckpointId, setHistorySheetOpen]);
+
   // Close sheet on Escape key
   useEffect(() => {
     if (!isHistorySheetOpen) return;
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.defaultPrevented) return;
       if (e.key === "Escape") {
-        setHistorySheetOpen(false);
+        handleClose();
       }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isHistorySheetOpen, setHistorySheetOpen]);
+  }, [isHistorySheetOpen, handleClose]);
 
   return (
     <AnimatePresence>
@@ -101,8 +108,8 @@ export function VersionHistorySheet() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.18 }}
-            onClick={() => setHistorySheetOpen(false)}
-            className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs"
+            onClick={handleClose}
+            className="fixed inset-0 z-40 bg-black/50 backdrop-blur-xs"
             aria-hidden="true"
           />
 
@@ -139,7 +146,7 @@ export function VersionHistorySheet() {
                 variant="ghost"
                 size="icon"
                 className="size-8"
-                onClick={() => setHistorySheetOpen(false)}
+                onClick={handleClose}
                 aria-label="Close version history"
               >
                 <X className="size-4" />
@@ -365,6 +372,7 @@ export function VersionHistorySheet() {
                                   size="sm"
                                   onClick={() => {
                                     restoreCheckpoint(cp.id);
+                                    setSelectedCheckpointId(null);
                                     setConfirmRestoreId(null);
                                   }}
                                   className="font-sans text-xs h-7"

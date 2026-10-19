@@ -58,6 +58,7 @@ describe("VersionHistorySheet", () => {
     expect(html).toContain("Version History");
     expect(html).toContain("Default");
     expect(html).toContain("0 checkpoints");
+    expect(html).toContain("z-40");
     expect(html).toContain("No checkpoints saved yet for this variant.");
     expect(html).toContain("Checkpoints allow you to take snapshots of your code and restore them anytime.");
     expect(html).toContain("Create First Checkpoint");
