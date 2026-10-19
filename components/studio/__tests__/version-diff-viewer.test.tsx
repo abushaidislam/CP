@@ -117,6 +117,20 @@ describe("VersionDiffViewer & computeLineDiff", () => {
       expect(result.removedCount).toBe(2);
       expect(result.lines.every((l) => l.type === "removed")).toBe(true);
     });
+
+    it("normalizes CRLF (\\r\\n) line endings without false diffs", () => {
+      const crlfCode = "line 1\r\nline 2\r\nline 3";
+      const lfCode = "line 1\nline 2\nline 3";
+      const result = computeLineDiff(crlfCode, lfCode);
+
+      expect(result.addedCount).toBe(0);
+      expect(result.removedCount).toBe(0);
+      expect(result.lines.length).toBe(3);
+      expect(result.lines.every((l) => l.type === "unchanged")).toBe(true);
+      expect(result.lines[0].content).toBe("line 1");
+      expect(result.lines[1].content).toBe("line 2");
+      expect(result.lines[2].content).toBe("line 3");
+    });
   });
 
   describe("VersionDiffViewer UI component", () => {
@@ -163,9 +177,11 @@ describe("VersionDiffViewer & computeLineDiff", () => {
       expect(html).toContain("const c = 30;");
       // Does not show empty state
       expect(html).not.toContain("No changes detected between this checkpoint and current files.");
+      // Wraps in min-w-full w-fit to prevent background clipping on horizontal scroll
+      expect(html).toContain("min-w-full w-fit");
     });
 
-    it("renders old and new line numbers and diff prefixes (+/-)", () => {
+    it("renders old and new line numbers and diff prefixes (+/-) with aria-hidden for a11y", () => {
       const oldCode = "import React from 'react';";
       const newCode = "import * as React from 'react';";
       const html = renderToString(
@@ -182,6 +198,7 @@ describe("VersionDiffViewer & computeLineDiff", () => {
       // Line numbers and indicators
       expect(html).toContain("+");
       expect(html).toContain("-");
+      expect(html).toContain("aria-hidden=\"true\"");
       expect(html).toContain("import React from &#x27;react&#x27;;");
       expect(html).toContain("import * as React from &#x27;react&#x27;;");
     });

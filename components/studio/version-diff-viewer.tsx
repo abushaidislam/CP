@@ -35,11 +35,14 @@ export interface VersionDiffViewerProps {
  * with common prefix and suffix optimizations.
  */
 export function computeLineDiff(oldCode: string, newCode: string): DiffResult {
-  if (oldCode === newCode) {
-    if (oldCode.length === 0) {
+  const cleanOld = oldCode.replace(/\r\n/g, "\n");
+  const cleanNew = newCode.replace(/\r\n/g, "\n");
+
+  if (cleanOld === cleanNew) {
+    if (cleanOld.length === 0) {
       return { lines: [], addedCount: 0, removedCount: 0 };
     }
-    const lines: DiffLine[] = oldCode.split("\n").map((content, idx) => ({
+    const lines: DiffLine[] = cleanOld.split("\n").map((content, idx) => ({
       type: "unchanged",
       oldLineNumber: idx + 1,
       newLineNumber: idx + 1,
@@ -48,8 +51,8 @@ export function computeLineDiff(oldCode: string, newCode: string): DiffResult {
     return { lines, addedCount: 0, removedCount: 0 };
   }
 
-  const oldLines = oldCode.length === 0 ? [] : oldCode.split("\n");
-  const newLines = newCode.length === 0 ? [] : newCode.split("\n");
+  const oldLines = cleanOld.length === 0 ? [] : cleanOld.split("\n");
+  const newLines = cleanNew.length === 0 ? [] : cleanNew.split("\n");
 
   if (oldLines.length === 0) {
     const lines: DiffLine[] = newLines.map((content, idx) => ({
@@ -251,44 +254,55 @@ export function VersionDiffViewer({
         </div>
       ) : (
         <div className="overflow-x-auto overflow-y-auto max-h-[460px] py-1 font-mono text-xs">
-          {lines.map((line, idx) => (
-            <div
-              key={idx}
-              className={cn(
-                "flex items-stretch leading-5 transition-colors",
-                line.type === "added" &&
-                  "bg-emerald-500/10 text-emerald-300 border-l-2 border-emerald-500",
-                line.type === "removed" &&
-                  "bg-rose-500/10 text-rose-300 border-l-2 border-rose-500",
-                line.type === "unchanged" &&
-                  "text-muted-foreground/90 border-l-2 border-transparent hover:bg-muted/30"
-              )}
-            >
-              {/* Old line number gutter */}
-              <span className="w-8 shrink-0 font-mono text-[11px] text-muted-foreground/60 text-right pr-2 select-none">
-                {line.oldLineNumber ?? ""}
-              </span>
+          <div className="min-w-full w-fit">
+            {lines.map((line, idx) => (
+              <div
+                key={idx}
+                className={cn(
+                  "flex items-stretch leading-5 transition-colors",
+                  line.type === "added" &&
+                    "bg-emerald-500/10 text-emerald-300 border-l-2 border-emerald-500",
+                  line.type === "removed" &&
+                    "bg-rose-500/10 text-rose-300 border-l-2 border-rose-500",
+                  line.type === "unchanged" &&
+                    "text-muted-foreground/90 border-l-2 border-transparent hover:bg-muted/30"
+                )}
+              >
+                {/* Old line number gutter */}
+                <span
+                  aria-hidden="true"
+                  className="w-8 shrink-0 font-mono text-[11px] text-muted-foreground/60 text-right pr-2 select-none"
+                >
+                  {line.oldLineNumber ?? ""}
+                </span>
 
-              {/* New line number gutter */}
-              <span className="w-8 shrink-0 font-mono text-[11px] text-muted-foreground/60 text-right pr-2 select-none">
-                {line.newLineNumber ?? ""}
-              </span>
+                {/* New line number gutter */}
+                <span
+                  aria-hidden="true"
+                  className="w-8 shrink-0 font-mono text-[11px] text-muted-foreground/60 text-right pr-2 select-none"
+                >
+                  {line.newLineNumber ?? ""}
+                </span>
 
-              {/* Prefix indicator */}
-              <span className="w-4 shrink-0 font-mono select-none px-1 text-center">
-                {line.type === "added"
-                  ? "+"
-                  : line.type === "removed"
-                  ? "-"
-                  : " "}
-              </span>
+                {/* Prefix indicator */}
+                <span
+                  aria-hidden="true"
+                  className="w-4 shrink-0 font-mono select-none px-1 text-center"
+                >
+                  {line.type === "added"
+                    ? "+"
+                    : line.type === "removed"
+                    ? "-"
+                    : " "}
+                </span>
 
-              {/* Line content */}
-              <span className="font-mono text-xs whitespace-pre select-text flex-1 min-h-[1.25rem] pr-2">
-                {line.content || "\u00A0"}
-              </span>
-            </div>
-          ))}
+                {/* Line content */}
+                <span className="font-mono text-xs whitespace-pre select-text flex-1 min-h-[1.25rem] pr-2">
+                  {line.content || "\u00A0"}
+                </span>
+              </div>
+            ))}
+          </div>
         </div>
       )}
     </div>
