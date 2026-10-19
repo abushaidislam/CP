@@ -557,7 +557,7 @@ export const useStudioStore = create<StudioState>()(
       createVariant: (name, copyFromActive = true) =>
         set((state) => {
           const templateId = state.currentTemplateId;
-          const currentVariants = state.variantsByTemplate[templateId]
+          const currentVariants = state.variantsByTemplate?.[templateId]
             ? [...state.variantsByTemplate[templateId]]
             : [];
 
@@ -599,11 +599,11 @@ export const useStudioStore = create<StudioState>()(
             files: { ...newVariant.files },
             dependencies: [...newVariant.dependencies],
             variantsByTemplate: {
-              ...state.variantsByTemplate,
+              ...(state.variantsByTemplate || {}),
               [templateId]: updatedVariants,
             },
             activeVariantByTemplate: {
-              ...state.activeVariantByTemplate,
+              ...(state.activeVariantByTemplate || {}),
               [templateId]: newVariant.id,
             },
             selectedCheckpointId: null,
@@ -613,7 +613,7 @@ export const useStudioStore = create<StudioState>()(
       switchVariant: (variantId) =>
         set((state) => {
           const templateId = state.currentTemplateId;
-          const variants = state.variantsByTemplate[templateId] || [];
+          const variants = state.variantsByTemplate?.[templateId] || [];
           const targetVariant = variants.find((v) => v.id === variantId);
           if (!targetVariant) return state;
 
@@ -621,7 +621,7 @@ export const useStudioStore = create<StudioState>()(
             files: { ...targetVariant.files },
             dependencies: [...targetVariant.dependencies],
             activeVariantByTemplate: {
-              ...state.activeVariantByTemplate,
+              ...(state.activeVariantByTemplate || {}),
               [templateId]: targetVariant.id,
             },
             selectedCheckpointId: null,
@@ -631,13 +631,13 @@ export const useStudioStore = create<StudioState>()(
       deleteVariant: (variantId) =>
         set((state) => {
           const templateId = state.currentTemplateId;
-          const variants = state.variantsByTemplate[templateId] || [];
+          const variants = state.variantsByTemplate?.[templateId] || [];
           if (variants.length <= 1) return state;
           const targetVariant = variants.find((v) => v.id === variantId);
-          if (!targetVariant || targetVariant.name === "Default") return state;
+          if (!targetVariant || targetVariant.id.startsWith("var-default-") || targetVariant.name === "Default") return state;
 
           const updatedVariants = variants.filter((v) => v.id !== variantId);
-          let activeId = state.activeVariantByTemplate[templateId];
+          let activeId = state.activeVariantByTemplate?.[templateId];
           let nextFiles = state.files;
           let nextDeps = state.dependencies;
 
@@ -652,11 +652,11 @@ export const useStudioStore = create<StudioState>()(
             files: nextFiles,
             dependencies: nextDeps,
             variantsByTemplate: {
-              ...state.variantsByTemplate,
+              ...(state.variantsByTemplate || {}),
               [templateId]: updatedVariants,
             },
             activeVariantByTemplate: {
-              ...state.activeVariantByTemplate,
+              ...(state.activeVariantByTemplate || {}),
               [templateId]: activeId,
             },
             selectedCheckpointId: null,
@@ -668,11 +668,11 @@ export const useStudioStore = create<StudioState>()(
           const templateId = state.currentTemplateId;
           const trimmed = newName.trim();
           if (!trimmed) return state;
-          const variants = state.variantsByTemplate[templateId] || [];
+          const variants = state.variantsByTemplate?.[templateId] || [];
 
           return {
             variantsByTemplate: {
-              ...state.variantsByTemplate,
+              ...(state.variantsByTemplate || {}),
               [templateId]: variants.map((v) =>
                 v.id === variantId
                   ? { ...v, name: trimmed, updatedAt: Date.now() }
@@ -685,10 +685,10 @@ export const useStudioStore = create<StudioState>()(
       saveCheckpoint: (name, description) =>
         set((state) => {
           const templateId = state.currentTemplateId;
-          let variants = state.variantsByTemplate[templateId]
+          let variants = state.variantsByTemplate?.[templateId]
             ? [...state.variantsByTemplate[templateId]]
             : [];
-          let activeId = state.activeVariantByTemplate[templateId];
+          let activeId = state.activeVariantByTemplate?.[templateId];
 
           if (variants.length === 0) {
             const defVar = createDefaultVariant(templateId, state.files, state.dependencies);
@@ -699,9 +699,10 @@ export const useStudioStore = create<StudioState>()(
           }
 
           const now = new Date();
+          const trimmedName = name.trim() || "Checkpoint";
           const newCheckpoint: ComponentCheckpoint = {
             id: `cp-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
-            name: name.trim(),
+            name: trimmedName,
             description: description?.trim() || undefined,
             timestamp: now.toLocaleTimeString([], {
               hour: "2-digit",
@@ -733,11 +734,11 @@ export const useStudioStore = create<StudioState>()(
 
           return {
             variantsByTemplate: {
-              ...state.variantsByTemplate,
+              ...(state.variantsByTemplate || {}),
               [templateId]: updatedVariants,
             },
             activeVariantByTemplate: {
-              ...state.activeVariantByTemplate,
+              ...(state.activeVariantByTemplate || {}),
               [templateId]: activeId,
             },
           };
@@ -746,8 +747,8 @@ export const useStudioStore = create<StudioState>()(
       restoreCheckpoint: (checkpointId) =>
         set((state) => {
           const templateId = state.currentTemplateId;
-          const variants = state.variantsByTemplate[templateId] || [];
-          const activeId = state.activeVariantByTemplate[templateId];
+          const variants = state.variantsByTemplate?.[templateId] || [];
+          const activeId = state.activeVariantByTemplate?.[templateId];
           const activeVar = variants.find((v) => v.id === activeId);
           if (!activeVar) return state;
 
@@ -775,8 +776,9 @@ export const useStudioStore = create<StudioState>()(
           return {
             files: restoredFiles,
             dependencies: restoredDeps,
+            compilerError: null,
             variantsByTemplate: {
-              ...state.variantsByTemplate,
+              ...(state.variantsByTemplate || {}),
               [templateId]: updatedVariants,
             },
             selectedCheckpointId: checkpointId,
@@ -786,8 +788,8 @@ export const useStudioStore = create<StudioState>()(
       forkCheckpointToNewVariant: (checkpointId, newVariantName) =>
         set((state) => {
           const templateId = state.currentTemplateId;
-          const variants = state.variantsByTemplate[templateId] || [];
-          const activeId = state.activeVariantByTemplate[templateId];
+          const variants = state.variantsByTemplate?.[templateId] || [];
+          const activeId = state.activeVariantByTemplate?.[templateId];
           const activeVar = variants.find((v) => v.id === activeId);
 
           let targetCheckpoint = activeVar?.checkpoints.find((cp) => cp.id === checkpointId);
@@ -823,11 +825,11 @@ export const useStudioStore = create<StudioState>()(
             files: { ...newVariant.files },
             dependencies: [...newVariant.dependencies],
             variantsByTemplate: {
-              ...state.variantsByTemplate,
+              ...(state.variantsByTemplate || {}),
               [templateId]: updatedVariants,
             },
             activeVariantByTemplate: {
-              ...state.activeVariantByTemplate,
+              ...(state.activeVariantByTemplate || {}),
               [templateId]: newVariant.id,
             },
             selectedCheckpointId: null,
@@ -837,8 +839,8 @@ export const useStudioStore = create<StudioState>()(
       deleteCheckpoint: (checkpointId) =>
         set((state) => {
           const templateId = state.currentTemplateId;
-          const variants = state.variantsByTemplate[templateId] || [];
-          const activeId = state.activeVariantByTemplate[templateId];
+          const variants = state.variantsByTemplate?.[templateId] || [];
+          const activeId = state.activeVariantByTemplate?.[templateId];
 
           const updatedVariants = variants.map((v) => {
             if (v.id === activeId) {
@@ -853,7 +855,7 @@ export const useStudioStore = create<StudioState>()(
 
           return {
             variantsByTemplate: {
-              ...state.variantsByTemplate,
+              ...(state.variantsByTemplate || {}),
               [templateId]: updatedVariants,
             },
             selectedCheckpointId:

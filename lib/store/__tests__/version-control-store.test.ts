@@ -151,4 +151,67 @@ describe("Studio Version Control Slice", () => {
     store.setSaveCheckpointDialogOpen(true);
     expect(useStudioStore.getState().isSaveCheckpointDialogOpen).toBe(true);
   });
+
+  it("should delete checkpoint and reset selectedCheckpointId if matching", () => {
+    const store = useStudioStore.getState();
+    store.saveCheckpoint("Checkpoint to Delete");
+    let state = useStudioStore.getState();
+    const activeVar = state.variantsByTemplate[state.currentTemplateId]?.find(
+      (v) => v.id === state.activeVariantByTemplate[state.currentTemplateId]
+    );
+    const cp = activeVar?.checkpoints[0];
+    expect(cp).toBeDefined();
+
+    store.setSelectedCheckpointId(cp!.id);
+    expect(useStudioStore.getState().selectedCheckpointId).toBe(cp!.id);
+
+    store.deleteCheckpoint(cp!.id);
+    state = useStudioStore.getState();
+    const updatedVar = state.variantsByTemplate[state.currentTemplateId]?.find(
+      (v) => v.id === state.activeVariantByTemplate[state.currentTemplateId]
+    );
+    expect(updatedVar?.checkpoints.some((c) => c.id === cp!.id)).toBe(false);
+    expect(state.selectedCheckpointId).toBeNull();
+  });
+
+  it("should prevent deleting default variant even if renamed", () => {
+    const store = useStudioStore.getState();
+    store.createVariant("Temp");
+    let state = useStudioStore.getState();
+    const defaultVar = state.variantsByTemplate[state.currentTemplateId]?.find(
+      (v) => v.id.startsWith("var-default-")
+    );
+    expect(defaultVar).toBeDefined();
+
+    store.renameVariant(defaultVar!.id, "Custom Core Name");
+    store.deleteVariant(defaultVar!.id);
+    state = useStudioStore.getState();
+    expect(state.variantsByTemplate[state.currentTemplateId]?.some((v) => v.id === defaultVar!.id)).toBe(true);
+  });
+
+  it("should clear compilerError when restoring checkpoint", () => {
+    const store = useStudioStore.getState();
+    store.saveCheckpoint("Clean snapshot");
+    const stateBefore = useStudioStore.getState();
+    const activeVar = stateBefore.variantsByTemplate[stateBefore.currentTemplateId]?.find(
+      (v) => v.id === stateBefore.activeVariantByTemplate[stateBefore.currentTemplateId]
+    );
+    const cpId = activeVar!.checkpoints[0].id;
+
+    store.setCompilerState(true, "SyntaxError: Unexpected token");
+    expect(useStudioStore.getState().compilerError).toBe("SyntaxError: Unexpected token");
+
+    store.restoreCheckpoint(cpId);
+    expect(useStudioStore.getState().compilerError).toBeNull();
+  });
+
+  it("should fallback to 'Checkpoint' if saving with empty name", () => {
+    const store = useStudioStore.getState();
+    store.saveCheckpoint("   ");
+    const state = useStudioStore.getState();
+    const activeVar = state.variantsByTemplate[state.currentTemplateId]?.find(
+      (v) => v.id === state.activeVariantByTemplate[state.currentTemplateId]
+    );
+    expect(activeVar?.checkpoints[0].name).toBe("Checkpoint");
+  });
 });
