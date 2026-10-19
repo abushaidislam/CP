@@ -2,7 +2,7 @@ import { parseComponentAST } from "@/lib/sandbox/ast-parser";
 
 export interface GuidelineCheckItem {
   id: string;
-  category: "standards" | "styling" | "typescript" | "dependencies" | "demo";
+  category: "standards" | "styling" | "typescript" | "dependencies" | "demo" | "craft";
   title: string;
   description: string;
   severity: "error" | "warning" | "success";
@@ -208,6 +208,107 @@ export function auditComponentGuidelines(
     severity: depsOk ? "success" : "warning",
     passed: depsOk,
     fixSuggestion: `Add ${missingDependencies.join(", ")} to your Packages list.`,
+  });
+
+  // 10. Transition Specificity (Never transition: all)
+  const hasTransitionAll =
+    /\btransition-all\b/.test(componentCode) ||
+    /transition\s*:\s*all\b/.test(cssCode);
+
+  checks.push({
+    id: "transition-specificity",
+    category: "craft",
+    title: "Transition Specificity (No transition-all)",
+    description: !hasTransitionAll
+      ? "Uses specific CSS transition properties without triggering layout thrashing."
+      : "Avoid 'transition-all' or 'transition: all' which causes heavy layout recalculations. Specify transition-colors, transition-transform, or transition-opacity.",
+    severity: !hasTransitionAll ? "success" : "warning",
+    passed: !hasTransitionAll,
+    fixSuggestion:
+      "Replace 'transition-all' with 'transition-colors' or 'transition-transform duration-150'.",
+  });
+
+  // 11. Tactile Interactivity & Focus States
+  const hasInteractiveTriggers =
+    /<(?:button|Button)\b/.test(componentCode) ||
+    /\bonClick\b/.test(componentCode) ||
+    /role=["']button["']/.test(componentCode);
+
+  const hasTactileOrFocus =
+    /\b(whileTap|active:|focus-visible:)\b/.test(componentCode);
+
+  if (hasInteractiveTriggers) {
+    checks.push({
+      id: "tactile-feedback",
+      category: "craft",
+      title: "Tactile Press Feedback & Focus Rings",
+      description: hasTactileOrFocus
+        ? "Interactive elements include tactile press feedback or accessible focus rings."
+        : "Interactive elements should provide tactile feedback (e.g. whileTap={{ scale: 0.96 }} or active:scale-[0.96]) and focus-visible rings.",
+      severity: hasTactileOrFocus ? "success" : "warning",
+      passed: hasTactileOrFocus,
+      fixSuggestion:
+        'Add whileTap={{ scale: 0.96 }} or className="active:scale-[0.96] focus-visible:ring-1 focus-visible:ring-ring".',
+    });
+  } else {
+    checks.push({
+      id: "tactile-feedback",
+      category: "craft",
+      title: "Tactile Press Feedback",
+      description: "No primary interactive button elements requiring press feedback.",
+      severity: "success",
+      passed: true,
+    });
+  }
+
+  // 12. Tabular Numbers for Metrics & Counters
+  const hasNumericalData =
+    /\$\d+|\b(?:count|counter|timer|timestamp|metric|metrics|price|total|stats)\b/i.test(
+      componentCode
+    ) || /\d+[\.,]\d+/.test(componentCode);
+
+  const hasTabularNums = /\btabular-nums\b/.test(componentCode);
+
+  if (hasNumericalData) {
+    checks.push({
+      id: "tabular-nums",
+      category: "craft",
+      title: "Tabular Numbers (Layout Stability)",
+      description: hasTabularNums
+        ? "Applies tabular-nums to numerical content to eliminate layout jitter."
+        : "Dynamic numbers and metrics should use tabular-nums (font-variant-numeric: tabular-nums) to prevent layout shifts.",
+      severity: hasTabularNums ? "success" : "warning",
+      passed: hasTabularNums,
+      fixSuggestion: "Add 'tabular-nums' to classes rendering dynamic numbers or metrics.",
+    });
+  } else {
+    checks.push({
+      id: "tabular-nums",
+      category: "craft",
+      title: "Tabular Numbers",
+      description: "No dynamic numerical metric displays detected.",
+      severity: "success",
+      passed: true,
+    });
+  }
+
+  // 13. Anti-Slop Aesthetic Guardrails
+  const hasNeonSlopGradient =
+    /(?:from-purple-\d+.*(?:to|via)-pink-\d+)|(?:from-pink-\d+.*(?:to|via)-purple-\d+)/i.test(
+      componentCode
+    );
+
+  checks.push({
+    id: "anti-slop-aesthetics",
+    category: "craft",
+    title: "Anti-Slop Aesthetic Integrity",
+    description: !hasNeonSlopGradient
+      ? "Clean, sophisticated palette without gratuitous neon gradient blobs."
+      : "Avoid saturated neon gradient blobs. Use refined monochromatic tones (zinc, neutral) with subtle borders.",
+    severity: !hasNeonSlopGradient ? "success" : "warning",
+    passed: !hasNeonSlopGradient,
+    fixSuggestion:
+      "Replace neon gradients with clean neutral backgrounds like bg-background or bg-card with border-border/40.",
   });
 
   // Calculate score (0-100)

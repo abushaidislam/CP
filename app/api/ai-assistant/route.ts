@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenAI } from "@google/genai";
 import { auditComponentGuidelines } from "@/lib/sandbox/guideline-linter";
+import { COPILOT_PREMIUM_DESIGN_MANIFESTO } from "@/lib/sandbox/copilot-design-knowledge";
 
 interface ChatHistoryItem {
   role: "user" | "assistant" | "model" | "system";
@@ -78,7 +79,9 @@ STRICT BEHAVIORAL PROTOCOLS:
 
 CRITICAL CODE MODIFICATION RULES:
 - Never return partial code, pseudocode, or '// rest of code stays the same' comments.
-- Always provide the COMPLETE, compilable, valid TypeScript code for any modified file in the "changedFiles" object.`;
+- Always provide the COMPLETE, compilable, valid TypeScript code for any modified file in the "changedFiles" object.
+
+${COPILOT_PREMIUM_DESIGN_MANIFESTO}`;
 
 export async function POST(req: NextRequest) {
   try {
