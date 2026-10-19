@@ -304,7 +304,7 @@ describe("Version Control Integration & Lifecycle Test Suite", () => {
       store.updateFile("component.tsx", brokenCode);
       store.setCompilerState(true, "SyntaxError: Unexpected end of file");
 
-      let brokenState = useStudioStore.getState();
+      const brokenState = useStudioStore.getState();
       expect(brokenState.files["component.tsx"]).toBe(brokenCode);
       expect(brokenState.compilerError).toBe("SyntaxError: Unexpected end of file");
 
