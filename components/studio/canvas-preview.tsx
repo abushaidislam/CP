@@ -66,7 +66,7 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
   const [isResizing, setIsResizing] = useState(false);
   const [isReloading, setIsReloading] = useState(false);
 
-  // Debounce files (200ms) to ensure butter-smooth 60fps typing in Monaco without compiling on every single keystroke
+  // Debounce files (200ms) to ensure butter-smooth 60fps typing in CodeMirror without compiling on every single keystroke
   const [debouncedFiles, setDebouncedFiles] = useState(files);
   useEffect(() => {
     const timer = setTimeout(() => {

@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useStudioStore, StudioFileName } from "@/lib/store/studio-store";
-import { MonacoCodeEditor } from "./monaco-editor";
+import { CodeEditor } from "./code-editor";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -229,7 +229,7 @@ export function EditorPanel() {
 
       {/* Editor Body */}
       <div className="flex-1 relative overflow-hidden bg-background">
-        <MonacoCodeEditor
+        <CodeEditor
           filename={activeTab}
           value={files[activeTab]}
           onChange={(newVal) => updateFile(activeTab, newVal)}
