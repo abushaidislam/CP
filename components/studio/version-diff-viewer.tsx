@@ -211,7 +211,7 @@ export function VersionDiffViewer({
   return (
     <div
       className={cn(
-        "rounded-lg border border-border bg-card/60 overflow-hidden flex flex-col",
+        "rounded-lg border border-border bg-card/60 overflow-hidden flex flex-col transition-all duration-200",
         className
       )}
     >
@@ -246,7 +246,7 @@ export function VersionDiffViewer({
 
       {/* Code lines container / Empty state */}
       {isClean ? (
-        <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
+        <div className="flex flex-col items-center justify-center py-12 px-4 text-center animate-in fade-in-0 duration-200">
           <CheckCircle2 className="size-8 text-emerald-500/80 mb-2.5" />
           <p className="font-sans text-xs text-muted-foreground">
             No changes detected between this checkpoint and current files.
@@ -259,7 +259,7 @@ export function VersionDiffViewer({
               <div
                 key={idx}
                 className={cn(
-                  "flex items-stretch leading-5 transition-colors",
+                  "flex items-stretch leading-5 transition-colors duration-100",
                   line.type === "added" &&
                     "bg-emerald-500/10 text-emerald-300 border-l-2 border-emerald-500",
                   line.type === "removed" &&

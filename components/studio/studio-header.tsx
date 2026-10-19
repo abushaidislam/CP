@@ -184,7 +184,7 @@ export function StudioHeader() {
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="h-7 gap-1.5 px-2 text-xs font-medium text-foreground hover:bg-muted/70 rounded-md font-sans"
+                    className="h-7 gap-1.5 px-2 text-xs font-medium text-foreground hover:bg-muted/70 rounded-md font-sans active:scale-[0.98] transition-all duration-100"
                   >
                     <GitBranch className="size-3 text-muted-foreground" />
                     <span className="font-medium text-xs max-w-[120px] truncate">{activeVariant.name}</span>
@@ -308,7 +308,7 @@ export function StudioHeader() {
               variant="outline"
               size="sm"
               onClick={() => setSaveCheckpointDialogOpen(true)}
-              className="h-8 gap-1.5 px-2.5 text-xs font-sans border-border/80 hover:bg-muted/60"
+              className="h-8 gap-1.5 px-2.5 text-xs font-sans border-border/80 hover:bg-muted/60 active:scale-[0.98] transition-all duration-100"
             >
               <BookmarkPlus className="size-3.5 text-primary" />
               <span className="hidden md:inline">Save</span>
@@ -328,7 +328,7 @@ export function StudioHeader() {
               size="sm"
               onClick={() => setHistorySheetOpen(!isHistorySheetOpen)}
               className={cn(
-                "h-8 gap-1.5 px-2.5 text-xs font-sans transition-colors",
+                "h-8 gap-1.5 px-2.5 text-xs font-sans transition-all duration-100 active:scale-[0.98]",
                 isHistorySheetOpen
                   ? "bg-muted text-foreground font-medium"
                   : "text-muted-foreground hover:text-foreground"
@@ -339,7 +339,7 @@ export function StudioHeader() {
               {checkpointCount > 0 && (
                 <Badge
                   variant="secondary"
-                  className="h-4 px-1 text-[9px] font-sans tabular-nums"
+                  className="h-4 px-1 text-[9px] font-sans tabular-nums animate-in zoom-in-75 fade-in-0 duration-150"
                 >
                   {checkpointCount}
                 </Badge>

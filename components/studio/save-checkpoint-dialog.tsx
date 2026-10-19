@@ -81,11 +81,15 @@ export function SaveCheckpointDialog() {
                 if (error) setError("");
               }}
               placeholder="e.g. Added glassmorphism blur and spring animation"
-              className="text-xs font-sans h-9"
+              className="text-xs font-sans h-9 transition-colors duration-150"
               autoFocus
               maxLength={60}
             />
-            {error && <span className="text-[11px] text-destructive font-sans">{error}</span>}
+            {error && (
+              <span className="text-[11px] text-destructive font-sans animate-in fade-in-0 slide-in-from-top-1 duration-150">
+                {error}
+              </span>
+            )}
           </div>
 
           <div className="flex flex-col gap-1.5">
@@ -97,7 +101,7 @@ export function SaveCheckpointDialog() {
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Describe key visual or functional changes..."
-              className="text-xs font-sans min-h-[70px] resize-none"
+              className="text-xs font-sans min-h-[70px] resize-none transition-colors duration-150"
               rows={3}
             />
           </div>
@@ -108,11 +112,15 @@ export function SaveCheckpointDialog() {
               variant="ghost"
               size="sm"
               onClick={() => handleOpenChange(false)}
-              className="font-sans text-xs"
+              className="font-sans text-xs active:scale-[0.98] transition-transform duration-100"
             >
               Cancel
             </Button>
-            <Button type="submit" size="sm" className="font-sans text-xs gap-1.5">
+            <Button
+              type="submit"
+              size="sm"
+              className="font-sans text-xs gap-1.5 active:scale-[0.98] transition-transform duration-100"
+            >
               <BookmarkPlus className="size-3.5" />
               Save Checkpoint
             </Button>

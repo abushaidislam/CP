@@ -108,7 +108,10 @@ export function VersionHistorySheet() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.18 }}
+            transition={{
+              duration: 0.22,
+              ease: [0.22, 1, 0.36, 1],
+            }}
             onClick={handleClose}
             className="fixed inset-0 z-40 bg-black/50 backdrop-blur-xs"
             aria-hidden="true"
@@ -122,8 +125,8 @@ export function VersionHistorySheet() {
             aria-label="Version History"
             initial={{ x: "100%" }}
             animate={{ x: 0 }}
-            exit={{ x: "100%" }}
-            transition={{ type: "spring", damping: 28, stiffness: 280 }}
+            exit={{ x: "100%", transition: { duration: 0.2, ease: [0.4, 0, 1, 1] } }}
+            transition={{ type: "spring", damping: 30, stiffness: 320, mass: 0.8 }}
             className="fixed inset-y-0 right-0 z-50 flex flex-col bg-background border-l border-border shadow-2xl w-full sm:w-[540px] md:w-[600px] lg:w-[680px]"
           >
             {/* Drawer Header */}
@@ -255,13 +258,23 @@ export function VersionHistorySheet() {
 
                     {/* Diff Viewer container */}
                     <div className="flex-1 overflow-y-auto p-4">
-                      <VersionDiffViewer
-                        oldCode={selectedCp.files[activeDiffFile] || ""}
-                        newCode={files[activeDiffFile] || ""}
-                        filename={activeDiffFile}
-                        oldLabel={selectedCp.name}
-                        newLabel="Current Working"
-                      />
+                      <AnimatePresence mode="wait" initial={false}>
+                        <motion.div
+                          key={activeDiffFile}
+                          initial={{ opacity: 0, y: 4 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -4 }}
+                          transition={{ duration: 0.16, ease: [0.22, 1, 0.36, 1] }}
+                        >
+                          <VersionDiffViewer
+                            oldCode={selectedCp.files[activeDiffFile] || ""}
+                            newCode={files[activeDiffFile] || ""}
+                            filename={activeDiffFile}
+                            oldLabel={selectedCp.name}
+                            newLabel="Current Working"
+                          />
+                        </motion.div>
+                      </AnimatePresence>
                     </div>
                   </>
                 )}
@@ -309,13 +322,20 @@ export function VersionHistorySheet() {
                 ) : (
                   /* Scrollable timeline list */
                   <div className="flex-1 overflow-y-auto p-4 space-y-3">
-                    {checkpoints.map((cp) => {
+                    {checkpoints.map((cp, idx) => {
                       const isConfirmingRestore = confirmRestoreId === cp.id;
                       const isForking = forkingId === cp.id;
 
                       return (
-                        <div
+                        <motion.div
                           key={cp.id}
+                          initial={{ opacity: 0, y: 8 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{
+                            duration: 0.24,
+                            delay: Math.min(idx * 0.04, 0.24),
+                            ease: [0.22, 1, 0.36, 1],
+                          }}
                           className="rounded-lg border border-border/60 bg-card p-3.5 hover:border-primary/40 transition-colors shadow-2xs"
                         >
                           {/* Top row */}
@@ -341,7 +361,7 @@ export function VersionHistorySheet() {
                               size="sm"
                               variant="ghost"
                               onClick={() => setSelectedCheckpointId(cp.id)}
-                              className="h-7 text-xs font-sans gap-1"
+                              className="h-7 text-xs font-sans gap-1 active:scale-[0.98] transition-all duration-100"
                             >
                               <Eye className="size-3" /> Compare
                             </Button>
@@ -352,7 +372,7 @@ export function VersionHistorySheet() {
                                 setForkingId(null);
                                 setConfirmRestoreId(cp.id);
                               }}
-                              className="h-7 text-xs font-sans gap-1 text-amber-500 hover:text-amber-400"
+                              className="h-7 text-xs font-sans gap-1 text-amber-500 hover:text-amber-400 active:scale-[0.98] transition-all duration-100"
                             >
                               <RotateCcw className="size-3" /> Restore
                             </Button>
@@ -364,7 +384,7 @@ export function VersionHistorySheet() {
                                 setForkingId(cp.id);
                                 setForkName(`Fork of ${cp.name}`);
                               }}
-                              className="h-7 text-xs font-sans gap-1"
+                              className="h-7 text-xs font-sans gap-1 active:scale-[0.98] transition-all duration-100"
                             >
                               <GitFork className="size-3" /> Fork
                             </Button>
@@ -376,7 +396,7 @@ export function VersionHistorySheet() {
                                 if (forkingId === cp.id) setForkingId(null);
                                 deleteCheckpoint(cp.id);
                               }}
-                              className="h-7 text-xs font-sans gap-1 text-destructive hover:text-destructive ml-auto"
+                              className="h-7 text-xs font-sans gap-1 text-destructive hover:text-destructive ml-auto active:scale-[0.98] transition-all duration-100"
                               aria-label={`Delete checkpoint ${cp.name}`}
                             >
                               <Trash2 className="size-3" />
@@ -384,89 +404,105 @@ export function VersionHistorySheet() {
                           </div>
 
                           {/* Inline confirmation for Restore */}
-                          {isConfirmingRestore && (
-                            <div className="mt-2.5 rounded-md border border-amber-500/30 bg-amber-500/10 p-2.5 flex flex-col gap-2">
-                              <p className="text-xs text-amber-500 font-sans">
-                                Restore this checkpoint? Unsaved working changes will be replaced.
-                              </p>
-                              <div className="flex items-center gap-2">
-                                <Button
-                                  variant="destructive"
-                                  size="sm"
-                                  onClick={() => {
-                                    restoreCheckpoint(cp.id);
-                                    setSelectedCheckpointId(null);
-                                    setConfirmRestoreId(null);
-                                  }}
-                                  className="font-sans text-xs h-7"
-                                >
-                                  Yes, Restore
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => setConfirmRestoreId(null)}
-                                  className="font-sans text-xs h-7"
-                                >
-                                  Cancel
-                                </Button>
-                              </div>
-                            </div>
-                          )}
+                          <AnimatePresence>
+                            {isConfirmingRestore && (
+                              <motion.div
+                                initial={{ opacity: 0, height: 0 }}
+                                animate={{ opacity: 1, height: "auto" }}
+                                exit={{ opacity: 0, height: 0 }}
+                                transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
+                                className="overflow-hidden mt-2.5 rounded-md border border-amber-500/30 bg-amber-500/10 p-2.5 flex flex-col gap-2"
+                              >
+                                <p className="text-xs text-amber-500 font-sans">
+                                  Restore this checkpoint? Unsaved working changes will be replaced.
+                                </p>
+                                <div className="flex items-center gap-2">
+                                  <Button
+                                    variant="destructive"
+                                    size="sm"
+                                    onClick={() => {
+                                      restoreCheckpoint(cp.id);
+                                      setSelectedCheckpointId(null);
+                                      setConfirmRestoreId(null);
+                                    }}
+                                    className="font-sans text-xs h-7 active:scale-[0.98] transition-transform duration-100"
+                                  >
+                                    Yes, Restore
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => setConfirmRestoreId(null)}
+                                    className="font-sans text-xs h-7 active:scale-[0.98] transition-transform duration-100"
+                                  >
+                                    Cancel
+                                  </Button>
+                                </div>
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
 
                           {/* Inline prompt for Fork */}
-                          {isForking && (
-                            <div className="mt-2.5 rounded-md border border-border/80 bg-muted/40 p-2.5 flex flex-col gap-2">
-                              <label
-                                htmlFor={`fork-input-${cp.id}`}
-                                className="text-xs font-medium text-foreground font-sans"
+                          <AnimatePresence>
+                            {isForking && (
+                              <motion.div
+                                initial={{ opacity: 0, height: 0 }}
+                                animate={{ opacity: 1, height: "auto" }}
+                                exit={{ opacity: 0, height: 0 }}
+                                transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
+                                className="overflow-hidden mt-2.5 rounded-md border border-border/80 bg-muted/40 p-2.5 flex flex-col gap-2"
                               >
-                                New Variant Name
-                              </label>
-                              <Input
-                                id={`fork-input-${cp.id}`}
-                                value={forkName}
-                                onChange={(e) => setForkName(e.target.value)}
-                                className="h-8 text-xs font-sans"
-                                placeholder="Variant name..."
-                                autoFocus
-                                onKeyDown={(e) => {
-                                  if (e.key === "Enter" && forkName.trim()) {
-                                    e.preventDefault();
-                                    forkCheckpointToNewVariant(cp.id, forkName.trim());
-                                    setForkingId(null);
-                                  } else if (e.key === "Escape") {
-                                    e.stopPropagation();
-                                    setForkingId(null);
-                                  }
-                                }}
-                              />
-                              <div className="flex items-center gap-2">
-                                <Button
-                                  size="sm"
-                                  onClick={() => {
-                                    if (forkName.trim()) {
+                                <label
+                                  htmlFor={`fork-input-${cp.id}`}
+                                  className="text-xs font-medium text-foreground font-sans"
+                                >
+                                  New Variant Name
+                                </label>
+                                <Input
+                                  id={`fork-input-${cp.id}`}
+                                  value={forkName}
+                                  onChange={(e) => setForkName(e.target.value)}
+                                  className="h-8 text-xs font-sans transition-all duration-150"
+                                  placeholder="Variant name..."
+                                  autoFocus
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter" && forkName.trim()) {
+                                      e.preventDefault();
                                       forkCheckpointToNewVariant(cp.id, forkName.trim());
+                                      setForkingId(null);
+                                    } else if (e.key === "Escape") {
+                                      e.stopPropagation();
                                       setForkingId(null);
                                     }
                                   }}
-                                  disabled={!forkName.trim()}
-                                  className="font-sans text-xs h-7"
-                                >
-                                  Create Fork
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => setForkingId(null)}
-                                  className="font-sans text-xs h-7"
-                                >
-                                  Cancel
-                                </Button>
-                              </div>
-                            </div>
-                          )}
-                        </div>
+                                />
+                                <div className="flex items-center gap-2">
+                                  <Button
+                                    size="sm"
+                                    onClick={() => {
+                                      if (forkName.trim()) {
+                                        forkCheckpointToNewVariant(cp.id, forkName.trim());
+                                        setForkingId(null);
+                                      }
+                                    }}
+                                    disabled={!forkName.trim()}
+                                    className="font-sans text-xs h-7 active:scale-[0.98] transition-transform duration-100"
+                                  >
+                                    Create Fork
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => setForkingId(null)}
+                                    className="font-sans text-xs h-7 active:scale-[0.98] transition-transform duration-100"
+                                  >
+                                    Cancel
+                                  </Button>
+                                </div>
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+                        </motion.div>
                       );
                     })}
                   </div>

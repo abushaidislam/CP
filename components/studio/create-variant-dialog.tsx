@@ -81,14 +81,18 @@ export function CreateVariantDialog() {
                 if (error) setError("");
               }}
               placeholder="e.g. Minimal Outline, Neon Glow, Glassmorphism"
-              className="text-xs font-sans h-9"
+              className="text-xs font-sans h-9 transition-colors duration-150"
               autoFocus
               maxLength={40}
             />
-            {error && <span className="text-[11px] text-destructive font-sans">{error}</span>}
+            {error && (
+              <span className="text-[11px] text-destructive font-sans animate-in fade-in-0 slide-in-from-top-1 duration-150">
+                {error}
+              </span>
+            )}
           </div>
 
-          <div className="flex items-center justify-between rounded-lg border border-border p-3 bg-muted/30">
+          <div className="flex items-center justify-between rounded-lg border border-border p-3 bg-muted/30 hover:bg-muted/40 transition-colors duration-150">
             <div className="flex flex-col gap-0.5 pr-2">
               <label
                 htmlFor="clone-from-active-switch"
@@ -113,11 +117,15 @@ export function CreateVariantDialog() {
               variant="ghost"
               size="sm"
               onClick={() => handleOpenChange(false)}
-              className="font-sans text-xs"
+              className="font-sans text-xs active:scale-[0.98] transition-transform duration-100"
             >
               Cancel
             </Button>
-            <Button type="submit" size="sm" className="font-sans text-xs gap-1.5">
+            <Button
+              type="submit"
+              size="sm"
+              className="font-sans text-xs gap-1.5 active:scale-[0.98] transition-transform duration-100"
+            >
               <GitBranch className="size-3.5" />
               Create Variant
             </Button>
