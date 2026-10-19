@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { useStudioStore } from "@/lib/store/studio-store";
 import { DEFAULT_TEMPLATES } from "@/lib/sandbox/default-templates";
 import { Button } from "@/components/ui/button";
@@ -31,6 +31,11 @@ import {
   Code2,
   Eye,
   Sparkles,
+  GitBranch,
+  BookmarkPlus,
+  History,
+  Check,
+  Plus,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -47,14 +52,40 @@ export function StudioHeader() {
     toggleAiPanel,
     layoutMode,
     setLayoutMode,
+    variantsByTemplate,
+    activeVariantByTemplate,
+    switchVariant,
+    setCreateVariantDialogOpen,
+    setSaveCheckpointDialogOpen,
+    isHistorySheetOpen,
+    setHistorySheetOpen,
   } = useStudioStore();
 
   const [isDark, setIsDark] = useState(true);
 
+  const templateVariants = variantsByTemplate[currentTemplateId] || [];
+  const activeVariantId = activeVariantByTemplate[currentTemplateId];
+  const activeVariant =
+    templateVariants.find((v) => v.id === activeVariantId) ||
+    templateVariants[0] ||
+    { id: "default", name: "Default", checkpoints: [] };
+  const checkpointCount = activeVariant?.checkpoints?.length || 0;
+
   const errorCount = terminalLogs.filter((l) => l.type === "error").reduce((acc, l) => acc + l.count, 0);
   const warnCount = terminalLogs.filter((l) => l.type === "warn").reduce((acc, l) => acc + l.count, 0);
 
-  useEffect(() => {
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") {
+        e.preventDefault();
+        setSaveCheckpointDialogOpen(true);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [setSaveCheckpointDialogOpen]);
+
+  React.useEffect(() => {
     const root = document.documentElement;
     setIsDark(root.classList.contains("dark"));
   }, []);
@@ -140,6 +171,70 @@ export function StudioHeader() {
               ))}
             </DropdownMenuContent>
           </DropdownMenu>
+
+          <span className="text-muted-foreground/40 font-sans text-xs">/</span>
+
+          {/* Variant Switcher Dropdown */}
+          <DropdownMenu>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 gap-1.5 px-2 text-xs font-medium text-foreground hover:bg-muted/70 rounded-md font-sans"
+                  >
+                    <GitBranch className="size-3 text-muted-foreground" />
+                    <span className="font-medium text-xs max-w-[120px] truncate">{activeVariant.name}</span>
+                    <ChevronDown className="size-3 text-muted-foreground opacity-60" />
+                  </Button>
+                </DropdownMenuTrigger>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">Switch or create component variants</TooltipContent>
+            </Tooltip>
+
+            <DropdownMenuContent align="start" className="w-56 font-sans">
+              <DropdownMenuLabel className="text-[10px] uppercase font-semibold text-muted-foreground tracking-wider font-sans">
+                Component Variants
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              {templateVariants.map((v) => {
+                const isActive = v.id === activeVariant.id;
+                return (
+                  <DropdownMenuItem
+                    key={v.id}
+                    onClick={() => switchVariant(v.id)}
+                    className="flex items-center justify-between py-1.5 cursor-pointer font-sans text-xs"
+                  >
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      {isActive ? (
+                        <Check className="size-3 text-primary shrink-0" />
+                      ) : (
+                        <span className="size-3 shrink-0" />
+                      )}
+                      <span className={cn("truncate", isActive && "font-medium text-foreground")}>
+                        {v.name}
+                      </span>
+                    </div>
+                    <Badge
+                      variant="outline"
+                      className="text-[9px] font-sans py-0 px-1 ml-2 shrink-0 text-muted-foreground"
+                    >
+                      {v.checkpoints?.length || 0} snaps
+                    </Badge>
+                  </DropdownMenuItem>
+                );
+              })}
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={() => setCreateVariantDialogOpen(true)}
+                className="gap-2 cursor-pointer font-sans text-xs text-primary font-medium"
+              >
+                <Plus className="size-3.5" />
+                <span>Create Variant...</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </nav>
       </div>
 
@@ -181,6 +276,56 @@ export function StudioHeader() {
 
       {/* Right: Actions */}
       <div className="flex items-center gap-1.5">
+        {/* Save Checkpoint Button */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setSaveCheckpointDialogOpen(true)}
+              className="h-8 gap-1.5 px-2.5 text-xs font-sans border-border/80 hover:bg-muted/60"
+            >
+              <BookmarkPlus className="size-3.5 text-primary" />
+              <span className="hidden md:inline">Save</span>
+              <kbd className="hidden xl:inline-block ml-0.5 px-1 py-0.2 rounded bg-muted-foreground/10 text-[9px] font-mono text-muted-foreground">
+                Ctrl+S
+              </kbd>
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom">Save Checkpoint (Ctrl+S)</TooltipContent>
+        </Tooltip>
+
+        {/* History Button */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant={isHistorySheetOpen ? "secondary" : "ghost"}
+              size="sm"
+              onClick={() => setHistorySheetOpen(!isHistorySheetOpen)}
+              className={cn(
+                "h-8 gap-1.5 px-2.5 text-xs font-sans transition-colors",
+                isHistorySheetOpen
+                  ? "bg-muted text-foreground font-medium"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              <History className="size-3.5 text-primary" />
+              <span className="hidden sm:inline">History</span>
+              {checkpointCount > 0 && (
+                <Badge
+                  variant="secondary"
+                  className="h-4 px-1 text-[9px] font-sans tabular-nums"
+                >
+                  {checkpointCount}
+                </Badge>
+              )}
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom">
+            Version History & Snapshots
+          </TooltipContent>
+        </Tooltip>
+
         {/* Terminal Toggle Button */}
         <Tooltip>
           <TooltipTrigger asChild>
