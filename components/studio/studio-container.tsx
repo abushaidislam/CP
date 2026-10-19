@@ -8,6 +8,8 @@ import { CanvasPreview } from "./canvas-preview";
 import { AiAssistantPanel } from "./ai-assistant-panel";
 import { PublishModal } from "./publish-modal";
 import { DependencyModal } from "./dependency-modal";
+import { SaveCheckpointDialog } from "./save-checkpoint-dialog";
+import { CreateVariantDialog } from "./create-variant-dialog";
 import { TerminalPanel } from "./terminal-panel";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Code, Eye, Sparkles } from "lucide-react";
@@ -230,6 +232,8 @@ export function StudioContainer() {
       {/* Modals & Dialogs */}
       <PublishModal />
       <DependencyModal />
+      <SaveCheckpointDialog />
+      <CreateVariantDialog />
     </div>
   );
 }

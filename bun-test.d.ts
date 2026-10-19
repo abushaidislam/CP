@@ -4,4 +4,5 @@ declare module "bun:test" {
   export const expect: (actual: any) => any;
   export const beforeEach: (fn: () => void | Promise<void>) => void;
   export const afterEach: (fn: () => void | Promise<void>) => void;
+  export const mock: any;
 }
