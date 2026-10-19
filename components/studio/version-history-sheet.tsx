@@ -66,6 +66,7 @@ export function VersionHistorySheet() {
 
   const [activeDiffFile, setActiveDiffFile] = useState<StudioFileName>("component.tsx");
   const [confirmRestoreId, setConfirmRestoreId] = useState<string | null>(null);
+  const [confirmDiffRestore, setConfirmDiffRestore] = useState(false);
   const [forkingId, setForkingId] = useState<string | null>(null);
   const [forkName, setForkName] = useState<string>("");
 
@@ -177,18 +178,40 @@ export function VersionHistorySheet() {
                   </span>
 
                   {selectedCp && (
-                    <Button
-                      size="sm"
-                      variant="default"
-                      onClick={() => {
-                        restoreCheckpoint(selectedCp.id);
-                        setSelectedCheckpointId(null);
-                      }}
-                      className="font-sans text-xs gap-1.5 ml-auto"
-                    >
-                      <RotateCcw className="size-3.5" />
-                      Restore Checkpoint
-                    </Button>
+                    !confirmDiffRestore ? (
+                      <Button
+                        size="sm"
+                        variant="default"
+                        onClick={() => setConfirmDiffRestore(true)}
+                        className="font-sans text-xs gap-1.5 ml-auto"
+                      >
+                        <RotateCcw className="size-3.5" />
+                        Restore Checkpoint
+                      </Button>
+                    ) : (
+                      <div className="flex items-center gap-1.5 ml-auto animate-in fade-in duration-150">
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          onClick={() => {
+                            restoreCheckpoint(selectedCp.id);
+                            setSelectedCheckpointId(null);
+                            setConfirmDiffRestore(false);
+                          }}
+                          className="font-sans text-xs h-7"
+                        >
+                          Confirm
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => setConfirmDiffRestore(false)}
+                          className="font-sans text-xs h-7"
+                        >
+                          Cancel
+                        </Button>
+                      </div>
+                    )
                   )}
                 </div>
 

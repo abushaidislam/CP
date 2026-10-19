@@ -36,6 +36,7 @@ import {
   History,
   Check,
   Plus,
+  Trash2,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -55,6 +56,7 @@ export function StudioHeader() {
     variantsByTemplate,
     activeVariantByTemplate,
     switchVariant,
+    deleteVariant,
     setCreateVariantDialogOpen,
     setSaveCheckpointDialogOpen,
     isHistorySheetOpen,
@@ -216,12 +218,35 @@ export function StudioHeader() {
                         {v.name}
                       </span>
                     </div>
-                    <Badge
-                      variant="outline"
-                      className="text-[9px] font-sans py-0 px-1 ml-2 shrink-0 text-muted-foreground"
-                    >
-                      {v.checkpoints?.length || 0} snaps
-                    </Badge>
+                    <div className="flex items-center gap-1.5 ml-2 shrink-0">
+                      <Badge
+                        variant="outline"
+                        className="text-[9px] font-sans py-0 px-1 text-muted-foreground"
+                      >
+                        {v.checkpoints?.length || 0} snaps
+                      </Badge>
+                      {!v.id.startsWith("var-default-") && v.name !== "Default" && templateVariants.length > 1 && (
+                        <span
+                          role="button"
+                          tabIndex={0}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            deleteVariant(v.id);
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" || e.key === " ") {
+                              e.stopPropagation();
+                              deleteVariant(v.id);
+                            }
+                          }}
+                          className="p-1 rounded-sm text-muted-foreground/60 hover:text-destructive hover:bg-destructive/10 transition-colors cursor-pointer"
+                          title={`Delete variant "${v.name}"`}
+                          aria-label={`Delete variant ${v.name}`}
+                        >
+                          <Trash2 className="size-3" />
+                        </span>
+                      )}
+                    </div>
                   </DropdownMenuItem>
                 );
               })}

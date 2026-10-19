@@ -620,6 +620,7 @@ export const useStudioStore = create<StudioState>()(
           return {
             files: { ...targetVariant.files },
             dependencies: [...targetVariant.dependencies],
+            compilerError: null,
             activeVariantByTemplate: {
               ...(state.activeVariantByTemplate || {}),
               [templateId]: targetVariant.id,
@@ -752,7 +753,7 @@ export const useStudioStore = create<StudioState>()(
           const activeVar = variants.find((v) => v.id === activeId);
           if (!activeVar) return state;
 
-          const targetCheckpoint = activeVar.checkpoints.find((cp) => cp.id === checkpointId);
+          const targetCheckpoint = (activeVar.checkpoints || []).find((cp) => cp.id === checkpointId);
           if (!targetCheckpoint) return state;
 
           const restoredFiles = {
@@ -792,10 +793,10 @@ export const useStudioStore = create<StudioState>()(
           const activeId = state.activeVariantByTemplate?.[templateId];
           const activeVar = variants.find((v) => v.id === activeId);
 
-          let targetCheckpoint = activeVar?.checkpoints.find((cp) => cp.id === checkpointId);
+          let targetCheckpoint = (activeVar?.checkpoints || []).find((cp) => cp.id === checkpointId);
           if (!targetCheckpoint) {
             for (const v of variants) {
-              const found = v.checkpoints.find((cp) => cp.id === checkpointId);
+              const found = (v.checkpoints || []).find((cp) => cp.id === checkpointId);
               if (found) {
                 targetCheckpoint = found;
                 break;
@@ -824,6 +825,7 @@ export const useStudioStore = create<StudioState>()(
           return {
             files: { ...newVariant.files },
             dependencies: [...newVariant.dependencies],
+            compilerError: null,
             variantsByTemplate: {
               ...(state.variantsByTemplate || {}),
               [templateId]: updatedVariants,
@@ -846,7 +848,7 @@ export const useStudioStore = create<StudioState>()(
             if (v.id === activeId) {
               return {
                 ...v,
-                checkpoints: v.checkpoints.filter((cp) => cp.id !== checkpointId),
+                checkpoints: (v.checkpoints || []).filter((cp) => cp.id !== checkpointId),
                 updatedAt: Date.now(),
               };
             }
