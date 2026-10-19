@@ -76,7 +76,7 @@ export function StudioHeader() {
 
   React.useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") {
+      if ((e.ctrlKey || e.metaKey) && e.key?.toLowerCase() === "s") {
         e.preventDefault();
         setSaveCheckpointDialogOpen(true);
       }
