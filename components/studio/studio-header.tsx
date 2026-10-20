@@ -122,12 +122,17 @@ export function StudioHeader() {
     <header className="flex h-12 shrink-0 items-center justify-between border-b border-border bg-background/95 px-4 backdrop-blur-sm select-none z-30">
       {/* Left: Brand & Template Selector */}
       <div className="flex items-center gap-3">
-        <Link href="/" className="shrink-0">
-          <Button variant="ghost" size="sm" className="font-sans text-xs gap-1.5 h-8 px-2 text-muted-foreground hover:text-foreground">
+        <Button
+          variant="ghost"
+          size="sm"
+          asChild
+          className="font-sans text-xs gap-1.5 h-8 px-2 text-muted-foreground hover:text-foreground shrink-0"
+        >
+          <Link href="/">
             <ArrowLeft className="size-4" />
             <span>Library</span>
-          </Button>
-        </Link>
+          </Link>
+        </Button>
 
         {/* Vercel Geometric Triangle Mark */}
         <div className="flex size-6 items-center justify-center rounded-md bg-foreground text-background shadow-2xs">
@@ -198,7 +203,10 @@ export function StudioHeader() {
                 : DEFAULT_TEMPLATES.map((tmpl) => (
                     <DropdownMenuItem
                       key={tmpl.id}
-                      onClick={() => loadTemplate(tmpl.id)}
+                      onClick={() => {
+                        loadTemplate(tmpl.id);
+                        router?.push?.(`/studio/${tmpl.id}`);
+                      }}
                       className="flex flex-col items-start gap-0.5 py-2 cursor-pointer font-sans"
                     >
                       <div className="flex items-center justify-between w-full">
