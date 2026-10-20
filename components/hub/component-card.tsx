@@ -47,18 +47,19 @@ export interface ComponentCardProps {
   onDelete?: (id: string) => void;
 }
 
-function getCategoryIcon(category?: string) {
+function renderCategoryIcon(category?: string) {
+  const className = "size-4 text-muted-foreground/40 shrink-0";
   switch ((category || "").toLowerCase()) {
     case "heroes":
-      return LayoutTemplate;
+      return <LayoutTemplate className={className} />;
     case "cards":
-      return CreditCard;
+      return <CreditCard className={className} />;
     case "buttons":
-      return MousePointerClick;
+      return <MousePointerClick className={className} />;
     case "badges":
-      return ShieldCheck;
+      return <ShieldCheck className={className} />;
     default:
-      return Sparkles;
+      return <Sparkles className={className} />;
   }
 }
 
@@ -73,7 +74,6 @@ export function ComponentCard({
   onDelete,
 }: ComponentCardProps) {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const CategoryIcon = getCategoryIcon(component.category);
 
   const handlePreview = () => {
     if (onPreview) {
@@ -191,7 +191,7 @@ export function ComponentCard({
               <span className="font-sans font-medium text-sm text-foreground tracking-tight line-clamp-1 group-hover/canvas:text-primary transition-colors duration-150">
                 {component.name}
               </span>
-              <CategoryIcon className="size-4 text-muted-foreground/40 shrink-0" />
+              {renderCategoryIcon(component.category)}
             </div>
 
             <p className="font-sans text-xs text-muted-foreground line-clamp-2 leading-relaxed">

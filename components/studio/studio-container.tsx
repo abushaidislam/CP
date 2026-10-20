@@ -20,15 +20,13 @@ export interface StudioContainerProps {
   componentId?: string;
 }
 
-export function StudioContainer({ componentId }: StudioContainerProps = {}) {
+export function StudioContainer({ componentId: _componentId }: StudioContainerProps = {}) {
   const {
     isAiPanelOpen,
     toggleAiPanel,
     setAiPanelOpen,
     layoutMode,
     isTerminalOpen,
-    currentTemplateId,
-    loadComponent,
   } = useStudioStore();
 
 
