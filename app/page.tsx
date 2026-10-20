@@ -1,5 +1,16 @@
-import { StudioContainer } from "@/components/studio/studio-container";
+"use client";
+
+import { useRouter } from "next/navigation";
+import { ComponentHub } from "@/components/hub/component-hub";
 
 export default function Home() {
-  return <StudioContainer />;
+  const router = useRouter();
+
+  return (
+    <ComponentHub
+      onNavigateStudio={(id) => {
+        router.push(`/studio/${id}`);
+      }}
+    />
+  );
 }

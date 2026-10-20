@@ -32,6 +32,15 @@ if (typeof globalThis.window === "undefined") {
     clearTimeout: globalThis.clearTimeout.bind(globalThis),
   } as any;
 } else {
+  (globalThis.window as any).addEventListener = (event: string, cb: any) => {
+    listeners[event] = listeners[event] || [];
+    listeners[event].push(cb);
+  };
+  (globalThis.window as any).removeEventListener = (event: string, cb: any) => {
+    if (listeners[event]) {
+      listeners[event] = listeners[event].filter((l) => l !== cb);
+    }
+  };
   (globalThis.window as any).localStorage = mockStorage;
   (globalThis.window as any).setTimeout = globalThis.setTimeout.bind(globalThis);
   (globalThis.window as any).clearTimeout = globalThis.clearTimeout.bind(globalThis);
