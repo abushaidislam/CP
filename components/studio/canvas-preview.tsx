@@ -58,6 +58,8 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
     setZoom,
     setCompilerState,
     addTerminalLog,
+    currentTemplateId,
+    updateComponentPreview,
   } = useStudioStore();
 
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -151,6 +153,17 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
             message: event.data.message,
           });
         }
+        if (event.data.type === "PREVIEW_CAPTURED") {
+          if (event.data.dataUrl) {
+            updateComponentPreview(
+              event.data.componentId || currentTemplateId,
+              event.data.dataUrl
+            );
+          }
+          window.dispatchEvent(
+            new CustomEvent("studio:preview-captured", { detail: event.data })
+          );
+        }
         if (event.data.type === "COMMAND_RESULT") {
           if (event.data.success) {
             addTerminalLog({
@@ -168,7 +181,25 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
     }
     window.addEventListener("message", handleMessage);
     return () => window.removeEventListener("message", handleMessage);
-  }, [setCompilerState, addTerminalLog]);
+  }, [setCompilerState, addTerminalLog, updateComponentPreview, currentTemplateId]);
+
+  // Listen for custom preview capture requests from StudioHeader
+  useEffect(() => {
+    const handleRequestCapture = (e: Event) => {
+      const customEvent = e as CustomEvent<{ componentId?: string }>;
+      const targetId = customEvent.detail?.componentId || currentTemplateId;
+      if (iframeRef.current && iframeRef.current.contentWindow) {
+        iframeRef.current.contentWindow.postMessage(
+          { type: "CAPTURE_PREVIEW", componentId: targetId },
+          "*"
+        );
+      }
+    };
+    window.addEventListener("studio:request-preview-capture", handleRequestCapture);
+    return () => {
+      window.removeEventListener("studio:request-preview-capture", handleRequestCapture);
+    };
+  }, [iframeRef, currentTemplateId]);
 
   // Interactive Drag-to-Resize Handle
   const handleResizeStart = (e: React.MouseEvent) => {

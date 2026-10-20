@@ -5,6 +5,15 @@ import { renderToString } from "react-dom/server";
 // Setup global mock for window, document, and localStorage
 const listeners: Record<string, ((e: any) => void)[]> = {};
 let capturedEffects: (() => void | (() => void))[] = [];
+const dispatchedEvents: any[] = [];
+
+const dispatchEventMock = (event: any) => {
+  dispatchedEvents.push(event);
+  if (listeners[event.type]) {
+    listeners[event.type].forEach((cb) => cb(event));
+  }
+  return true;
+};
 
 const storageMap = new Map<string, string>();
 const mockStorage = {
@@ -27,6 +36,7 @@ if (typeof globalThis.window === "undefined") {
         listeners[event] = listeners[event].filter((l) => l !== cb);
       }
     },
+    dispatchEvent: dispatchEventMock,
     localStorage: mockStorage,
     setTimeout: globalThis.setTimeout.bind(globalThis),
     clearTimeout: globalThis.clearTimeout.bind(globalThis),
@@ -41,9 +51,21 @@ if (typeof globalThis.window === "undefined") {
       listeners[event] = listeners[event].filter((l) => l !== cb);
     }
   };
+  (globalThis.window as any).dispatchEvent = dispatchEventMock;
   (globalThis.window as any).localStorage = mockStorage;
   (globalThis.window as any).setTimeout = globalThis.setTimeout.bind(globalThis);
   (globalThis.window as any).clearTimeout = globalThis.clearTimeout.bind(globalThis);
+}
+
+if (typeof globalThis.CustomEvent === "undefined") {
+  (globalThis as any).CustomEvent = class CustomEvent {
+    type: string;
+    detail: any;
+    constructor(type: string, params?: { detail?: any }) {
+      this.type = type;
+      this.detail = params?.detail;
+    }
+  };
 }
 
 (globalThis as any).localStorage = mockStorage;
@@ -123,6 +145,9 @@ mock.module(import.meta.resolve("@/components/ui/button"), () => ({
       if (text.includes("Library")) {
         buttonClickMap.set("Library", onClick);
       }
+      if (text.includes("Capture")) {
+        buttonClickMap.set("Capture", onClick);
+      }
       buttonClickMap.set(text, onClick);
     }
 
@@ -188,6 +213,7 @@ describe("StudioHeader Navigation & Route Integration", () => {
   beforeEach(() => {
     capturedEffects = [];
     buttonClickMap.clear();
+    dispatchedEvents.length = 0;
     mockPush.mockClear();
     mockReplace.mockClear();
     hubOnNavigateStudio = undefined;
@@ -326,6 +352,53 @@ describe("StudioHeader Navigation & Route Integration", () => {
         historyClick();
         expect(useStudioStore.getState().isHistorySheetOpen).toBe(true);
       }
+    });
+
+    it("should render 'Capture' preview snapshot button in studio header", () => {
+      const html = renderToString(
+        <TooltipProvider>
+          <StudioHeader />
+        </TooltipProvider>
+      );
+
+      expect(html).toContain("Capture");
+      expect(html).toContain('aria-label="Capture preview snapshot"');
+    });
+
+    it("should dispatch studio:request-preview-capture when Capture button is clicked", () => {
+      useStudioStore.setState({
+        currentTemplateId: "custom-neon-button",
+      });
+
+      renderToString(
+        <TooltipProvider>
+          <StudioHeader />
+        </TooltipProvider>
+      );
+
+      const captureClick = buttonClickMap.get("Capture");
+      expect(captureClick).toBeDefined();
+
+      captureClick!();
+
+      const captureEvent = dispatchedEvents.find(
+        (e) => e.type === "studio:request-preview-capture"
+      );
+      expect(captureEvent).toBeDefined();
+      expect(captureEvent.detail).toEqual({ componentId: "custom-neon-button" });
+    });
+
+    it("should register studio:preview-captured listener and respond to capture events", () => {
+      StudioHeader();
+      runEffects();
+
+      const captureHandler = listeners["studio:preview-captured"]?.[0];
+      expect(captureHandler).toBeDefined();
+
+      // Calling handler should not throw
+      expect(() => {
+        captureHandler({ detail: { dataUrl: "data:image/svg+xml;base64,sample" } });
+      }).not.toThrow();
     });
   });
 

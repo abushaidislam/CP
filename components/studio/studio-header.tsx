@@ -40,6 +40,8 @@ import {
   Plus,
   Trash2,
   ArrowLeft,
+  Camera,
+  Loader2,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -70,6 +72,46 @@ export function StudioHeader() {
   } = useStudioStore();
 
   const [isDark, setIsDark] = useState(true);
+  const [isCapturing, setIsCapturing] = useState(false);
+  const [capturedSuccess, setCapturedSuccess] = useState(false);
+  const captureTimeoutRef = React.useRef<NodeJS.Timeout | number | null>(null);
+
+  React.useEffect(() => {
+    let successTimer: NodeJS.Timeout | number | undefined;
+    const handleCaptured = () => {
+      if (captureTimeoutRef.current) {
+        clearTimeout(captureTimeoutRef.current);
+        captureTimeoutRef.current = null;
+      }
+      setIsCapturing(false);
+      setCapturedSuccess(true);
+      successTimer = setTimeout(() => {
+        setCapturedSuccess(false);
+      }, 2000);
+    };
+
+    window.addEventListener("studio:preview-captured", handleCaptured);
+    return () => {
+      window.removeEventListener("studio:preview-captured", handleCaptured);
+      if (successTimer) clearTimeout(successTimer);
+      if (captureTimeoutRef.current) clearTimeout(captureTimeoutRef.current);
+    };
+  }, []);
+
+  const handleCapturePreview = () => {
+    setIsCapturing(true);
+    window.dispatchEvent(
+      new CustomEvent("studio:request-preview-capture", {
+        detail: { componentId: currentTemplateId },
+      })
+    );
+    if (captureTimeoutRef.current) {
+      clearTimeout(captureTimeoutRef.current);
+    }
+    captureTimeoutRef.current = setTimeout(() => {
+      setIsCapturing(false);
+    }, 3500);
+  };
 
   const templateVariants = variantsByTemplate[currentTemplateId] || [];
   const activeVariantId = activeVariantByTemplate[currentTemplateId];
@@ -352,6 +394,40 @@ export function StudioHeader() {
 
       {/* Right: Actions */}
       <div className="flex items-center gap-1.5">
+        {/* Capture Preview Button */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleCapturePreview}
+              disabled={isCapturing}
+              className="font-sans text-xs gap-1.5 h-8 px-2.5 text-muted-foreground hover:text-foreground"
+              aria-label="Capture preview snapshot"
+            >
+              {capturedSuccess ? (
+                <>
+                  <Check className="size-3.5 text-emerald-500" />
+                  <span className="text-emerald-500 font-medium">Saved!</span>
+                </>
+              ) : isCapturing ? (
+                <>
+                  <Loader2 className="size-3.5 animate-spin" />
+                  <span>Capturing...</span>
+                </>
+              ) : (
+                <>
+                  <Camera className="size-3.5" />
+                  <span>Capture</span>
+                </>
+              )}
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" className="font-sans text-xs">
+            Capture live canvas preview for library card
+          </TooltipContent>
+        </Tooltip>
+
         {/* Save Checkpoint Button */}
         <Tooltip>
           <TooltipTrigger asChild>
