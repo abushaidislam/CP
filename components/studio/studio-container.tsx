@@ -16,8 +16,21 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Code, Eye, Sparkles } from "lucide-react";
 import { useStudioStore } from "@/lib/store/studio-store";
 
-export function StudioContainer() {
-  const { isAiPanelOpen, toggleAiPanel, setAiPanelOpen, layoutMode, isTerminalOpen } = useStudioStore();
+export interface StudioContainerProps {
+  componentId?: string;
+}
+
+export function StudioContainer({ componentId: _componentId }: StudioContainerProps = {}) {
+  const {
+    isAiPanelOpen,
+    toggleAiPanel,
+    setAiPanelOpen,
+    layoutMode,
+    isTerminalOpen,
+  } = useStudioStore();
+
+
+
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const [mobileTab, setMobileTab] = useState<"editor" | "preview" | "ai">("preview");
   const [splitRatio, setSplitRatio] = useState(48); // Left width percentage on desktop

@@ -1,0 +1,545 @@
+import { mock, describe, it, expect, beforeEach, afterAll } from "bun:test";
+import React from "react";
+import { renderToString } from "react-dom/server";
+
+// Setup global mock for window, document, and localStorage
+const listeners: Record<string, ((e: any) => void)[]> = {};
+let capturedEffects: (() => void | (() => void))[] = [];
+const dispatchedEvents: any[] = [];
+
+const dispatchEventMock = (event: any) => {
+  dispatchedEvents.push(event);
+  if (listeners[event.type]) {
+    listeners[event.type].forEach((cb) => cb(event));
+  }
+  return true;
+};
+
+const storageMap = new Map<string, string>();
+const mockStorage = {
+  getItem: (key: string) => storageMap.get(key) ?? null,
+  setItem: (key: string, value: string) => storageMap.set(key, value),
+  removeItem: (key: string) => storageMap.delete(key),
+  clear: () => storageMap.clear(),
+  length: 0,
+  key: () => null,
+};
+
+if (typeof globalThis.window === "undefined") {
+  globalThis.window = {
+    addEventListener: (event: string, cb: any) => {
+      listeners[event] = listeners[event] || [];
+      listeners[event].push(cb);
+    },
+    removeEventListener: (event: string, cb: any) => {
+      if (listeners[event]) {
+        listeners[event] = listeners[event].filter((l) => l !== cb);
+      }
+    },
+    dispatchEvent: dispatchEventMock,
+    localStorage: mockStorage,
+    setTimeout: globalThis.setTimeout.bind(globalThis),
+    clearTimeout: globalThis.clearTimeout.bind(globalThis),
+  } as any;
+} else {
+  (globalThis.window as any).addEventListener = (event: string, cb: any) => {
+    listeners[event] = listeners[event] || [];
+    listeners[event].push(cb);
+  };
+  (globalThis.window as any).removeEventListener = (event: string, cb: any) => {
+    if (listeners[event]) {
+      listeners[event] = listeners[event].filter((l) => l !== cb);
+    }
+  };
+  (globalThis.window as any).dispatchEvent = dispatchEventMock;
+  (globalThis.window as any).localStorage = mockStorage;
+  (globalThis.window as any).setTimeout = globalThis.setTimeout.bind(globalThis);
+  (globalThis.window as any).clearTimeout = globalThis.clearTimeout.bind(globalThis);
+}
+
+if (typeof globalThis.CustomEvent === "undefined") {
+  (globalThis as any).CustomEvent = class CustomEvent {
+    type: string;
+    detail: any;
+    constructor(type: string, params?: { detail?: any }) {
+      this.type = type;
+      this.detail = params?.detail;
+    }
+  };
+}
+
+(globalThis as any).localStorage = mockStorage;
+
+if (typeof globalThis.document === "undefined") {
+  globalThis.document = {
+    documentElement: {
+      classList: {
+        contains: () => false,
+        add: () => {},
+        remove: () => {},
+      },
+    },
+  } as any;
+}
+
+// Intercept React.useEffect to capture and manually run effects during test renders
+const clientInternals = (React as any).__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE;
+const previousH = clientInternals?.H;
+if (clientInternals) {
+  clientInternals.H = {
+    useEffect: (fn: any) => {
+      capturedEffects.push(fn);
+    },
+    useState: (init: any) => [typeof init === "function" ? init() : init, () => {}],
+    useMemo: (fn: any) => fn(),
+    useCallback: (fn: any) => fn,
+    useRef: (init: any) => ({ current: init }),
+  };
+}
+
+const runEffects = () => {
+  const effects = [...capturedEffects];
+  capturedEffects = [];
+  effects.forEach((eff) => eff());
+};
+
+// Navigation mocks
+const mockPush = mock((path: string) => {});
+const mockReplace = mock((path: string) => {});
+let mockParams: Record<string, string> = { id: "custom-neon-button" };
+
+mock.module("next/navigation", () => ({
+  useRouter: () => ({
+    push: mockPush,
+    replace: mockReplace,
+    prefetch: () => {},
+    back: () => {},
+  }),
+  useParams: () => mockParams,
+  usePathname: () => `/studio/${mockParams.id || ""}`,
+}));
+
+// Registry to capture onClick handlers from rendered Buttons
+const buttonClickMap = new Map<string, () => void>();
+
+// Mock @/components/ui/button
+mock.module(import.meta.resolve("@/components/ui/button"), () => ({
+  Button: ({ children, onClick, className, variant, size, asChild, ...props }: any) => {
+    const extractText = (node: any): string => {
+      if (!node) return "";
+      if (typeof node === "string") return node;
+      if (typeof node === "number") return String(node);
+      if (Array.isArray(node)) return node.map(extractText).join(" ");
+      if (node.props && node.props.children) return extractText(node.props.children);
+      return "";
+    };
+
+    const text = extractText(children).trim();
+    if (onClick) {
+      if (text.includes("Save")) {
+        buttonClickMap.set("Save", onClick);
+      }
+      if (text.includes("History")) {
+        buttonClickMap.set("History", onClick);
+      }
+      if (text.includes("Library")) {
+        buttonClickMap.set("Library", onClick);
+      }
+      if (text.includes("Capture")) {
+        buttonClickMap.set("Capture", onClick);
+      }
+      buttonClickMap.set(text, onClick);
+    }
+
+    return (
+      <button onClick={onClick} className={className} {...props}>
+        {children}
+      </button>
+    );
+  },
+  buttonVariants: () => "",
+}));
+
+// Mock next/link
+mock.module("next/link", () => ({
+  default: ({ href, children, className, ...props }: any) => {
+    return (
+      <a href={href} className={className} data-testid="next-link" {...props}>
+        {children}
+      </a>
+    );
+  },
+}));
+
+// Wrap useStudioStore hook so it returns live state during tests
+const actualStore = await import("@/lib/store/studio-store");
+const storeWrapper = Object.assign(
+  (selector?: (state: any) => any) =>
+    selector ? selector(actualStore.useStudioStore.getState()) : actualStore.useStudioStore.getState(),
+  actualStore.useStudioStore
+);
+
+mock.module(import.meta.resolve("@/lib/store/studio-store"), () => ({
+  ...actualStore,
+  useStudioStore: storeWrapper,
+}));
+
+// Mock @/components/hub/component-hub for route testing
+let hubOnNavigateStudio: ((id: string) => void) | undefined = undefined;
+mock.module(import.meta.resolve("@/components/hub/component-hub"), () => ({
+  ComponentHub: ({ onNavigateStudio }: any) => {
+    hubOnNavigateStudio = onNavigateStudio;
+    return <div data-testid="component-hub">Component Hub</div>;
+  },
+}));
+
+// Mock @/components/studio/studio-container for route testing
+let renderedStudioContainerProps: any = null;
+mock.module(import.meta.resolve("@/components/studio/studio-container"), () => ({
+  StudioContainer: (props: any) => {
+    renderedStudioContainerProps = props;
+    return <div data-testid="studio-container">Studio Container</div>;
+  },
+}));
+
+const { useStudioStore } = await import("@/lib/store/studio-store");
+const { TooltipProvider } = await import("@/components/ui/tooltip");
+const { StudioHeader } = await import("../studio-header");
+const { CanvasPreview } = await import("../canvas-preview");
+const HomePage = (await import("@/app/page")).default;
+const StudioWorkspacePage = (await import("@/app/studio/[id]/page")).default;
+const StudioRedirectPage = (await import("@/app/studio/page")).default;
+
+describe("StudioHeader Navigation & Route Integration", () => {
+  beforeEach(() => {
+    capturedEffects = [];
+    buttonClickMap.clear();
+    dispatchedEvents.length = 0;
+    mockPush.mockClear();
+    mockReplace.mockClear();
+    hubOnNavigateStudio = undefined;
+    renderedStudioContainerProps = null;
+    mockParams = { id: "custom-neon-button" };
+
+    for (const key in listeners) {
+      delete listeners[key];
+    }
+
+    useStudioStore.setState({
+      currentTemplateId: "custom-neon-button",
+      userComponents: {
+        "custom-neon-button": {
+          id: "custom-neon-button",
+          name: "Neon Glow Button",
+          description: "Futuristic neon pulsating button",
+          category: "Buttons",
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+          files: {
+            "component.tsx": "// Neon Button",
+            "demo.tsx": "// Demo",
+            "index.css": "",
+          },
+          dependencies: [],
+        },
+      },
+      activeVariantByTemplate: {
+        "custom-neon-button": "var-neon-cyan",
+      },
+      variantsByTemplate: {
+        "custom-neon-button": [
+          {
+            id: "var-neon-cyan",
+            name: "Cyan Glow",
+            createdAt: 1700000000000,
+            updatedAt: 1700000000000,
+            files: {
+              "component.tsx": "// Cyan variant",
+              "demo.tsx": "// Demo",
+              "index.css": "",
+            },
+            dependencies: [],
+            checkpoints: [
+              {
+                id: "cp-1",
+                name: "Added pulse animation",
+                timestamp: "12:00:00 PM",
+                createdAt: 1700000000000,
+                files: {
+                  "component.tsx": "// Cyan",
+                  "demo.tsx": "// Demo",
+                  "index.css": "",
+                },
+                dependencies: [],
+              },
+            ],
+          },
+        ],
+      },
+      isSaveCheckpointDialogOpen: false,
+      isHistorySheetOpen: false,
+    });
+  });
+
+  describe("StudioHeader UI", () => {
+    it("should render the Library navigation link with back button leading to '/'", () => {
+      const html = renderToString(
+        <TooltipProvider>
+          <StudioHeader />
+        </TooltipProvider>
+      );
+
+      // Verify Library link exists with href="/"
+      expect(html).toContain('href="/"');
+      expect(html).toContain("Library");
+    });
+
+    it("should display the active component name from userComponents", () => {
+      const html = renderToString(
+        <TooltipProvider>
+          <StudioHeader />
+        </TooltipProvider>
+      );
+
+      // Component name should be displayed in header
+      expect(html).toContain("Neon Glow Button");
+    });
+
+    it("should fallback gracefully if component name is not found in userComponents", () => {
+      useStudioStore.setState({
+        currentTemplateId: "non-existent-id",
+        userComponents: {},
+      });
+
+      const html = renderToString(
+        <TooltipProvider>
+          <StudioHeader />
+        </TooltipProvider>
+      );
+
+      // Should contain fallback name or Component Studio
+      expect(html).toMatch(/Component Studio|Interactive Button/);
+    });
+
+    it("should preserve variant selector and checkpoint controls alongside navigation", () => {
+      const html = renderToString(
+        <TooltipProvider>
+          <StudioHeader />
+        </TooltipProvider>
+      );
+
+      // Verify variant name is displayed
+      expect(html).toContain("Cyan Glow");
+
+      // Verify Save checkpoint button is present
+      expect(html).toContain("Save");
+
+      // Verify History button is present with checkpoint count
+      expect(html).toContain("History");
+      expect(html).toContain("1"); // 1 checkpoint
+
+      // Clicking Save should open dialog
+      const saveClick = buttonClickMap.get("Save");
+      expect(saveClick).toBeDefined();
+      if (saveClick) {
+        saveClick();
+        expect(useStudioStore.getState().isSaveCheckpointDialogOpen).toBe(true);
+      }
+
+      // Clicking History should open history sheet
+      const historyClick = buttonClickMap.get("History");
+      expect(historyClick).toBeDefined();
+      if (historyClick) {
+        historyClick();
+        expect(useStudioStore.getState().isHistorySheetOpen).toBe(true);
+      }
+    });
+
+    it("should render 'Capture' preview snapshot button in studio header", () => {
+      const html = renderToString(
+        <TooltipProvider>
+          <StudioHeader />
+        </TooltipProvider>
+      );
+
+      expect(html).toContain("Capture");
+      expect(html).toContain('aria-label="Capture preview snapshot"');
+    });
+
+    it("should dispatch studio:request-preview-capture when Capture button is clicked", () => {
+      useStudioStore.setState({
+        currentTemplateId: "custom-neon-button",
+      });
+
+      renderToString(
+        <TooltipProvider>
+          <StudioHeader />
+        </TooltipProvider>
+      );
+
+      const captureClick = buttonClickMap.get("Capture");
+      expect(captureClick).toBeDefined();
+
+      captureClick!();
+
+      const captureEvent = dispatchedEvents.find(
+        (e) => e.type === "studio:request-preview-capture"
+      );
+      expect(captureEvent).toBeDefined();
+      expect(captureEvent.detail).toEqual({ componentId: "custom-neon-button" });
+    });
+
+    it("should auto-switch layoutMode to split and dispatch capture request on click", () => {
+      useStudioStore.setState({
+        currentTemplateId: "custom-neon-button",
+        layoutMode: "editor",
+      });
+
+      renderToString(
+        <TooltipProvider>
+          <StudioHeader />
+        </TooltipProvider>
+      );
+
+      const captureClick = buttonClickMap.get("Capture");
+      expect(captureClick).toBeDefined();
+
+      captureClick!();
+
+      // Layout should have auto-switched to split
+      expect(useStudioStore.getState().layoutMode).toBe("split");
+
+      const captureEvent = dispatchedEvents.find(
+        (e) => e.type === "studio:request-preview-capture"
+      );
+      expect(captureEvent).toBeDefined();
+    });
+
+    it("should register studio:preview-captured listener and respond to capture events", () => {
+      StudioHeader();
+      runEffects();
+
+      const captureHandler = listeners["studio:preview-captured"]?.[0];
+      expect(captureHandler).toBeDefined();
+
+      // Calling handler with dataUrl sets success
+      expect(() => {
+        captureHandler({ detail: { dataUrl: "data:image/svg+xml;base64,sample" } });
+      }).not.toThrow();
+
+      // Calling handler without dataUrl should guard without error
+      expect(() => {
+        captureHandler({ detail: { dataUrl: null, error: "Snapshot failed" } });
+      }).not.toThrow();
+    });
+  });
+
+  describe("CanvasPreview Integration", () => {
+    it("should handle PREVIEW_CAPTURED message and update store with snapshot dataUrl", () => {
+      const mockIframeRef = {
+        current: {
+          contentWindow: {
+            postMessage: mock((_msg: any) => {}),
+          },
+        },
+      };
+
+      // Call CanvasPreview directly to register hook effects with the test dispatcher
+      CanvasPreview({ iframeRef: mockIframeRef as any });
+      runEffects();
+
+      const messageHandler = listeners["message"]?.[0];
+      expect(messageHandler).toBeDefined();
+
+      const sampleDataUrl = "data:image/svg+xml;base64,PHN2Zz5wb2xsPC9zdmc+";
+      messageHandler({
+        data: {
+          type: "PREVIEW_CAPTURED",
+          componentId: "custom-neon-button",
+          dataUrl: sampleDataUrl,
+        },
+      });
+
+      // Verify store updated with snapshot dataUrl
+      const component = useStudioStore.getState().userComponents["custom-neon-button"];
+      expect(component.previewImage).toBe(sampleDataUrl);
+
+      // Verify custom event studio:preview-captured was dispatched
+      const capturedEvent = dispatchedEvents.find((e) => e.type === "studio:preview-captured");
+      expect(capturedEvent).toBeDefined();
+      expect(capturedEvent.detail.dataUrl).toBe(sampleDataUrl);
+    });
+
+    it("should forward CAPTURE_PREVIEW postMessage to iframe contentWindow when studio:request-preview-capture event occurs", () => {
+      const postMessageMock = mock((_msg: any) => {});
+      const mockIframeRef = {
+        current: {
+          contentWindow: {
+            postMessage: postMessageMock,
+          },
+        },
+      };
+
+      CanvasPreview({ iframeRef: mockIframeRef as any });
+      runEffects();
+
+      const requestHandler = listeners["studio:request-preview-capture"]?.[0];
+      expect(requestHandler).toBeDefined();
+
+      requestHandler({
+        detail: { componentId: "custom-neon-button" },
+      });
+
+      expect(postMessageMock).toHaveBeenCalledWith(
+        { type: "CAPTURE_PREVIEW", componentId: "custom-neon-button" },
+        "*"
+      );
+    });
+  });
+
+  describe("Route Integration", () => {
+    it("app/page.tsx should render ComponentHub and route to /studio/[id] on navigation", () => {
+      const html = renderToString(<HomePage />);
+      expect(html).toContain("Component Hub");
+      expect(hubOnNavigateStudio).toBeDefined();
+
+      // Trigger navigation callback
+      hubOnNavigateStudio!("glass-card");
+      expect(mockPush).toHaveBeenCalledWith("/studio/glass-card");
+    });
+
+    it("app/studio/[id]/page.tsx should resolve id param, load component, and render StudioContainer", () => {
+      mockParams = { id: "custom-neon-button" };
+      useStudioStore.setState({ currentTemplateId: "ink-orbit-hero" });
+
+      const element = StudioWorkspacePage();
+      expect(element.props.componentId).toBe("custom-neon-button");
+
+      // Run effect
+      runEffects();
+      expect(useStudioStore.getState().currentTemplateId).toBe("custom-neon-button");
+    });
+
+    it("app/studio/page.tsx should redirect to /studio/[currentTemplateId] if template exists", () => {
+      useStudioStore.setState({ currentTemplateId: "hero-section" });
+      StudioRedirectPage();
+
+      runEffects();
+      expect(mockReplace).toHaveBeenCalledWith("/studio/hero-section");
+    });
+
+    it("app/studio/page.tsx should redirect to / if no current template exists", () => {
+      useStudioStore.setState({ currentTemplateId: "" });
+      StudioRedirectPage();
+
+      runEffects();
+      expect(mockReplace).toHaveBeenCalledWith("/");
+    });
+  });
+
+  afterAll(() => {
+    if (clientInternals) {
+      clientInternals.H = previousH;
+    }
+  });
+});

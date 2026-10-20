@@ -19,6 +19,8 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   Layers,
   ChevronDown,
@@ -37,14 +39,20 @@ import {
   Check,
   Plus,
   Trash2,
+  ArrowLeft,
+  Camera,
+  Loader2,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 
 export function StudioHeader() {
+  const router = useRouter();
   const {
     currentTemplateId,
+    userComponents,
     loadTemplate,
+    loadComponent,
     setPublishModalOpen,
     isTerminalOpen,
     toggleTerminal,
@@ -64,6 +72,54 @@ export function StudioHeader() {
   } = useStudioStore();
 
   const [isDark, setIsDark] = useState(true);
+  const [isCapturing, setIsCapturing] = useState(false);
+  const [capturedSuccess, setCapturedSuccess] = useState(false);
+  const captureTimeoutRef = React.useRef<NodeJS.Timeout | number | null>(null);
+
+  React.useEffect(() => {
+    let successTimer: NodeJS.Timeout | number | undefined;
+    const handleCaptured = (e: Event) => {
+      const customEvent = e as CustomEvent<{ dataUrl?: string | null; error?: string }>;
+      if (captureTimeoutRef.current) {
+        clearTimeout(captureTimeoutRef.current);
+        captureTimeoutRef.current = null;
+      }
+      setIsCapturing(false);
+      if (customEvent.detail?.dataUrl) {
+        if (successTimer) clearTimeout(successTimer);
+        setCapturedSuccess(true);
+        successTimer = setTimeout(() => {
+          setCapturedSuccess(false);
+        }, 2000);
+      }
+    };
+
+    window.addEventListener("studio:preview-captured", handleCaptured);
+    return () => {
+      window.removeEventListener("studio:preview-captured", handleCaptured);
+      if (successTimer) clearTimeout(successTimer);
+      if (captureTimeoutRef.current) clearTimeout(captureTimeoutRef.current);
+    };
+  }, []);
+
+  const handleCapturePreview = () => {
+    if (layoutMode === "editor") {
+      setLayoutMode("split");
+    }
+    setCapturedSuccess(false);
+    setIsCapturing(true);
+    window.dispatchEvent(
+      new CustomEvent("studio:request-preview-capture", {
+        detail: { componentId: currentTemplateId },
+      })
+    );
+    if (captureTimeoutRef.current) {
+      clearTimeout(captureTimeoutRef.current);
+    }
+    captureTimeoutRef.current = setTimeout(() => {
+      setIsCapturing(false);
+    }, 3500);
+  };
 
   const templateVariants = variantsByTemplate[currentTemplateId] || [];
   const activeVariantId = activeVariantByTemplate[currentTemplateId];
@@ -107,10 +163,27 @@ export function StudioHeader() {
     DEFAULT_TEMPLATES.find((t) => t.id === currentTemplateId) ||
     DEFAULT_TEMPLATES[0];
 
+  const componentName =
+    userComponents?.[currentTemplateId]?.name ||
+    currentTemplate?.name ||
+    "Component Studio";
+
   return (
     <header className="flex h-12 shrink-0 items-center justify-between border-b border-border bg-background/95 px-4 backdrop-blur-sm select-none z-30">
       {/* Left: Brand & Template Selector */}
       <div className="flex items-center gap-3">
+        <Button
+          variant="ghost"
+          size="sm"
+          asChild
+          className="font-sans text-xs gap-1.5 h-8 px-2 text-muted-foreground hover:text-foreground shrink-0"
+        >
+          <Link href="/">
+            <ArrowLeft className="size-4" />
+            <span>Library</span>
+          </Link>
+        </Button>
+
         {/* Vercel Geometric Triangle Mark */}
         <div className="flex size-6 items-center justify-center rounded-md bg-foreground text-background shadow-2xs">
           <svg
@@ -139,7 +212,7 @@ export function StudioHeader() {
                     className="h-7 gap-1.5 px-2 text-xs font-medium text-foreground hover:bg-muted/70 rounded-md font-sans"
                   >
                     <Layers className="size-3 text-muted-foreground" />
-                    <span className="font-medium text-xs">{currentTemplate.name}</span>
+                    <span className="font-medium text-xs">{componentName}</span>
                     <ChevronDown className="size-3 text-muted-foreground opacity-60" />
                   </Button>
                 </DropdownMenuTrigger>
@@ -152,25 +225,53 @@ export function StudioHeader() {
                 Component Templates
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
-              {DEFAULT_TEMPLATES.map((tmpl) => (
-                <DropdownMenuItem
-                  key={tmpl.id}
-                  onClick={() => loadTemplate(tmpl.id)}
-                  className="flex flex-col items-start gap-0.5 py-2 cursor-pointer font-sans"
-                >
-                  <div className="flex items-center justify-between w-full">
-                    <span className="font-medium text-xs text-foreground">
-                      {tmpl.name}
-                    </span>
-                    <Badge variant="secondary" className="text-[9px] py-0 px-1 font-normal font-sans">
-                      {tmpl.category}
-                    </Badge>
-                  </div>
-                  <span className="line-clamp-1 text-[11px] text-muted-foreground">
-                    {tmpl.description}
-                  </span>
-                </DropdownMenuItem>
-              ))}
+              {Object.values(userComponents || {}).length > 0
+                ? Object.values(userComponents).map((comp) => (
+                    <DropdownMenuItem
+                      key={comp.id}
+                      onClick={() => {
+                        loadComponent(comp.id);
+                        router?.push?.(`/studio/${comp.id}`);
+                      }}
+                      className="flex flex-col items-start gap-0.5 py-2 cursor-pointer font-sans"
+                    >
+                      <div className="flex items-center justify-between w-full">
+                        <span className="font-medium text-xs text-foreground">
+                          {comp.name}
+                        </span>
+                        <Badge variant="secondary" className="text-[9px] py-0 px-1 font-normal font-sans">
+                          {comp.category}
+                        </Badge>
+                      </div>
+                      {comp.description && (
+                        <span className="line-clamp-1 text-[11px] text-muted-foreground">
+                          {comp.description}
+                        </span>
+                      )}
+                    </DropdownMenuItem>
+                  ))
+                : DEFAULT_TEMPLATES.map((tmpl) => (
+                    <DropdownMenuItem
+                      key={tmpl.id}
+                      onClick={() => {
+                        loadTemplate(tmpl.id);
+                        router?.push?.(`/studio/${tmpl.id}`);
+                      }}
+                      className="flex flex-col items-start gap-0.5 py-2 cursor-pointer font-sans"
+                    >
+                      <div className="flex items-center justify-between w-full">
+                        <span className="font-medium text-xs text-foreground">
+                          {tmpl.name}
+                        </span>
+                        <Badge variant="secondary" className="text-[9px] py-0 px-1 font-normal font-sans">
+                          {tmpl.category}
+                        </Badge>
+                      </div>
+                      <span className="line-clamp-1 text-[11px] text-muted-foreground">
+                        {tmpl.description}
+                      </span>
+                    </DropdownMenuItem>
+                  ))}
             </DropdownMenuContent>
           </DropdownMenu>
 
@@ -301,6 +402,46 @@ export function StudioHeader() {
 
       {/* Right: Actions */}
       <div className="flex items-center gap-1.5">
+        {/* Capture Preview Button */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleCapturePreview}
+              disabled={isCapturing || capturedSuccess}
+              className="font-sans text-xs gap-1.5 h-8 px-2.5 text-muted-foreground hover:text-foreground"
+              aria-label={
+                capturedSuccess
+                  ? "Preview snapshot saved"
+                  : isCapturing
+                  ? "Capturing preview snapshot..."
+                  : "Capture preview snapshot"
+              }
+            >
+              {capturedSuccess ? (
+                <>
+                  <Check className="size-3.5 text-emerald-500" />
+                  <span className="text-emerald-500 font-medium">Saved!</span>
+                </>
+              ) : isCapturing ? (
+                <>
+                  <Loader2 className="size-3.5 animate-spin" />
+                  <span>Capturing...</span>
+                </>
+              ) : (
+                <>
+                  <Camera className="size-3.5" />
+                  <span>Capture</span>
+                </>
+              )}
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" className="font-sans text-xs">
+            Capture live canvas preview for library card
+          </TooltipContent>
+        </Tooltip>
+
         {/* Save Checkpoint Button */}
         <Tooltip>
           <TooltipTrigger asChild>

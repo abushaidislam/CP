@@ -245,8 +245,8 @@ export default function Demo() {
       <ShimmerButton onClick={() => setCount((c) => c + 1)}>
         Launch Component Studio
       </ShimmerButton>
-      <p className="font-mono text-xs text-zinc-500 dark:text-zinc-400">
-        Triggered {count} times
+      <p className="font-sans text-xs text-zinc-500 dark:text-zinc-400">
+        Triggered <span className="font-mono tabular-nums font-semibold text-zinc-700 dark:text-zinc-300">{count}</span> times
       </p>
     </div>
   );
@@ -312,4 +312,625 @@ export default function Demo() {
       "index.css": ``,
     },
   },
+  {
+    id: "aurora-ambient-hero",
+    name: "Aurora Ambient Mesh Hero",
+    description: "Vibrant ambient blur aurora hero with dual CTA buttons, live headline gradient, and responsive design.",
+    category: "Heroes",
+    dependencies: ["lucide-react"],
+    files: {
+      "component.tsx": `"use client";
+
+import React, { useState } from "react";
+import { ArrowRight, Sparkles, Play, ShieldCheck, Zap } from "lucide-react";
+
+export interface AuroraAmbientHeroProps {
+  badge?: string;
+  titlePrefix?: string;
+  titleGradient?: string;
+  description?: string;
+  primaryCtaText?: string;
+  secondaryCtaText?: string;
+  onPrimaryCta?: () => void;
+  onSecondaryCta?: () => void;
+  metrics?: Array<{ label: string; value: string }>;
+}
+
+export default function AuroraAmbientHero({
+  badge = "Component Studio 2.0 Released",
+  titlePrefix = "Build luminous interfaces with",
+  titleGradient = "reactive fluid dynamics",
+  description = "A hyper-optimized design engineering environment with real-time AST synthesis, interactive previews, and next-generation motion primitives.",
+  primaryCtaText = "Start Crafting Free",
+  secondaryCtaText = "Explore Interactive Demos",
+  onPrimaryCta,
+  onSecondaryCta,
+  metrics = [
+    { label: "Sub-millisecond", value: "<1.2ms AST latency" },
+    { label: "Production Grade", value: "99.98% uptime" },
+    { label: "Developer Loved", value: "45k+ components" },
+  ],
+}: AuroraAmbientHeroProps) {
+  const [isPlaying, setIsPlaying] = useState(false);
+
+  return (
+    <div className="relative isolate w-full min-h-[520px] overflow-hidden rounded-3xl bg-zinc-950 px-6 py-16 text-zinc-100 sm:px-12 sm:py-24 font-sans">
+      {/* Background Aurora Mesh Gradients */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute -top-40 left-1/2 -z-10 h-[500px] w-[600px] -translate-x-1/2 rounded-full bg-gradient-to-tr from-indigo-600/30 via-purple-500/30 to-pink-500/20 blur-3xl animate-aurora"
+      />
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute -bottom-40 right-10 -z-10 h-[400px] w-[500px] rounded-full bg-gradient-to-br from-cyan-500/20 via-blue-600/20 to-purple-600/20 blur-3xl"
+      />
+
+      {/* Decorative Grid Lines */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 -z-10 bg-[linear-gradient(to_right,#27272a15_1px,transparent_1px),linear-gradient(to_bottom,#27272a15_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)]"
+      />
+
+      <div className="mx-auto flex max-w-4xl flex-col items-center text-center">
+        {/* Release Pill Badge */}
+        <div className="inline-flex items-center gap-2 rounded-full border border-indigo-500/30 bg-indigo-500/10 px-3.5 py-1 text-xs font-medium text-indigo-300 backdrop-blur-md transition-colors hover:border-indigo-400/50">
+          <Sparkles className="h-3.5 w-3.5 text-indigo-400 animate-pulse" />
+          <span>{badge}</span>
+          <span className="flex h-1.5 w-1.5 rounded-full bg-indigo-400" />
+        </div>
+
+        {/* Hero Title */}
+        <h1 className="mt-6 text-3xl font-extrabold tracking-tight text-white sm:text-5xl lg:text-6xl">
+          <span>{titlePrefix} </span>
+          <span className="bg-gradient-to-r from-indigo-400 via-purple-300 to-pink-400 bg-clip-text text-transparent">
+            {titleGradient}
+          </span>
+        </h1>
+
+        {/* Lede Description */}
+        <p className="mt-5 max-w-2xl text-base leading-relaxed text-zinc-400 sm:text-lg">
+          {description}
+        </p>
+
+        {/* Action Buttons */}
+        <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
+          <button
+            type="button"
+            onClick={onPrimaryCta}
+            className="group relative inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 p-[1px] font-medium text-white shadow-lg shadow-indigo-500/25 transition-transform duration-200 active:scale-95 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:ring-offset-2 focus:ring-offset-zinc-950"
+          >
+            <span className="flex items-center gap-2 rounded-[11px] bg-zinc-950/80 px-6 py-2.5 backdrop-blur-md transition-colors group-hover:bg-zinc-900/60">
+              <Zap className="h-4 w-4 text-amber-300" />
+              <span>{primaryCtaText}</span>
+              <ArrowRight className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-1" />
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setIsPlaying(!isPlaying);
+              onSecondaryCta?.();
+            }}
+            className="inline-flex items-center justify-center gap-2 rounded-xl border border-zinc-800 bg-zinc-900/80 px-5 py-2.5 text-sm font-medium text-zinc-200 backdrop-blur-sm transition-all duration-200 hover:border-zinc-700 hover:bg-zinc-800/80 hover:text-white active:scale-95 focus:outline-none focus:ring-2 focus:ring-zinc-600"
+          >
+            <Play className={"h-4 w-4 text-zinc-400 transition-transform " + (isPlaying ? "scale-110 text-indigo-400" : "")} />
+            <span>{secondaryCtaText}</span>
+          </button>
+        </div>
+
+        {/* Metrics Row */}
+        <div className="mt-14 grid w-full grid-cols-1 gap-4 border-t border-zinc-800/80 pt-8 sm:grid-cols-3 sm:gap-6">
+          {metrics.map((m, idx) => (
+            <div key={idx} className="flex flex-col items-center sm:items-start text-center sm:text-left">
+              <span className="text-xs font-mono uppercase tracking-wider text-zinc-500">
+                {m.label}
+              </span>
+              <span className="mt-1 text-sm font-semibold text-zinc-200 flex items-center gap-1.5">
+                <ShieldCheck className="h-4 w-4 text-emerald-400" />
+                {m.value}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+`,
+      "demo.tsx": `"use client";
+
+import React, { useState } from "react";
+import AuroraAmbientHero from "./component";
+
+export default function Demo() {
+  const [message, setMessage] = useState<string | null>(null);
+
+  return (
+    <div className="min-h-full w-full flex flex-col items-center justify-center p-4 sm:p-8 font-sans">
+      <AuroraAmbientHero
+        onPrimaryCta={() => setMessage("Primary Action triggered: Welcome aboard!")}
+        onSecondaryCta={() => setMessage("Workflow preview video opened.")}
+      />
+      {message && (
+        <div className="mt-4 rounded-lg border border-indigo-500/30 bg-indigo-950/40 px-4 py-2 text-xs font-medium text-indigo-300">
+          {message}
+        </div>
+      )}
+    </div>
+  );
+}
+`,
+      "index.css": `@keyframes aurora-pulse {
+  0%, 100% { transform: scale(1) translate(0, 0); opacity: 0.8; }
+  50% { transform: scale(1.08) translate(10px, -10px); opacity: 1; }
+}
+
+.animate-aurora {
+  animation: aurora-pulse 8s ease-in-out infinite;
+}
+`,
+    },
+  },
+  {
+    id: "bento-metric-grid",
+    name: "Bento Metric Showcase Card",
+    description: "Bento-style card showcasing real-time metrics, interactive sparkline charts, and micro-hover states.",
+    category: "Cards",
+    dependencies: ["lucide-react"],
+    files: {
+      "component.tsx": `"use client";
+
+import React, { useState } from "react";
+import { TrendingUp, Server, ArrowUpRight } from "lucide-react";
+
+export interface MetricItem {
+  id: string;
+  label: string;
+  value: string;
+  change: string;
+  isPositive: boolean;
+  history: number[];
+}
+
+export interface BentoMetricGridProps {
+  title?: string;
+  subtitle?: string;
+  metrics?: MetricItem[];
+  onSelectMetric?: (metricId: string) => void;
+}
+
+const DEFAULT_METRICS: MetricItem[] = [
+  {
+    id: "latency",
+    label: "Global P99 Latency",
+    value: "28.4 ms",
+    change: "-14.2%",
+    isPositive: true,
+    history: [42, 38, 35, 31, 29, 28, 28.4],
+  },
+  {
+    id: "throughput",
+    label: "Stream Throughput",
+    value: "148.6k req/s",
+    change: "+28.5%",
+    isPositive: true,
+    history: [100, 115, 120, 132, 140, 145, 148.6],
+  },
+  {
+    id: "compute",
+    label: "Cluster Load",
+    value: "42.1%",
+    change: "+3.2%",
+    isPositive: false,
+    history: [30, 32, 35, 38, 40, 41, 42.1],
+  },
+  {
+    id: "cache",
+    label: "Edge Cache Hit Rate",
+    value: "99.82%",
+    change: "+0.14%",
+    isPositive: true,
+    history: [98.5, 98.9, 99.1, 99.4, 99.6, 99.7, 99.82],
+  },
 ];
+
+export default function BentoMetricGrid({
+  title = "Telemetry Node Cluster",
+  subtitle = "Real-time edge metrics and distributed health signals",
+  metrics = DEFAULT_METRICS,
+  onSelectMetric,
+}: BentoMetricGridProps) {
+  const [selectedId, setSelectedId] = useState<string>(metrics[0]?.id || "latency");
+
+  return (
+    <div className="w-full max-w-2xl rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white/80 dark:bg-zinc-950/90 p-6 shadow-xl backdrop-blur-xl font-sans transition-all">
+      {/* Header */}
+      <div className="flex items-center justify-between border-b border-zinc-200 dark:border-zinc-800/80 pb-4">
+        <div>
+          <div className="flex items-center gap-2">
+            <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-ping" />
+            <span className="font-mono text-xs uppercase tracking-wider text-emerald-600 dark:text-emerald-400 font-semibold">
+              LIVE TELEMETRY
+            </span>
+          </div>
+          <h3 className="mt-1 text-lg font-semibold text-zinc-900 dark:text-zinc-100">
+            {title}
+          </h3>
+          <p className="text-xs text-zinc-500 dark:text-zinc-400">{subtitle}</p>
+        </div>
+
+        <div className="flex items-center gap-1.5 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-zinc-100 dark:bg-zinc-900 px-2.5 py-1 text-xs text-zinc-600 dark:text-zinc-400">
+          <Server className="h-3.5 w-3.5 text-indigo-500" />
+          <span className="font-mono">us-east-1</span>
+        </div>
+      </div>
+
+      {/* Grid of Bento Cards */}
+      <div className="mt-5 grid grid-cols-1 gap-3.5 sm:grid-cols-2">
+        {metrics.map((m) => {
+          const isSelected = selectedId === m.id;
+          const minVal = Math.min(...m.history);
+          const maxVal = Math.max(...m.history);
+          const range = maxVal - minVal || 1;
+
+          // Generate sparkline SVG coordinates
+          const points = m.history
+            .map((val, idx) => {
+              const x = (idx / (m.history.length - 1)) * 100;
+              const y = 30 - ((val - minVal) / range) * 24;
+              return x + "," + y;
+            })
+            .join(" ");
+
+          return (
+            <div
+              key={m.id}
+              role="button"
+              tabIndex={0}
+              aria-pressed={isSelected}
+              onClick={() => {
+                setSelectedId(m.id);
+                onSelectMetric?.(m.id);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  setSelectedId(m.id);
+                  onSelectMetric?.(m.id);
+                }
+              }}
+              className={
+                "group relative cursor-pointer rounded-xl border p-4 transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 " +
+                (isSelected
+                  ? "border-indigo-500 bg-indigo-50/50 dark:border-indigo-500/60 dark:bg-indigo-950/20 shadow-sm"
+                  : "border-zinc-200/80 dark:border-zinc-800/80 bg-zinc-50/50 dark:bg-zinc-900/40 hover:border-zinc-300 dark:hover:border-zinc-700 hover:bg-zinc-100/50 dark:hover:bg-zinc-900/80")
+              }
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
+                  {m.label}
+                </span>
+                <ArrowUpRight
+                  className={
+                    "h-3.5 w-3.5 text-zinc-400 transition-transform duration-200 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 " +
+                    (isSelected ? "text-indigo-500 dark:text-indigo-400" : "")
+                  }
+                />
+              </div>
+
+              <div className="mt-2 flex items-baseline justify-between">
+                <span className="text-xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">
+                  {m.value}
+                </span>
+                <span
+                  className={
+                    "inline-flex items-center gap-0.5 text-xs font-semibold " +
+                    (m.isPositive
+                      ? "text-emerald-600 dark:text-emerald-400"
+                      : "text-amber-600 dark:text-amber-400")
+                  }
+                >
+                  <TrendingUp className="h-3 w-3" />
+                  {m.change}
+                </span>
+              </div>
+
+              {/* Sparkline Graphic */}
+              <div className="mt-3 h-8 w-full">
+                <svg viewBox="0 0 100 32" className="h-full w-full overflow-visible">
+                  <polyline
+                    fill="none"
+                    stroke={isSelected ? "#6366f1" : "#10b981"}
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    points={points}
+                  />
+                </svg>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+`,
+      "demo.tsx": `"use client";
+
+import React, { useState } from "react";
+import BentoMetricGrid from "./component";
+
+export default function Demo() {
+  const [selected, setSelected] = useState<string>("latency");
+
+  return (
+    <div className="min-h-full flex flex-col items-center justify-center p-4 sm:p-8 font-sans">
+      <BentoMetricGrid onSelectMetric={(id) => setSelected(id)} />
+      <div className="mt-4 font-sans text-xs text-zinc-500 dark:text-zinc-400">
+        Active Node Inspection: <span className="font-mono text-indigo-400 font-semibold">{selected}</span>
+      </div>
+    </div>
+  );
+}
+`,
+      "index.css": ``,
+    },
+  },
+  {
+    id: "neon-glow-button",
+    name: "Neon Glow Interactive Button",
+    description: "Cyberpunk-inspired interactive button with luminous border glow, particle pulse, and ripple feedback.",
+    category: "Buttons",
+    dependencies: ["lucide-react"],
+    files: {
+      "component.tsx": `"use client";
+
+import React, { useState, MouseEvent } from "react";
+import { Zap } from "lucide-react";
+
+export interface NeonGlowButtonProps {
+  children?: React.ReactNode;
+  variant?: "cyan" | "violet" | "emerald";
+  className?: string;
+  onClick?: () => void;
+  icon?: React.ReactNode;
+}
+
+export default function NeonGlowButton({
+  children = "Activate Protocol",
+  variant = "cyan",
+  className = "",
+  onClick,
+  icon,
+}: NeonGlowButtonProps) {
+  const [ripples, setRipples] = useState<Array<{ id: number; x: number; y: number }>>([]);
+
+  const variantStyles = {
+    cyan: {
+      border: "border-cyan-500/50 hover:border-cyan-400",
+      glow: "shadow-[0_0_20px_rgba(6,182,212,0.35)] hover:shadow-[0_0_30px_rgba(6,182,212,0.6)]",
+      bg: "bg-cyan-950/40 hover:bg-cyan-900/50",
+      text: "text-cyan-300 group-hover:text-cyan-100",
+      indicator: "bg-cyan-400",
+    },
+    violet: {
+      border: "border-violet-500/50 hover:border-violet-400",
+      glow: "shadow-[0_0_20px_rgba(139,92,246,0.35)] hover:shadow-[0_0_30px_rgba(139,92,246,0.6)]",
+      bg: "bg-violet-950/40 hover:bg-violet-900/50",
+      text: "text-violet-300 group-hover:text-violet-100",
+      indicator: "bg-violet-400",
+    },
+    emerald: {
+      border: "border-emerald-500/50 hover:border-emerald-400",
+      glow: "shadow-[0_0_20px_rgba(16,185,129,0.35)] hover:shadow-[0_0_30px_rgba(16,185,129,0.6)]",
+      bg: "bg-emerald-950/40 hover:bg-emerald-900/50",
+      text: "text-emerald-300 group-hover:text-emerald-100",
+      indicator: "bg-emerald-400",
+    },
+  }[variant];
+
+  const handleClick = (e: MouseEvent<HTMLButtonElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    const rippleId = Date.now();
+
+    setRipples((prev) => [...prev, { id: rippleId, x, y }]);
+    setTimeout(() => {
+      setRipples((prev) => prev.filter((r) => r.id !== rippleId));
+    }, 600);
+
+    onClick?.();
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={handleClick}
+      className={
+        "group relative isolate inline-flex h-12 items-center justify-center gap-2.5 overflow-hidden rounded-xl border px-6 text-sm font-semibold tracking-wide backdrop-blur-xl transition-all duration-300 active:scale-95 focus:outline-none focus:ring-2 focus:ring-cyan-400/50 font-sans " +
+        variantStyles.border + " " +
+        variantStyles.glow + " " +
+        variantStyles.bg + " " +
+        variantStyles.text + " " +
+        className
+      }
+    >
+      {/* Corner Tech Accents */}
+      <span className="absolute left-1.5 top-1.5 h-1 w-1 rounded-full bg-white/40" />
+      <span className="absolute right-1.5 bottom-1.5 h-1 w-1 rounded-full bg-white/40" />
+
+      {/* Ripple Animation Spans */}
+      {ripples.map((r) => (
+        <span
+          key={r.id}
+          className="pointer-events-none absolute h-24 w-24 -translate-x-1/2 -translate-y-1/2 animate-ping rounded-full bg-white/20"
+          style={{ left: r.x, top: r.y }}
+        />
+      ))}
+
+      {/* Button Content */}
+      <span className={"h-2 w-2 rounded-full " + variantStyles.indicator + " animate-pulse"} />
+      {icon || <Zap className="h-4 w-4" />}
+      <span>{children}</span>
+    </button>
+  );
+}
+`,
+      "demo.tsx": `"use client";
+
+import React, { useState } from "react";
+import NeonGlowButton from "./component";
+
+export default function Demo() {
+  const [clickCount, setClickCount] = useState(0);
+
+  return (
+    <div className="min-h-full flex flex-col items-center justify-center p-8 gap-6 font-sans">
+      <div className="flex flex-wrap items-center justify-center gap-4">
+        <NeonGlowButton variant="cyan" onClick={() => setClickCount((c) => c + 1)}>
+          Cyber Protocol
+        </NeonGlowButton>
+        <NeonGlowButton variant="violet" onClick={() => setClickCount((c) => c + 1)}>
+          Quantum Mesh
+        </NeonGlowButton>
+        <NeonGlowButton variant="emerald" onClick={() => setClickCount((c) => c + 1)}>
+          Hyper Matrix
+        </NeonGlowButton>
+      </div>
+
+      <p className="font-sans text-xs text-zinc-500 dark:text-zinc-400">
+        Total Pulses Triggered: <span className="font-mono tabular-nums font-semibold text-zinc-700 dark:text-zinc-300">{clickCount}</span>
+      </p>
+    </div>
+  );
+}
+`,
+      "index.css": ``,
+    },
+  },
+  {
+    id: "live-ping-status-pill",
+    name: "Live Telemetry Health Pill",
+    description: "Real-time service health pill with animated beacon ping, latency counter, and status indicator.",
+    category: "Badges",
+    dependencies: ["lucide-react"],
+    files: {
+      "component.tsx": `"use client";
+
+import React from "react";
+import { Radio, ShieldCheck, AlertCircle } from "lucide-react";
+
+export interface LivePingStatusPillProps {
+  status?: "healthy" | "degraded" | "evaluating";
+  serviceName?: string;
+  latencyMs?: number;
+  region?: string;
+}
+
+export default function LivePingStatusPill({
+  status = "healthy",
+  serviceName = "Edge CDN",
+  latencyMs = 12,
+  region = "Global Edge",
+}: LivePingStatusPillProps) {
+  const statusConfig = {
+    healthy: {
+      color: "bg-emerald-500",
+      pingColor: "bg-emerald-400",
+      border: "border-emerald-500/30",
+      bg: "bg-emerald-950/30 text-emerald-300",
+      label: "Operational",
+      icon: ShieldCheck,
+    },
+    degraded: {
+      color: "bg-amber-500",
+      pingColor: "bg-amber-400",
+      border: "border-amber-500/30",
+      bg: "bg-amber-950/30 text-amber-300",
+      label: "Elevated Latency",
+      icon: AlertCircle,
+    },
+    evaluating: {
+      color: "bg-cyan-500",
+      pingColor: "bg-cyan-400",
+      border: "border-cyan-500/30",
+      bg: "bg-cyan-950/30 text-cyan-300",
+      label: "Probing",
+      icon: Radio,
+    },
+  }[status];
+
+  const Icon = statusConfig.icon;
+
+  return (
+    <div
+      className={
+        "inline-flex items-center gap-2.5 rounded-full border px-3.5 py-1.5 text-xs font-medium shadow-sm backdrop-blur-md transition-all font-sans " +
+        statusConfig.border + " " +
+        statusConfig.bg
+      }
+    >
+      {/* Animated Ping Radar */}
+      <span className="relative flex h-2 w-2">
+        <span
+          className={"absolute inline-flex h-full w-full animate-ping rounded-full " + statusConfig.pingColor + " opacity-75"}
+        />
+        <span
+          className={"relative inline-flex h-2 w-2 rounded-full " + statusConfig.color}
+        />
+      </span>
+
+      {/* Service Name */}
+      <span className="font-semibold text-zinc-100">{serviceName}</span>
+
+      <span className="h-3 w-[1px] bg-zinc-700/60" />
+
+      {/* Status Label */}
+      <span className="flex items-center gap-1">
+        <Icon className="h-3.5 w-3.5" />
+        <span>{statusConfig.label}</span>
+      </span>
+
+      <span className="h-3 w-[1px] bg-zinc-700/60" />
+
+      {/* Telemetry latency counter */}
+      <span className="font-mono text-zinc-400">
+        {latencyMs}ms <span className="text-[10px] text-zinc-500">({region})</span>
+      </span>
+    </div>
+  );
+}
+`,
+      "demo.tsx": `"use client";
+
+import React, { useState } from "react";
+import LivePingStatusPill from "./component";
+
+export default function Demo() {
+  const [latency, setLatency] = useState(14);
+
+  return (
+    <div className="min-h-full flex flex-col items-center justify-center p-8 gap-4 font-sans">
+      <LivePingStatusPill status="healthy" serviceName="Core API Gateway" latencyMs={latency} region="IAD1" />
+      <LivePingStatusPill status="evaluating" serviceName="AST Compiler Worker" latencyMs={latency + 8} region="SFO3" />
+      <LivePingStatusPill status="degraded" serviceName="WebSocket Relay" latencyMs={88} region="FRA1" />
+
+      <button
+        type="button"
+        onClick={() => setLatency((l) => (l >= 40 ? 12 : l + 6))}
+        className="mt-4 rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-1.5 text-xs text-zinc-300 hover:bg-zinc-700 transition-colors"
+      >
+        Simulate Network Fluctuation
+      </button>
+    </div>
+  );
+}
+`,
+      "index.css": ``,
+    },
+  },
+];
+

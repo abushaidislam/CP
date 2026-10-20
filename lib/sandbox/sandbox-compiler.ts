@@ -73,14 +73,17 @@ export function compileSandboxHtml(
   }
 
   // Clean CSS imports from JavaScript so browser doesn't try to fetch them as JS modules
-  const cleanedComponentJs = compTranspiled.js.replace(
-    /import\s+['"][^'"]+\.css['"];?/g,
-    "/* css imported */"
-  );
-  const cleanedDemoJs = (demoTranspiled.js || "").replace(
-    /import\s+['"][^'"]+\.css['"];?/g,
-    "/* css imported */"
-  );
+  const cleanedComponentJs = compTranspiled.js
+    .replace(/import\s+['"][^'"]+\.css['"];?/g, "/* css imported */")
+    .replace(/(from\s+['"])(?:\.\/|\.\.\/|@\/lib\/|@\/)?utils(?:\.ts|\.js|\.tsx|\.jsx)?(['"])/g, "$1@utils$2")
+    .replace(/(import\s*\(\s*['"])(?:\.\/|\.\.\/|@\/lib\/|@\/)?utils(?:\.ts|\.js|\.tsx|\.jsx)?(['"]\s*\))/g, "$1@utils$2");
+
+  const cleanedDemoJs = (demoTranspiled.js || "")
+    .replace(/import\s+['"][^'"]+\.css['"];?/g, "/* css imported */")
+    .replace(/(from\s+['"])(?:\.\/|\.\.\/|@\/components\/|@\/)?component(?:\.tsx|\.jsx|\.js)?(['"])/g, "$1@component$2")
+    .replace(/(import\s*\(\s*['"])(?:\.\/|\.\.\/|@\/components\/|@\/)?component(?:\.tsx|\.jsx|\.js)?(['"]\s*\))/g, "$1@component$2")
+    .replace(/(from\s+['"])(?:\.\/|\.\.\/|@\/lib\/|@\/)?utils(?:\.ts|\.js|\.tsx|\.jsx)?(['"])/g, "$1@utils$2")
+    .replace(/(import\s*\(\s*['"])(?:\.\/|\.\.\/|@\/lib\/|@\/)?utils(?:\.ts|\.js|\.tsx|\.jsx)?(['"]\s*\))/g, "$1@utils$2");
 
   // Auto-detect any imported dependencies in both files
   const detectedDeps = Array.from(
@@ -101,6 +104,15 @@ export function compileSandboxHtml(
       'export default cn;'
     );
 
+  // In-memory alias for component.tsx
+  const componentDataUri =
+    "data:text/javascript;charset=utf-8," +
+    encodeURIComponent(cleanedComponentJs);
+
+  const demoDataUri =
+    "data:text/javascript;charset=utf-8," +
+    encodeURIComponent(cleanedDemoJs);
+
   // Build comprehensive ESM import map
   const importsMap: Record<string, string> = {
     react: "https://esm.sh/react@19",
@@ -114,14 +126,19 @@ export function compileSandboxHtml(
     "tailwind-merge": "https://esm.sh/tailwind-merge@3.0.1",
     "lucide-react": "https://esm.sh/lucide-react@0.475.0?deps=react@19",
     "framer-motion": "https://esm.sh/framer-motion@11.11.17?deps=react@19",
-    "framer-motion/": "https://esm.sh/framer-motion@11.11.17/?deps=react@19",
     motion: "https://esm.sh/framer-motion@11.11.17?deps=react@19",
     "motion/react": "https://esm.sh/framer-motion@11.11.17?deps=react@19",
     "canvas-confetti": "https://esm.sh/canvas-confetti@1.9.4",
     "@/lib/utils": cnModuleDataUri,
     "@/utils": cnModuleDataUri,
+    "@utils": cnModuleDataUri,
     "./utils": cnModuleDataUri,
     "../utils": cnModuleDataUri,
+    "@component": componentDataUri,
+    "@demo": demoDataUri,
+    "./component": componentDataUri,
+    "./component.tsx": componentDataUri,
+    "@/components/component": componentDataUri,
   };
 
   for (const dep of detectedDeps) {
@@ -133,6 +150,7 @@ export function compileSandboxHtml(
   // Safe JSON serialization of the code strings (protects against backticks, ${}, quotes, and </script>)
   const safeCompJs = JSON.stringify(cleanedComponentJs).replace(/<\/script>/gi, "<\\/script>");
   const safeDemoJs = JSON.stringify(cleanedDemoJs).replace(/<\/script>/gi, "<\\/script>");
+  const safeDemoDataUri = JSON.stringify(demoDataUri).replace(/<\/script>/gi, "<\\/script>");
 
   // Base background style inside preview according to canvasBg and previewTheme
   let bgClass = isDark ? "bg-zinc-950 text-zinc-100" : "bg-white text-zinc-900";
@@ -324,6 +342,42 @@ export function compileSandboxHtml(
 <body class="${bgClass} select-none antialiased min-h-full">
   <div id="root" class="min-h-full w-full flex flex-col"></div>
 
+  <!-- Early Global Error & Lifecycle Handler -->
+  <script>
+    function notifyParent(data) {
+      try {
+        window.parent.postMessage(data, "*");
+      } catch (e) {}
+    }
+
+    function renderErrorOverlay(title, msg) {
+      console.error("[Runtime Error]:", msg);
+      const rootEl = document.getElementById("root");
+      if (rootEl) {
+        rootEl.innerHTML = \`
+          <div style="padding: 20px; max-width: 550px; font-family: ui-monospace, monospace; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 12px; color: #fca5a5; font-size: 12px; line-height: 1.6; margin: 20px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);">
+            <div style="font-weight: 700; color: #f87171; margin-bottom: 8px; font-size: 13px; display: flex; align-items: center; gap: 6px;">
+              <span>⚠️</span>
+              <span>\${title}</span>
+            </div>
+            <div style="white-space: pre-wrap; word-break: break-word;">\${msg}</div>
+          </div>
+        \`;
+      }
+      notifyParent({ type: "RUNTIME_ERROR", message: msg });
+    }
+
+    window.addEventListener("error", function(e) {
+      const errMsg = e.error ? (e.error.stack || e.error.message) : e.message;
+      renderErrorOverlay("Runtime JavaScript Error", errMsg);
+    });
+
+    window.addEventListener("unhandledrejection", function(e) {
+      const reason = e.reason ? (e.reason.stack || e.reason.message || String(e.reason)) : "Unknown rejection";
+      renderErrorOverlay("Unhandled Promise Rejection", String(reason));
+    });
+  </script>
+
   <!-- Runtime Execution Script -->
   <script type="module">
     import React from "react";
@@ -410,13 +464,11 @@ export function compileSandboxHtml(
 
     window.addEventListener("error", (e) => {
       const errMsg = e.error ? (e.error.stack || e.error.message) : e.message;
-      renderErrorOverlay("Runtime JavaScript Error", errMsg);
       sendConsoleLog("error", [errMsg]);
     });
 
     window.addEventListener("unhandledrejection", (e) => {
       const reason = e.reason ? (e.reason.stack || e.reason.message || String(e.reason)) : "Unknown rejection";
-      renderErrorOverlay("Unhandled Promise Rejection", String(reason));
       sendConsoleLog("error", [String(reason)]);
     });
 
@@ -450,18 +502,24 @@ export function compileSandboxHtml(
 
     async function bootstrap() {
       try {
-        // 1. Create component Blob Module
-        const componentCode = ${safeCompJs};
-        const componentBlob = new Blob([componentCode], { type: "text/javascript" });
-        const componentUrl = URL.createObjectURL(componentBlob);
-
-        // 2. Import component.tsx module
+        // 1. Import component.tsx module (try import map bare specifier first, then relative, fallback to blob)
         let componentModule;
         try {
-          componentModule = await import(componentUrl);
-        } catch (compErr) {
-          renderErrorOverlay("Failed to import component.tsx", compErr.message);
-          return;
+          componentModule = await import("@component");
+        } catch (compErr1) {
+          try {
+            componentModule = await import("./component");
+          } catch (compErr2) {
+            try {
+              const componentCode = ${safeCompJs};
+              const componentBlob = new Blob([componentCode], { type: "text/javascript" });
+              const componentUrl = URL.createObjectURL(componentBlob);
+              componentModule = await import(componentUrl);
+            } catch (blobErr) {
+              renderErrorOverlay("Failed to import component.tsx", blobErr.message);
+              return;
+            }
+          }
         }
 
         // Find primary component from component.tsx
@@ -471,19 +529,24 @@ export function compileSandboxHtml(
           Object.values(componentModule).find((v) => typeof v === "function") ||
           null;
 
-        // 3. Prepare and import demo.tsx module (redirecting ./component imports to blob url)
+        // 2. Prepare and import demo.tsx module directly via import map bare specifier or data URI
         const rawDemoCode = ${safeDemoJs};
         let DemoComponent = null;
 
         if (rawDemoCode && rawDemoCode.trim().length > 0) {
           try {
-            const adjustedDemoCode = rawDemoCode
-              .replace(/from\\s+['"](?:\.\\/component(?:\\.tsx)?|@\\/components\\/[^'"]+)['"]/g, 'from "' + componentUrl + '"')
-              .replace(/import\\s+['"](?:\.\\/component(?:\\.tsx)?|@\\/components\\/[^'"]+)['"]/g, 'import "' + componentUrl + '"');
-
-            const demoBlob = new Blob([adjustedDemoCode], { type: "text/javascript" });
-            const demoUrl = URL.createObjectURL(demoBlob);
-            const demoModule = await import(demoUrl);
+            let demoModule;
+            try {
+              demoModule = await import("@demo");
+            } catch (demoErr1) {
+              try {
+                demoModule = await import(${safeDemoDataUri});
+              } catch (demoErr2) {
+                const demoBlob = new Blob([rawDemoCode], { type: "text/javascript" });
+                const demoUrl = URL.createObjectURL(demoBlob);
+                demoModule = await import(demoUrl);
+              }
+            }
             DemoComponent =
               demoModule.default ||
               demoModule.Demo ||
@@ -494,12 +557,16 @@ export function compileSandboxHtml(
           }
         }
 
-        // 4. Determine what component to render
+        // 3. Determine what component to render
         const rootEl = document.getElementById("root");
         if (!rootEl) return;
         const root = ReactDOM.createRoot(rootEl);
 
         function App() {
+          React.useEffect(() => {
+            notifyParent({ type: "RENDER_SUCCESS" });
+          }, []);
+
           const renderFallbackComponent = (err) => {
             if (!ComponentFromCode) {
               return React.createElement(
@@ -570,7 +637,125 @@ export function compileSandboxHtml(
           });
         }
       }
+      if (event.data && event.data.type === "CAPTURE_PREVIEW") {
+        captureLivePreview(event.data.componentId);
+      }
     });
+
+    async function captureLivePreview(componentId) {
+      try {
+        const root = document.getElementById("root");
+        if (!root) {
+          notifyParent({
+            type: "PREVIEW_CAPTURED",
+            dataUrl: null,
+            error: "Root element not found",
+            componentId: componentId,
+          });
+          return;
+        }
+
+        // 1. Check if #root contains a canvas
+        const innerCanvas = root.querySelector("canvas");
+        if (innerCanvas) {
+          try {
+            const dataUrl = innerCanvas.toDataURL("image/png");
+            if (dataUrl && dataUrl.startsWith("data:image/png")) {
+              notifyParent({
+                type: "PREVIEW_CAPTURED",
+                dataUrl: dataUrl,
+                componentId: componentId,
+              });
+              return;
+            }
+          } catch (canvasErr) {
+            // Canvas export failed or tainted, continue to SVG fallback
+          }
+        }
+
+        // 2. Capture the #root DOM using SVG <foreignObject>
+        const rect = root.getBoundingClientRect();
+        const width = Math.max(Math.ceil(rect.width) || 800, 320);
+        const height = Math.max(Math.ceil(rect.height) || 600, 240);
+
+        let stylesText = "";
+        const styleElements = document.querySelectorAll("style");
+        for (const el of styleElements) {
+          stylesText += el.innerHTML + "\\n";
+        }
+
+        const clonedRoot = root.cloneNode(true);
+        const serializedHtml = new XMLSerializer().serializeToString(clonedRoot);
+
+        const wrapperClasses = (document.documentElement.className + " " + document.body.className).trim();
+        const bodyStyles = document.body.style.cssText ? document.body.style.cssText + ";" : "";
+
+        const svgString =
+          '<svg xmlns="http://www.w3.org/2000/svg" width="' + width + '" height="' + height + '">' +
+          '<foreignObject width="100%" height="100%">' +
+          '<div xmlns="http://www.w3.org/1999/xhtml" class="' + wrapperClasses + '" style="width:100%;height:100%;' + bodyStyles + '">' +
+          '<style>/* <![CDATA[ */\\n' + stylesText + '\\n/* ]]> */</style>' +
+          serializedHtml +
+          '</div>' +
+          '</foreignObject>' +
+          '</svg>';
+
+        const svgDataUrl = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svgString);
+
+        // 3. Attempt offscreen Image -> Canvas conversion for clean PNG
+        const convertToPng = new Promise((resolve) => {
+          const img = new Image();
+          const timer = setTimeout(() => {
+            img.onload = null;
+            img.onerror = null;
+            resolve(null);
+          }, 500);
+
+          img.onload = () => {
+            clearTimeout(timer);
+            try {
+              const offCanvas = document.createElement("canvas");
+              offCanvas.width = width;
+              offCanvas.height = height;
+              const ctx = offCanvas.getContext("2d");
+              if (!ctx) {
+                resolve(null);
+                return;
+              }
+              ctx.drawImage(img, 0, 0);
+              const pngDataUrl = offCanvas.toDataURL("image/png");
+              resolve(pngDataUrl);
+            } catch (e) {
+              resolve(null);
+            }
+          };
+
+          img.onerror = () => {
+            clearTimeout(timer);
+            resolve(null);
+          };
+
+          img.src = svgDataUrl;
+        });
+
+        const pngResult = await convertToPng;
+        const finalDataUrl = pngResult || svgDataUrl;
+
+        notifyParent({
+          type: "PREVIEW_CAPTURED",
+          dataUrl: finalDataUrl,
+          componentId: componentId,
+        });
+      } catch (err) {
+        console.warn("Failed to capture preview snapshot:", err);
+        notifyParent({
+          type: "PREVIEW_CAPTURED",
+          dataUrl: null,
+          error: err instanceof Error ? err.message : String(err),
+          componentId: componentId,
+        });
+      }
+    }
 
     function runSimulatedHover(totalDuration) {
       if (simulationTimer) clearInterval(simulationTimer);
