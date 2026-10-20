@@ -371,7 +371,7 @@ export function ComponentHub({
         {/* 4. Component Cards Grid */}
         <section aria-label="Component cards grid">
           {filteredComponents.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5">
               {filteredComponents.map((component) => {
                 const variants = variantsByTemplate?.[component.id] || [];
                 const variantsCount = variants.length || 1;

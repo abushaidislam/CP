@@ -47,8 +47,8 @@ export interface ComponentCardProps {
   onDelete?: (id: string) => void;
 }
 
-function renderCategoryIcon(category?: string) {
-  const className = "size-4 text-muted-foreground/40 shrink-0";
+function renderCategoryIcon(category?: string, customClassName?: string) {
+  const className = customClassName || "size-4 text-muted-foreground/40 shrink-0";
   switch ((category || "").toLowerCase()) {
     case "heroes":
       return <LayoutTemplate className={className} />;
@@ -110,9 +110,9 @@ export function ComponentCard({
 
   return (
     <>
-      <div className="relative flex flex-col justify-between overflow-hidden rounded-xl border border-border/70 bg-card p-4 text-card-foreground shadow-2xs transition-all duration-200 hover:-translate-y-0.5 hover:border-border hover:shadow-md group font-sans">
-        {/* Header */}
+      <div className="group relative flex flex-col justify-between overflow-hidden rounded-xl border border-border/70 bg-card p-3.5 text-card-foreground shadow-2xs transition-all duration-200 hover:-translate-y-1 hover:border-border hover:shadow-lg font-sans">
         <div>
+          {/* Header */}
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-1.5 flex-wrap">
               <Badge variant="outline" className="font-sans text-[11px] font-normal px-2 py-0.5">
@@ -130,7 +130,7 @@ export function ComponentCard({
                 {formatRelativeTime(component.updatedAt)}
               </span>
 
-              {/* More actions dropdown */}
+              {/* More options dropdown */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button
@@ -173,7 +173,7 @@ export function ComponentCard({
             </div>
           </div>
 
-          {/* Interactive preview / card body */}
+          {/* Visual Showcase Canvas Frame */}
           <div
             role="button"
             tabIndex={0}
@@ -185,28 +185,55 @@ export function ComponentCard({
               }
             }}
             aria-label={`Preview ${component.name}`}
-            className="my-3 flex flex-col justify-between h-28 rounded-lg border border-border/50 bg-muted/20 p-3 transition-colors duration-150 hover:bg-muted/40 cursor-pointer overflow-hidden relative group/canvas"
+            className="aspect-[16/10] w-full rounded-lg bg-zinc-950/80 dark:bg-zinc-950/90 border border-border/40 relative overflow-hidden flex items-center justify-center p-3 my-2.5 cursor-pointer group/canvas transition-colors hover:border-border"
           >
-            <div className="flex items-start justify-between gap-2">
-              <span className="font-sans font-medium text-sm text-foreground tracking-tight line-clamp-1 group-hover/canvas:text-primary transition-colors duration-150">
-                {component.name}
-              </span>
-              {renderCategoryIcon(component.category)}
-            </div>
+            {component.previewImage ? (
+              <img
+                src={component.previewImage}
+                alt={component.name}
+                className="w-full h-full object-contain pointer-events-none select-none transition-transform duration-300 group-hover/canvas:scale-[1.03] drop-shadow-md"
+              />
+            ) : (
+              <div className="flex flex-col items-center justify-center gap-2 select-none">
+                <div className="flex size-9 items-center justify-center rounded-md bg-muted/20 border border-border/30 text-muted-foreground/50">
+                  {renderCategoryIcon(component.category, "size-4 text-muted-foreground/60")}
+                </div>
+                <Badge
+                  variant="outline"
+                  className="font-sans text-[10px] text-muted-foreground/60 font-normal px-2 py-0 border-border/30"
+                >
+                  Preview canvas
+                </Badge>
+              </div>
+            )}
 
-            <p className="font-sans text-xs text-muted-foreground line-clamp-2 leading-relaxed">
+            {/* Hover overlay */}
+            <div className="absolute inset-0 bg-background/20 backdrop-blur-[1px] opacity-0 group-hover/canvas:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
+              <Badge
+                variant="secondary"
+                className="gap-1.5 font-sans text-xs px-2.5 py-1 bg-background/90 text-foreground shadow-sm"
+              >
+                <Eye className="size-3.5" /> <span>Quick Preview</span>
+              </Badge>
+            </div>
+          </div>
+
+          {/* Title & Description */}
+          <div className="min-w-0">
+            <h3
+              className="font-sans font-medium text-sm text-foreground truncate group-hover:text-primary transition-colors cursor-pointer"
+              onClick={handlePreview}
+            >
+              {component.name}
+            </h3>
+            <p className="font-sans text-xs text-muted-foreground line-clamp-1 mt-0.5">
               {component.description || "Interactive dynamic component."}
             </p>
-
-            <div className="flex items-center gap-1 text-[11px] font-sans text-muted-foreground/80 opacity-0 group-hover/canvas:opacity-100 transition-opacity duration-150">
-              <Eye className="size-3" />
-              <span>Click for 21st.dev quick preview</span>
-            </div>
           </div>
         </div>
 
-        {/* Footer & Actions */}
-        <div className="pt-2 border-t border-border/50 flex items-center justify-between gap-2">
+        {/* Footer & Action Bar */}
+        <div className="pt-3 border-t border-border/50 flex items-center justify-between gap-2 mt-3">
           {/* Metadata badges */}
           <div className="flex items-center gap-1.5 flex-wrap">
             <Badge

@@ -249,6 +249,32 @@ describe("ComponentCard & ComponentHub", () => {
       expect(html).toContain("Studio");
     });
 
+    it("should render preview img element when previewImage is provided", () => {
+      const compWithImage: UserComponent = {
+        ...mockComponent,
+        previewImage: "data:image/svg+xml;utf8,<svg></svg>",
+      };
+      const html = renderToString(<ComponentCard component={compWithImage} />);
+      expect(html).toContain("<img");
+      expect(html).toContain("data:image/svg+xml;utf8");
+      expect(html).toContain('alt="Interactive Hologram Card"');
+      expect(html).toContain("Quick Preview");
+    });
+
+    it("should render fallback placeholder when previewImage is missing", () => {
+      const html = renderToString(<ComponentCard component={mockComponent} />);
+      expect(html).not.toContain("<img");
+      expect(html).toContain("Quick Preview");
+      expect(html).toContain("Preview canvas");
+    });
+
+    it("should render accessible preview canvas with role button and aria-label", () => {
+      const html = renderToString(<ComponentCard component={mockComponent} />);
+      expect(html).toContain('role="button"');
+      expect(html).toContain('aria-label="Preview Interactive Hologram Card"');
+      expect(html).toContain("aspect-[16/10]");
+    });
+
     it("should invoke onPreview callback when Preview button is clicked", () => {
       let previewId = "";
       renderToString(
@@ -380,6 +406,7 @@ describe("ComponentCard & ComponentHub", () => {
       const html = renderToString(<ComponentHub />);
 
       expect(html).toContain("grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4");
+      expect(html).toContain("gap-4 sm:gap-5");
       expect(html).toContain("Ink Orbit 3D Hero");
       expect(html).toContain("Interactive Spotlight Card");
       expect(html).toContain("Aurora Shimmer Button");
