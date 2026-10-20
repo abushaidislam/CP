@@ -139,4 +139,28 @@ describe("Live Canvas Snapshot Capture Protocol (compileSandboxHtml)", () => {
     expect(darkResult.html).toContain('event.data.type === "CAPTURE_PREVIEW"');
     expect(darkResult.html).toContain("captureLivePreview");
   });
+
+  it("should register component aliases in importsMap and load demo via data URI directly", () => {
+    const result = compileSandboxHtml(
+      sampleComponent,
+      sampleDemo,
+      "",
+      []
+    );
+
+    expect(result.error).toBeNull();
+    // Verify importmap aliases
+    expect(result.html).toContain('"./component": "data:text/javascript;charset=utf-8,');
+    expect(result.html).toContain('"./component.tsx": "data:text/javascript;charset=utf-8,');
+    expect(result.html).toContain('"@/components/component": "data:text/javascript;charset=utf-8,');
+
+    // Verify bootstrap imports ./component first
+    expect(result.html).toContain('await import("./component")');
+
+    // Verify demo.tsx is loaded via data URI
+    expect(result.html).toContain('data:text/javascript;charset=utf-8,');
+
+    // Verify notifyParent RENDER_SUCCESS
+    expect(result.html).toContain('notifyParent({ type: "RENDER_SUCCESS" })');
+  });
 });

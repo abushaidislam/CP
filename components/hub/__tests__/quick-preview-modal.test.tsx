@@ -45,6 +45,7 @@ mock.module(import.meta.resolve("@/components/ui/button"), () => ({
         if (text.includes("Open in Studio")) buttonClickMap.set("Open in Studio", onClick);
         if (text.includes("Copy Code")) buttonClickMap.set("Copy Code", onClick);
         if (text.includes("Reset Preview")) buttonClickMap.set("Reset Preview", onClick);
+        if (text.includes("Retry Preview")) buttonClickMap.set("Retry Preview", onClick);
         if (text.includes("Light Mode")) buttonClickMap.set("Light Mode", onClick);
         if (text.includes("Dark Mode")) buttonClickMap.set("Dark Mode", onClick);
       }
@@ -159,6 +160,7 @@ describe("QuickPreviewModal", () => {
     // Preview tab default content (iframe)
     expect(html).toContain("<iframe");
     expect(html).toContain("Test Interactive Card Preview");
+    expect(html).toContain('sandbox="allow-scripts allow-same-origin allow-modals allow-popups"');
   });
 
   it("should handle 'Open in Studio' click and invoke loadComponent and onOpenStudio callback", () => {
@@ -175,12 +177,21 @@ describe("QuickPreviewModal", () => {
     expect(useStudioStore.getState().currentTemplateId).toBe("test-card");
   });
 
-  it("should render preview canvas controls (theme toggle and reset preview)", () => {
+  it("should render preview canvas controls (theme toggle, reset and retry preview)", () => {
     const html = renderToString(<QuickPreviewModal defaultTab="preview" />);
 
     expect(html).toContain("Reset Preview");
+    expect(html).toContain("Retry Preview");
     // Should have dark/light theme switch button
     expect(html).toMatch(/Light Mode|Dark Mode/);
+
+    const retryBtn = buttonClickMap.get("Retry Preview");
+    expect(retryBtn).toBeDefined();
+    expect(() => retryBtn!()).not.toThrow();
+
+    const resetBtn = buttonClickMap.get("Reset Preview");
+    expect(resetBtn).toBeDefined();
+    expect(() => resetBtn!()).not.toThrow();
   });
 
   it("should render code viewer, CLI command, and copy buttons in Code tab", () => {

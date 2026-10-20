@@ -101,6 +101,15 @@ export function compileSandboxHtml(
       'export default cn;'
     );
 
+  // In-memory alias for component.tsx
+  const componentDataUri =
+    "data:text/javascript;charset=utf-8," +
+    encodeURIComponent(cleanedComponentJs);
+
+  const demoDataUri =
+    "data:text/javascript;charset=utf-8," +
+    encodeURIComponent(cleanedDemoJs);
+
   // Build comprehensive ESM import map
   const importsMap: Record<string, string> = {
     react: "https://esm.sh/react@19",
@@ -122,6 +131,9 @@ export function compileSandboxHtml(
     "@/utils": cnModuleDataUri,
     "./utils": cnModuleDataUri,
     "../utils": cnModuleDataUri,
+    "./component": componentDataUri,
+    "./component.tsx": componentDataUri,
+    "@/components/component": componentDataUri,
   };
 
   for (const dep of detectedDeps) {
@@ -133,6 +145,7 @@ export function compileSandboxHtml(
   // Safe JSON serialization of the code strings (protects against backticks, ${}, quotes, and </script>)
   const safeCompJs = JSON.stringify(cleanedComponentJs).replace(/<\/script>/gi, "<\\/script>");
   const safeDemoJs = JSON.stringify(cleanedDemoJs).replace(/<\/script>/gi, "<\\/script>");
+  const safeDemoDataUri = JSON.stringify(demoDataUri).replace(/<\/script>/gi, "<\\/script>");
 
   // Base background style inside preview according to canvasBg and previewTheme
   let bgClass = isDark ? "bg-zinc-950 text-zinc-100" : "bg-white text-zinc-900";
@@ -450,18 +463,20 @@ export function compileSandboxHtml(
 
     async function bootstrap() {
       try {
-        // 1. Create component Blob Module
-        const componentCode = ${safeCompJs};
-        const componentBlob = new Blob([componentCode], { type: "text/javascript" });
-        const componentUrl = URL.createObjectURL(componentBlob);
-
-        // 2. Import component.tsx module
+        // 1. Import component.tsx module (try import map first, fallback to blob)
         let componentModule;
         try {
-          componentModule = await import(componentUrl);
-        } catch (compErr) {
-          renderErrorOverlay("Failed to import component.tsx", compErr.message);
-          return;
+          componentModule = await import("./component");
+        } catch (importErr) {
+          try {
+            const componentCode = ${safeCompJs};
+            const componentBlob = new Blob([componentCode], { type: "text/javascript" });
+            const componentUrl = URL.createObjectURL(componentBlob);
+            componentModule = await import(componentUrl);
+          } catch (compErr) {
+            renderErrorOverlay("Failed to import component.tsx", compErr.message);
+            return;
+          }
         }
 
         // Find primary component from component.tsx
@@ -471,19 +486,20 @@ export function compileSandboxHtml(
           Object.values(componentModule).find((v) => typeof v === "function") ||
           null;
 
-        // 3. Prepare and import demo.tsx module (redirecting ./component imports to blob url)
+        // 2. Prepare and import demo.tsx module directly via data URI (natively resolves ./component via importmap)
         const rawDemoCode = ${safeDemoJs};
         let DemoComponent = null;
 
         if (rawDemoCode && rawDemoCode.trim().length > 0) {
           try {
-            const adjustedDemoCode = rawDemoCode
-              .replace(/from\\s+['"](?:\.\\/component(?:\\.tsx)?|@\\/components\\/[^'"]+)['"]/g, 'from "' + componentUrl + '"')
-              .replace(/import\\s+['"](?:\.\\/component(?:\\.tsx)?|@\\/components\\/[^'"]+)['"]/g, 'import "' + componentUrl + '"');
-
-            const demoBlob = new Blob([adjustedDemoCode], { type: "text/javascript" });
-            const demoUrl = URL.createObjectURL(demoBlob);
-            const demoModule = await import(demoUrl);
+            let demoModule;
+            try {
+              demoModule = await import(${safeDemoDataUri});
+            } catch (dataUriErr) {
+              const demoBlob = new Blob([rawDemoCode], { type: "text/javascript" });
+              const demoUrl = URL.createObjectURL(demoBlob);
+              demoModule = await import(demoUrl);
+            }
             DemoComponent =
               demoModule.default ||
               demoModule.Demo ||
@@ -494,12 +510,16 @@ export function compileSandboxHtml(
           }
         }
 
-        // 4. Determine what component to render
+        // 3. Determine what component to render
         const rootEl = document.getElementById("root");
         if (!rootEl) return;
         const root = ReactDOM.createRoot(rootEl);
 
         function App() {
+          React.useEffect(() => {
+            notifyParent({ type: "RENDER_SUCCESS" });
+          }, []);
+
           const renderFallbackComponent = (err) => {
             if (!ComponentFromCode) {
               return React.createElement(

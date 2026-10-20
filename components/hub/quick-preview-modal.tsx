@@ -182,7 +182,7 @@ export function QuickPreviewModal({
       }
     };
     window.addEventListener("message", handleMsg);
-    const timer = setTimeout(() => setIsIframeLoading(false), 4500);
+    const timer = setTimeout(() => setIsIframeLoading(false), 2500);
     return () => {
       window.removeEventListener("message", handleMsg);
       clearTimeout(timer);
@@ -274,10 +274,25 @@ export function QuickPreviewModal({
                   variant="outline"
                   size="sm"
                   className="gap-1.5 font-sans h-8 text-xs"
-                  onClick={() => setReloadKey((k) => k + 1)}
+                  onClick={() => {
+                    setReloadKey((k) => k + 1);
+                    setIsIframeLoading(true);
+                  }}
                 >
                   <RotateCcw className="size-3.5" />
                   <span>Reset Preview</span>
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5 font-sans h-8 text-xs"
+                  onClick={() => {
+                    setReloadKey((k) => k + 1);
+                    setIsIframeLoading(true);
+                  }}
+                >
+                  <RotateCcw className="size-3.5" />
+                  <span>Retry Preview</span>
                 </Button>
               </div>
               {component.description && (
@@ -288,8 +303,20 @@ export function QuickPreviewModal({
             </div>
 
             {compileError && (
-              <div className="rounded-md border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive font-sans">
-                Preview compilation error: {compileError}
+              <div className="rounded-md border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive font-sans flex items-center justify-between gap-2">
+                <span>Preview compilation error: {compileError}</span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5 font-sans h-8 text-xs shrink-0"
+                  onClick={() => {
+                    setReloadKey((k) => k + 1);
+                    setIsIframeLoading(true);
+                  }}
+                >
+                  <RotateCcw className="size-3.5" />
+                  <span>Retry Preview</span>
+                </Button>
               </div>
             )}
 
@@ -306,7 +333,7 @@ export function QuickPreviewModal({
                 key={`${component.id}-${reloadKey}-${previewTheme}`}
                 title={`${component.name} Preview`}
                 srcDoc={compiledHtml}
-                sandbox="allow-scripts allow-same-origin allow-modals"
+                sandbox="allow-scripts allow-same-origin allow-modals allow-popups"
                 className="w-full h-full border-0"
               />
             </div>
