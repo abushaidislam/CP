@@ -195,6 +195,9 @@ export function CreateComponentDialog({ onCreated }: CreateComponentDialogProps)
             </label>
             <Input
               id="component-name-input"
+              aria-invalid={Boolean(error)}
+              aria-describedby={error ? "component-name-error" : undefined}
+              aria-required="true"
               value={name}
               onChange={(e) => {
                 nameRef.current = e.target.value;
