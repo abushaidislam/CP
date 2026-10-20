@@ -189,5 +189,55 @@ describe("Component Registry & Work History Store Slice", () => {
     const state = useStudioStore.getState();
     expect(state.files["component.tsx"]).toBe("// custom unique code for variant");
   });
+
+  it("should update component preview image and persist timestamp", () => {
+    const store = useStudioStore.getState();
+    const id = store.createComponent({ name: "Preview Target Comp" });
+    const initialUpdatedAt = useStudioStore.getState().userComponents[id].updatedAt;
+
+    const sampleSvg = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg'><rect width='100' height='100' fill='red'/></svg>";
+    store.updateComponentPreview(id, sampleSvg);
+
+    const state = useStudioStore.getState();
+    expect(state.userComponents[id].previewImage).toBe(sampleSvg);
+    expect(state.userComponents[id].updatedAt).toBeGreaterThanOrEqual(initialUpdatedAt);
+
+    // No-op for non-existent component
+    store.updateComponentPreview("non-existent-id", sampleSvg);
+    expect(useStudioStore.getState().userComponents["non-existent-id"]).toBeUndefined();
+  });
+
+  it("should seed default templates with preview images", () => {
+    const { createInitialUserComponents } = require("../studio-store");
+    const initialComponents = createInitialUserComponents();
+
+    expect(initialComponents["ink-orbit-hero"]?.previewImage).toBeDefined();
+    expect(initialComponents["ink-orbit-hero"]?.previewImage).toContain("data:image/svg+xml");
+    expect(initialComponents["spotlight-card"]?.previewImage).toBeDefined();
+    expect(initialComponents["spotlight-card"]?.previewImage).toContain("data:image/svg+xml");
+    expect(initialComponents["shimmer-button"]?.previewImage).toBeDefined();
+    expect(initialComponents["shimmer-button"]?.previewImage).toContain("data:image/svg+xml");
+    expect(initialComponents["metric-badge"]?.previewImage).toBeDefined();
+    expect(initialComponents["metric-badge"]?.previewImage).toContain("data:image/svg+xml");
+
+    // Creating a blank component should also assign a default preview SVG
+    const store = useStudioStore.getState();
+    const blankId = store.createComponent({ name: "Blank Slate" });
+    const blankComp = useStudioStore.getState().userComponents[blankId];
+    expect(blankComp.previewImage).toBeDefined();
+    expect(blankComp.previewImage).toContain("data:image/svg+xml");
+
+    // Creating from starter template should copy starter template previewImage
+    const clonedId = store.createComponent({
+      name: "Cloned Shimmer",
+      starterTemplateId: "shimmer-button",
+    });
+    const clonedComp = useStudioStore.getState().userComponents[clonedId];
+    expect(clonedComp.previewImage).toBe(initialComponents["shimmer-button"].previewImage);
+
+    // Duplicating should copy previewImage
+    const dupId = store.duplicateUserComponent(clonedId);
+    expect(useStudioStore.getState().userComponents[dupId].previewImage).toBe(clonedComp.previewImage);
+  });
 });
 
