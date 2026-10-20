@@ -517,8 +517,21 @@ export const useStudioStore = create<StudioState>()(
             state.files,
             nextDeps
           );
+          const currentComp = state.userComponents?.[state.currentTemplateId];
+          const updatedUserComponents = currentComp
+            ? {
+                ...state.userComponents,
+                [state.currentTemplateId]: {
+                  ...currentComp,
+                  dependencies: nextDeps,
+                  updatedAt: Date.now(),
+                },
+              }
+            : state.userComponents;
+
           return {
             dependencies: nextDeps,
+            userComponents: updatedUserComponents,
             ...sync,
           };
         }),
@@ -535,8 +548,21 @@ export const useStudioStore = create<StudioState>()(
             state.files,
             nextDeps
           );
+          const currentComp = state.userComponents?.[state.currentTemplateId];
+          const updatedUserComponents = currentComp
+            ? {
+                ...state.userComponents,
+                [state.currentTemplateId]: {
+                  ...currentComp,
+                  dependencies: nextDeps,
+                  updatedAt: Date.now(),
+                },
+              }
+            : state.userComponents;
+
           return {
             dependencies: nextDeps,
+            userComponents: updatedUserComponents,
             ...sync,
           };
         }),
@@ -555,8 +581,21 @@ export const useStudioStore = create<StudioState>()(
             state.files,
             nextDeps
           );
+          const currentComp = state.userComponents?.[state.currentTemplateId];
+          const updatedUserComponents = currentComp
+            ? {
+                ...state.userComponents,
+                [state.currentTemplateId]: {
+                  ...currentComp,
+                  dependencies: nextDeps,
+                  updatedAt: Date.now(),
+                },
+              }
+            : state.userComponents;
+
           return {
             dependencies: nextDeps,
+            userComponents: updatedUserComponents,
             ...sync,
           };
         }),
@@ -571,8 +610,21 @@ export const useStudioStore = create<StudioState>()(
             state.files,
             nextDeps
           );
+          const currentComp = state.userComponents?.[state.currentTemplateId];
+          const updatedUserComponents = currentComp
+            ? {
+                ...state.userComponents,
+                [state.currentTemplateId]: {
+                  ...currentComp,
+                  dependencies: nextDeps,
+                  updatedAt: Date.now(),
+                },
+              }
+            : state.userComponents;
+
           return {
             dependencies: nextDeps,
+            userComponents: updatedUserComponents,
             ...sync,
           };
         }),
@@ -591,8 +643,21 @@ export const useStudioStore = create<StudioState>()(
             state.files,
             nextDeps
           );
+          const currentComp = state.userComponents?.[state.currentTemplateId];
+          const updatedUserComponents = currentComp
+            ? {
+                ...state.userComponents,
+                [state.currentTemplateId]: {
+                  ...currentComp,
+                  dependencies: nextDeps,
+                  updatedAt: Date.now(),
+                },
+              }
+            : state.userComponents;
+
           return {
             dependencies: nextDeps,
+            userComponents: updatedUserComponents,
             ...sync,
           };
         }),
@@ -609,8 +674,21 @@ export const useStudioStore = create<StudioState>()(
             state.files,
             nextDeps
           );
+          const currentComp = state.userComponents?.[state.currentTemplateId];
+          const updatedUserComponents = currentComp
+            ? {
+                ...state.userComponents,
+                [state.currentTemplateId]: {
+                  ...currentComp,
+                  dependencies: nextDeps,
+                  updatedAt: Date.now(),
+                },
+              }
+            : state.userComponents;
+
           return {
             dependencies: nextDeps,
+            userComponents: updatedUserComponents,
             ...sync,
           };
         }),
@@ -624,8 +702,21 @@ export const useStudioStore = create<StudioState>()(
             state.files,
             []
           );
+          const currentComp = state.userComponents?.[state.currentTemplateId];
+          const updatedUserComponents = currentComp
+            ? {
+                ...state.userComponents,
+                [state.currentTemplateId]: {
+                  ...currentComp,
+                  dependencies: [],
+                  updatedAt: Date.now(),
+                },
+              }
+            : state.userComponents;
+
           return {
             dependencies: [],
+            userComponents: updatedUserComponents,
             ...sync,
           };
         }),
@@ -650,7 +741,10 @@ export const useStudioStore = create<StudioState>()(
             sourceFiles = { ...state.files };
             sourceDeps = [...state.dependencies];
           } else {
-            const tmpl = DEFAULT_TEMPLATES.find((t) => t.id === templateId) || DEFAULT_TEMPLATES[0];
+            const tmpl =
+              state.userComponents?.[templateId] ||
+              DEFAULT_TEMPLATES.find((t) => t.id === templateId) ||
+              DEFAULT_TEMPLATES[0];
             sourceFiles = { ...tmpl.files };
             sourceDeps = [...tmpl.dependencies];
           }
@@ -987,12 +1081,31 @@ export const useStudioStore = create<StudioState>()(
           depsToLoad = [...activeVar.dependencies];
         }
 
+        const isBuiltIn = DEFAULT_TEMPLATES.some((t) => t.id === target.id);
+        const nextUserComponents = state.userComponents?.[target.id]
+          ? state.userComponents
+          : {
+              ...(state.userComponents || {}),
+              [target.id]: {
+                id: target.id,
+                name: target.name,
+                description: target.description,
+                category: target.category,
+                isBuiltIn,
+                createdAt: 1700000000000,
+                updatedAt: 1700000000000,
+                files: { ...target.files },
+                dependencies: [...target.dependencies],
+              },
+            };
+
         set({
           files: filesToLoad,
           dependencies: depsToLoad,
           currentTemplateId: target.id,
           activeTab: "component.tsx",
           compilerError: null,
+          userComponents: nextUserComponents,
           variantsByTemplate: {
             ...(state.variantsByTemplate || {}),
             [target.id]: nextVariants,
@@ -1002,7 +1115,7 @@ export const useStudioStore = create<StudioState>()(
             [target.id]: activeVariantId,
           },
           selectedCheckpointId: null,
-          recentComponentIds: [target.id, ...(state.recentComponentIds || []).filter((cid) => cid !== target.id)],
+          recentComponentIds: [target.id, ...(state.recentComponentIds || []).filter((cid) => cid !== target.id)].slice(0, 50),
         });
       },
 
@@ -1060,7 +1173,7 @@ export const useStudioStore = create<StudioState>()(
           dependencies: initialDeps,
           activeTab: "component.tsx",
           compilerError: null,
-          recentComponentIds: [id, ...(state.recentComponentIds || []).filter((cid) => cid !== id)],
+          recentComponentIds: [id, ...(state.recentComponentIds || []).filter((cid) => cid !== id)].slice(0, 50),
           variantsByTemplate: {
             ...(state.variantsByTemplate || {}),
             [id]: [defaultVar],
@@ -1078,10 +1191,14 @@ export const useStudioStore = create<StudioState>()(
 
       deleteUserComponent: (id) =>
         set((state) => {
+          if (state.userComponents?.[id]?.isBuiltIn || DEFAULT_TEMPLATES.some((t) => t.id === id)) {
+            return state;
+          }
+
           const nextUserComponents = { ...state.userComponents };
           delete nextUserComponents[id];
 
-          const nextRecent = (state.recentComponentIds || []).filter((cid) => cid !== id);
+          const nextRecent = (state.recentComponentIds || []).filter((cid) => cid !== id).slice(0, 50);
           const nextVariants = { ...state.variantsByTemplate };
           delete nextVariants[id];
           const nextActiveVariants = { ...state.activeVariantByTemplate };
@@ -1098,8 +1215,18 @@ export const useStudioStore = create<StudioState>()(
                 ? nextUserComponents[remainingIds[0]]
                 : DEFAULT_TEMPLATES[0];
             nextCurrentTemplateId = fallbackComp.id;
-            nextFiles = { ...fallbackComp.files };
-            nextDeps = [...fallbackComp.dependencies];
+
+            const fallbackVariants = nextVariants[fallbackComp.id] || [];
+            const fallbackActiveVarId = nextActiveVariants[fallbackComp.id] || fallbackVariants[0]?.id;
+            const activeVar = fallbackVariants.find((v) => v.id === fallbackActiveVarId);
+
+            if (activeVar) {
+              nextFiles = { ...activeVar.files };
+              nextDeps = [...activeVar.dependencies];
+            } else {
+              nextFiles = { ...fallbackComp.files };
+              nextDeps = [...fallbackComp.dependencies];
+            }
           }
 
           return {
@@ -1110,6 +1237,8 @@ export const useStudioStore = create<StudioState>()(
             currentTemplateId: nextCurrentTemplateId,
             files: nextFiles,
             dependencies: nextDeps,
+            selectedCheckpointId: state.currentTemplateId === id ? null : state.selectedCheckpointId,
+            compilerError: state.currentTemplateId === id ? null : state.compilerError,
             quickPreviewComponentId:
               state.quickPreviewComponentId === id ? null : state.quickPreviewComponentId,
           };
@@ -1165,7 +1294,7 @@ export const useStudioStore = create<StudioState>()(
 
       recordComponentVisit: (id) =>
         set((state) => ({
-          recentComponentIds: [id, ...(state.recentComponentIds || []).filter((cid) => cid !== id)],
+          recentComponentIds: [id, ...(state.recentComponentIds || []).filter((cid) => cid !== id)].slice(0, 50),
         })),
 
       setQuickPreviewComponentId: (id) => set({ quickPreviewComponentId: id }),
@@ -1174,10 +1303,8 @@ export const useStudioStore = create<StudioState>()(
 
       resetCurrentTemplate: () => {
         const { currentTemplateId, variantsByTemplate, activeVariantByTemplate, userComponents } = get();
-        const template =
-          userComponents?.[currentTemplateId] ||
-          DEFAULT_TEMPLATES.find((t) => t.id === currentTemplateId) ||
-          DEFAULT_TEMPLATES[0];
+        const builtin = DEFAULT_TEMPLATES.find((t) => t.id === currentTemplateId);
+        const template = builtin || userComponents?.[currentTemplateId] || DEFAULT_TEMPLATES[0];
 
         const nextFiles = { ...template.files };
         const nextDeps = [...template.dependencies];
@@ -1189,9 +1316,22 @@ export const useStudioStore = create<StudioState>()(
           nextDeps
         );
 
+        const updatedUserComponents = userComponents?.[currentTemplateId]
+          ? {
+              ...userComponents,
+              [currentTemplateId]: {
+                ...userComponents[currentTemplateId],
+                files: { ...template.files },
+                dependencies: [...template.dependencies],
+                updatedAt: Date.now(),
+              },
+            }
+          : userComponents;
+
         set({
           files: nextFiles,
           dependencies: nextDeps,
+          userComponents: updatedUserComponents,
           compilerError: null,
           ...sync,
         });

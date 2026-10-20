@@ -113,5 +113,81 @@ describe("Component Registry & Work History Store Slice", () => {
     expect(state.files["component.tsx"]).toBe("// modified in editor");
     expect(state.userComponents[id].files["component.tsx"]).toBe("// modified in editor");
   });
+
+  it("should revert built-in templates back to factory code on resetCurrentTemplate", () => {
+    const store = useStudioStore.getState();
+    store.loadComponent("spotlight-card");
+    const originalCode = useStudioStore.getState().files["component.tsx"];
+
+    store.updateFile("component.tsx", "// broken user edit on built-in");
+    expect(useStudioStore.getState().files["component.tsx"]).toBe("// broken user edit on built-in");
+
+    store.resetCurrentTemplate();
+    const state = useStudioStore.getState();
+    expect(state.files["component.tsx"]).toBe(originalCode);
+    expect(state.userComponents["spotlight-card"].files["component.tsx"]).toBe(originalCode);
+  });
+
+  it("should prevent deleting built-in components", () => {
+    const store = useStudioStore.getState();
+    store.loadComponent("spotlight-card");
+    expect(useStudioStore.getState().userComponents["spotlight-card"]).toBeDefined();
+
+    store.deleteUserComponent("spotlight-card");
+    const state = useStudioStore.getState();
+    expect(state.userComponents["spotlight-card"]).toBeDefined();
+    expect(state.currentTemplateId).toBe("spotlight-card");
+  });
+
+  it("should reset selectedCheckpointId and compilerError when deleting active custom component", () => {
+    const store = useStudioStore.getState();
+    const customId = store.createComponent({ name: "Custom To Delete" });
+    useStudioStore.setState({
+      selectedCheckpointId: "cp-123",
+      compilerError: "SyntaxError: unexpected token",
+    });
+
+    store.deleteUserComponent(customId);
+    const state = useStudioStore.getState();
+    expect(state.currentTemplateId).not.toBe(customId);
+    expect(state.selectedCheckpointId).toBeNull();
+    expect(state.compilerError).toBeNull();
+  });
+
+  it("should sync dependencies changes to userComponents[currentTemplateId].dependencies", () => {
+    const store = useStudioStore.getState();
+    const id = store.createComponent({ name: "Deps Component" });
+
+    store.addDependency("framer-motion");
+    expect(useStudioStore.getState().userComponents[id].dependencies).toContain("framer-motion");
+
+    store.toggleDependency("canvas-confetti");
+    expect(useStudioStore.getState().userComponents[id].dependencies).toContain("canvas-confetti");
+
+    store.removeDependency("framer-motion");
+    expect(useStudioStore.getState().userComponents[id].dependencies).not.toContain("framer-motion");
+
+    store.clearAllDependencies();
+    expect(useStudioStore.getState().userComponents[id].dependencies).toEqual([]);
+  });
+
+  it("should cap recentComponentIds at 50", () => {
+    const store = useStudioStore.getState();
+    for (let i = 0; i < 55; i++) {
+      store.recordComponentVisit(`comp-${i}`);
+    }
+    const state = useStudioStore.getState();
+    expect(state.recentComponentIds.length).toBeLessThanOrEqual(50);
+  });
+
+  it("should copy from user component files when creating variant with copyFromActive = false", () => {
+    const store = useStudioStore.getState();
+    const customId = store.createComponent({ name: "Custom Variant Base" });
+    store.updateFile("component.tsx", "// custom unique code for variant");
+
+    store.createVariant("Clean Variant", false);
+    const state = useStudioStore.getState();
+    expect(state.files["component.tsx"]).toBe("// custom unique code for variant");
+  });
 });
 
