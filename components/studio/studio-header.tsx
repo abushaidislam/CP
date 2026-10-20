@@ -78,16 +78,20 @@ export function StudioHeader() {
 
   React.useEffect(() => {
     let successTimer: NodeJS.Timeout | number | undefined;
-    const handleCaptured = () => {
+    const handleCaptured = (e: Event) => {
+      const customEvent = e as CustomEvent<{ dataUrl?: string | null; error?: string }>;
       if (captureTimeoutRef.current) {
         clearTimeout(captureTimeoutRef.current);
         captureTimeoutRef.current = null;
       }
       setIsCapturing(false);
-      setCapturedSuccess(true);
-      successTimer = setTimeout(() => {
-        setCapturedSuccess(false);
-      }, 2000);
+      if (customEvent.detail?.dataUrl) {
+        if (successTimer) clearTimeout(successTimer);
+        setCapturedSuccess(true);
+        successTimer = setTimeout(() => {
+          setCapturedSuccess(false);
+        }, 2000);
+      }
     };
 
     window.addEventListener("studio:preview-captured", handleCaptured);
@@ -99,6 +103,10 @@ export function StudioHeader() {
   }, []);
 
   const handleCapturePreview = () => {
+    if (layoutMode === "editor") {
+      setLayoutMode("split");
+    }
+    setCapturedSuccess(false);
     setIsCapturing(true);
     window.dispatchEvent(
       new CustomEvent("studio:request-preview-capture", {
@@ -401,9 +409,15 @@ export function StudioHeader() {
               variant="ghost"
               size="sm"
               onClick={handleCapturePreview}
-              disabled={isCapturing}
+              disabled={isCapturing || capturedSuccess}
               className="font-sans text-xs gap-1.5 h-8 px-2.5 text-muted-foreground hover:text-foreground"
-              aria-label="Capture preview snapshot"
+              aria-label={
+                capturedSuccess
+                  ? "Preview snapshot saved"
+                  : isCapturing
+                  ? "Capturing preview snapshot..."
+                  : "Capture preview snapshot"
+              }
             >
               {capturedSuccess ? (
                 <>

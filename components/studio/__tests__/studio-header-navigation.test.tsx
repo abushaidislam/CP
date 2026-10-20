@@ -205,6 +205,7 @@ mock.module(import.meta.resolve("@/components/studio/studio-container"), () => (
 const { useStudioStore } = await import("@/lib/store/studio-store");
 const { TooltipProvider } = await import("@/components/ui/tooltip");
 const { StudioHeader } = await import("../studio-header");
+const { CanvasPreview } = await import("../canvas-preview");
 const HomePage = (await import("@/app/page")).default;
 const StudioWorkspacePage = (await import("@/app/studio/[id]/page")).default;
 const StudioRedirectPage = (await import("@/app/studio/page")).default;
@@ -388,6 +389,32 @@ describe("StudioHeader Navigation & Route Integration", () => {
       expect(captureEvent.detail).toEqual({ componentId: "custom-neon-button" });
     });
 
+    it("should auto-switch layoutMode to split and dispatch capture request on click", () => {
+      useStudioStore.setState({
+        currentTemplateId: "custom-neon-button",
+        layoutMode: "editor",
+      });
+
+      renderToString(
+        <TooltipProvider>
+          <StudioHeader />
+        </TooltipProvider>
+      );
+
+      const captureClick = buttonClickMap.get("Capture");
+      expect(captureClick).toBeDefined();
+
+      captureClick!();
+
+      // Layout should have auto-switched to split
+      expect(useStudioStore.getState().layoutMode).toBe("split");
+
+      const captureEvent = dispatchedEvents.find(
+        (e) => e.type === "studio:request-preview-capture"
+      );
+      expect(captureEvent).toBeDefined();
+    });
+
     it("should register studio:preview-captured listener and respond to capture events", () => {
       StudioHeader();
       runEffects();
@@ -395,10 +422,78 @@ describe("StudioHeader Navigation & Route Integration", () => {
       const captureHandler = listeners["studio:preview-captured"]?.[0];
       expect(captureHandler).toBeDefined();
 
-      // Calling handler should not throw
+      // Calling handler with dataUrl sets success
       expect(() => {
         captureHandler({ detail: { dataUrl: "data:image/svg+xml;base64,sample" } });
       }).not.toThrow();
+
+      // Calling handler without dataUrl should guard without error
+      expect(() => {
+        captureHandler({ detail: { dataUrl: null, error: "Snapshot failed" } });
+      }).not.toThrow();
+    });
+  });
+
+  describe("CanvasPreview Integration", () => {
+    it("should handle PREVIEW_CAPTURED message and update store with snapshot dataUrl", () => {
+      const mockIframeRef = {
+        current: {
+          contentWindow: {
+            postMessage: mock((_msg: any) => {}),
+          },
+        },
+      };
+
+      // Call CanvasPreview directly to register hook effects with the test dispatcher
+      CanvasPreview({ iframeRef: mockIframeRef as any });
+      runEffects();
+
+      const messageHandler = listeners["message"]?.[0];
+      expect(messageHandler).toBeDefined();
+
+      const sampleDataUrl = "data:image/svg+xml;base64,PHN2Zz5wb2xsPC9zdmc+";
+      messageHandler({
+        data: {
+          type: "PREVIEW_CAPTURED",
+          componentId: "custom-neon-button",
+          dataUrl: sampleDataUrl,
+        },
+      });
+
+      // Verify store updated with snapshot dataUrl
+      const component = useStudioStore.getState().userComponents["custom-neon-button"];
+      expect(component.previewImage).toBe(sampleDataUrl);
+
+      // Verify custom event studio:preview-captured was dispatched
+      const capturedEvent = dispatchedEvents.find((e) => e.type === "studio:preview-captured");
+      expect(capturedEvent).toBeDefined();
+      expect(capturedEvent.detail.dataUrl).toBe(sampleDataUrl);
+    });
+
+    it("should forward CAPTURE_PREVIEW postMessage to iframe contentWindow when studio:request-preview-capture event occurs", () => {
+      const postMessageMock = mock((_msg: any) => {});
+      const mockIframeRef = {
+        current: {
+          contentWindow: {
+            postMessage: postMessageMock,
+          },
+        },
+      };
+
+      CanvasPreview({ iframeRef: mockIframeRef as any });
+      runEffects();
+
+      const requestHandler = listeners["studio:request-preview-capture"]?.[0];
+      expect(requestHandler).toBeDefined();
+
+      requestHandler({
+        detail: { componentId: "custom-neon-button" },
+      });
+
+      expect(postMessageMock).toHaveBeenCalledWith(
+        { type: "CAPTURE_PREVIEW", componentId: "custom-neon-button" },
+        "*"
+      );
     });
   });
 
