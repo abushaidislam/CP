@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect, useRef } from "react";
 import { useStudioStore, PreviewTheme, StudioFileName } from "@/lib/store/studio-store";
 import { DEFAULT_TEMPLATES } from "@/lib/sandbox/default-templates";
 import { compileSandboxHtml } from "@/lib/sandbox/sandbox-compiler";
@@ -80,6 +80,15 @@ export function QuickPreviewModal({
   const [reloadKey, setReloadKey] = useState<number>(0);
   const [copiedCode, setCopiedCode] = useState<boolean>(false);
   const [copiedCli, setCopiedCli] = useState<boolean>(false);
+  const copyTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const cliTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (copyTimerRef.current) clearTimeout(copyTimerRef.current);
+      if (cliTimerRef.current) clearTimeout(cliTimerRef.current);
+    };
+  }, []);
 
   // Sync props when changed
   useEffect(() => {
@@ -94,7 +103,7 @@ export function QuickPreviewModal({
   const component = useMemo(() => {
     if (!quickPreviewComponentId) return null;
     return (
-      userComponents[quickPreviewComponentId] ||
+      userComponents?.[quickPreviewComponentId] ||
       DEFAULT_TEMPLATES.find((t) => t.id === quickPreviewComponentId) ||
       null
     );
@@ -125,10 +134,11 @@ export function QuickPreviewModal({
 
   const handleCopyCode = async () => {
     if (!component) return;
-    const code = component.files[selectedCodeFile] || "";
+    const code = component.files?.[selectedCodeFile] || "";
     await copyText(code);
     setCopiedCode(true);
-    setTimeout(() => setCopiedCode(false), 2000);
+    if (copyTimerRef.current) clearTimeout(copyTimerRef.current);
+    copyTimerRef.current = setTimeout(() => setCopiedCode(false), 2000);
   };
 
   const handleCopyCli = async () => {
@@ -136,7 +146,8 @@ export function QuickPreviewModal({
     const cli = `npx shadcn@latest add ${component.id}`;
     await copyText(cli);
     setCopiedCli(true);
-    setTimeout(() => setCopiedCli(false), 2000);
+    if (cliTimerRef.current) clearTimeout(cliTimerRef.current);
+    cliTimerRef.current = setTimeout(() => setCopiedCli(false), 2000);
   };
 
   // Compile preview HTML
