@@ -247,9 +247,12 @@ describe("ComponentCard & ComponentHub", () => {
       expect(html).toContain("3 Checkpoints");
       expect(html).toContain("Preview");
       expect(html).toContain("Studio");
+      expect(html).toContain(
+        "relative flex flex-col justify-between overflow-hidden bg-card p-4 text-card-foreground transition-colors duration-200 hover:bg-muted/10 font-sans h-full group"
+      );
     });
 
-    it("should render preview img element when previewImage is provided", () => {
+    it("should render preview img element when previewImage is provided with smooth hover zoom", () => {
       const compWithImage: UserComponent = {
         ...mockComponent,
         previewImage: "data:image/svg+xml;utf8,<svg></svg>",
@@ -259,6 +262,7 @@ describe("ComponentCard & ComponentHub", () => {
       expect(html).toContain("data:image/svg+xml;utf8");
       expect(html).toContain('alt="Interactive Hologram Card"');
       expect(html).toContain("Quick Preview");
+      expect(html).toContain("group-hover:scale-105");
     });
 
     it("should render fallback placeholder when previewImage is missing", () => {
@@ -425,14 +429,22 @@ describe("ComponentCard & ComponentHub", () => {
       expect(html).toContain("Custom");
     });
 
-    it("should render responsive grid of component cards", () => {
+    it("should render connected 4-column border grid with all 8 starter templates", () => {
       const html = renderToString(<ComponentHub />);
 
-      expect(html).toContain("grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4");
-      expect(html).toContain("gap-4 sm:gap-5");
+      // Verify connected border grid container and 4-column grid layout
+      expect(html).toContain("rounded-xl border border-border/80 overflow-hidden bg-border/50 shadow-xs");
+      expect(html).toContain("grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-px bg-border/60");
+
+      // Verify all 8 starter templates are rendered in the hub
       expect(html).toContain("Ink Orbit 3D Hero");
       expect(html).toContain("Interactive Spotlight Card");
       expect(html).toContain("Aurora Shimmer Button");
+      expect(html).toContain("Live Status Radar Badge");
+      expect(html).toContain("Aurora Ambient Mesh Hero");
+      expect(html).toContain("Bento Metric Showcase Card");
+      expect(html).toContain("Neon Glow Interactive Button");
+      expect(html).toContain("Live Telemetry Health Pill");
     });
 
     it("should render CreateComponentDialog and QuickPreviewModal modals", () => {

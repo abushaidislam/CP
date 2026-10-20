@@ -119,7 +119,7 @@ export function ComponentCard({
 
   return (
     <>
-      <div className="group relative flex flex-col justify-between overflow-hidden rounded-xl border border-border/70 bg-card p-3.5 text-card-foreground shadow-2xs transition-all duration-200 hover:-translate-y-1 hover:border-border hover:shadow-lg font-sans">
+      <div className="relative flex flex-col justify-between overflow-hidden bg-card p-4 text-card-foreground transition-colors duration-200 hover:bg-muted/10 font-sans h-full group">
         <div>
           {/* Header */}
           <div className="flex items-center justify-between gap-2">
@@ -196,7 +196,7 @@ export function ComponentCard({
               <img
                 src={component.previewImage}
                 alt={component.name}
-                className="w-full h-full object-contain pointer-events-none select-none transition-transform duration-300 group-hover/canvas:scale-[1.03] drop-shadow-md"
+                className="w-full h-full object-contain pointer-events-none select-none transition-transform duration-300 group-hover:scale-105 drop-shadow-md"
               />
             ) : (
               <div className="flex flex-col items-center justify-center gap-2 select-none">

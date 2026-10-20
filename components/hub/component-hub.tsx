@@ -371,30 +371,32 @@ export function ComponentHub({
         {/* 4. Component Cards Grid */}
         <section aria-label="Component cards grid">
           {filteredComponents.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5">
-              {filteredComponents.map((component) => {
-                const variants = variantsByTemplate?.[component.id] || [];
-                const variantsCount = variants.length || 1;
-                const checkpointsCount = variants.reduce(
-                  (acc, v) => acc + (v.checkpoints?.length || 0),
-                  0
-                );
-                const isRecent = (recentComponentIds || []).includes(component.id);
+            <div className="rounded-xl border border-border/80 overflow-hidden bg-border/50 shadow-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-px bg-border/60">
+                {filteredComponents.map((component) => {
+                  const variants = variantsByTemplate?.[component.id] || [];
+                  const variantsCount = variants.length || 1;
+                  const checkpointsCount = variants.reduce(
+                    (acc, v) => acc + (v.checkpoints?.length || 0),
+                    0
+                  );
+                  const isRecent = (recentComponentIds || []).includes(component.id);
 
-                return (
-                  <ComponentCard
-                    key={component.id}
-                    component={component}
-                    variantsCount={variantsCount}
-                    checkpointsCount={checkpointsCount}
-                    isRecent={isRecent}
-                    onPreview={(id) => setQuickPreviewComponentId(id)}
-                    onOpenStudio={handleOpenStudio}
-                    onDuplicate={(id) => duplicateUserComponent(id)}
-                    onDelete={(id) => deleteUserComponent(id)}
-                  />
-                );
-              })}
+                  return (
+                    <ComponentCard
+                      key={component.id}
+                      component={component}
+                      variantsCount={variantsCount}
+                      checkpointsCount={checkpointsCount}
+                      isRecent={isRecent}
+                      onPreview={(id) => setQuickPreviewComponentId(id)}
+                      onOpenStudio={handleOpenStudio}
+                      onDuplicate={(id) => duplicateUserComponent(id)}
+                      onDelete={(id) => deleteUserComponent(id)}
+                    />
+                  );
+                })}
+              </div>
             </div>
           ) : (
             /* Clean Empty State */
