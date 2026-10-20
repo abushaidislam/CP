@@ -207,36 +207,69 @@ describe("Component Registry & Work History Store Slice", () => {
     expect(useStudioStore.getState().userComponents["non-existent-id"]).toBeUndefined();
   });
 
-  it("should seed default templates with preview images", () => {
+  it("should seed exactly 8 default templates with vibrant preview images and balanced categories", () => {
     const initialComponents = createInitialUserComponents();
+    const componentList = Object.values(initialComponents);
 
-    expect(initialComponents["ink-orbit-hero"]?.previewImage).toBeDefined();
-    expect(initialComponents["ink-orbit-hero"]?.previewImage).toContain("data:image/svg+xml");
-    expect(initialComponents["spotlight-card"]?.previewImage).toBeDefined();
-    expect(initialComponents["spotlight-card"]?.previewImage).toContain("data:image/svg+xml");
-    expect(initialComponents["shimmer-button"]?.previewImage).toBeDefined();
-    expect(initialComponents["shimmer-button"]?.previewImage).toContain("data:image/svg+xml");
-    expect(initialComponents["metric-badge"]?.previewImage).toBeDefined();
-    expect(initialComponents["metric-badge"]?.previewImage).toContain("data:image/svg+xml");
+    // Exactly 8 templates seeded
+    expect(componentList.length).toBe(8);
+
+    const expectedIds = [
+      "ink-orbit-hero",
+      "aurora-ambient-hero",
+      "spotlight-card",
+      "bento-metric-grid",
+      "shimmer-button",
+      "neon-glow-button",
+      "metric-badge",
+      "live-ping-status-pill",
+    ];
+
+    for (const id of expectedIds) {
+      const comp = initialComponents[id];
+      expect(comp).toBeDefined();
+      expect(comp.id).toBe(id);
+      expect(comp.previewImage).toBeDefined();
+      expect(comp.previewImage?.startsWith("data:image/svg+xml")).toBe(true);
+      expect(comp.previewImage?.length).toBeGreaterThan(100);
+      expect(comp.files["component.tsx"]).toBeDefined();
+      expect(comp.files["demo.tsx"]).toBeDefined();
+      expect(comp.files["index.css"]).toBeDefined();
+    }
+
+    // Categories test: all 4 categories must have at least 2 templates each
+    const categories = ["Heroes", "Cards", "Buttons", "Badges"];
+    for (const cat of categories) {
+      const inCat = componentList.filter((c) => c.category === cat);
+      expect(inCat.length).toBeGreaterThanOrEqual(2);
+    }
 
     // Creating a blank component should also assign a default preview SVG
     const store = useStudioStore.getState();
     const blankId = store.createComponent({ name: "Blank Slate" });
     const blankComp = useStudioStore.getState().userComponents[blankId];
     expect(blankComp.previewImage).toBeDefined();
-    expect(blankComp.previewImage).toContain("data:image/svg+xml");
+    expect(blankComp.previewImage?.startsWith("data:image/svg+xml")).toBe(true);
 
-    // Creating from starter template should copy starter template previewImage
-    const clonedId = store.createComponent({
-      name: "Cloned Shimmer",
-      starterTemplateId: "shimmer-button",
+    // Creating from new starter template should copy starter template previewImage
+    const clonedHeroId = store.createComponent({
+      name: "Cloned Aurora Hero",
+      starterTemplateId: "aurora-ambient-hero",
     });
-    const clonedComp = useStudioStore.getState().userComponents[clonedId];
-    expect(clonedComp.previewImage).toBe(initialComponents["shimmer-button"].previewImage);
+    const clonedHeroComp = useStudioStore.getState().userComponents[clonedHeroId];
+    expect(clonedHeroComp.previewImage).toBe(initialComponents["aurora-ambient-hero"].previewImage);
+
+    const clonedNeonId = store.createComponent({
+      name: "Cloned Neon Button",
+      starterTemplateId: "neon-glow-button",
+    });
+    const clonedNeonComp = useStudioStore.getState().userComponents[clonedNeonId];
+    expect(clonedNeonComp.previewImage).toBe(initialComponents["neon-glow-button"].previewImage);
 
     // Duplicating should copy previewImage
-    const dupId = store.duplicateUserComponent(clonedId);
-    expect(useStudioStore.getState().userComponents[dupId].previewImage).toBe(clonedComp.previewImage);
+    const dupId = store.duplicateUserComponent(clonedNeonId);
+    expect(useStudioStore.getState().userComponents[dupId].previewImage).toBe(clonedNeonComp.previewImage);
   });
 });
+
 
