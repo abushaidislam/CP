@@ -326,6 +326,7 @@ export function ComponentHub({
             <Input
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
+              aria-label="Search components by name or description"
               placeholder="Search components by name or description..."
               className="pl-9 font-sans text-xs h-9 bg-card"
             />
