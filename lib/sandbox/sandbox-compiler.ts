@@ -578,7 +578,15 @@ export function compileSandboxHtml(
     async function captureLivePreview(componentId) {
       try {
         const root = document.getElementById("root");
-        if (!root) return;
+        if (!root) {
+          notifyParent({
+            type: "PREVIEW_CAPTURED",
+            dataUrl: null,
+            error: "Root element not found",
+            componentId: componentId,
+          });
+          return;
+        }
 
         // 1. Check if #root contains a canvas
         const innerCanvas = root.querySelector("canvas");
@@ -612,11 +620,14 @@ export function compileSandboxHtml(
         const clonedRoot = root.cloneNode(true);
         const serializedHtml = new XMLSerializer().serializeToString(clonedRoot);
 
+        const wrapperClasses = (document.documentElement.className + " " + document.body.className).trim();
+        const bodyStyles = document.body.style.cssText ? document.body.style.cssText + ";" : "";
+
         const svgString =
           '<svg xmlns="http://www.w3.org/2000/svg" width="' + width + '" height="' + height + '">' +
           '<foreignObject width="100%" height="100%">' +
-          '<div xmlns="http://www.w3.org/1999/xhtml" class="' + (document.documentElement.className || "") + '" style="width:100%;height:100%;">' +
-          '<style>' + stylesText + '</style>' +
+          '<div xmlns="http://www.w3.org/1999/xhtml" class="' + wrapperClasses + '" style="width:100%;height:100%;' + bodyStyles + '">' +
+          '<style>/* <![CDATA[ */\n' + stylesText + '\n/* ]]> */</style>' +
           serializedHtml +
           '</div>' +
           '</foreignObject>' +
@@ -628,6 +639,8 @@ export function compileSandboxHtml(
         const convertToPng = new Promise((resolve) => {
           const img = new Image();
           const timer = setTimeout(() => {
+            img.onload = null;
+            img.onerror = null;
             resolve(null);
           }, 500);
 
@@ -668,6 +681,12 @@ export function compileSandboxHtml(
         });
       } catch (err) {
         console.warn("Failed to capture preview snapshot:", err);
+        notifyParent({
+          type: "PREVIEW_CAPTURED",
+          dataUrl: null,
+          error: err instanceof Error ? err.message : String(err),
+          componentId: componentId,
+        });
       }
     }
 

@@ -78,6 +78,40 @@ describe("Live Canvas Snapshot Capture Protocol (compileSandboxHtml)", () => {
     expect(result.html).toContain("500");
   });
 
+  it("should preserve body background classes and wrap styles in CDATA", () => {
+    const result = compileSandboxHtml(
+      sampleComponent,
+      sampleDemo,
+      "",
+      []
+    );
+
+    expect(result.error).toBeNull();
+    // Body background and html classes combined
+    expect(result.html).toContain("document.documentElement.className + \" \" + document.body.className");
+    expect(result.html).toContain("document.body.style.cssText");
+    // CDATA wrapper around style text
+    expect(result.html).toContain("/* <![CDATA[ */");
+    expect(result.html).toContain("/* ]]> */");
+  });
+
+  it("should clean up image handlers on timeout and notify error on failure", () => {
+    const result = compileSandboxHtml(
+      sampleComponent,
+      sampleDemo,
+      "",
+      []
+    );
+
+    expect(result.error).toBeNull();
+    // Timeout cleanup
+    expect(result.html).toContain("img.onload = null;");
+    expect(result.html).toContain("img.onerror = null;");
+    // Error notification
+    expect(result.html).toContain("dataUrl: null");
+    expect(result.html).toContain("error:");
+  });
+
   it("should maintain capture protocol when using different themes and background configs", () => {
     const lightResult = compileSandboxHtml(
       sampleComponent,
