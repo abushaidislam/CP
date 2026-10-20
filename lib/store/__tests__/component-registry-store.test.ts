@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from "bun:test";
-import { useStudioStore } from "../studio-store";
+import { useStudioStore, createInitialUserComponents } from "../studio-store";
 
 describe("Component Registry & Work History Store Slice", () => {
   beforeEach(() => {
@@ -208,7 +208,6 @@ describe("Component Registry & Work History Store Slice", () => {
   });
 
   it("should seed default templates with preview images", () => {
-    const { createInitialUserComponents } = require("../studio-store");
     const initialComponents = createInitialUserComponents();
 
     expect(initialComponents["ink-orbit-hero"]?.previewImage).toBeDefined();
