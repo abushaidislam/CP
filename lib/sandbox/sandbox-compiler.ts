@@ -73,14 +73,17 @@ export function compileSandboxHtml(
   }
 
   // Clean CSS imports from JavaScript so browser doesn't try to fetch them as JS modules
-  const cleanedComponentJs = compTranspiled.js.replace(
-    /import\s+['"][^'"]+\.css['"];?/g,
-    "/* css imported */"
-  );
-  const cleanedDemoJs = (demoTranspiled.js || "").replace(
-    /import\s+['"][^'"]+\.css['"];?/g,
-    "/* css imported */"
-  );
+  const cleanedComponentJs = compTranspiled.js
+    .replace(/import\s+['"][^'"]+\.css['"];?/g, "/* css imported */")
+    .replace(/(from\s+['"])(?:\.\/|\.\.\/|@\/lib\/|@\/)?utils(?:\.ts|\.js|\.tsx|\.jsx)?(['"])/g, "$1@utils$2")
+    .replace(/(import\s*\(\s*['"])(?:\.\/|\.\.\/|@\/lib\/|@\/)?utils(?:\.ts|\.js|\.tsx|\.jsx)?(['"]\s*\))/g, "$1@utils$2");
+
+  const cleanedDemoJs = (demoTranspiled.js || "")
+    .replace(/import\s+['"][^'"]+\.css['"];?/g, "/* css imported */")
+    .replace(/(from\s+['"])(?:\.\/|\.\.\/|@\/components\/|@\/)?component(?:\.tsx|\.jsx|\.js)?(['"])/g, "$1@component$2")
+    .replace(/(import\s*\(\s*['"])(?:\.\/|\.\.\/|@\/components\/|@\/)?component(?:\.tsx|\.jsx|\.js)?(['"]\s*\))/g, "$1@component$2")
+    .replace(/(from\s+['"])(?:\.\/|\.\.\/|@\/lib\/|@\/)?utils(?:\.ts|\.js|\.tsx|\.jsx)?(['"])/g, "$1@utils$2")
+    .replace(/(import\s*\(\s*['"])(?:\.\/|\.\.\/|@\/lib\/|@\/)?utils(?:\.ts|\.js|\.tsx|\.jsx)?(['"]\s*\))/g, "$1@utils$2");
 
   // Auto-detect any imported dependencies in both files
   const detectedDeps = Array.from(
@@ -123,14 +126,16 @@ export function compileSandboxHtml(
     "tailwind-merge": "https://esm.sh/tailwind-merge@3.0.1",
     "lucide-react": "https://esm.sh/lucide-react@0.475.0?deps=react@19",
     "framer-motion": "https://esm.sh/framer-motion@11.11.17?deps=react@19",
-    "framer-motion/": "https://esm.sh/framer-motion@11.11.17/?deps=react@19",
     motion: "https://esm.sh/framer-motion@11.11.17?deps=react@19",
     "motion/react": "https://esm.sh/framer-motion@11.11.17?deps=react@19",
     "canvas-confetti": "https://esm.sh/canvas-confetti@1.9.4",
     "@/lib/utils": cnModuleDataUri,
     "@/utils": cnModuleDataUri,
+    "@utils": cnModuleDataUri,
     "./utils": cnModuleDataUri,
     "../utils": cnModuleDataUri,
+    "@component": componentDataUri,
+    "@demo": demoDataUri,
     "./component": componentDataUri,
     "./component.tsx": componentDataUri,
     "@/components/component": componentDataUri,
@@ -337,6 +342,42 @@ export function compileSandboxHtml(
 <body class="${bgClass} select-none antialiased min-h-full">
   <div id="root" class="min-h-full w-full flex flex-col"></div>
 
+  <!-- Early Global Error & Lifecycle Handler -->
+  <script>
+    function notifyParent(data) {
+      try {
+        window.parent.postMessage(data, "*");
+      } catch (e) {}
+    }
+
+    function renderErrorOverlay(title, msg) {
+      console.error("[Runtime Error]:", msg);
+      const rootEl = document.getElementById("root");
+      if (rootEl) {
+        rootEl.innerHTML = \`
+          <div style="padding: 20px; max-width: 550px; font-family: ui-monospace, monospace; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 12px; color: #fca5a5; font-size: 12px; line-height: 1.6; margin: 20px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);">
+            <div style="font-weight: 700; color: #f87171; margin-bottom: 8px; font-size: 13px; display: flex; align-items: center; gap: 6px;">
+              <span>⚠️</span>
+              <span>\${title}</span>
+            </div>
+            <div style="white-space: pre-wrap; word-break: break-word;">\${msg}</div>
+          </div>
+        \`;
+      }
+      notifyParent({ type: "RUNTIME_ERROR", message: msg });
+    }
+
+    window.addEventListener("error", function(e) {
+      const errMsg = e.error ? (e.error.stack || e.error.message) : e.message;
+      renderErrorOverlay("Runtime JavaScript Error", errMsg);
+    });
+
+    window.addEventListener("unhandledrejection", function(e) {
+      const reason = e.reason ? (e.reason.stack || e.reason.message || String(e.reason)) : "Unknown rejection";
+      renderErrorOverlay("Unhandled Promise Rejection", String(reason));
+    });
+  </script>
+
   <!-- Runtime Execution Script -->
   <script type="module">
     import React from "react";
@@ -423,13 +464,11 @@ export function compileSandboxHtml(
 
     window.addEventListener("error", (e) => {
       const errMsg = e.error ? (e.error.stack || e.error.message) : e.message;
-      renderErrorOverlay("Runtime JavaScript Error", errMsg);
       sendConsoleLog("error", [errMsg]);
     });
 
     window.addEventListener("unhandledrejection", (e) => {
       const reason = e.reason ? (e.reason.stack || e.reason.message || String(e.reason)) : "Unknown rejection";
-      renderErrorOverlay("Unhandled Promise Rejection", String(reason));
       sendConsoleLog("error", [String(reason)]);
     });
 
@@ -463,19 +502,23 @@ export function compileSandboxHtml(
 
     async function bootstrap() {
       try {
-        // 1. Import component.tsx module (try import map first, fallback to blob)
+        // 1. Import component.tsx module (try import map bare specifier first, then relative, fallback to blob)
         let componentModule;
         try {
-          componentModule = await import("./component");
-        } catch (importErr) {
+          componentModule = await import("@component");
+        } catch (compErr1) {
           try {
-            const componentCode = ${safeCompJs};
-            const componentBlob = new Blob([componentCode], { type: "text/javascript" });
-            const componentUrl = URL.createObjectURL(componentBlob);
-            componentModule = await import(componentUrl);
-          } catch (compErr) {
-            renderErrorOverlay("Failed to import component.tsx", compErr.message);
-            return;
+            componentModule = await import("./component");
+          } catch (compErr2) {
+            try {
+              const componentCode = ${safeCompJs};
+              const componentBlob = new Blob([componentCode], { type: "text/javascript" });
+              const componentUrl = URL.createObjectURL(componentBlob);
+              componentModule = await import(componentUrl);
+            } catch (blobErr) {
+              renderErrorOverlay("Failed to import component.tsx", blobErr.message);
+              return;
+            }
           }
         }
 
@@ -486,7 +529,7 @@ export function compileSandboxHtml(
           Object.values(componentModule).find((v) => typeof v === "function") ||
           null;
 
-        // 2. Prepare and import demo.tsx module directly via data URI (natively resolves ./component via importmap)
+        // 2. Prepare and import demo.tsx module directly via import map bare specifier or data URI
         const rawDemoCode = ${safeDemoJs};
         let DemoComponent = null;
 
@@ -494,11 +537,15 @@ export function compileSandboxHtml(
           try {
             let demoModule;
             try {
-              demoModule = await import(${safeDemoDataUri});
-            } catch (dataUriErr) {
-              const demoBlob = new Blob([rawDemoCode], { type: "text/javascript" });
-              const demoUrl = URL.createObjectURL(demoBlob);
-              demoModule = await import(demoUrl);
+              demoModule = await import("@demo");
+            } catch (demoErr1) {
+              try {
+                demoModule = await import(${safeDemoDataUri});
+              } catch (demoErr2) {
+                const demoBlob = new Blob([rawDemoCode], { type: "text/javascript" });
+                const demoUrl = URL.createObjectURL(demoBlob);
+                demoModule = await import(demoUrl);
+              }
             }
             DemoComponent =
               demoModule.default ||
@@ -634,7 +681,7 @@ export function compileSandboxHtml(
         let stylesText = "";
         const styleElements = document.querySelectorAll("style");
         for (const el of styleElements) {
-          stylesText += el.innerHTML + "\n";
+          stylesText += el.innerHTML + "\\n";
         }
 
         const clonedRoot = root.cloneNode(true);
@@ -647,7 +694,7 @@ export function compileSandboxHtml(
           '<svg xmlns="http://www.w3.org/2000/svg" width="' + width + '" height="' + height + '">' +
           '<foreignObject width="100%" height="100%">' +
           '<div xmlns="http://www.w3.org/1999/xhtml" class="' + wrapperClasses + '" style="width:100%;height:100%;' + bodyStyles + '">' +
-          '<style>/* <![CDATA[ */\n' + stylesText + '\n/* ]]> */</style>' +
+          '<style>/* <![CDATA[ */\\n' + stylesText + '\\n/* ]]> */</style>' +
           serializedHtml +
           '</div>' +
           '</foreignObject>' +
