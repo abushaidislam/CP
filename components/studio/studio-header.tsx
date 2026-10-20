@@ -20,6 +20,7 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   Layers,
   ChevronDown,
@@ -44,6 +45,7 @@ import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 
 export function StudioHeader() {
+  const router = useRouter();
   const {
     currentTemplateId,
     userComponents,
@@ -172,7 +174,10 @@ export function StudioHeader() {
                 ? Object.values(userComponents).map((comp) => (
                     <DropdownMenuItem
                       key={comp.id}
-                      onClick={() => loadComponent(comp.id)}
+                      onClick={() => {
+                        loadComponent(comp.id);
+                        router?.push?.(`/studio/${comp.id}`);
+                      }}
                       className="flex flex-col items-start gap-0.5 py-2 cursor-pointer font-sans"
                     >
                       <div className="flex items-center justify-between w-full">

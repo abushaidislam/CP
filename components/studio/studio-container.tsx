@@ -31,11 +31,7 @@ export function StudioContainer({ componentId }: StudioContainerProps = {}) {
     loadComponent,
   } = useStudioStore();
 
-  useEffect(() => {
-    if (componentId && currentTemplateId !== componentId) {
-      loadComponent(componentId);
-    }
-  }, [componentId, currentTemplateId, loadComponent]);
+
 
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const [mobileTab, setMobileTab] = useState<"editor" | "preview" | "ai">("preview");
