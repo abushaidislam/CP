@@ -819,9 +819,34 @@ function syncVariantWithWorking(
   };
 }
 
+export function studioPersistMerge(
+  persistedState: unknown,
+  currentState: StudioState
+): StudioState {
+  const persisted = (persistedState || {}) as Partial<StudioState>;
+  const initialComponents = createInitialUserComponents();
+  return {
+    ...currentState,
+    ...persisted,
+    userComponents: {
+      ...initialComponents,
+      ...(persisted.userComponents || {}),
+    },
+    variantsByTemplate: {
+      ...currentState.variantsByTemplate,
+      ...(persisted.variantsByTemplate || {}),
+    },
+    activeVariantByTemplate: {
+      ...currentState.activeVariantByTemplate,
+      ...(persisted.activeVariantByTemplate || {}),
+    },
+  };
+}
+
 export const useStudioStore = create<StudioState>()(
   persist(
     (set, get) => ({
+
       files: {
         "component.tsx": initialTemplate.files["component.tsx"],
         "demo.tsx": initialTemplate.files["demo.tsx"],
@@ -2074,6 +2099,7 @@ export const useStudioStore = create<StudioState>()(
         userComponents: state.userComponents,
         recentComponentIds: state.recentComponentIds,
       }),
+      merge: studioPersistMerge,
     }
   )
 );

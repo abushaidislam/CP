@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from "bun:test";
-import { useStudioStore, createInitialUserComponents } from "../studio-store";
+import { useStudioStore, createInitialUserComponents, studioPersistMerge } from "../studio-store";
 
 describe("Component Registry & Work History Store Slice", () => {
   beforeEach(() => {
@@ -269,6 +269,35 @@ describe("Component Registry & Work History Store Slice", () => {
     // Duplicating should copy previewImage
     const dupId = store.duplicateUserComponent(clonedNeonId);
     expect(useStudioStore.getState().userComponents[dupId].previewImage).toBe(clonedNeonComp.previewImage);
+  });
+
+  it("should merge initial starter templates with older persisted state", () => {
+    const olderPersistedState = {
+      userComponents: {
+        "custom-old": {
+          id: "custom-old",
+          name: "Old Custom Card",
+          description: "From older app version",
+          category: "Cards",
+          createdAt: 1690000000000,
+          updatedAt: 1690000000000,
+          files: {
+            "component.tsx": "// old custom",
+            "demo.tsx": "// old demo",
+            "index.css": "",
+          },
+          dependencies: [],
+        },
+      },
+    };
+
+    const merged = studioPersistMerge(olderPersistedState, useStudioStore.getState());
+    expect(merged.userComponents["custom-old"]).toBeDefined();
+    expect(merged.userComponents["aurora-ambient-hero"]).toBeDefined();
+    expect(merged.userComponents["bento-metric-grid"]).toBeDefined();
+    expect(merged.userComponents["neon-glow-button"]).toBeDefined();
+    expect(merged.userComponents["live-ping-status-pill"]).toBeDefined();
+    expect(merged.userComponents["ink-orbit-hero"]).toBeDefined();
   });
 });
 

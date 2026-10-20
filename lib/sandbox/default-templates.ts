@@ -245,8 +245,8 @@ export default function Demo() {
       <ShimmerButton onClick={() => setCount((c) => c + 1)}>
         Launch Component Studio
       </ShimmerButton>
-      <p className="font-mono text-xs text-zinc-500 dark:text-zinc-400">
-        Triggered {count} times
+      <p className="font-sans text-xs text-zinc-500 dark:text-zinc-400">
+        Triggered <span className="font-mono tabular-nums font-semibold text-zinc-700 dark:text-zinc-300">{count}</span> times
       </p>
     </div>
   );
@@ -586,12 +586,22 @@ export default function BentoMetricGrid({
           return (
             <div
               key={m.id}
+              role="button"
+              tabIndex={0}
+              aria-pressed={isSelected}
               onClick={() => {
                 setSelectedId(m.id);
                 onSelectMetric?.(m.id);
               }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  setSelectedId(m.id);
+                  onSelectMetric?.(m.id);
+                }
+              }}
               className={
-                "group relative cursor-pointer rounded-xl border p-4 transition-all duration-200 " +
+                "group relative cursor-pointer rounded-xl border p-4 transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 " +
                 (isSelected
                   ? "border-indigo-500 bg-indigo-50/50 dark:border-indigo-500/60 dark:bg-indigo-950/20 shadow-sm"
                   : "border-zinc-200/80 dark:border-zinc-800/80 bg-zinc-50/50 dark:bg-zinc-900/40 hover:border-zinc-300 dark:hover:border-zinc-700 hover:bg-zinc-100/50 dark:hover:bg-zinc-900/80")
@@ -658,8 +668,8 @@ export default function Demo() {
   return (
     <div className="min-h-full flex flex-col items-center justify-center p-4 sm:p-8 font-sans">
       <BentoMetricGrid onSelectMetric={(id) => setSelected(id)} />
-      <div className="mt-4 font-mono text-xs text-zinc-500 dark:text-zinc-400">
-        Active Node Inspection: <span className="text-indigo-400 font-semibold">{selected}</span>
+      <div className="mt-4 font-sans text-xs text-zinc-500 dark:text-zinc-400">
+        Active Node Inspection: <span className="font-mono text-indigo-400 font-semibold">{selected}</span>
       </div>
     </div>
   );
@@ -791,8 +801,8 @@ export default function Demo() {
         </NeonGlowButton>
       </div>
 
-      <p className="font-mono text-xs text-zinc-500 dark:text-zinc-400">
-        Total Pulses Triggered: {clickCount}
+      <p className="font-sans text-xs text-zinc-500 dark:text-zinc-400">
+        Total Pulses Triggered: <span className="font-mono tabular-nums font-semibold text-zinc-700 dark:text-zinc-300">{clickCount}</span>
       </p>
     </div>
   );
