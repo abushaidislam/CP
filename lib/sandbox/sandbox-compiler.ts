@@ -570,7 +570,106 @@ export function compileSandboxHtml(
           });
         }
       }
+      if (event.data && event.data.type === "CAPTURE_PREVIEW") {
+        captureLivePreview(event.data.componentId);
+      }
     });
+
+    async function captureLivePreview(componentId) {
+      try {
+        const root = document.getElementById("root");
+        if (!root) return;
+
+        // 1. Check if #root contains a canvas
+        const innerCanvas = root.querySelector("canvas");
+        if (innerCanvas) {
+          try {
+            const dataUrl = innerCanvas.toDataURL("image/png");
+            if (dataUrl && dataUrl.startsWith("data:image/png")) {
+              notifyParent({
+                type: "PREVIEW_CAPTURED",
+                dataUrl: dataUrl,
+                componentId: componentId,
+              });
+              return;
+            }
+          } catch (canvasErr) {
+            // Canvas export failed or tainted, continue to SVG fallback
+          }
+        }
+
+        // 2. Capture the #root DOM using SVG <foreignObject>
+        const rect = root.getBoundingClientRect();
+        const width = Math.max(Math.ceil(rect.width) || 800, 320);
+        const height = Math.max(Math.ceil(rect.height) || 600, 240);
+
+        let stylesText = "";
+        const styleElements = document.querySelectorAll("style");
+        for (const el of styleElements) {
+          stylesText += el.innerHTML + "\n";
+        }
+
+        const clonedRoot = root.cloneNode(true);
+        const serializedHtml = new XMLSerializer().serializeToString(clonedRoot);
+
+        const svgString =
+          '<svg xmlns="http://www.w3.org/2000/svg" width="' + width + '" height="' + height + '">' +
+          '<foreignObject width="100%" height="100%">' +
+          '<div xmlns="http://www.w3.org/1999/xhtml" class="' + (document.documentElement.className || "") + '" style="width:100%;height:100%;">' +
+          '<style>' + stylesText + '</style>' +
+          serializedHtml +
+          '</div>' +
+          '</foreignObject>' +
+          '</svg>';
+
+        const svgDataUrl = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svgString);
+
+        // 3. Attempt offscreen Image -> Canvas conversion for clean PNG
+        const convertToPng = new Promise((resolve) => {
+          const img = new Image();
+          const timer = setTimeout(() => {
+            resolve(null);
+          }, 500);
+
+          img.onload = () => {
+            clearTimeout(timer);
+            try {
+              const offCanvas = document.createElement("canvas");
+              offCanvas.width = width;
+              offCanvas.height = height;
+              const ctx = offCanvas.getContext("2d");
+              if (!ctx) {
+                resolve(null);
+                return;
+              }
+              ctx.drawImage(img, 0, 0);
+              const pngDataUrl = offCanvas.toDataURL("image/png");
+              resolve(pngDataUrl);
+            } catch (e) {
+              resolve(null);
+            }
+          };
+
+          img.onerror = () => {
+            clearTimeout(timer);
+            resolve(null);
+          };
+
+          img.src = svgDataUrl;
+        });
+
+        const pngResult = await convertToPng;
+        const finalDataUrl = pngResult || svgDataUrl;
+
+        notifyParent({
+          type: "PREVIEW_CAPTURED",
+          dataUrl: finalDataUrl,
+          componentId: componentId,
+        });
+      } catch (err) {
+        console.warn("Failed to capture preview snapshot:", err);
+      }
+    }
 
     function runSimulatedHover(totalDuration) {
       if (simulationTimer) clearInterval(simulationTimer);
