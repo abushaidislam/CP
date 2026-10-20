@@ -25,6 +25,7 @@ import {
   Eye,
   Code2,
   History,
+  Loader2,
 } from "lucide-react";
 
 export interface QuickPreviewModalProps {
@@ -58,6 +59,7 @@ export function QuickPreviewModal({
   const [reloadKey, setReloadKey] = useState<number>(0);
   const [copiedCode, setCopiedCode] = useState<boolean>(false);
   const [copiedCli, setCopiedCli] = useState<boolean>(false);
+  const [isIframeLoading, setIsIframeLoading] = useState<boolean>(true);
   const copyTimerRef = useRef<NodeJS.Timeout | null>(null);
   const cliTimerRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -170,6 +172,23 @@ export function QuickPreviewModal({
 
   const isOpen = Boolean(quickPreviewComponentId && component);
 
+  // Track iframe loading states
+  useEffect(() => {
+    if (!isOpen) return;
+    setIsIframeLoading(true);
+    const handleMsg = (e: MessageEvent) => {
+      if (e.data?.type === "RENDER_SUCCESS" || e.data?.type === "RUNTIME_ERROR") {
+        setIsIframeLoading(false);
+      }
+    };
+    window.addEventListener("message", handleMsg);
+    const timer = setTimeout(() => setIsIframeLoading(false), 4500);
+    return () => {
+      window.removeEventListener("message", handleMsg);
+      clearTimeout(timer);
+    };
+  }, [isOpen, component?.id, reloadKey, previewTheme]);
+
   const handleOpenChange = (open: boolean) => {
     if (!open) {
       setQuickPreviewComponentId(null);
@@ -275,6 +294,14 @@ export function QuickPreviewModal({
             )}
 
             <div className="w-full h-[450px] rounded-lg border border-border bg-background overflow-hidden relative shadow-inner">
+              {isIframeLoading && !compileError && (
+                <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-background/70 backdrop-blur-xs gap-2 font-sans select-none pointer-events-none">
+                  <Loader2 className="size-6 animate-spin text-primary" />
+                  <span className="font-sans text-xs text-muted-foreground animate-pulse">
+                    Rendering live component preview...
+                  </span>
+                </div>
+              )}
               <iframe
                 key={`${component.id}-${reloadKey}-${previewTheme}`}
                 title={`${component.name} Preview`}

@@ -28,6 +28,7 @@ import {
   Paintbrush,
   Sun,
   Moon,
+  Loader2,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -65,6 +66,7 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
   const [draggedWidth, setDraggedWidth] = useState<number | null>(null);
   const [isResizing, setIsResizing] = useState(false);
   const [isReloading, setIsReloading] = useState(false);
+  const [isSandboxLoading, setIsSandboxLoading] = useState(true);
 
   // Debounce files (200ms) to ensure butter-smooth 60fps typing in CodeMirror without compiling on every single keystroke
   const [debouncedFiles, setDebouncedFiles] = useState(files);
@@ -112,6 +114,13 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
     );
   }, [debouncedFiles, dependencies, canvasBg, previewTheme, reloadKey]);
 
+  // Reset sandbox loading state on code / reload changes
+  useEffect(() => {
+    setIsSandboxLoading(true);
+    const timer = setTimeout(() => setIsSandboxLoading(false), 4500);
+    return () => clearTimeout(timer);
+  }, [html, reloadKey]);
+
   // Sync compiler errors with store
   useEffect(() => {
     if (error) {
@@ -129,7 +138,11 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
           setIsSimulatingHover(true);
           setTimeout(() => setIsSimulatingHover(false), event.data.durationMs || 4000);
         }
+        if (event.data.type === "RENDER_SUCCESS") {
+          setIsSandboxLoading(false);
+        }
         if (event.data.type === "RUNTIME_ERROR") {
+          setIsSandboxLoading(false);
           setCompilerState(false, event.data.message);
         }
         if (event.data.type === "SANDBOX_CONSOLE") {
@@ -490,6 +503,14 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
               previewTheme === "dark" ? "bg-zinc-950" : "bg-white"
             }`}
           >
+            {isSandboxLoading && !error && (
+              <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-background/70 backdrop-blur-xs gap-3 font-sans select-none pointer-events-none transition-opacity">
+                <Loader2 className="size-6 animate-spin text-primary" />
+                <span className="font-sans text-xs text-muted-foreground animate-pulse">
+                  Compiling component sandbox...
+                </span>
+              </div>
+            )}
             <iframe
               ref={iframeRef}
               key={reloadKey}

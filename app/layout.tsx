@@ -35,11 +35,17 @@ export default function RootLayout({
     <html
       lang="en"
       suppressHydrationWarning
-      className={`${geistSans.variable} ${geistMono.variable} dark h-full antialiased`}
+      className={`${geistSans.variable} ${geistMono.variable} dark min-h-full antialiased`}
     >
+      <head>
+        <link rel="preconnect" href="https://cdn.tailwindcss.com" crossOrigin="" />
+        <link rel="preconnect" href="https://esm.sh" crossOrigin="" />
+        <link rel="dns-prefetch" href="https://cdn.tailwindcss.com" />
+        <link rel="dns-prefetch" href="https://esm.sh" />
+      </head>
       <body
         suppressHydrationWarning
-        className="h-full bg-background text-foreground flex flex-col font-sans overflow-hidden selection:bg-primary/20 selection:text-foreground"
+        className="min-h-full bg-background text-foreground flex flex-col font-sans selection:bg-primary/20 selection:text-foreground"
       >
         <TooltipProvider delayDuration={80}>
           {children}

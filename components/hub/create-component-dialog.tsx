@@ -23,6 +23,7 @@ import {
   MousePointerClick,
   Activity,
   FileCode,
+  Loader2,
 } from "lucide-react";
 
 export interface CreateComponentDialogProps {
@@ -101,6 +102,7 @@ export function CreateComponentDialog({ onCreated }: CreateComponentDialogProps)
   const [category, setCategory] = useState<string>("Custom");
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | undefined>(undefined);
   const [error, setError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const nameRef = useRef("");
   const descriptionRef = useRef("");
@@ -143,7 +145,9 @@ export function CreateComponentDialog({ onCreated }: CreateComponentDialogProps)
     const effectiveDescription = (descriptionRef.current || description).trim() || undefined;
     const effectiveTemplateId = templateIdRef.current !== undefined ? templateIdRef.current : selectedTemplateId;
 
-    const newId = createComponent({
+    setIsSubmitting(true);
+    try {
+      const newId = createComponent({
       name: effectiveName,
       description: effectiveDescription,
       category: effectiveCategory || "Custom",
@@ -155,6 +159,9 @@ export function CreateComponentDialog({ onCreated }: CreateComponentDialogProps)
     }
 
     handleOpenChange(false);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -340,11 +347,21 @@ export function CreateComponentDialog({ onCreated }: CreateComponentDialogProps)
             <Button
               type="submit"
               size="sm"
+              disabled={isSubmitting}
               onClick={handleSubmit}
               className="font-sans text-xs gap-1.5 active:scale-[0.98] transition-transform duration-100"
             >
-              <Sparkles className="size-3.5" />
-              Create Component
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="size-3.5 animate-spin" />
+                  <span>Creating...</span>
+                </>
+              ) : (
+                <>
+                  <Sparkles className="size-3.5" />
+                  <span>Create Component</span>
+                </>
+              )}
             </Button>
           </DialogFooter>
         </form>
