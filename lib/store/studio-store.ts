@@ -742,8 +742,8 @@ export const useStudioStore = create<StudioState>()(
             sourceDeps = [...state.dependencies];
           } else {
             const tmpl =
-              state.userComponents?.[templateId] ||
               DEFAULT_TEMPLATES.find((t) => t.id === templateId) ||
+              state.userComponents?.[templateId] ||
               DEFAULT_TEMPLATES[0];
             sourceFiles = { ...tmpl.files };
             sourceDeps = [...tmpl.dependencies];
