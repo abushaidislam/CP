@@ -309,9 +309,11 @@ describe("ComponentCard & ComponentHub", () => {
       expect(studioId).toBe("test-card-component");
     });
 
-    it("should display Duplicate and Delete menu actions for custom components", () => {
+    it("should display Duplicate and Delete menu actions for custom components and gate deletion behind confirmation", () => {
       let duplicateId = "";
       let deleteId = "";
+      let dialogOpened = false;
+
       const html = renderToString(
         <ComponentCard
           component={mockComponent}
@@ -320,6 +322,9 @@ describe("ComponentCard & ComponentHub", () => {
           }}
           onDelete={(id) => {
             deleteId = id;
+          }}
+          onDeleteDialogOpenChange={(open) => {
+            dialogOpened = open;
           }}
         />
       );
@@ -333,6 +338,24 @@ describe("ComponentCard & ComponentHub", () => {
 
       const delAction = buttonClickMap.get("menu:Delete Component");
       delAction?.();
+      // Deletion must be gated behind confirmation dialog - not deleted immediately
+      expect(dialogOpened).toBe(true);
+      expect(deleteId).toBe("");
+
+      // Render dialog open and confirm delete
+      renderToString(
+        <ComponentCard
+          component={mockComponent}
+          isDeleteDialogOpen={true}
+          onDelete={(id) => {
+            deleteId = id;
+          }}
+        />
+      );
+
+      const confirmDeleteBtn = buttonClickMap.get("Delete");
+      expect(confirmDeleteBtn).toBeDefined();
+      confirmDeleteBtn?.();
       expect(deleteId).toBe("test-card-component");
     });
 

@@ -45,6 +45,8 @@ export interface ComponentCardProps {
   onOpenStudio?: (id: string) => void;
   onDuplicate?: (id: string) => void;
   onDelete?: (id: string) => void;
+  isDeleteDialogOpen?: boolean;
+  onDeleteDialogOpenChange?: (open: boolean) => void;
 }
 
 function renderCategoryIcon(category?: string, customClassName?: string) {
@@ -72,8 +74,15 @@ export function ComponentCard({
   onOpenStudio,
   onDuplicate,
   onDelete,
+  isDeleteDialogOpen: controlledOpen,
+  onDeleteDialogOpenChange,
 }: ComponentCardProps) {
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
+  const isDeleteDialogOpen = controlledOpen !== undefined ? controlledOpen : uncontrolledOpen;
+  const setIsDeleteDialogOpen = (open: boolean) => {
+    setUncontrolledOpen(open);
+    onDeleteDialogOpenChange?.(open);
+  };
 
   const handlePreview = () => {
     if (onPreview) {
@@ -155,11 +164,7 @@ export function ComponentCard({
                       <DropdownMenuSeparator />
                       <DropdownMenuItem
                         onClick={() => {
-                          if (onDelete) {
-                            onDelete(component.id);
-                          } else {
-                            setIsDeleteDialogOpen(true);
-                          }
+                          setIsDeleteDialogOpen(true);
                         }}
                         className="gap-2 cursor-pointer font-sans text-xs text-destructive focus:text-destructive focus:bg-destructive/10"
                       >
@@ -220,11 +225,14 @@ export function ComponentCard({
 
           {/* Title & Description */}
           <div className="min-w-0">
-            <h3
-              className="font-sans font-medium text-sm text-foreground truncate group-hover:text-primary transition-colors cursor-pointer"
-              onClick={handlePreview}
-            >
-              {component.name}
+            <h3 className="truncate">
+              <button
+                type="button"
+                onClick={handlePreview}
+                className="w-full text-left font-sans font-medium text-sm text-foreground truncate group-hover:text-primary transition-colors focus:outline-hidden cursor-pointer"
+              >
+                {component.name}
+              </button>
             </h3>
             <p className="font-sans text-xs text-muted-foreground line-clamp-1 mt-0.5">
               {component.description || "Interactive dynamic component."}
