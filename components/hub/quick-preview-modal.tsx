@@ -282,18 +282,6 @@ export function QuickPreviewModal({
                   <RotateCcw className="size-3.5" />
                   <span>Reset Preview</span>
                 </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="gap-1.5 font-sans h-8 text-xs"
-                  onClick={() => {
-                    setReloadKey((k) => k + 1);
-                    setIsIframeLoading(true);
-                  }}
-                >
-                  <RotateCcw className="size-3.5" />
-                  <span>Retry Preview</span>
-                </Button>
               </div>
               {component.description && (
                 <p className="font-sans text-xs text-muted-foreground truncate max-w-md">

@@ -177,21 +177,48 @@ describe("QuickPreviewModal", () => {
     expect(useStudioStore.getState().currentTemplateId).toBe("test-card");
   });
 
-  it("should render preview canvas controls (theme toggle, reset and retry preview)", () => {
+  it("should render preview canvas controls (theme toggle and reset preview) in toolbar", () => {
     const html = renderToString(<QuickPreviewModal defaultTab="preview" />);
 
     expect(html).toContain("Reset Preview");
-    expect(html).toContain("Retry Preview");
+    expect(html).not.toContain("Retry Preview");
     // Should have dark/light theme switch button
     expect(html).toMatch(/Light Mode|Dark Mode/);
-
-    const retryBtn = buttonClickMap.get("Retry Preview");
-    expect(retryBtn).toBeDefined();
-    expect(() => retryBtn!()).not.toThrow();
 
     const resetBtn = buttonClickMap.get("Reset Preview");
     expect(resetBtn).toBeDefined();
     expect(() => resetBtn!()).not.toThrow();
+  });
+
+  it("should render Retry Preview button in compilation error alert when error occurs", () => {
+    useStudioStore.setState((s) => ({
+      ...s,
+      userComponents: {
+        "test-card": {
+          id: "test-card",
+          name: "Test Interactive Card",
+          description: "A sleek test card component",
+          category: "Cards",
+          createdAt: 1700000000000,
+          updatedAt: 1700000000000,
+          files: {
+            "component.tsx": "export default function Broken( {", // invalid syntax
+            "demo.tsx": "",
+            "index.css": "",
+          },
+          dependencies: [],
+        },
+      },
+      quickPreviewComponentId: "test-card",
+    }));
+
+    const html = renderToString(<QuickPreviewModal defaultTab="preview" />);
+    expect(html).toContain("Preview compilation error:");
+    expect(html).toContain("Retry Preview");
+
+    const retryBtn = buttonClickMap.get("Retry Preview");
+    expect(retryBtn).toBeDefined();
+    expect(() => retryBtn!()).not.toThrow();
   });
 
   it("should render code viewer, CLI command, and copy buttons in Code tab", () => {
