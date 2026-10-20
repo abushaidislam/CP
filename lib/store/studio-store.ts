@@ -118,6 +118,22 @@ export interface ComponentVariant {
   checkpoints: ComponentCheckpoint[];
 }
 
+export interface UserComponent {
+  id: string;
+  name: string;
+  description: string;
+  category: string;
+  isBuiltIn?: boolean;
+  createdAt: number;
+  updatedAt: number;
+  files: {
+    "component.tsx": string;
+    "demo.tsx": string;
+    "index.css": string;
+  };
+  dependencies: string[];
+}
+
 export interface StudioState {
   // Files
   files: {
@@ -126,6 +142,12 @@ export interface StudioState {
     "index.css": string;
   };
   activeTab: StudioFileName;
+
+  // Component Registry & Work History
+  userComponents: Record<string, UserComponent>;
+  recentComponentIds: string[];
+  quickPreviewComponentId: string | null;
+  isCreateComponentDialogOpen: boolean;
 
   // Canvas & Preview Controls
   layoutMode: "split" | "editor" | "preview";
@@ -209,6 +231,20 @@ export interface StudioState {
   loadTemplate: (templateId: string) => void;
   resetCurrentTemplate: () => void;
 
+  // Component Registry & Work History Actions
+  createComponent: (data: {
+    name: string;
+    description?: string;
+    category?: string;
+    starterTemplateId?: string;
+  }) => string;
+  deleteUserComponent: (id: string) => void;
+  duplicateUserComponent: (id: string, newName?: string) => string;
+  loadComponent: (id: string) => void;
+  recordComponentVisit: (id: string) => void;
+  setQuickPreviewComponentId: (id: string | null) => void;
+  setCreateComponentDialogOpen: (open: boolean) => void;
+
   setCompilerState: (isCompiling: boolean, error?: string | null) => void;
   setRecordingModalOpen: (open: boolean) => void;
   setPublishModalOpen: (open: boolean) => void;
@@ -251,6 +287,28 @@ export interface StudioState {
 }
 
 const initialTemplate = DEFAULT_TEMPLATES[0];
+
+export function createInitialUserComponents(): Record<string, UserComponent> {
+  const map: Record<string, UserComponent> = {};
+  for (const tmpl of DEFAULT_TEMPLATES) {
+    map[tmpl.id] = {
+      id: tmpl.id,
+      name: tmpl.name,
+      description: tmpl.description,
+      category: tmpl.category,
+      isBuiltIn: true,
+      createdAt: 1700000000000,
+      updatedAt: 1700000000000,
+      files: {
+        "component.tsx": tmpl.files["component.tsx"],
+        "demo.tsx": tmpl.files["demo.tsx"],
+        "index.css": tmpl.files["index.css"],
+      },
+      dependencies: [...tmpl.dependencies],
+    };
+  }
+  return map;
+}
 
 const createDefaultVariant = (
   templateId: string,
@@ -333,6 +391,12 @@ export const useStudioStore = create<StudioState>()(
       zoom: 100,
       dependencies: initialTemplate.dependencies,
 
+      // Component Registry & Work History
+      userComponents: createInitialUserComponents(),
+      recentComponentIds: [initialTemplate.id],
+      quickPreviewComponentId: null,
+      isCreateComponentDialogOpen: false,
+
       // Version Control
       variantsByTemplate: {
         [initialTemplate.id]: [
@@ -396,8 +460,21 @@ export const useStudioStore = create<StudioState>()(
             nextFiles,
             state.dependencies
           );
+          const currentComp = state.userComponents?.[state.currentTemplateId];
+          const updatedUserComponents = currentComp
+            ? {
+                ...state.userComponents,
+                [state.currentTemplateId]: {
+                  ...currentComp,
+                  files: nextFiles,
+                  updatedAt: Date.now(),
+                },
+              }
+            : state.userComponents;
+
           return {
             files: nextFiles,
+            userComponents: updatedUserComponents,
             ...sync,
           };
         }),
@@ -881,19 +958,24 @@ export const useStudioStore = create<StudioState>()(
         })),
 
       loadTemplate: (templateId) => {
-        const template =
-          DEFAULT_TEMPLATES.find((t) => t.id === templateId) ||
+        get().loadComponent(templateId);
+      },
+
+      loadComponent: (id) => {
+        const state = get();
+        const target =
+          state.userComponents?.[id] ||
+          DEFAULT_TEMPLATES.find((t) => t.id === id) ||
           DEFAULT_TEMPLATES[0];
 
-        const state = get();
-        const existingVariants = state.variantsByTemplate?.[template.id] || [];
-        let activeVariantId = state.activeVariantByTemplate?.[template.id];
+        const existingVariants = state.variantsByTemplate?.[target.id] || [];
+        let activeVariantId = state.activeVariantByTemplate?.[target.id];
         let nextVariants = existingVariants;
-        let filesToLoad = template.files;
-        let depsToLoad = template.dependencies;
+        let filesToLoad = target.files;
+        let depsToLoad = target.dependencies;
 
         if (existingVariants.length === 0) {
-          const defaultVar = createDefaultVariant(template.id, template.files, template.dependencies);
+          const defaultVar = createDefaultVariant(target.id, target.files, target.dependencies);
           nextVariants = [defaultVar];
           activeVariantId = defaultVar.id;
           filesToLoad = { ...defaultVar.files };
@@ -908,24 +990,192 @@ export const useStudioStore = create<StudioState>()(
         set({
           files: filesToLoad,
           dependencies: depsToLoad,
-          currentTemplateId: template.id,
+          currentTemplateId: target.id,
           activeTab: "component.tsx",
           compilerError: null,
           variantsByTemplate: {
             ...(state.variantsByTemplate || {}),
-            [template.id]: nextVariants,
+            [target.id]: nextVariants,
           },
           activeVariantByTemplate: {
             ...(state.activeVariantByTemplate || {}),
-            [template.id]: activeVariantId,
+            [target.id]: activeVariantId,
           },
           selectedCheckpointId: null,
+          recentComponentIds: [target.id, ...(state.recentComponentIds || []).filter((cid) => cid !== target.id)],
         });
       },
 
+      createComponent: (data) => {
+        const id = `comp-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+        const name = data.name.trim() || "Untitled Component";
+        const category = data.category?.trim() || "Custom";
+        const description = data.description?.trim() || "";
+
+        let initialFiles: StudioState["files"];
+        let initialDeps: string[];
+
+        const starter = data.starterTemplateId
+          ? get().userComponents?.[data.starterTemplateId] ||
+            DEFAULT_TEMPLATES.find((t) => t.id === data.starterTemplateId)
+          : null;
+
+        if (starter) {
+          initialFiles = {
+            "component.tsx": starter.files["component.tsx"],
+            "demo.tsx": starter.files["demo.tsx"],
+            "index.css": starter.files["index.css"],
+          };
+          initialDeps = [...starter.dependencies];
+        } else {
+          initialFiles = {
+            "component.tsx": `"use client"\n\nimport React from "react"\n\nexport function Component() {\n  return (\n    <div className="flex items-center justify-center p-8 text-foreground">\n      <h2 className="text-xl font-semibold">${name}</h2>\n    </div>\n  )\n}\n\nexport default Component\n`,
+            "demo.tsx": `"use client"\n\nimport React from "react"\nimport Component from "./component"\n\nexport default function Demo() {\n  return (\n    <div className="flex min-h-[300px] w-full items-center justify-center p-6">\n      <Component />\n    </div>\n  )\n}\n`,
+            "index.css": `@tailwind base;\n@tailwind components;\n@tailwind utilities;\n`,
+          };
+          initialDeps = [];
+        }
+
+        const newComponent: UserComponent = {
+          id,
+          name,
+          description,
+          category,
+          isBuiltIn: false,
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+          files: initialFiles,
+          dependencies: initialDeps,
+        };
+
+        const defaultVar = createDefaultVariant(id, initialFiles, initialDeps);
+
+        set((state) => ({
+          userComponents: {
+            ...state.userComponents,
+            [id]: newComponent,
+          },
+          currentTemplateId: id,
+          files: initialFiles,
+          dependencies: initialDeps,
+          activeTab: "component.tsx",
+          compilerError: null,
+          recentComponentIds: [id, ...(state.recentComponentIds || []).filter((cid) => cid !== id)],
+          variantsByTemplate: {
+            ...(state.variantsByTemplate || {}),
+            [id]: [defaultVar],
+          },
+          activeVariantByTemplate: {
+            ...(state.activeVariantByTemplate || {}),
+            [id]: defaultVar.id,
+          },
+          selectedCheckpointId: null,
+          isCreateComponentDialogOpen: false,
+        }));
+
+        return id;
+      },
+
+      deleteUserComponent: (id) =>
+        set((state) => {
+          const nextUserComponents = { ...state.userComponents };
+          delete nextUserComponents[id];
+
+          const nextRecent = (state.recentComponentIds || []).filter((cid) => cid !== id);
+          const nextVariants = { ...state.variantsByTemplate };
+          delete nextVariants[id];
+          const nextActiveVariants = { ...state.activeVariantByTemplate };
+          delete nextActiveVariants[id];
+
+          let nextCurrentTemplateId = state.currentTemplateId;
+          let nextFiles = state.files;
+          let nextDeps = state.dependencies;
+
+          if (state.currentTemplateId === id) {
+            const remainingIds = Object.keys(nextUserComponents);
+            const fallbackComp =
+              remainingIds.length > 0
+                ? nextUserComponents[remainingIds[0]]
+                : DEFAULT_TEMPLATES[0];
+            nextCurrentTemplateId = fallbackComp.id;
+            nextFiles = { ...fallbackComp.files };
+            nextDeps = [...fallbackComp.dependencies];
+          }
+
+          return {
+            userComponents: nextUserComponents,
+            recentComponentIds: nextRecent,
+            variantsByTemplate: nextVariants,
+            activeVariantByTemplate: nextActiveVariants,
+            currentTemplateId: nextCurrentTemplateId,
+            files: nextFiles,
+            dependencies: nextDeps,
+            quickPreviewComponentId:
+              state.quickPreviewComponentId === id ? null : state.quickPreviewComponentId,
+          };
+        }),
+
+      duplicateUserComponent: (id, newName) => {
+        const state = get();
+        const source =
+          state.userComponents?.[id] ||
+          DEFAULT_TEMPLATES.find((t) => t.id === id);
+
+        if (!source) {
+          throw new Error(`Component with ID '${id}' not found`);
+        }
+
+        const dupId = `comp-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+        const name = newName?.trim() || `${source.name} Copy`;
+        const dupComponent: UserComponent = {
+          id: dupId,
+          name,
+          description: source.description || "",
+          category: source.category || "Custom",
+          isBuiltIn: false,
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+          files: {
+            "component.tsx": source.files["component.tsx"],
+            "demo.tsx": source.files["demo.tsx"],
+            "index.css": source.files["index.css"],
+          },
+          dependencies: [...source.dependencies],
+        };
+
+        const defaultVar = createDefaultVariant(dupId, dupComponent.files, dupComponent.dependencies);
+
+        set((s) => ({
+          userComponents: {
+            ...s.userComponents,
+            [dupId]: dupComponent,
+          },
+          variantsByTemplate: {
+            ...(s.variantsByTemplate || {}),
+            [dupId]: [defaultVar],
+          },
+          activeVariantByTemplate: {
+            ...(s.activeVariantByTemplate || {}),
+            [dupId]: defaultVar.id,
+          },
+        }));
+
+        return dupId;
+      },
+
+      recordComponentVisit: (id) =>
+        set((state) => ({
+          recentComponentIds: [id, ...(state.recentComponentIds || []).filter((cid) => cid !== id)],
+        })),
+
+      setQuickPreviewComponentId: (id) => set({ quickPreviewComponentId: id }),
+
+      setCreateComponentDialogOpen: (open) => set({ isCreateComponentDialogOpen: open }),
+
       resetCurrentTemplate: () => {
-        const { currentTemplateId, variantsByTemplate, activeVariantByTemplate } = get();
+        const { currentTemplateId, variantsByTemplate, activeVariantByTemplate, userComponents } = get();
         const template =
+          userComponents?.[currentTemplateId] ||
           DEFAULT_TEMPLATES.find((t) => t.id === currentTemplateId) ||
           DEFAULT_TEMPLATES[0];
 
@@ -1163,8 +1413,21 @@ export const useStudioStore = create<StudioState>()(
             nextFiles,
             state.dependencies
           );
+          const currentComp = state.userComponents?.[state.currentTemplateId];
+          const updatedUserComponents = currentComp
+            ? {
+                ...state.userComponents,
+                [state.currentTemplateId]: {
+                  ...currentComp,
+                  files: nextFiles,
+                  updatedAt: Date.now(),
+                },
+              }
+            : state.userComponents;
+
           return {
             files: nextFiles,
+            userComponents: updatedUserComponents,
             ...sync,
           };
         }),
@@ -1192,6 +1455,8 @@ export const useStudioStore = create<StudioState>()(
         aiRole: state.aiRole,
         variantsByTemplate: state.variantsByTemplate,
         activeVariantByTemplate: state.activeVariantByTemplate,
+        userComponents: state.userComponents,
+        recentComponentIds: state.recentComponentIds,
       }),
     }
   )
