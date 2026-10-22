@@ -32,6 +32,9 @@ import {
   Loader2,
   MoreHorizontal,
   Check,
+  Camera,
+  Download,
+  Copy,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -73,6 +76,14 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
   const [isReloading, setIsReloading] = useState(false);
   const [isSandboxLoading, setIsSandboxLoading] = useState(true);
 
+  // Instant Snapshot Capture States
+  const [isCapturingSnapshot, setIsCapturingSnapshot] = useState(false);
+  const [captureSuccess, setCaptureSuccess] = useState(false);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const pendingCaptureActionRef = useRef<"both" | "download" | "copy" | null>(null);
+  const captureTimeoutRef = useRef<NodeJS.Timeout | number | null>(null);
+  const toastTimeoutRef = useRef<NodeJS.Timeout | number | null>(null);
+
   // Debounce files (200ms) to ensure butter-smooth 60fps typing in CodeMirror without compiling on every single keystroke
   const [debouncedFiles, setDebouncedFiles] = useState(files);
   useEffect(() => {
@@ -101,6 +112,32 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
         {
           type: "SET_PREVIEW_THEME",
           theme: nextTheme,
+        },
+        "*"
+      );
+    }
+  };
+
+  // Instant snapshot capture directly from canvas preview
+  const handleCaptureSnapshot = (action: "both" | "download" | "copy" = "both") => {
+    pendingCaptureActionRef.current = action;
+    setIsCapturingSnapshot(true);
+    setCaptureSuccess(false);
+    setToastMessage(null);
+
+    if (captureTimeoutRef.current) {
+      clearTimeout(captureTimeoutRef.current);
+    }
+    captureTimeoutRef.current = setTimeout(() => {
+      setIsCapturingSnapshot(false);
+      pendingCaptureActionRef.current = null;
+    }, 4500);
+
+    if (iframeRef.current && iframeRef.current.contentWindow) {
+      iframeRef.current.contentWindow.postMessage(
+        {
+          type: "CAPTURE_PREVIEW",
+          componentId: currentTemplateId,
         },
         "*"
       );
@@ -157,12 +194,78 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
           });
         }
         if (event.data.type === "PREVIEW_CAPTURED") {
+          if (captureTimeoutRef.current) {
+            clearTimeout(captureTimeoutRef.current);
+            captureTimeoutRef.current = null;
+          }
+          setIsCapturingSnapshot(false);
+
           if (event.data.dataUrl) {
+            const dataUrl = event.data.dataUrl as string;
             updateComponentPreview(
               event.data.componentId || currentTemplateId,
-              event.data.dataUrl
+              dataUrl
             );
+
+            const requestedAction = pendingCaptureActionRef.current;
+            pendingCaptureActionRef.current = null;
+
+            if (requestedAction) {
+              // 1. Automatic Download
+              if (requestedAction === "both" || requestedAction === "download") {
+                try {
+                  const downloadAnchor = document.createElement("a");
+                  downloadAnchor.href = dataUrl;
+                  downloadAnchor.download = `${event.data.componentId || currentTemplateId || "component"}-preview.png`;
+                  document.body.appendChild(downloadAnchor);
+                  downloadAnchor.click();
+                  document.body.removeChild(downloadAnchor);
+                } catch {
+                  // Ignore download trigger errors in restricted contexts
+                }
+              }
+
+              // 2. Clipboard Copy
+              if (requestedAction === "both" || requestedAction === "copy") {
+                if (typeof window !== "undefined" && navigator.clipboard) {
+                  fetch(dataUrl)
+                    .then((res) => res.blob())
+                    .then((blob) => {
+                      if (window.ClipboardItem && navigator.clipboard.write) {
+                        const item = new ClipboardItem({ "image/png": blob });
+                        navigator.clipboard.write([item]).catch(() => {
+                          navigator.clipboard.writeText(dataUrl);
+                        });
+                      } else {
+                        navigator.clipboard.writeText(dataUrl);
+                      }
+                    })
+                    .catch(() => {
+                      navigator.clipboard.writeText(dataUrl);
+                    });
+                }
+              }
+
+              // 3. Success feedback & toast
+              setCaptureSuccess(true);
+              const message =
+                requestedAction === "both"
+                  ? "Snapshot downloaded & copied"
+                  : requestedAction === "download"
+                  ? "Snapshot PNG downloaded"
+                  : "Snapshot copied to clipboard";
+              setToastMessage(message);
+
+              if (toastTimeoutRef.current) {
+                clearTimeout(toastTimeoutRef.current);
+              }
+              toastTimeoutRef.current = setTimeout(() => {
+                setCaptureSuccess(false);
+                setToastMessage(null);
+              }, 2600);
+            }
           }
+
           window.dispatchEvent(
             new CustomEvent("studio:preview-captured", { detail: event.data })
           );
@@ -183,7 +286,11 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
       }
     }
     window.addEventListener("message", handleMessage);
-    return () => window.removeEventListener("message", handleMessage);
+    return () => {
+      window.removeEventListener("message", handleMessage);
+      if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
+      if (captureTimeoutRef.current) clearTimeout(captureTimeoutRef.current);
+    };
   }, [setCompilerState, addTerminalLog, updateComponentPreview, currentTemplateId]);
 
   // Listen for custom preview capture requests from StudioHeader
@@ -335,13 +442,18 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
           </Badge>
         </div>
 
-        {/* Center: Subtle Status */}
+        {/* Center: Subtle Status & Toast */}
         <div className="flex items-center gap-2">
-          {isSimulatingHover && (
+          {toastMessage ? (
+            <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-[11px] font-sans font-medium animate-in fade-in zoom-in-95 duration-200">
+              <Check className="size-3 shrink-0" />
+              <span>{toastMessage}</span>
+            </div>
+          ) : isSimulatingHover ? (
             <span className="text-[11px] font-sans text-muted-foreground animate-pulse">
               Simulating pointer...
             </span>
-          )}
+          ) : null}
         </div>
 
         {/* Right: Controls & Zoom */}
@@ -480,6 +592,40 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
             <TooltipContent side="bottom">Force reload sandbox</TooltipContent>
           </Tooltip>
 
+          {/* Instant Snapshot Capture Button */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => handleCaptureSnapshot("both")}
+                disabled={isCapturingSnapshot}
+                className={cn(
+                  "size-7 rounded-md transition-colors",
+                  captureSuccess
+                    ? "text-emerald-600 dark:text-emerald-400 bg-emerald-500/10"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                {isCapturingSnapshot ? (
+                  <Loader2 className="size-3.5 animate-spin text-primary" />
+                ) : captureSuccess ? (
+                  <Check className="size-3.5 text-emerald-500" />
+                ) : (
+                  <Camera className="size-3.5" />
+                )}
+                <span className="sr-only">Capture preview snapshot</span>
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="font-sans">
+              {captureSuccess
+                ? "Snapshot downloaded & copied!"
+                : isCapturingSnapshot
+                ? "Capturing preview snapshot..."
+                : "Capture snapshot (download & copy)"}
+            </TooltipContent>
+          </Tooltip>
+
           {/* Fullscreen Toggle */}
           <Tooltip>
             <TooltipTrigger asChild>
@@ -519,7 +665,7 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
               </TooltipTrigger>
               <TooltipContent side="bottom">More options</TooltipContent>
             </Tooltip>
-            <DropdownMenuContent align="end" className="w-52 font-sans">
+            <DropdownMenuContent align="end" className="w-56 font-sans">
               <DropdownMenuLabel className="text-[10px] uppercase font-sans text-muted-foreground flex items-center justify-between">
                 <span>Canvas Options</span>
                 <span className="text-[10px] text-muted-foreground/80 font-normal">
@@ -530,10 +676,38 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
               <DropdownMenuItem
                 onClick={triggerTestSimulation}
                 disabled={isSimulatingHover}
-                className="flex items-center gap-2 text-xs cursor-pointer"
+                className="flex items-center gap-2 text-xs cursor-pointer font-sans"
               >
                 <MousePointerClick className="size-3.5" />
                 <span>Simulate Interaction</span>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuLabel className="text-[10px] uppercase font-sans text-muted-foreground">
+                Snapshot & Export
+              </DropdownMenuLabel>
+              <DropdownMenuItem
+                onClick={() => handleCaptureSnapshot("both")}
+                disabled={isCapturingSnapshot}
+                className="flex items-center gap-2 text-xs cursor-pointer font-sans"
+              >
+                <Camera className="size-3.5" />
+                <span>Download & Copy Snapshot</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => handleCaptureSnapshot("download")}
+                disabled={isCapturingSnapshot}
+                className="flex items-center gap-2 text-xs cursor-pointer font-sans"
+              >
+                <Download className="size-3.5" />
+                <span>Download PNG only</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => handleCaptureSnapshot("copy")}
+                disabled={isCapturingSnapshot}
+                className="flex items-center gap-2 text-xs cursor-pointer font-sans"
+              >
+                <Copy className="size-3.5" />
+                <span>Copy image to clipboard</span>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuLabel className="text-[10px] uppercase font-sans text-muted-foreground">
