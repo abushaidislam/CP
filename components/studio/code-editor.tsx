@@ -28,13 +28,17 @@ const baseEditorTheme = EditorView.theme({
     overflow: "auto",
     fontFamily: "inherit",
     lineHeight: "22px",
+    WebkitOverflowScrolling: "touch",
+    overscrollBehavior: "contain",
   },
   ".cm-content": {
     padding: "12px 0",
     caretColor: "#0070f3",
+    wordBreak: "break-word",
+    overflowWrap: "anywhere",
   },
   ".cm-line": {
-    padding: "0 12px",
+    padding: "0 10px",
   },
   ".cm-cursor": {
     borderLeftColor: "#0070f3",
@@ -45,7 +49,7 @@ const baseEditorTheme = EditorView.theme({
     userSelect: "none",
   },
   ".cm-gutterElement": {
-    padding: "0 12px 0 16px",
+    padding: "0 8px 0 10px",
   },
   ".cm-activeLine": {
     backgroundColor: "transparent",

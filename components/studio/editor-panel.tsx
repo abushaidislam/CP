@@ -21,9 +21,17 @@ import {
   Check,
   AlertCircle,
   Loader2,
+  MoreHorizontal,
 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
 import { motion, AnimatePresence } from "framer-motion";
-import { cn } from "@/lib/utils";
 
 export function EditorPanel() {
   const {
@@ -56,21 +64,25 @@ export function EditorPanel() {
   const tabs: Array<{
     id: StudioFileName;
     label: string;
+    shortLabel: string;
     icon: React.ReactNode;
   }> = [
     {
       id: "component.tsx",
       label: "component.tsx",
+      shortLabel: "component",
       icon: <FileCode2 className="size-3.5 text-muted-foreground" />,
     },
     {
       id: "demo.tsx",
       label: "demo.tsx",
+      shortLabel: "demo",
       icon: <FileText className="size-3.5 text-muted-foreground" />,
     },
     {
       id: "index.css",
       label: "index.css",
+      shortLabel: "css",
       icon: <Palette className="size-3.5 text-muted-foreground" />,
     },
   ];
@@ -104,41 +116,40 @@ export function EditorPanel() {
   const lineCount = currentFileContent.split("\n").length;
 
   return (
-    <div className="flex h-full w-full flex-col border-r border-border bg-background">
+    <div className="flex h-full w-full flex-col border-r-0 md:border-r border-border bg-background">
       {/* File Tabs Header */}
-      <div className="flex h-11 shrink-0 items-center justify-between border-b border-border bg-muted/10 px-3 select-none">
-        {/* File Navigation with sliding active pill */}
-        <div className="relative flex items-center bg-muted/60 p-0.5 rounded-md border border-border/40">
-          {tabs.map((tab) => {
-            const isActive = activeTab === tab.id;
-            return (
-              <button
-                key={tab.id}
-                type="button"
-                onClick={() => setActiveTab(tab.id as StudioFileName)}
-                className={cn(
-                  "relative z-10 flex h-6 items-center gap-1.5 px-2.5 text-xs font-mono transition-colors cursor-pointer select-none rounded-sm",
-                  isActive
-                    ? "text-foreground font-medium"
-                    : "text-muted-foreground hover:text-foreground"
-                )}
-              >
-                {isActive && (
-                  <motion.div
-                    layoutId="active-editor-file-tab-pill"
-                    className="absolute inset-0 rounded-sm bg-background shadow-2xs z-[-1]"
-                    transition={{ type: "spring", bounce: 0, duration: 0.2 }}
-                  />
-                )}
-                {tab.icon}
-                <span>{tab.label}</span>
-              </button>
-            );
-          })}
+      <div className="flex h-11 shrink-0 items-center justify-between border-b border-border/70 bg-card/50 dark:bg-card/30 backdrop-blur-xs px-3 select-none transition-colors">
+        {/* Left: File Navigation Tabs & Line Count Badge */}
+        <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
+          <Tabs
+            value={activeTab}
+            onValueChange={(val) => setActiveTab(val as StudioFileName)}
+          >
+            <TabsList className="h-7 bg-muted/60 dark:bg-muted/40 p-0.5 rounded-lg border border-border/40 gap-0.5">
+              {tabs.map((tab) => (
+                <TabsTrigger
+                  key={tab.id}
+                  value={tab.id}
+                  className="h-6 gap-1 sm:gap-1.5 px-2 sm:px-2.5 text-xs font-sans rounded-md transition-colors"
+                >
+                  {tab.icon}
+                  <span className="hidden xl:inline font-sans">{tab.label}</span>
+                  <span className="xl:hidden font-sans">{tab.shortLabel}</span>
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </Tabs>
+
+          <Badge
+            variant="outline"
+            className="hidden xl:inline-flex h-5 px-1.5 text-[11px] font-sans font-normal text-muted-foreground border-border/40 bg-muted/30 tabular-nums shrink-0"
+          >
+            {lineCount} lines
+          </Badge>
         </div>
 
-        {/* Action Controls */}
-        <div className="flex items-center gap-1">
+        {/* Right: Action Controls */}
+        <div className="flex items-center gap-1 shrink-0">
           {/* Format (Prettier) */}
           <Tooltip>
             <TooltipTrigger asChild>
@@ -147,17 +158,17 @@ export function EditorPanel() {
                 size="sm"
                 onClick={handleFormat}
                 disabled={isFormatting}
-                className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground"
+                className="h-7 px-2 sm:px-2.5 text-xs gap-1.5 text-muted-foreground hover:text-foreground rounded-md transition-colors"
               >
                 {isFormatting ? (
-                  <Loader2 className="size-3 animate-spin text-primary" />
+                  <Loader2 className="size-3.5 animate-spin text-primary" />
                 ) : formatSuccess ? (
-                  <Check className="size-3 text-emerald-500" />
+                  <Check className="size-3.5 text-emerald-500" />
                 ) : (
-                  <AlignLeft className="size-3" />
+                  <AlignLeft className="size-3.5" />
                 )}
-                <span className="hidden sm:inline text-xs">Format</span>
-                <kbd className="hidden lg:inline ml-1 font-mono text-[10px] bg-muted px-1 rounded text-muted-foreground">
+                <span className="hidden xl:inline text-xs font-sans">Format</span>
+                <kbd className="hidden 2xl:inline ml-0.5 font-sans text-[10px] text-muted-foreground/70 bg-muted px-1 py-0.5 rounded border border-border/40">
                   Ctrl+S
                 </kbd>
               </Button>
@@ -167,20 +178,20 @@ export function EditorPanel() {
             </TooltipContent>
           </Tooltip>
 
-          {/* Dependencies Button */}
+          {/* Dependencies Button (Desktop / Wide screen) */}
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => setDependencyModalOpen(true)}
-                className="h-7 px-2 text-xs gap-1.5"
+                className="hidden xl:inline-flex h-7 px-2.5 text-xs gap-1.5 text-muted-foreground hover:text-foreground rounded-md border-border/50 transition-colors"
               >
-                <Package className="size-3" />
-                <span className="hidden sm:inline">Packages</span>
+                <Package className="size-3.5" />
+                <span className="font-sans">Packages</span>
                 <Badge
                   variant="secondary"
-                  className="size-4 p-0 flex items-center justify-center text-[10px]"
+                  className="h-4 min-w-4 px-1 rounded-full text-[10px] font-sans font-medium flex items-center justify-center"
                 >
                   {dependencies.length}
                 </Badge>
@@ -191,21 +202,85 @@ export function EditorPanel() {
             </TooltipContent>
           </Tooltip>
 
-          {/* Reset Template Button */}
+          {/* Reset Template Button (Desktop / Wide screen) */}
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
                 variant="ghost"
                 size="icon"
                 onClick={resetCurrentTemplate}
-                className="size-7 text-muted-foreground hover:text-foreground"
+                className="hidden xl:inline-flex size-7 text-muted-foreground hover:text-foreground rounded-md transition-colors"
               >
-                <RotateCcw className="size-3" />
+                <RotateCcw className="size-3.5" />
                 <span className="sr-only">Reset template</span>
               </Button>
             </TooltipTrigger>
             <TooltipContent side="bottom">Reset code to starter blueprint</TooltipContent>
           </Tooltip>
+
+          {/* Tablet & Compact Overflow (...) Menu */}
+          <DropdownMenu>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="size-7 text-muted-foreground hover:text-foreground rounded-md transition-colors"
+                  >
+                    <MoreHorizontal className="size-3.5" />
+                    <span className="sr-only">More editor options</span>
+                  </Button>
+                </DropdownMenuTrigger>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">More options</TooltipContent>
+            </Tooltip>
+            <DropdownMenuContent align="end" className="w-52 font-sans">
+              <DropdownMenuLabel className="text-[10px] uppercase font-sans text-muted-foreground flex items-center justify-between">
+                <span>Editor Options</span>
+                <span className="text-[10px] text-muted-foreground/80 font-normal">
+                  {lineCount} lines
+                </span>
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={() => setDependencyModalOpen(true)}
+                className="flex items-center justify-between text-xs cursor-pointer"
+              >
+                <span className="flex items-center gap-2">
+                  <Package className="size-3.5" />
+                  <span>Packages</span>
+                </span>
+                <Badge
+                  variant="secondary"
+                  className="h-4 min-w-4 px-1.5 rounded-full text-[10px] font-sans font-medium"
+                >
+                  {dependencies.length}
+                </Badge>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={handleFormat}
+                disabled={isFormatting}
+                className="flex items-center justify-between text-xs cursor-pointer"
+              >
+                <span className="flex items-center gap-2">
+                  <AlignLeft className="size-3.5" />
+                  <span>Format Code</span>
+                </span>
+                <kbd className="font-sans text-[10px] text-muted-foreground/70 bg-muted px-1 rounded border border-border/40">
+                  Ctrl+S
+                </kbd>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={resetCurrentTemplate}
+                className="flex items-center gap-2 text-xs text-destructive focus:text-destructive cursor-pointer"
+              >
+                <RotateCcw className="size-3.5" />
+                <span>Reset Starter Blueprint</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 
@@ -228,7 +303,7 @@ export function EditorPanel() {
       </AnimatePresence>
 
       {/* Editor Body */}
-      <div className="flex-1 relative overflow-hidden bg-background">
+      <div className="flex-1 relative overflow-hidden bg-background min-h-0">
         <CodeEditor
           filename={activeTab}
           value={files[activeTab]}

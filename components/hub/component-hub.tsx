@@ -257,7 +257,7 @@ export function ComponentHub({
               <Layers className="size-4 text-muted-foreground/70" />
             </div>
             <div className="mt-2">
-              <div className="font-sans text-2xl font-bold tracking-tight text-foreground tabular-nums">
+              <div suppressHydrationWarning className="font-sans text-2xl font-bold tracking-tight text-foreground tabular-nums">
                 {totalComponentsCount}
               </div>
               <p className="font-sans text-[11px] text-muted-foreground/80 mt-0.5">
@@ -273,7 +273,7 @@ export function ComponentHub({
               <Sparkles className="size-4 text-primary" />
             </div>
             <div className="mt-2">
-              <div className="font-sans text-2xl font-bold tracking-tight text-foreground tabular-nums">
+              <div suppressHydrationWarning className="font-sans text-2xl font-bold tracking-tight text-foreground tabular-nums">
                 {customComponentsCount}
               </div>
               <p className="font-sans text-[11px] text-muted-foreground/80 mt-0.5">
@@ -289,7 +289,7 @@ export function ComponentHub({
               <Bookmark className="size-4 text-amber-500" />
             </div>
             <div className="mt-2">
-              <div className="font-sans text-2xl font-bold tracking-tight text-foreground tabular-nums">
+              <div suppressHydrationWarning className="font-sans text-2xl font-bold tracking-tight text-foreground tabular-nums">
                 {totalCheckpointsCount}
               </div>
               <p className="font-sans text-[11px] text-muted-foreground/80 mt-0.5">
@@ -305,7 +305,7 @@ export function ComponentHub({
               <Clock className="size-4 text-sky-500" />
             </div>
             <div className="mt-2">
-              <div className="font-sans text-2xl font-bold tracking-tight text-foreground tabular-nums">
+              <div suppressHydrationWarning className="font-sans text-2xl font-bold tracking-tight text-foreground tabular-nums">
                 {recentCount}
               </div>
               <p className="font-sans text-[11px] text-muted-foreground/80 mt-0.5">
@@ -353,6 +353,7 @@ export function ComponentHub({
                   <span>{category}</span>
                   <Badge
                     variant="secondary"
+                    suppressHydrationWarning
                     className={cn(
                       "px-1.5 py-0 text-[10px] font-sans tabular-nums rounded-full",
                       isActive
