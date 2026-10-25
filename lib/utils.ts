@@ -33,6 +33,7 @@ export function formatRelativeTime(timestamp?: number | string): string {
   if (diffDays < 7) return `${diffDays}d ago`;
 
   return date.toLocaleDateString("en-US", {
+    timeZone: "UTC",
     month: "short",
     day: "numeric",
     year: "numeric",

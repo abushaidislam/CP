@@ -85,6 +85,15 @@ export function StudioContainer({ componentId: _componentId }: StudioContainerPr
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [toggleAiPanel]);
 
+  // Synchronize mobile tab with layoutMode
+  useEffect(() => {
+    if (layoutMode === "editor") {
+      setMobileTab("editor");
+    } else if (layoutMode === "preview") {
+      setMobileTab("preview");
+    }
+  }, [layoutMode]);
+
   return (
     <div className="flex h-screen w-screen flex-col overflow-hidden bg-background text-foreground font-sans">
       {/* Top Header */}
@@ -99,6 +108,8 @@ export function StudioContainer({ componentId: _componentId }: StudioContainerPr
             setMobileTab(next);
             if (next === "ai") {
               setAiPanelOpen(true);
+            } else {
+              setAiPanelOpen(false);
             }
           }}
           className="w-full"
@@ -130,24 +141,24 @@ export function StudioContainer({ componentId: _componentId }: StudioContainerPr
         {/* Workspace Split Area (Editor + Splitter + Canvas) */}
         <div className="relative flex flex-1 overflow-hidden">
           {/* Editor Column */}
-          {(layoutMode === "split" || layoutMode === "editor") && (
-            <div
-              style={{
-                width: layoutMode === "editor" ? "100%" : `${splitRatio}%`,
-              }}
-              className={`h-full flex-col md:flex ${
-                mobileTab === "editor"
-                  ? "flex w-full"
-                  : layoutMode === "editor"
-                  ? "flex"
-                  : "hidden"
-              }`}
-            >
-              <EditorPanel />
-            </div>
-          )}
+          <div
+            style={{
+              "--split-width": layoutMode === "editor" ? "100%" : `${splitRatio}%`,
+            } as React.CSSProperties}
+            className={`h-full flex-col min-w-0 ${
+              mobileTab === "editor" ? "flex w-full" : "hidden"
+            } md:flex ${
+              layoutMode === "editor"
+                ? "md:w-full"
+                : layoutMode === "preview"
+                ? "md:hidden"
+                : "md:w-[var(--split-width)]"
+            }`}
+          >
+            <EditorPanel />
+          </div>
 
-          {/* Resizable Splitter Divider (only when split) */}
+          {/* Resizable Splitter Divider (only when split on desktop) */}
           {layoutMode === "split" && (
             <div
               role="separator"
@@ -176,21 +187,15 @@ export function StudioContainer({ componentId: _componentId }: StudioContainerPr
           )}
 
           {/* Center / Right Column: Canvas Live Preview */}
-          {(layoutMode === "split" || layoutMode === "preview") && (
-            <div
-              className={`h-full flex-1 md:flex overflow-hidden ${
-                isHistorySheetOpen || isSaveCheckpointDialogOpen ? "pointer-events-none select-none" : ""
-              } ${
-                mobileTab === "preview"
-                  ? "flex w-full"
-                  : layoutMode === "preview"
-                  ? "flex"
-                  : "hidden"
-              }`}
-            >
-              <CanvasPreview iframeRef={iframeRef} />
-            </div>
-          )}
+          <div
+            className={`h-full flex-1 overflow-hidden min-w-0 ${
+              isHistorySheetOpen || isSaveCheckpointDialogOpen ? "pointer-events-none select-none" : ""
+            } ${
+              mobileTab === "preview" ? "flex w-full" : "hidden"
+            } md:flex ${layoutMode === "editor" ? "md:hidden" : ""}`}
+          >
+            <CanvasPreview iframeRef={iframeRef} />
+          </div>
 
           {/* Desktop AI Assistant Slide-over with AnimatePresence */}
           <AnimatePresence>

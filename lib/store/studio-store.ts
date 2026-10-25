@@ -753,8 +753,8 @@ const createDefaultVariant = (
 ): ComponentVariant => ({
   id: `var-default-${templateId}`,
   name: "Default",
-  createdAt: Date.now(),
-  updatedAt: Date.now(),
+  createdAt: 1700000000000,
+  updatedAt: 1700000000000,
   files: {
     "component.tsx": files["component.tsx"],
     "demo.tsx": files["demo.tsx"],
@@ -894,7 +894,7 @@ export const useStudioStore = create<StudioState>()(
           id: "sys-init",
           type: "system",
           message: "Terminal & Console active. Ready for live output and commands.",
-          timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }),
+          timestamp: "12:00:00 AM",
           count: 1,
         },
       ],

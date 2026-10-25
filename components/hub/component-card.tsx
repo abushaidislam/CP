@@ -135,7 +135,7 @@ export function ComponentCard({
             </div>
 
             <div className="flex items-center gap-1.5">
-              <span className="font-sans text-[11px] text-muted-foreground tabular-nums">
+              <span suppressHydrationWarning className="font-sans text-[11px] text-muted-foreground tabular-nums">
                 {formatRelativeTime(component.updatedAt)}
               </span>
 
@@ -246,6 +246,7 @@ export function ComponentCard({
           <div className="flex items-center gap-1.5 flex-wrap">
             <Badge
               variant="secondary"
+              suppressHydrationWarning
               className="gap-1 font-sans text-[10px] font-normal px-1.5 py-0 text-muted-foreground"
               title={`${variantsCount} variant${variantsCount !== 1 ? "s" : ""}`}
             >
@@ -256,6 +257,7 @@ export function ComponentCard({
             {checkpointsCount > 0 && (
               <Badge
                 variant="secondary"
+                suppressHydrationWarning
                 className="gap-1 font-sans text-[10px] font-normal px-1.5 py-0 text-muted-foreground"
                 title={`${checkpointsCount} saved snapshot${checkpointsCount !== 1 ? "s" : ""}`}
               >

@@ -60,6 +60,18 @@ if (typeof globalThis.document === "undefined") {
   } as any;
 }
 
+// Mock next/navigation
+mock.module("next/navigation", () => ({
+  useRouter: () => ({
+    push: () => {},
+    replace: () => {},
+    prefetch: () => {},
+    back: () => {},
+  }),
+  useParams: () => ({ id: "ink-orbit-hero" }),
+  usePathname: () => "/studio/ink-orbit-hero",
+}));
+
 // Registry to capture onClick handlers from rendered Buttons
 const buttonClickMap = new Map<string, () => void>();
 

@@ -41,6 +41,7 @@ function formatCheckpointDate(createdAt?: number, timestamp?: string): string {
   if (diffDays < 7) return `${diffDays}d ago`;
 
   return new Intl.DateTimeFormat("en-US", {
+    timeZone: "UTC",
     month: "short",
     day: "numeric",
     hour: "numeric",
