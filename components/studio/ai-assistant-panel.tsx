@@ -292,10 +292,21 @@ export function AiAssistantPanel({ isMobile = false, onClose }: AiAssistantPanel
     }
   }, [aiChatMessages, isAiThinking]);
 
-  // Resizable panel from left border
+  // Resizable panel with 60fps rAF batching & full-screen drag overlay
+  const [isResizing, setIsResizing] = useState(false);
+  const [localWidth, setLocalWidth] = useState(aiPanelWidth);
+
+  // Keep localWidth in sync with store when not actively dragging
+  useEffect(() => {
+    if (!isResizingRef.current) {
+      setLocalWidth(aiPanelWidth);
+    }
+  }, [aiPanelWidth]);
+
   const handleResizeStart = (e: React.MouseEvent) => {
     e.preventDefault();
     isResizingRef.current = true;
+    setIsResizing(true);
     startXRef.current = e.clientX;
     startWidthRef.current = aiPanelWidth;
     document.body.style.cursor = "ew-resize";
@@ -303,26 +314,40 @@ export function AiAssistantPanel({ isMobile = false, onClose }: AiAssistantPanel
   };
 
   useEffect(() => {
+    let rafId: number | null = null;
+
     const handleMouseMove = (e: MouseEvent) => {
       if (!isResizingRef.current) return;
       const deltaX = startXRef.current - e.clientX;
-      const newWidth = Math.max(340, Math.min(680, startWidthRef.current + deltaX));
-      setAiPanelWidth(newWidth);
+      const nextWidth = Math.max(340, Math.min(800, startWidthRef.current + deltaX));
+
+      if (rafId) cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(() => {
+        setLocalWidth(nextWidth);
+      });
     };
 
-    const handleMouseUp = () => {
+    const handleMouseUp = (e: MouseEvent) => {
       if (isResizingRef.current) {
         isResizingRef.current = false;
+        setIsResizing(false);
+        if (rafId) cancelAnimationFrame(rafId);
         document.body.style.cursor = "";
         document.body.style.userSelect = "";
+
+        const deltaX = startXRef.current - e.clientX;
+        const finalWidth = Math.max(340, Math.min(800, startWidthRef.current + deltaX));
+        setLocalWidth(finalWidth);
+        setAiPanelWidth(finalWidth);
       }
     };
 
-    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mousemove", handleMouseMove, { passive: true });
     window.addEventListener("mouseup", handleMouseUp);
     return () => {
       window.removeEventListener("mousemove", handleMouseMove);
       window.removeEventListener("mouseup", handleMouseUp);
+      if (rafId) cancelAnimationFrame(rafId);
     };
   }, [setAiPanelWidth]);
 
@@ -484,23 +509,29 @@ export function AiAssistantPanel({ isMobile = false, onClose }: AiAssistantPanel
   if (!isAiPanelOpen && !isMobile) return null;
 
   return (
-    <div
-      style={isMobile ? { width: "100%" } : { width: `${aiPanelWidth}px` }}
-      className={cn(
-        "relative flex h-full flex-col bg-background text-foreground font-sans select-none z-20 shrink-0",
-        isMobile ? "w-full border-0" : "border-l border-border"
+    <>
+      {/* Full-screen invisible drag overlay to prevent canvas iframe from stealing mouse events */}
+      {isResizing && (
+        <div className="fixed inset-0 z-50 cursor-ew-resize select-none bg-transparent" />
       )}
-    >
-      {/* Resizable Left Edge Drag Handle (desktop only) */}
-      {!isMobile && (
-        <div
-          onMouseDown={handleResizeStart}
-          className="absolute left-0 top-0 bottom-0 w-1.5 cursor-ew-resize hover:bg-border/80 transition-colors z-30 group"
-          title="Drag left/right to resize Copilot panel"
-        >
-          <div className="h-full w-px bg-border group-hover:bg-foreground/30 transition-colors" />
-        </div>
-      )}
+
+      <div
+        style={isMobile ? { width: "100%" } : { width: `${localWidth}px` }}
+        className={cn(
+          "relative flex h-full flex-col bg-background text-foreground font-sans select-none z-20 shrink-0 will-change-transform",
+          isMobile ? "w-full border-0" : "border-l border-border"
+        )}
+      >
+        {/* Resizable Left Edge Drag Handle (desktop only) */}
+        {!isMobile && (
+          <div
+            onMouseDown={handleResizeStart}
+            className="absolute left-0 top-0 bottom-0 w-2 -left-1 cursor-ew-resize hover:bg-primary/20 active:bg-primary/30 transition-colors z-30 group"
+            title="Drag left/right to resize Copilot panel"
+          >
+            <div className="h-full w-px bg-border group-hover:bg-primary transition-colors mx-auto" />
+          </div>
+        )}
 
       {/* Top Header - Editorial, Clean & Polished */}
       <div className="flex h-11 shrink-0 items-center justify-between border-b border-border bg-card/40 px-3 select-none">
@@ -1080,6 +1111,7 @@ export function AiAssistantPanel({ isMobile = false, onClose }: AiAssistantPanel
           onClose={() => setPreviewSnippet(null)}
         />
       </div>
-    </div>
+      </div>
+    </>
   );
 }

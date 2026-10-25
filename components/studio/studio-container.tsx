@@ -27,6 +27,9 @@ export function StudioContainer({ componentId: _componentId }: StudioContainerPr
     setAiPanelOpen,
     layoutMode,
     isTerminalOpen,
+    isHistorySheetOpen,
+    isSaveCheckpointDialogOpen,
+    aiPanelWidth,
   } = useStudioStore();
 
 
@@ -177,6 +180,8 @@ export function StudioContainer({ componentId: _componentId }: StudioContainerPr
           {(layoutMode === "split" || layoutMode === "preview") && (
             <div
               className={`h-full flex-1 md:flex overflow-hidden ${
+                isHistorySheetOpen || isSaveCheckpointDialogOpen ? "pointer-events-none select-none" : ""
+              } ${
                 mobileTab === "preview"
                   ? "flex w-full"
                   : layoutMode === "preview"
@@ -202,7 +207,8 @@ export function StudioContainer({ componentId: _componentId }: StudioContainerPr
                   stiffness: 320,
                   mass: 0.8,
                 }}
-                className="hidden md:flex absolute top-0 right-0 bottom-0 z-30 shadow-2xl"
+                style={{ width: `${aiPanelWidth}px` }}
+                className="hidden md:flex absolute top-0 right-0 bottom-0 z-30 shadow-2xl will-change-transform"
               >
                 <AiAssistantPanel
                   isMobile={false}
