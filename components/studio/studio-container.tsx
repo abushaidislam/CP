@@ -29,7 +29,6 @@ export function StudioContainer({ componentId: _componentId }: StudioContainerPr
     isTerminalOpen,
     isHistorySheetOpen,
     isSaveCheckpointDialogOpen,
-    aiPanelWidth,
   } = useStudioStore();
 
 
@@ -207,8 +206,7 @@ export function StudioContainer({ componentId: _componentId }: StudioContainerPr
                   stiffness: 320,
                   mass: 0.8,
                 }}
-                style={{ width: `${aiPanelWidth}px` }}
-                className="hidden md:flex absolute top-0 right-0 bottom-0 z-30 shadow-2xl will-change-transform"
+                className="hidden md:flex absolute top-0 right-0 bottom-0 z-30 shadow-2xl"
               >
                 <AiAssistantPanel
                   isMobile={false}

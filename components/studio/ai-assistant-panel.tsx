@@ -134,6 +134,8 @@ export function AiAssistantPanel({ isMobile = false, onClose }: AiAssistantPanel
   const isResizingRef = useRef(false);
   const startXRef = useRef(0);
   const startWidthRef = useRef(0);
+  const panelRef = useRef<HTMLDivElement | null>(null);
+  const currentWidthRef = useRef(aiPanelWidth);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const requestStartTimeRef = useRef<number>(0);
 
@@ -292,62 +294,62 @@ export function AiAssistantPanel({ isMobile = false, onClose }: AiAssistantPanel
     }
   }, [aiChatMessages, isAiThinking]);
 
-  // Resizable panel with 60fps rAF batching & full-screen drag overlay
-  const [isResizing, setIsResizing] = useState(false);
-  const [localWidth, setLocalWidth] = useState(aiPanelWidth);
-
-  // Keep localWidth in sync with store when not actively dragging
+  // Keep DOM width synced when aiPanelWidth changes from store
   useEffect(() => {
-    if (!isResizingRef.current) {
-      setLocalWidth(aiPanelWidth);
+    if (panelRef.current && !isResizingRef.current) {
+      panelRef.current.style.width = `${aiPanelWidth}px`;
     }
   }, [aiPanelWidth]);
 
   const handleResizeStart = (e: React.MouseEvent) => {
     e.preventDefault();
     isResizingRef.current = true;
-    setIsResizing(true);
     startXRef.current = e.clientX;
-    startWidthRef.current = aiPanelWidth;
+    startWidthRef.current = panelRef.current ? panelRef.current.offsetWidth : aiPanelWidth;
+    currentWidthRef.current = startWidthRef.current;
     document.body.style.cursor = "ew-resize";
     document.body.style.userSelect = "none";
+
+    // Disable iframe pointer events during drag so the canvas never intercepts mousemove/mouseup
+    document.querySelectorAll("iframe").forEach((frame) => {
+      frame.style.pointerEvents = "none";
+    });
   };
 
   useEffect(() => {
-    let rafId: number | null = null;
-
     const handleMouseMove = (e: MouseEvent) => {
       if (!isResizingRef.current) return;
       const deltaX = startXRef.current - e.clientX;
       const nextWidth = Math.max(340, Math.min(800, startWidthRef.current + deltaX));
+      currentWidthRef.current = nextWidth;
 
-      if (rafId) cancelAnimationFrame(rafId);
-      rafId = requestAnimationFrame(() => {
-        setLocalWidth(nextWidth);
-      });
-    };
-
-    const handleMouseUp = (e: MouseEvent) => {
-      if (isResizingRef.current) {
-        isResizingRef.current = false;
-        setIsResizing(false);
-        if (rafId) cancelAnimationFrame(rafId);
-        document.body.style.cursor = "";
-        document.body.style.userSelect = "";
-
-        const deltaX = startXRef.current - e.clientX;
-        const finalWidth = Math.max(340, Math.min(800, startWidthRef.current + deltaX));
-        setLocalWidth(finalWidth);
-        setAiPanelWidth(finalWidth);
+      if (panelRef.current) {
+        panelRef.current.style.width = `${nextWidth}px`;
       }
     };
 
-    window.addEventListener("mousemove", handleMouseMove, { passive: true });
+    const handleMouseUp = () => {
+      if (isResizingRef.current) {
+        isResizingRef.current = false;
+        document.body.style.cursor = "";
+        document.body.style.userSelect = "";
+
+        // Restore iframe pointer events
+        document.querySelectorAll("iframe").forEach((frame) => {
+          frame.style.pointerEvents = "";
+        });
+
+        if (currentWidthRef.current) {
+          setAiPanelWidth(currentWidthRef.current);
+        }
+      }
+    };
+
+    window.addEventListener("mousemove", handleMouseMove);
     window.addEventListener("mouseup", handleMouseUp);
     return () => {
       window.removeEventListener("mousemove", handleMouseMove);
       window.removeEventListener("mouseup", handleMouseUp);
-      if (rafId) cancelAnimationFrame(rafId);
     };
   }, [setAiPanelWidth]);
 
@@ -509,19 +511,14 @@ export function AiAssistantPanel({ isMobile = false, onClose }: AiAssistantPanel
   if (!isAiPanelOpen && !isMobile) return null;
 
   return (
-    <>
-      {/* Full-screen invisible drag overlay to prevent canvas iframe from stealing mouse events */}
-      {isResizing && (
-        <div className="fixed inset-0 z-50 cursor-ew-resize select-none bg-transparent" />
+    <div
+      ref={panelRef}
+      style={isMobile ? { width: "100%" } : { width: `${aiPanelWidth}px` }}
+      className={cn(
+        "relative flex h-full flex-col bg-background text-foreground font-sans select-none z-20 shrink-0",
+        isMobile ? "w-full border-0" : "border-l border-border"
       )}
-
-      <div
-        style={isMobile ? { width: "100%" } : { width: `${localWidth}px` }}
-        className={cn(
-          "relative flex h-full flex-col bg-background text-foreground font-sans select-none z-20 shrink-0 will-change-transform",
-          isMobile ? "w-full border-0" : "border-l border-border"
-        )}
-      >
+    >
         {/* Resizable Left Edge Drag Handle (desktop only) */}
         {!isMobile && (
           <div
@@ -1111,7 +1108,6 @@ export function AiAssistantPanel({ isMobile = false, onClose }: AiAssistantPanel
           onClose={() => setPreviewSnippet(null)}
         />
       </div>
-      </div>
-    </>
+    </div>
   );
 }

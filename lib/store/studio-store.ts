@@ -1891,7 +1891,7 @@ export const useStudioStore = create<StudioState>()(
         set((state) => ({ isAiPanelOpen: !state.isAiPanelOpen })),
 
       setAiPanelWidth: (width) =>
-        set({ aiPanelWidth: Math.max(300, Math.min(700, width)) }),
+        set({ aiPanelWidth: Math.max(340, Math.min(800, width)) }),
 
       setGeminiApiKey: (key) => set({ geminiApiKey: key.trim() }),
 
