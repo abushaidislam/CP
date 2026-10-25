@@ -75,15 +75,30 @@ export function compileSandboxHtml(
   // Clean CSS imports from JavaScript so browser doesn't try to fetch them as JS modules
   const cleanedComponentJs = compTranspiled.js
     .replace(/import\s+['"][^'"]+\.css['"];?/g, "/* css imported */")
-    .replace(/(from\s+['"])(?:\.\/|\.\.\/|@\/lib\/|@\/)?utils(?:\.ts|\.js|\.tsx|\.jsx)?(['"])/g, "$1@utils$2")
-    .replace(/(import\s*\(\s*['"])(?:\.\/|\.\.\/|@\/lib\/|@\/)?utils(?:\.ts|\.js|\.tsx|\.jsx)?(['"]\s*\))/g, "$1@utils$2");
+    .replace(/(from\s+['"])(?:(?:\.\.|\.)\/|@\/)+(?:(?:lib|src\/lib)\/)?utils(?:\.ts|\.js|\.tsx|\.jsx)?(['"])/g, "$1@utils$2")
+    .replace(/(import\s*\(\s*['"])(?:(?:\.\.|\.)\/|@\/)+(?:(?:lib|src\/lib)\/)?utils(?:\.ts|\.js|\.tsx|\.jsx)?(['"]\s*\))/g, "$1@utils$2");
 
+  // Ensure 100% 21st.dev compatibility: resolve "../components/ui/component", "@/components/ui/component", "./component"
   const cleanedDemoJs = (demoTranspiled.js || "")
-    .replace(/import\s+['"][^'"]+\.css['"];?/g, "/* css imported */")
-    .replace(/(from\s+['"])(?:\.\/|\.\.\/|@\/components\/|@\/)?component(?:\.tsx|\.jsx|\.js)?(['"])/g, "$1@component$2")
-    .replace(/(import\s*\(\s*['"])(?:\.\/|\.\.\/|@\/components\/|@\/)?component(?:\.tsx|\.jsx|\.js)?(['"]\s*\))/g, "$1@component$2")
-    .replace(/(from\s+['"])(?:\.\/|\.\.\/|@\/lib\/|@\/)?utils(?:\.ts|\.js|\.tsx|\.jsx)?(['"])/g, "$1@utils$2")
-    .replace(/(import\s*\(\s*['"])(?:\.\/|\.\.\/|@\/lib\/|@\/)?utils(?:\.ts|\.js|\.tsx|\.jsx)?(['"]\s*\))/g, "$1@utils$2");
+    .replace(/import\s+['"][^'"]+.css['"];?/g, "/* css imported */")
+    .replace(/(from\s+['"])(?:(?:\.\.|\.)\/|@\/)+(?:(?:components|src\/components)\/)?(?:ui\/)?component(?:\.tsx|\.jsx|\.js)?(['"])/g, "$1@component$2")
+    .replace(/(import\s*\(\s*['"])(?:(?:\.\.|\.)\/|@\/)+(?:(?:components|src\/components)\/)?(?:ui\/)?component(?:\.tsx|\.jsx|\.js)?(['"]\s*\))/g, "$1@component$2")
+    .replace(/(from\s+['"])(?:(?:\.\.|\.)\/|@\/)+(?:(?:lib|src\/lib)\/)?utils(?:\.ts|\.js|\.tsx|\.jsx)?(['"])/g, "$1@utils$2")
+    .replace(/(import\s*\(\s*['"])(?:(?:\.\.|\.)\/|@\/)+(?:(?:lib|src\/lib)\/)?utils(?:\.ts|\.js|\.tsx|\.jsx)?(['"]\s*\))/g, "$1@utils$2");
+
+  // Synthesize default/named exports in component.tsx so both `import Component from ...` and `import { Component } from ...` succeed
+  let exportAugmentedComponentJs = cleanedComponentJs;
+  if (!/export\s+default\b/.test(cleanedComponentJs)) {
+    const namedMatch = cleanedComponentJs.match(/export\s+(?:function|const|class)\s+([A-Za-z0-9_$]+)/);
+    if (namedMatch && namedMatch[1]) {
+      exportAugmentedComponentJs += `\nexport default ${namedMatch[1]};\nexport { ${namedMatch[1]} as Component };`;
+    }
+  } else {
+    const defMatch = cleanedComponentJs.match(/export\s+default\s+function\s+([A-Za-z0-9_$]+)/);
+    if (defMatch && defMatch[1] && defMatch[1] !== "Component") {
+      exportAugmentedComponentJs += `\nexport { ${defMatch[1]} as Component };`;
+    }
+  }
 
   // Auto-detect any imported dependencies in both files
   const detectedDeps = Array.from(
@@ -107,7 +122,7 @@ export function compileSandboxHtml(
   // In-memory alias for component.tsx
   const componentDataUri =
     "data:text/javascript;charset=utf-8," +
-    encodeURIComponent(cleanedComponentJs);
+    encodeURIComponent(exportAugmentedComponentJs);
 
   const demoDataUri =
     "data:text/javascript;charset=utf-8," +
@@ -136,9 +151,15 @@ export function compileSandboxHtml(
     "../utils": cnModuleDataUri,
     "@component": componentDataUri,
     "@demo": demoDataUri,
+    "../components/ui/component": componentDataUri,
+    "../components/ui/component.tsx": componentDataUri,
+    "../../components/ui/component": componentDataUri,
+    "@/components/ui/component": componentDataUri,
+    "@/components/ui/component.tsx": componentDataUri,
+    "@/components/component": componentDataUri,
     "./component": componentDataUri,
     "./component.tsx": componentDataUri,
-    "@/components/component": componentDataUri,
+    "../component": componentDataUri,
   };
 
   for (const dep of detectedDeps) {

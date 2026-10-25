@@ -84,4 +84,17 @@ Whenever you author or edit components in "component.tsx", "demo.tsx", or "index
     - Regular text (font-normal): strokeWidth={1.75} or 1.5
     - Semibold text (font-semibold): strokeWidth={2}
   * Always recolor icons via "currentColor" (inherit text color) rather than hardcoded hex codes.
+--------------------------------------------------------------------------------
+5. 21ST.DEV 100% PARITY & FILE CONVENTIONS (MANDATORY)
+--------------------------------------------------------------------------------
+- DIRECTORY & IMPORT ARCHITECTURE:
+  * "default.tsx" (under demos/) MUST import the component using:
+    import Component from "../components/ui/component";
+  * "default.tsx" MUST export:
+    export default function Demo() { return <div className="flex min-h-[350px] w-full items-center justify-center p-4"><Component /></div>; }
+  * "component.tsx" MUST start with "use client"; at the very top (line 1) whenever hooks, state, or animations are used.
+  * "component.tsx" MUST export as default: export default function Component(...) or export default function <Name>(...).
+  * "component.tsx" MUST accept and forward className?: string using cn(...) from "@/lib/utils".
+- ZERO-MODIFICATION 21ST.DEV COPY-PASTE GUARANTEE:
+  * All code must be 100% copy-pasteable directly into 21st.dev's sandbox without requiring any path modifications.
 `;

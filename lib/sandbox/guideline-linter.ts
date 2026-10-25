@@ -169,24 +169,27 @@ export function auditComponentGuidelines(
     fixSuggestion: "Export your component as export default function ComponentName() { ... }",
   });
 
-  // 8. Demo Showcase Component
+  // 8. Demo Showcase Component (21st.dev 100% Parity)
   const hasValidDemo =
     demoCode.includes("export default") || /function\s+Demo\b/.test(demoCode);
   const demoImportsComponent =
-    demoCode.includes("./component") || demoCode.includes(ast.componentName);
+    demoCode.includes("../components/ui/component") ||
+    demoCode.includes("@/components/ui/component") ||
+    demoCode.includes("./component") ||
+    demoCode.includes(ast.componentName);
 
   checks.push({
     id: "demo-showcase",
     category: "demo",
-    title: "Demo Showcase (demo.tsx)",
+    title: "Demo Showcase (demos/default.tsx)",
     description:
       hasValidDemo && demoImportsComponent
-        ? "demo.tsx provides an isolated preview showcase of the component."
-        : "demo.tsx should import and showcase the component with realistic mock content.",
+        ? "demos/default.tsx provides a 21st.dev compatible showcase importing '../components/ui/component'."
+        : "default.tsx should import from '../components/ui/component' and export a showcase Demo().",
     severity: hasValidDemo && demoImportsComponent ? "success" : "warning",
     passed: hasValidDemo && demoImportsComponent,
     fixSuggestion:
-      'In demo.tsx, export a default function Demo() { return <div className="p-8"><YourComponent /></div>; }',
+      'In default.tsx, use: import Component from "../components/ui/component"; export default function Demo() { return <div className="p-8"><Component /></div>; }',
   });
 
   // 9. External Package Dependencies Verification

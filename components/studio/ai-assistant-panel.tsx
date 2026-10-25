@@ -942,7 +942,7 @@ export function AiAssistantPanel({ isMobile = false, onClose }: AiAssistantPanel
                                 msg.previousFiles["index.css"] ??
                                 files["index.css"],
                             }
-                          : files
+                          : (files as unknown as Record<string, string>)
                       }
                       approvalStatus={resolvedStatus}
                       onApprove={() =>
