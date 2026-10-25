@@ -2,7 +2,14 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { DEFAULT_TEMPLATES } from "@/lib/sandbox/default-templates";
 
-export type StudioFileName = "component.tsx" | "demo.tsx" | "index.css";
+export type StudioFileName = "component.tsx" | "default.tsx" | "demo.tsx" | "index.css";
+
+export interface StudioFiles {
+  "component.tsx": string;
+  "default.tsx"?: string;
+  "demo.tsx": string;
+  "index.css": string;
+}
 export type StudioViewport = "desktop" | "tablet" | "mobile" | "responsive";
 export type CanvasBackground = "dark" | "black" | "grid" | "light" | "mesh";
 export type PreviewTheme = "dark" | "light";
@@ -96,11 +103,7 @@ export interface ComponentCheckpoint {
   description?: string;
   timestamp: string;
   createdAt: number;
-  files: {
-    "component.tsx": string;
-    "demo.tsx": string;
-    "index.css": string;
-  };
+  files: StudioFiles;
   dependencies: string[];
 }
 
@@ -109,11 +112,7 @@ export interface ComponentVariant {
   name: string;
   createdAt: number;
   updatedAt: number;
-  files: {
-    "component.tsx": string;
-    "demo.tsx": string;
-    "index.css": string;
-  };
+  files: StudioFiles;
   dependencies: string[];
   checkpoints: ComponentCheckpoint[];
 }
@@ -126,22 +125,14 @@ export interface UserComponent {
   isBuiltIn?: boolean;
   createdAt: number;
   updatedAt: number;
-  files: {
-    "component.tsx": string;
-    "demo.tsx": string;
-    "index.css": string;
-  };
+  files: StudioFiles;
   dependencies: string[];
   previewImage?: string;
 }
 
 export interface StudioState {
   // Files
-  files: {
-    "component.tsx": string;
-    "demo.tsx": string;
-    "index.css": string;
-  };
+  files: StudioFiles;
   activeTab: StudioFileName;
 
   // Component Registry & Work History
@@ -849,7 +840,8 @@ export const useStudioStore = create<StudioState>()(
 
       files: {
         "component.tsx": initialTemplate.files["component.tsx"],
-        "demo.tsx": initialTemplate.files["demo.tsx"],
+        "default.tsx": initialTemplate.files["default.tsx"] || initialTemplate.files["demo.tsx"] || "",
+        "demo.tsx": initialTemplate.files["demo.tsx"] || initialTemplate.files["default.tsx"] || "",
         "index.css": initialTemplate.files["index.css"],
       },
       activeTab: "component.tsx",
@@ -1623,7 +1615,8 @@ export const useStudioStore = create<StudioState>()(
         } else {
           initialFiles = {
             "component.tsx": `"use client"\n\nimport React from "react"\n\nexport function Component() {\n  return (\n    <div className="flex items-center justify-center p-8 text-foreground">\n      <h2 className="text-xl font-semibold">${name}</h2>\n    </div>\n  )\n}\n\nexport default Component\n`,
-            "demo.tsx": `"use client"\n\nimport React from "react"\nimport Component from "./component"\n\nexport default function Demo() {\n  return (\n    <div className="flex min-h-[300px] w-full items-center justify-center p-6">\n      <Component />\n    </div>\n  )\n}\n`,
+            "default.tsx": `"use client";\n\nimport React from "react";\nimport Component from "../components/ui/component";\n\nexport default function Demo() {\n  return (\n    <div className="flex min-h-[300px] w-full items-center justify-center p-6">\n      <Component />\n    </div>\n  );\n}\n`,
+              "demo.tsx": `"use client";\n\nimport React from "react";\nimport Component from "../components/ui/component";\n\nexport default function Demo() {\n  return (\n    <div className="flex min-h-[300px] w-full items-center justify-center p-6">\n      <Component />\n    </div>\n  );\n}\n`,
             "index.css": `@tailwind base;\n@tailwind components;\n@tailwind utilities;\n`,
           };
           initialDeps = [];
@@ -1898,7 +1891,7 @@ export const useStudioStore = create<StudioState>()(
         set((state) => ({ isAiPanelOpen: !state.isAiPanelOpen })),
 
       setAiPanelWidth: (width) =>
-        set({ aiPanelWidth: Math.max(300, Math.min(700, width)) }),
+        set({ aiPanelWidth: Math.max(340, Math.min(800, width)) }),
 
       setGeminiApiKey: (key) => set({ geminiApiKey: key.trim() }),
 

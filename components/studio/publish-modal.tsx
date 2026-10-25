@@ -61,7 +61,7 @@ export function PublishModal() {
   const ast = useMemo(() => {
     return parseComponentAST(
       files["component.tsx"],
-      files["demo.tsx"],
+      files["default.tsx"] || files["demo.tsx"] || "",
       files["index.css"]
     );
   }, [files]);
@@ -90,7 +90,8 @@ export function PublishModal() {
 
   const compPath = pathStyle === "folder" ? `./${compFilename}` : `./components/ui/${compFilename}`;
   const demoPath = pathStyle === "folder" ? `./${demoFilename}` : `./components/demo/${demoFilename}`;
-  const hasDemo = !!files["demo.tsx"] && files["demo.tsx"].trim().length > 0;
+  const demoContent = files["default.tsx"] || files["demo.tsx"] || "";
+  const hasDemo = !!demoContent && demoContent.trim().length > 0;
 
   // Build clean publish CLI command
   const publishCommand = useMemo(() => {
@@ -131,7 +132,7 @@ export function PublishModal() {
   };
 
   const handleCopyDemoCode = () => {
-    navigator.clipboard.writeText(files["demo.tsx"]);
+    navigator.clipboard.writeText(demoContent);
     setCopiedDemoCode(true);
     setTimeout(() => setCopiedDemoCode(false), 2000);
   };
@@ -154,7 +155,7 @@ export function PublishModal() {
   };
 
   const handleDownloadDemo = () => {
-    downloadFile(demoFilename, files["demo.tsx"]);
+    downloadFile(demoFilename, demoContent);
   };
 
   // 1-Click: Download Both Files directly to user's folder

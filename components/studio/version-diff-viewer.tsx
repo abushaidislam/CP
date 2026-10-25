@@ -98,42 +98,53 @@ export function computeLineDiff(oldCode: string, newCode: string): DiffResult {
   const midA = oldLines.slice(prefixCount, oldLines.length - suffixCount);
   const midB = newLines.slice(prefixCount, newLines.length - suffixCount);
 
-  // 3. LCS dynamic programming on remaining middle section
+  // 3. Bounded LCS dynamic programming on remaining middle section (< 25,000 cells)
   const nA = midA.length;
   const nB = midB.length;
-  const dp: number[][] = Array.from({ length: nA + 1 }, () =>
-    new Array(nB + 1).fill(0)
-  );
-
-  for (let i = 0; i < nA; i++) {
-    for (let j = 0; j < nB; j++) {
-      if (midA[i] === midB[j]) {
-        dp[i + 1][j + 1] = dp[i][j] + 1;
-      } else {
-        dp[i + 1][j + 1] = Math.max(dp[i + 1][j], dp[i][j + 1]);
-      }
-    }
-  }
-
-  let i = nA;
-  let j = nB;
   const midOps: Array<{ type: DiffLineType; content: string }> = [];
 
-  while (i > 0 || j > 0) {
-    if (i > 0 && j > 0 && midA[i - 1] === midB[j - 1]) {
-      midOps.push({ type: "unchanged", content: midA[i - 1] });
-      i--;
-      j--;
-    } else if (j > 0 && (i === 0 || dp[i][j - 1] >= dp[i - 1][j])) {
-      midOps.push({ type: "added", content: midB[j - 1] });
-      j--;
-    } else if (i > 0 && (j === 0 || dp[i][j - 1] < dp[i - 1][j])) {
-      midOps.push({ type: "removed", content: midA[i - 1] });
-      i--;
+  // Protect against O(N*M) thread blocking on large components (e.g. 1,000 lines)
+  if (nA * nB > 25000) {
+    for (let k = 0; k < nA; k++) {
+      midOps.push({ type: "removed", content: midA[k] });
     }
-  }
+    for (let k = 0; k < nB; k++) {
+      midOps.push({ type: "added", content: midB[k] });
+    }
+  } else if (nA > 0 || nB > 0) {
+    const dp: number[][] = Array.from({ length: nA + 1 }, () =>
+      new Array(nB + 1).fill(0)
+    );
 
-  midOps.reverse();
+    for (let i = 0; i < nA; i++) {
+      for (let j = 0; j < nB; j++) {
+        if (midA[i] === midB[j]) {
+          dp[i + 1][j + 1] = dp[i][j] + 1;
+        } else {
+          dp[i + 1][j + 1] = Math.max(dp[i + 1][j], dp[i][j + 1]);
+        }
+      }
+    }
+
+    let i = nA;
+    let j = nB;
+
+    while (i > 0 || j > 0) {
+      if (i > 0 && j > 0 && midA[i - 1] === midB[j - 1]) {
+        midOps.push({ type: "unchanged", content: midA[i - 1] });
+        i--;
+        j--;
+      } else if (j > 0 && (i === 0 || dp[i][j - 1] >= dp[i - 1][j])) {
+        midOps.push({ type: "added", content: midB[j - 1] });
+        j--;
+      } else if (i > 0 && (j === 0 || dp[i][j - 1] < dp[i - 1][j])) {
+        midOps.push({ type: "removed", content: midA[i - 1] });
+        i--;
+      }
+    }
+
+    midOps.reverse();
+  }
 
   // 4. Assemble final lines with line numbering
   let curOld = 1;

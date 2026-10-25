@@ -27,6 +27,8 @@ export function StudioContainer({ componentId: _componentId }: StudioContainerPr
     setAiPanelOpen,
     layoutMode,
     isTerminalOpen,
+    isHistorySheetOpen,
+    isSaveCheckpointDialogOpen,
   } = useStudioStore();
 
 
@@ -187,6 +189,8 @@ export function StudioContainer({ componentId: _componentId }: StudioContainerPr
           {/* Center / Right Column: Canvas Live Preview */}
           <div
             className={`h-full flex-1 overflow-hidden min-w-0 ${
+              isHistorySheetOpen || isSaveCheckpointDialogOpen ? "pointer-events-none select-none" : ""
+            } ${
               mobileTab === "preview" ? "flex w-full" : "hidden"
             } md:flex ${layoutMode === "editor" ? "md:hidden" : ""}`}
           >

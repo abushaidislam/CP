@@ -21,6 +21,7 @@ import {
   Check,
   AlertCircle,
   Loader2,
+  Copy,
   MoreHorizontal,
 } from "lucide-react";
 import {
@@ -32,6 +33,7 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { motion, AnimatePresence } from "framer-motion";
+import { cn } from "@/lib/utils";
 
 export function EditorPanel() {
   const {
@@ -74,9 +76,9 @@ export function EditorPanel() {
       icon: <FileCode2 className="size-3.5 text-muted-foreground" />,
     },
     {
-      id: "demo.tsx",
-      label: "demo.tsx",
-      shortLabel: "demo",
+      id: "default.tsx",
+      label: "default.tsx",
+      shortLabel: "default",
       icon: <FileText className="size-3.5 text-muted-foreground" />,
     },
     {
@@ -86,6 +88,18 @@ export function EditorPanel() {
       icon: <Palette className="size-3.5 text-muted-foreground" />,
     },
   ];
+
+  const [copied, setCopied] = useState(false);
+  const effectiveTab = (activeTab === "demo.tsx" ? "default.tsx" : activeTab) as StudioFileName;
+
+  const handleCopyFor21st = () => {
+    const content = files[effectiveTab] || files[activeTab] || "";
+    if (content) {
+      navigator.clipboard.writeText(content);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
 
   const handleFormat = async () => {
     try {
@@ -112,33 +126,44 @@ export function EditorPanel() {
     }
   };
 
-  const currentFileContent = files[activeTab];
+  const currentFileContent = files[effectiveTab] || files[activeTab] || "";
   const lineCount = currentFileContent.split("\n").length;
 
   return (
     <div className="flex h-full w-full flex-col border-r-0 md:border-r border-border bg-background">
       {/* File Tabs Header */}
-      <div className="flex h-11 shrink-0 items-center justify-between border-b border-border/70 bg-card/50 dark:bg-card/30 backdrop-blur-xs px-3 select-none transition-colors">
-        {/* Left: File Navigation Tabs & Line Count Badge */}
-        <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
-          <Tabs
-            value={activeTab}
-            onValueChange={(val) => setActiveTab(val as StudioFileName)}
-          >
-            <TabsList className="h-7 bg-muted/60 dark:bg-muted/40 p-0.5 rounded-lg border border-border/40 gap-0.5">
-              {tabs.map((tab) => (
-                <TabsTrigger
+      <div className="flex h-11 shrink-0 items-center justify-between border-b border-border bg-muted/10 px-3 select-none">
+        {/* Left: File Navigation with sliding active pill & Line Count Badge */}
+        <div className="flex items-center gap-2 min-w-0">
+          <div className="relative flex items-center bg-muted/60 p-0.5 rounded-md border border-border/40">
+            {tabs.map((tab) => {
+              const isActive = effectiveTab === tab.id || activeTab === tab.id;
+              return (
+                <button
                   key={tab.id}
-                  value={tab.id}
-                  className="h-6 gap-1 sm:gap-1.5 px-2 sm:px-2.5 text-xs font-sans rounded-md transition-colors"
+                  type="button"
+                  onClick={() => setActiveTab(tab.id as StudioFileName)}
+                  className={cn(
+                    "relative z-10 flex h-6 items-center gap-1.5 px-2 sm:px-2.5 text-xs font-sans transition-colors cursor-pointer select-none rounded-sm",
+                    isActive
+                      ? "text-foreground font-medium"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
                 >
+                  {isActive && (
+                    <motion.div
+                      layoutId="active-editor-file-tab-pill"
+                      className="absolute inset-0 rounded-sm bg-background shadow-2xs z-[-1]"
+                      transition={{ type: "spring", bounce: 0, duration: 0.2 }}
+                    />
+                  )}
                   {tab.icon}
-                  <span className="hidden xl:inline font-sans">{tab.label}</span>
-                  <span className="xl:hidden font-sans">{tab.shortLabel}</span>
-                </TabsTrigger>
-              ))}
-            </TabsList>
-          </Tabs>
+                  <span className="hidden sm:inline font-sans">{tab.label}</span>
+                  <span className="sm:hidden font-sans">{tab.shortLabel}</span>
+                </button>
+              );
+            })}
+          </div>
 
           <Badge
             variant="outline"
@@ -302,11 +327,86 @@ export function EditorPanel() {
         )}
       </AnimatePresence>
 
+      {/* 21st.dev Breadcrumb File Path Header (100% 21st.dev Parity) */}
+      <div className="flex h-8 shrink-0 items-center justify-between border-b border-border/60 bg-muted/20 px-3 font-mono text-[11px] text-muted-foreground select-none">
+        <div className="flex items-center gap-1.5 overflow-hidden text-ellipsis whitespace-nowrap">
+          {effectiveTab === "index.css" ? (
+            <span className="font-bold text-muted-foreground">#</span>
+          ) : (
+            <svg
+              className="size-3.5 text-sky-400 shrink-0"
+              viewBox="-11.5 -10.23174 23 20.46348"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.2"
+              aria-hidden="true"
+            >
+              <circle cx="0" cy="0" r="2.05" fill="currentColor" stroke="none" />
+              <ellipse rx="11" ry="4.2" />
+              <ellipse rx="11" ry="4.2" transform="rotate(60)" />
+              <ellipse rx="11" ry="4.2" transform="rotate(120)" />
+            </svg>
+          )}
+          <span className="opacity-70">project</span>
+          <span className="opacity-40">/</span>
+          <span className="opacity-70">sandbox</span>
+          <span className="opacity-40">/</span>
+          <span className="opacity-70">src</span>
+          <span className="opacity-40">/</span>
+          {effectiveTab === "component.tsx" && (
+            <>
+              <span className="opacity-70">components</span>
+              <span className="opacity-40">/</span>
+              <span className="opacity-70">ui</span>
+              <span className="opacity-40">/</span>
+              <span className="font-semibold text-foreground">component.tsx</span>
+            </>
+          )}
+          {(effectiveTab === "default.tsx" || effectiveTab === "demo.tsx") && (
+            <>
+              <span className="opacity-70">demos</span>
+              <span className="opacity-40">/</span>
+              <span className="font-semibold text-foreground">default.tsx</span>
+            </>
+          )}
+          {effectiveTab === "index.css" && (
+            <span className="font-semibold text-foreground">index.css</span>
+          )}
+        </div>
+
+        {/* 1-Click Copy for 21st.dev Button */}
+        <div className="flex items-center gap-2">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleCopyFor21st}
+                className="h-6 px-2 text-[11px] font-sans gap-1 text-muted-foreground hover:text-foreground"
+              >
+                {copied ? (
+                  <Check className="size-3 text-emerald-500" />
+                ) : (
+                  <Copy className="size-3" />
+                )}
+                <span>{copied ? "Copied!" : "Copy for 21st.dev"}</span>
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">
+              Copy this file&apos;s code directly formatted for 21st.dev
+            </TooltipContent>
+          </Tooltip>
+          <span className="text-[10px] text-muted-foreground/60 hidden sm:inline">
+            {lineCount} lines
+          </span>
+        </div>
+      </div>
+
       {/* Editor Body */}
       <div className="flex-1 relative overflow-hidden bg-background min-h-0">
         <CodeEditor
           filename={activeTab}
-          value={files[activeTab]}
+          value={files[activeTab] || files[effectiveTab] || ""}
           onChange={(newVal) => updateFile(activeTab, newVal)}
           onFormat={handleFormat}
         />

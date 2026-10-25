@@ -48,6 +48,11 @@ import { cn } from "@/lib/utils";
 import {
   Check,
   PanelRightClose,
+  AlertTriangle,
+  SunMoon,
+  Layers,
+  Wand2,
+  CheckCircle2,
   Trash2,
   SlidersHorizontal,
   Moon,
@@ -56,7 +61,7 @@ import {
   ChevronDown,
   ChevronUp,
   Cpu,
-  Layers,
+  Sparkles,
   Gauge,
   User,
   ArrowRight,
@@ -106,6 +111,8 @@ export function AiAssistantPanel({ isMobile = false, onClose }: AiAssistantPanel
     aiModel,
     aiChatMessages,
     isAiThinking,
+    compilerError,
+    currentTemplateId,
     geminiApiKey,
     setAiPanelOpen,
     setAiPanelWidth,
@@ -134,6 +141,8 @@ export function AiAssistantPanel({ isMobile = false, onClose }: AiAssistantPanel
   const isResizingRef = useRef(false);
   const startXRef = useRef(0);
   const startWidthRef = useRef(0);
+  const panelRef = useRef<HTMLDivElement | null>(null);
+  const currentWidthRef = useRef(aiPanelWidth);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const requestStartTimeRef = useRef<number>(0);
 
@@ -231,6 +240,17 @@ export function AiAssistantPanel({ isMobile = false, onClose }: AiAssistantPanel
     [files]
   );
 
+  const failingChecks = useMemo(
+    () => auditResult.checks.filter((c) => !c.passed),
+    [auditResult]
+  );
+
+  const passPercentage = Math.round(
+    (passedCount / Math.max(1, planTasks.length)) * 100
+  );
+
+  const hasCompilerError = !!compilerError;
+
   // Progressive sequential chain-of-thought (Notion / ChatGPT / Gemini style)
   const workingSteps = useMemo<ReasoningStep[]>(() => {
     const step1: ReasoningStep = {
@@ -292,22 +312,38 @@ export function AiAssistantPanel({ isMobile = false, onClose }: AiAssistantPanel
     }
   }, [aiChatMessages, isAiThinking]);
 
-  // Resizable panel from left border
+  // Keep DOM width synced when aiPanelWidth changes from store
+  useEffect(() => {
+    if (panelRef.current && !isResizingRef.current) {
+      panelRef.current.style.width = `${aiPanelWidth}px`;
+    }
+  }, [aiPanelWidth]);
+
   const handleResizeStart = (e: React.MouseEvent) => {
     e.preventDefault();
     isResizingRef.current = true;
     startXRef.current = e.clientX;
-    startWidthRef.current = aiPanelWidth;
+    startWidthRef.current = panelRef.current ? panelRef.current.offsetWidth : aiPanelWidth;
+    currentWidthRef.current = startWidthRef.current;
     document.body.style.cursor = "ew-resize";
     document.body.style.userSelect = "none";
+
+    // Disable iframe pointer events during drag so the canvas never intercepts mousemove/mouseup
+    document.querySelectorAll("iframe").forEach((frame) => {
+      frame.style.pointerEvents = "none";
+    });
   };
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       if (!isResizingRef.current) return;
       const deltaX = startXRef.current - e.clientX;
-      const newWidth = Math.max(340, Math.min(680, startWidthRef.current + deltaX));
-      setAiPanelWidth(newWidth);
+      const nextWidth = Math.max(340, Math.min(800, startWidthRef.current + deltaX));
+      currentWidthRef.current = nextWidth;
+
+      if (panelRef.current) {
+        panelRef.current.style.width = `${nextWidth}px`;
+      }
     };
 
     const handleMouseUp = () => {
@@ -315,6 +351,15 @@ export function AiAssistantPanel({ isMobile = false, onClose }: AiAssistantPanel
         isResizingRef.current = false;
         document.body.style.cursor = "";
         document.body.style.userSelect = "";
+
+        // Restore iframe pointer events
+        document.querySelectorAll("iframe").forEach((frame) => {
+          frame.style.pointerEvents = "";
+        });
+
+        if (currentWidthRef.current) {
+          setAiPanelWidth(currentWidthRef.current);
+        }
       }
     };
 
@@ -485,22 +530,23 @@ export function AiAssistantPanel({ isMobile = false, onClose }: AiAssistantPanel
 
   return (
     <div
+      ref={panelRef}
       style={isMobile ? { width: "100%" } : { width: `${aiPanelWidth}px` }}
       className={cn(
         "relative flex h-full flex-col bg-background text-foreground font-sans select-none z-20 shrink-0",
         isMobile ? "w-full border-0" : "border-l border-border"
       )}
     >
-      {/* Resizable Left Edge Drag Handle (desktop only) */}
-      {!isMobile && (
-        <div
-          onMouseDown={handleResizeStart}
-          className="absolute left-0 top-0 bottom-0 w-1.5 cursor-ew-resize hover:bg-border/80 transition-colors z-30 group"
-          title="Drag left/right to resize Copilot panel"
-        >
-          <div className="h-full w-px bg-border group-hover:bg-foreground/30 transition-colors" />
-        </div>
-      )}
+        {/* Resizable Left Edge Drag Handle (desktop only) */}
+        {!isMobile && (
+          <div
+            onMouseDown={handleResizeStart}
+            className="absolute left-0 top-0 bottom-0 w-2 -left-1 cursor-ew-resize hover:bg-primary/20 active:bg-primary/30 transition-colors z-30 group"
+            title="Drag left/right to resize Copilot panel"
+          >
+            <div className="h-full w-px bg-border group-hover:bg-primary transition-colors mx-auto" />
+          </div>
+        )}
 
       {/* Top Header - Editorial, Clean & Polished */}
       <div className="flex h-11 shrink-0 items-center justify-between border-b border-border bg-card/40 px-3 select-none">
@@ -670,46 +716,196 @@ export function AiAssistantPanel({ isMobile = false, onClose }: AiAssistantPanel
       >
         {/* Empty State / Welcome Screen */}
         {aiChatMessages.length === 0 ? (
-          <div className="py-6 px-2 flex flex-col items-center text-center space-y-4 select-none">
-            <div className="size-10 rounded-xl bg-card border border-border flex items-center justify-center text-foreground shadow-2xs">
-              <Code2 className="size-5" />
+          <div className="py-5 px-1 flex flex-col items-center text-center space-y-4 select-none animate-in fade-in duration-200">
+            {/* Ambient Hero Icon with Glowing Aura */}
+            <div className="relative group">
+              <div className="absolute -inset-1 rounded-2xl bg-gradient-to-r from-primary/30 to-violet-500/30 blur-md opacity-75 group-hover:opacity-100 transition duration-300" />
+              <div className="relative size-12 rounded-2xl bg-card border border-border/80 flex items-center justify-center text-foreground shadow-sm">
+                <Code2 className="size-6 text-primary" />
+              </div>
             </div>
 
-            <div className="space-y-1 max-w-[280px]">
-              <h3 className="text-sm font-semibold tracking-tight text-foreground font-sans">
-                Copilot
-              </h3>
+            {/* Title & Description */}
+            <div className="space-y-1.5 max-w-[320px]">
+              <div className="flex items-center justify-center gap-1.5">
+                <h3 className="text-sm font-semibold tracking-tight text-foreground font-sans">
+                  Copilot Intelligence
+                </h3>
+                <Badge
+                  variant="secondary"
+                  className="text-[9px] py-0 px-1.5 font-mono uppercase tracking-wider text-primary bg-primary/10 border-primary/20"
+                >
+                  AI CO-ENGINEER
+                </Badge>
+              </div>
               <p className="text-xs text-muted-foreground leading-relaxed font-sans">
-                Grounded engineering assistant for React components, Tailwind styling, and Framer Motion springs.
+                Grounded pairing assistant for React components, Tailwind styling, and Framer Motion springs.
               </p>
             </div>
 
-            {/* Quick Starter Cards using official Button primitive */}
-            <div className="grid grid-cols-1 gap-2 w-full pt-2">
+            {/* Live Component Context Pill */}
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-border/80 bg-muted/40 text-[11px] font-sans text-muted-foreground">
+              <span
+                className={cn(
+                  "size-1.5 rounded-full shrink-0",
+                  hasCompilerError
+                    ? "bg-rose-500 animate-pulse"
+                    : allPassed
+                    ? "bg-emerald-500"
+                    : "bg-amber-500"
+                )}
+              />
+              <span className="font-mono text-foreground text-[10px]">component.tsx</span>
+              <span className="opacity-40">•</span>
+              <span>{compLinesCount} lines</span>
+              <span className="opacity-40">•</span>
+              <span
+                className={cn(
+                  "font-medium",
+                  hasCompilerError
+                    ? "text-rose-500 font-semibold"
+                    : allPassed
+                    ? "text-emerald-500"
+                    : "text-amber-500"
+                )}
+              >
+                {hasCompilerError ? "Syntax / Compile Error" : `${passPercentage}% 21st.dev Ready`}
+              </span>
+            </div>
+
+            {/* Quick Prompt Category Chips */}
+            <div className="flex flex-wrap items-center justify-center gap-1.5 w-full pt-1">
               <Button
                 variant="outline"
+                size="sm"
                 onClick={() =>
                   handleSubmitPrompt(
-                    "Check component.tsx and demo.tsx for any runtime, syntax, or rendering errors, and fix them cleanly without changing existing styling.",
+                    "Audit component.tsx against 21st.dev standards and fix all missing requirements (className forwarding, cn(), props interface, use client).",
+                    "autofix"
+                  )
+                }
+                className="h-6.5 text-[11px] gap-1 px-2 font-sans rounded-full border-border/60 hover:border-emerald-500/40 hover:bg-emerald-500/5 transition-colors"
+              >
+                <ShieldCheck className="size-3 text-emerald-500" />
+                <span>Audit Standards</span>
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() =>
+                  handleSubmitPrompt(
+                    "Add smooth Framer Motion spring entry, hover scaling, and tap micro-interactions to component.tsx.",
                     "chat"
                   )
                 }
-                className="h-auto w-full flex items-start justify-start gap-2.5 p-2.5 rounded-lg border-border/70 bg-card/50 hover:bg-card hover:border-border text-left transition-all group whitespace-normal font-sans"
+                className="h-6.5 text-[11px] gap-1 px-2 font-sans rounded-full border-border/60 hover:border-violet-500/40 hover:bg-violet-500/5 transition-colors"
               >
-                <div className="size-6 rounded-md bg-muted flex items-center justify-center text-muted-foreground group-hover:text-foreground shrink-0 mt-0.5">
-                  <ShieldCheck className="size-3" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="text-xs font-medium text-foreground flex items-center justify-between">
-                    <span>Fix Code & Runtime Errors</span>
-                    <ArrowRight className="size-3 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground" />
-                  </div>
-                  <div className="text-[11px] font-normal text-muted-foreground leading-normal mt-0.5">
-                    Surgical fixes preserving your styling.
-                  </div>
-                </div>
+                <Zap className="size-3 text-violet-500" />
+                <span>Spring Motion</span>
               </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() =>
+                  handleSubmitPrompt(
+                    "Add complete dark and light mode support with Tailwind dark: classes and elegant contrast.",
+                    "chat"
+                  )
+                }
+                className="h-6.5 text-[11px] gap-1 px-2 font-sans rounded-full border-border/60 hover:border-amber-500/40 hover:bg-amber-500/5 transition-colors"
+              >
+                <SunMoon className="size-3 text-amber-500" />
+                <span>Dark & Light</span>
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() =>
+                  handleSubmitPrompt(
+                    "Refactor component.tsx to optimize performance, clean up types, and ensure modularity.",
+                    "chat"
+                  )
+                }
+                className="h-6.5 text-[11px] gap-1 px-2 font-sans rounded-full border-border/60 hover:border-cyan-500/40 hover:bg-cyan-500/5 transition-colors"
+              >
+                <Wand2 className="size-3 text-cyan-500" />
+                <span>Refactor</span>
+              </Button>
+            </div>
 
+            {/* Dynamic Smart Cards */}
+            <div className="grid grid-cols-1 gap-2 w-full pt-1">
+              {/* Dynamic Priority Card: If Compiler Error */}
+              {hasCompilerError && (
+                <Button
+                  variant="outline"
+                  onClick={() =>
+                    handleSubmitPrompt(
+                      `Fix the compiler error in component.tsx:\n${compilerError}\nResolve all syntax, import, and type issues cleanly without affecting existing styling.`,
+                      "chat"
+                    )
+                  }
+                  className="h-auto w-full flex items-start justify-start gap-3 p-3 rounded-xl border-rose-500/40 bg-rose-500/5 hover:bg-rose-500/10 hover:border-rose-500/60 text-left transition-all group whitespace-normal font-sans shadow-xs"
+                >
+                  <div className="size-7 rounded-lg bg-rose-500/15 border border-rose-500/30 flex items-center justify-center text-rose-500 shrink-0 mt-0.5">
+                    <AlertTriangle className="size-3.5 animate-pulse" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center justify-between gap-1">
+                      <span className="text-xs font-semibold text-rose-600 dark:text-rose-400">
+                        Fix Runtime / Compiler Error
+                      </span>
+                      <Badge
+                        variant="secondary"
+                        className="text-[9px] py-0 px-1 font-mono uppercase bg-rose-500/20 text-rose-500 border border-rose-500/30"
+                      >
+                        CRITICAL
+                      </Badge>
+                    </div>
+                    <div className="text-[11px] font-normal text-muted-foreground leading-normal mt-0.5 line-clamp-2">
+                      {compilerError}
+                    </div>
+                  </div>
+                  <ArrowRight className="size-3.5 text-rose-500 opacity-60 group-hover:opacity-100 group-hover:translate-x-1 transition-all shrink-0 mt-1" />
+                </Button>
+              )}
+
+              {/* Dynamic Priority Card: If Failing Standards */}
+              {!hasCompilerError && failingChecks.length > 0 && (
+                <Button
+                  variant="outline"
+                  onClick={() =>
+                    handleSubmitPrompt(
+                      `Audit component.tsx against 21st.dev standards and fix all failing requirements: ${failingChecks.map((c) => c.title).join(", ")}. Ensure className forwarding with cn(), typed props, and clean structure.`,
+                      "autofix"
+                    )
+                  }
+                  className="h-auto w-full flex items-start justify-start gap-3 p-3 rounded-xl border-amber-500/40 bg-amber-500/5 hover:bg-amber-500/10 hover:border-amber-500/60 text-left transition-all group whitespace-normal font-sans shadow-xs"
+                >
+                  <div className="size-7 rounded-lg bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-500 shrink-0 mt-0.5">
+                    <ShieldCheck className="size-3.5" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center justify-between gap-1">
+                      <span className="text-xs font-semibold text-amber-600 dark:text-amber-400">
+                        Fix ${failingChecks.length} Missing Standard${failingChecks.length > 1 ? "s" : ""}
+                      </span>
+                      <Badge
+                        variant="secondary"
+                        className="text-[9px] py-0 px-1 font-mono uppercase bg-amber-500/20 text-amber-500 border border-amber-500/30"
+                      >
+                        ${failingChecks.length} ISSUES
+                      </Badge>
+                    </div>
+                    <div className="text-[11px] font-normal text-muted-foreground leading-normal mt-0.5 line-clamp-1">
+                      {failingChecks.map((c) => c.title).join(" • ")}
+                    </div>
+                  </div>
+                  <ArrowRight className="size-3.5 text-amber-500 opacity-60 group-hover:opacity-100 group-hover:translate-x-1 transition-all shrink-0 mt-1" />
+                </Button>
+              )}
+
+              {/* Smart Card 1: Spring Motion & Micro-interactions */}
               <Button
                 variant="outline"
                 onClick={() =>
@@ -718,22 +914,31 @@ export function AiAssistantPanel({ isMobile = false, onClose }: AiAssistantPanel
                     "chat"
                   )
                 }
-                className="h-auto w-full flex items-start justify-start gap-2.5 p-2.5 rounded-lg border-border/70 bg-card/50 hover:bg-card hover:border-border text-left transition-all group whitespace-normal font-sans"
+                className="h-auto w-full flex items-start justify-start gap-3 p-3 rounded-xl border-border/70 bg-card/40 hover:bg-card/90 hover:border-violet-500/40 hover:shadow-xs transition-all duration-150 group text-left whitespace-normal font-sans"
               >
-                <div className="size-6 rounded-md bg-muted flex items-center justify-center text-muted-foreground group-hover:text-foreground shrink-0 mt-0.5">
-                  <Zap className="size-3" />
+                <div className="size-7 rounded-lg bg-violet-500/10 border border-violet-500/20 flex items-center justify-center text-violet-500 shrink-0 mt-0.5 group-hover:scale-105 transition-transform">
+                  <Zap className="size-3.5" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <div className="text-xs font-medium text-foreground flex items-center justify-between">
-                    <span>Spring Motion & Physics</span>
-                    <ArrowRight className="size-3 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground" />
+                  <div className="flex items-center justify-between gap-1">
+                    <span className="text-xs font-medium text-foreground group-hover:text-violet-500 transition-colors">
+                      Spring Motion & Physics
+                    </span>
+                    <Badge
+                      variant="secondary"
+                      className="text-[9px] py-0 px-1 font-mono uppercase text-muted-foreground group-hover:text-foreground"
+                    >
+                      MOTION
+                    </Badge>
                   </div>
                   <div className="text-[11px] font-normal text-muted-foreground leading-normal mt-0.5">
-                    Integrate natural Framer Motion gestures.
+                    Integrate natural Framer Motion gestures & hover springs.
                   </div>
                 </div>
+                <ArrowRight className="size-3.5 text-muted-foreground/40 group-hover:text-violet-500 group-hover:translate-x-1 transition-all shrink-0 mt-1" />
               </Button>
 
+              {/* Smart Card 2: Dark & Light Mode Polish */}
               <Button
                 variant="outline"
                 onClick={() =>
@@ -742,22 +947,31 @@ export function AiAssistantPanel({ isMobile = false, onClose }: AiAssistantPanel
                     "chat"
                   )
                 }
-                className="h-auto w-full flex items-start justify-start gap-2.5 p-2.5 rounded-lg border-border/70 bg-card/50 hover:bg-card hover:border-border text-left transition-all group whitespace-normal font-sans"
+                className="h-auto w-full flex items-start justify-start gap-3 p-3 rounded-xl border-border/70 bg-card/40 hover:bg-card/90 hover:border-amber-500/40 hover:shadow-xs transition-all duration-150 group text-left whitespace-normal font-sans"
               >
-                <div className="size-6 rounded-md bg-muted flex items-center justify-center text-muted-foreground group-hover:text-foreground shrink-0 mt-0.5">
-                  <Moon className="size-3" />
+                <div className="size-7 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-500 shrink-0 mt-0.5 group-hover:scale-105 transition-transform">
+                  <SunMoon className="size-3.5" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <div className="text-xs font-medium text-foreground flex items-center justify-between">
-                    <span>Dark & Light Mode Polish</span>
-                    <ArrowRight className="size-3 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground" />
+                  <div className="flex items-center justify-between gap-1">
+                    <span className="text-xs font-medium text-foreground group-hover:text-amber-500 transition-colors">
+                      Dark & Light Theme Polish
+                    </span>
+                    <Badge
+                      variant="secondary"
+                      className="text-[9px] py-0 px-1 font-mono uppercase text-muted-foreground group-hover:text-foreground"
+                    >
+                      THEMING
+                    </Badge>
                   </div>
                   <div className="text-[11px] font-normal text-muted-foreground leading-normal mt-0.5">
-                    Verify high-contrast dark: variants.
+                    Verify high-contrast Tailwind dark: tokens & aesthetic balance.
                   </div>
                 </div>
+                <ArrowRight className="size-3.5 text-muted-foreground/40 group-hover:text-amber-500 group-hover:translate-x-1 transition-all shrink-0 mt-1" />
               </Button>
 
+              {/* Smart Card 3: A11y & ARIA Standards */}
               <Button
                 variant="outline"
                 onClick={() =>
@@ -766,20 +980,61 @@ export function AiAssistantPanel({ isMobile = false, onClose }: AiAssistantPanel
                     "chat"
                   )
                 }
-                className="h-auto w-full flex items-start justify-start gap-2.5 p-2.5 rounded-lg border-border/70 bg-card/50 hover:bg-card hover:border-border text-left transition-all group whitespace-normal font-sans"
+                className="h-auto w-full flex items-start justify-start gap-3 p-3 rounded-xl border-border/70 bg-card/40 hover:bg-card/90 hover:border-cyan-500/40 hover:shadow-xs transition-all duration-150 group text-left whitespace-normal font-sans"
               >
-                <div className="size-6 rounded-md bg-muted flex items-center justify-center text-muted-foreground group-hover:text-foreground shrink-0 mt-0.5">
-                  <ShieldCheck className="size-3" />
+                <div className="size-7 rounded-lg bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-500 shrink-0 mt-0.5 group-hover:scale-105 transition-transform">
+                  <CheckCircle2 className="size-3.5" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <div className="text-xs font-medium text-foreground flex items-center justify-between">
-                    <span>A11y & ARIA Standards</span>
-                    <ArrowRight className="size-3 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground" />
+                  <div className="flex items-center justify-between gap-1">
+                    <span className="text-xs font-medium text-foreground group-hover:text-cyan-500 transition-colors">
+                      Accessibility & ARIA Standards
+                    </span>
+                    <Badge
+                      variant="secondary"
+                      className="text-[9px] py-0 px-1 font-mono uppercase text-muted-foreground group-hover:text-foreground"
+                    >
+                      A11Y
+                    </Badge>
                   </div>
                   <div className="text-[11px] font-normal text-muted-foreground leading-normal mt-0.5">
-                    Ensure keyboard focus rings and screen-reader tags.
+                    Ensure keyboard focus rings, role attributes, and screen-reader tags.
                   </div>
                 </div>
+                <ArrowRight className="size-3.5 text-muted-foreground/40 group-hover:text-cyan-500 group-hover:translate-x-1 transition-all shrink-0 mt-1" />
+              </Button>
+
+              {/* Smart Card 4: Architecture & Clean Code */}
+              <Button
+                variant="outline"
+                onClick={() =>
+                  handleSubmitPrompt(
+                    "Refactor component.tsx to extract reusable subcomponents, streamline TypeScript props, and memoize callbacks.",
+                    "chat"
+                  )
+                }
+                className="h-auto w-full flex items-start justify-start gap-3 p-3 rounded-xl border-border/70 bg-card/40 hover:bg-card/90 hover:border-emerald-500/40 hover:shadow-xs transition-all duration-150 group text-left whitespace-normal font-sans"
+              >
+                <div className="size-7 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-500 shrink-0 mt-0.5 group-hover:scale-105 transition-transform">
+                  <Layers className="size-3.5" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center justify-between gap-1">
+                    <span className="text-xs font-medium text-foreground group-hover:text-emerald-500 transition-colors">
+                      Architecture & Props Refactor
+                    </span>
+                    <Badge
+                      variant="secondary"
+                      className="text-[9px] py-0 px-1 font-mono uppercase text-muted-foreground group-hover:text-foreground"
+                    >
+                      CLEAN CODE
+                    </Badge>
+                  </div>
+                  <div className="text-[11px] font-normal text-muted-foreground leading-normal mt-0.5">
+                    Streamlined props interface, memoized handlers & clean exports.
+                  </div>
+                </div>
+                <ArrowRight className="size-3.5 text-muted-foreground/40 group-hover:text-emerald-500 group-hover:translate-x-1 transition-all shrink-0 mt-1" />
               </Button>
             </div>
           </div>
@@ -942,7 +1197,7 @@ export function AiAssistantPanel({ isMobile = false, onClose }: AiAssistantPanel
                                 msg.previousFiles["index.css"] ??
                                 files["index.css"],
                             }
-                          : files
+                          : (files as unknown as Record<string, string>)
                       }
                       approvalStatus={resolvedStatus}
                       onApprove={() =>
@@ -1037,9 +1292,10 @@ export function AiAssistantPanel({ isMobile = false, onClose }: AiAssistantPanel
           modelBadge={
             <Badge
               variant="outline"
-              className="text-[10px] py-0 px-1 font-normal text-muted-foreground border-border/60 font-sans"
+              className="text-[10px] py-0.5 px-2 font-normal text-muted-foreground border-border/80 font-sans shrink-0 whitespace-nowrap flex items-center gap-1 bg-muted/40"
             >
-              {currentModelObj.name.replace("Gemini ", "")}
+              <Sparkles className="size-2.5 text-primary shrink-0" />
+              <span>{currentModelObj.name.replace("Gemini ", "")}</span>
             </Badge>
           }
         />

@@ -148,7 +148,7 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
   const { html, error } = useMemo(() => {
     return compileSandboxHtml(
       debouncedFiles["component.tsx"],
-      debouncedFiles["demo.tsx"],
+      debouncedFiles["default.tsx"] || debouncedFiles["demo.tsx"] || "",
       debouncedFiles["index.css"],
       dependencies,
       canvasBg,

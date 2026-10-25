@@ -1287,7 +1287,7 @@ export function PromptInput({
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
       className={cn(
-        "flex flex-col rounded-xl border border-border/70 bg-card/70 p-2 shadow-2xs transition-all duration-150 focus-within:border-border focus-within:ring-1 focus-within:ring-ring/20 focus-within:bg-background",
+        "flex flex-col rounded-xl border border-border/70 bg-card/70 p-2 shadow-2xs transition-all duration-150 focus-within:border-primary/40 focus-within:ring-2 focus-within:ring-primary/10 focus-within:bg-background/95",
         isDragOver && "border-foreground/50 ring-2 ring-foreground/20 bg-muted/30",
         className
       )}
@@ -1453,17 +1453,21 @@ export function PromptInput({
             </Tooltip>
           )}
 
-          <div className="h-3 w-px bg-border/60 mx-0.5" />
+          <div className="h-3 w-px bg-border/60 mx-0.5 shrink-0" />
 
-          {modelBadge}
+          {modelBadge && (
+            <div className="shrink-0 whitespace-nowrap flex items-center">
+              {modelBadge}
+            </div>
+          )}
 
-          <div className="hidden md:flex items-center gap-1 text-[10px] text-muted-foreground/75 font-sans">
-            <FileCode className="size-3 text-muted-foreground/60" />
+          <div className="hidden sm:flex items-center gap-1 text-[10px] text-muted-foreground/75 font-sans shrink-0">
+            <FileCode className="size-3 text-muted-foreground/60 shrink-0" />
             <span className="font-mono text-[10px]">component.tsx</span>
           </div>
         </div>
 
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5 shrink-0">
           <span className="text-[10px] text-muted-foreground/60 hidden sm:inline-block font-sans">
             <kbd className="px-1 py-0.5 rounded bg-muted/80 font-mono text-[9px] border border-border/40">
               Enter
@@ -1477,7 +1481,12 @@ export function PromptInput({
             size="sm"
             onClick={onSubmit}
             disabled={!canSubmit}
-            className="size-7 p-0 rounded-lg shrink-0 font-sans transition-transform active:scale-95"
+            className={cn(
+              "size-7 p-0 rounded-lg shrink-0 font-sans transition-all duration-150",
+              canSubmit
+                ? "bg-primary text-primary-foreground shadow-xs hover:bg-primary/90 hover:scale-105 active:scale-95"
+                : "opacity-40"
+            )}
             title="Send prompt (Enter)"
           >
             {isLoading ? (

@@ -114,7 +114,7 @@ export function VersionHistorySheet() {
               ease: [0.22, 1, 0.36, 1],
             }}
             onClick={handleClose}
-            className="fixed inset-0 z-40 bg-black/50 backdrop-blur-xs"
+            className="fixed inset-0 z-40 bg-black/60 pointer-events-auto"
             aria-hidden="true"
           />
 
@@ -128,7 +128,7 @@ export function VersionHistorySheet() {
             animate={{ x: 0 }}
             exit={{ x: "100%", transition: { duration: 0.2, ease: [0.4, 0, 1, 1] } }}
             transition={{ type: "spring", damping: 30, stiffness: 320, mass: 0.8 }}
-            className="fixed inset-y-0 right-0 z-50 flex flex-col bg-background border-l border-border shadow-2xl w-full sm:w-[540px] md:w-[600px] lg:w-[680px]"
+            className="fixed inset-y-0 right-0 z-50 flex flex-col bg-background border-l border-border shadow-2xl w-full sm:w-[540px] md:w-[600px] lg:w-[680px] will-change-transform"
           >
             {/* Drawer Header */}
             <div className="flex items-center justify-between px-4 py-3 border-b border-border shrink-0">
@@ -328,16 +328,9 @@ export function VersionHistorySheet() {
                       const isForking = forkingId === cp.id;
 
                       return (
-                        <motion.div
+                        <div
                           key={cp.id}
-                          initial={{ opacity: 0, y: 8 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{
-                            duration: 0.24,
-                            delay: Math.min(idx * 0.04, 0.24),
-                            ease: [0.22, 1, 0.36, 1],
-                          }}
-                          className="rounded-lg border border-border/60 bg-card p-3.5 hover:border-primary/40 transition-colors shadow-2xs"
+                          className="rounded-lg border border-border/60 bg-card p-3.5 hover:border-primary/40 transition-colors shadow-2xs animate-in fade-in duration-150"
                         >
                           {/* Top row */}
                           <div className="flex items-start justify-between gap-2">
@@ -503,7 +496,7 @@ export function VersionHistorySheet() {
                               </motion.div>
                             )}
                           </AnimatePresence>
-                        </motion.div>
+                        </div>
                       );
                     })}
                   </div>

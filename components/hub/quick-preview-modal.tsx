@@ -386,7 +386,7 @@ export function QuickPreviewModal({
               <div className="max-h-[380px] overflow-auto p-4">
                 <pre className="font-mono text-xs leading-relaxed">
                   <code>
-                    {codeLines.map((line, idx) => (
+                    {codeLines.map((line: string, idx: number) => (
                       <div key={idx} className="flex">
                         <span className="w-8 shrink-0 select-none pr-3 text-right text-muted-foreground/40 text-[11px] font-mono">
                           {idx + 1}
