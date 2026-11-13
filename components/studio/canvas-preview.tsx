@@ -496,14 +496,14 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
   return (
     <div
       ref={containerRef}
-      className={`flex h-full w-full flex-col bg-background ${
+      className={`@container flex h-full w-full min-w-0 flex-col overflow-hidden bg-background ${
         isFullscreen ? "fixed inset-0 z-50" : "relative"
       }`}
     >
       {/* Top Toolbar: Pure Icon-Only Instrument Strip */}
-      <div className="studio-toolbar-surface flex h-11 shrink-0 items-center justify-between border-b border-border px-3 select-none transition-colors">
+      <div className="studio-toolbar-surface flex h-11 shrink-0 items-center justify-between gap-2 border-b border-border px-2.5 @[420px]:px-3 select-none transition-colors overflow-hidden">
         {/* Left: Icon-Only Viewport Switcher & Dimension Badge */}
-        <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
+        <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 shrink-0">
           <Tabs
             value={isFluidResponsive ? "responsive" : viewport}
             onValueChange={(val) => handleSelectViewport(val as StudioViewport)}
@@ -577,7 +577,7 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
 
           <Badge
             variant="outline"
-            className="hidden xl:inline-flex h-5 rounded-none px-1.5 text-[11px] font-sans font-normal text-muted-foreground border-border/60 bg-muted/30 tabular-nums shrink-0"
+            className="hidden @[480px]:inline-flex h-5 rounded-none px-1.5 text-[11px] font-sans font-normal text-muted-foreground border-border/60 bg-muted/30 tabular-nums whitespace-nowrap shrink-0"
           >
             {draggedWidth !== null
               ? `${draggedWidth}px`
@@ -588,20 +588,20 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
         </div>
 
         {/* Center: Subtle Status & Toast */}
-        <div role="status" aria-live="polite" className="flex items-center gap-2">
+        <div role="status" aria-live="polite" className="flex items-center gap-2 min-w-0 overflow-hidden">
           {toastMessage ? (
-            <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-none bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-[11px] font-sans font-medium animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-none bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-[11px] font-sans font-medium truncate animate-in fade-in zoom-in-95 duration-200">
               <Check className="size-3 shrink-0" />
-              <span>{toastMessage}</span>
+              <span className="truncate">{toastMessage}</span>
             </div>
           ) : isSimulatingHover ? (
-            <span className="text-[11px] font-sans text-muted-foreground animate-pulse">
+            <span className="text-[11px] font-sans text-muted-foreground animate-pulse truncate">
               Simulating pointer...
             </span>
           ) : isSandboxLoading && !error && hydrationMode === "warm" ? (
-            <div className="flex items-center gap-1.5 text-[11px] font-sans text-muted-foreground">
+            <div className="flex items-center gap-1.5 text-[11px] font-sans text-muted-foreground truncate">
               <Loader2 className="size-3 animate-spin text-primary shrink-0" />
-              <span>Syncing live changes...</span>
+              <span className="truncate hidden @[360px]:inline">Syncing live changes...</span>
             </div>
           ) : null}
         </div>
@@ -617,7 +617,7 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
                 onClick={triggerTestSimulation}
                 disabled={isSimulatingHover}
                 aria-label="Simulate pointer hover"
-                className="studio-icon-btn hidden xl:inline-flex size-7 rounded-none border-border/80 bg-background/70 text-muted-foreground hover:text-foreground"
+                className="studio-icon-btn hidden @[520px]:inline-flex size-7 rounded-none border-border/80 bg-background/70 text-muted-foreground hover:text-foreground"
               >
                 <MousePointerClick className="size-3.5" />
                 <span className="sr-only">Simulate</span>
@@ -658,7 +658,7 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
                   <Button
                     variant="outline"
                     size="icon-sm"
-                    className="studio-icon-btn hidden xl:inline-flex size-7 rounded-none border-border/80 bg-background/70 text-muted-foreground hover:text-foreground"
+                    className="studio-icon-btn hidden @[460px]:inline-flex size-7 rounded-none border-border/80 bg-background/70 text-muted-foreground hover:text-foreground"
                   >
                     <Paintbrush className="size-3.5" />
                     <span className="sr-only">Canvas background</span>
@@ -693,7 +693,7 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
             </DropdownMenuContent>
           </DropdownMenu>
 
-          <Separator orientation="vertical" className="hidden xl:block h-4 mx-0.5 bg-border/60" />
+          <Separator orientation="vertical" className="hidden @[460px]:block h-4 mx-0.5 bg-border/60" />
 
           {/* Refresh Canvas */}
           <Tooltip>

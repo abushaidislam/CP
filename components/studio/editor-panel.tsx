@@ -129,15 +129,15 @@ export function EditorPanel() {
   const lineCount = currentFileContent.split("\n").length;
 
   return (
-    <div className="flex h-full w-full flex-col border-r-0 md:border-r border-border bg-background">
+    <div className="@container flex h-full w-full min-w-0 flex-col overflow-hidden border-r-0 md:border-r border-border bg-background">
       {/* File Tabs Header */}
-      <div className="studio-toolbar-surface flex h-11 shrink-0 items-center justify-between border-b border-border px-3 select-none">
+      <div className="studio-toolbar-surface flex h-11 shrink-0 items-center justify-between gap-2 border-b border-border px-2.5 @[420px]:px-3 select-none overflow-hidden">
         {/* Left: File Navigation with sliding active pill & Line Count Badge */}
-        <div className="flex items-center gap-2 min-w-0">
+        <div className="flex items-center gap-2 min-w-0 flex-1 overflow-hidden">
           <div
             role="tablist"
             aria-label="Component source files"
-            className="relative flex items-center bg-muted/60 p-0.5 rounded-none border border-border/80"
+            className="relative flex items-center bg-muted/60 p-0.5 rounded-none border border-border/80 min-w-0 max-w-full overflow-x-auto scrollbar-none"
           >
             {tabs.map((tab) => {
               const isActive = effectiveTab === tab.id || activeTab === tab.id;
@@ -150,7 +150,7 @@ export function EditorPanel() {
                   aria-label={tab.label}
                   onClick={() => setActiveTab(tab.id as StudioFileName)}
                   className={cn(
-                    "relative z-10 flex h-6 items-center gap-1.5 px-2 sm:px-2.5 text-xs font-sans transition-colors cursor-pointer select-none rounded-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                    "relative z-10 flex h-6 shrink-0 items-center gap-1.5 px-2 @[420px]:px-2.5 text-xs font-sans whitespace-nowrap transition-colors cursor-pointer select-none rounded-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                     isActive
                       ? "text-foreground font-medium"
                       : "text-muted-foreground hover:text-foreground"
@@ -163,9 +163,9 @@ export function EditorPanel() {
                       transition={{ type: "spring", bounce: 0, duration: 0.2 }}
                     />
                   )}
-                  {tab.icon}
-                  <span className="hidden sm:inline font-sans">{tab.label}</span>
-                  <span className="sm:hidden font-sans">{tab.shortLabel}</span>
+                  <span className="shrink-0">{tab.icon}</span>
+                  <span className="hidden @[420px]:inline font-mono text-[11px]">{tab.label}</span>
+                  <span className="@[420px]:hidden font-mono text-[11px]">{tab.shortLabel}</span>
                 </button>
               );
             })}
@@ -173,14 +173,14 @@ export function EditorPanel() {
 
           <Badge
             variant="outline"
-            className="hidden xl:inline-flex h-5 rounded-none px-1.5 text-[11px] font-sans font-normal text-muted-foreground border-border/60 bg-muted/30 tabular-nums shrink-0"
+            className="hidden @[540px]:inline-flex h-5 rounded-none px-1.5 text-[11px] font-sans font-normal text-muted-foreground border-border/60 bg-muted/30 tabular-nums whitespace-nowrap shrink-0"
           >
             {lineCount} lines
           </Badge>
         </div>
 
         {/* Right: Pure Icon-Only Action Controls */}
-        <div className="flex items-center gap-1 shrink-0">
+        <div className="flex items-center gap-1 shrink-0 pl-1 z-10">
           {/* Format (Prettier) - Icon-Only */}
           <Tooltip>
             <TooltipTrigger asChild>
@@ -190,7 +190,7 @@ export function EditorPanel() {
                 onClick={handleFormat}
                 disabled={isFormatting}
                 aria-label="Format code with Prettier"
-                className="studio-icon-btn size-7 rounded-none border-border/80 bg-background/70 text-muted-foreground hover:text-foreground"
+                className="studio-icon-btn size-7 shrink-0 rounded-none border-border/80 bg-background/70 text-muted-foreground hover:text-foreground"
               >
                 {isFormatting ? (
                   <Loader2 className="size-3.5 animate-spin text-primary" />
@@ -215,7 +215,7 @@ export function EditorPanel() {
                 size="icon-sm"
                 onClick={() => setDependencyModalOpen(true)}
                 aria-label="Configure NPM packages"
-                className="studio-icon-btn relative hidden sm:inline-flex size-7 rounded-none border-border/80 bg-background/70 text-muted-foreground hover:text-foreground"
+                className="studio-icon-btn relative hidden @[350px]:inline-flex size-7 shrink-0 rounded-none border-border/80 bg-background/70 text-muted-foreground hover:text-foreground"
               >
                 <Package className="size-3.5" />
                 <span className="sr-only">Packages</span>
@@ -242,7 +242,7 @@ export function EditorPanel() {
                 size="icon-sm"
                 onClick={resetCurrentTemplate}
                 aria-label="Reset template"
-                className="studio-icon-btn hidden xl:inline-flex size-7 rounded-none border-border/80 bg-background/70 text-muted-foreground hover:text-foreground"
+                className="studio-icon-btn hidden @[500px]:inline-flex size-7 shrink-0 rounded-none border-border/80 bg-background/70 text-muted-foreground hover:text-foreground"
               >
                 <RotateCcw className="size-3.5" />
                 <span className="sr-only">Reset template</span>
@@ -261,7 +261,7 @@ export function EditorPanel() {
                   <Button
                     variant="outline"
                     size="icon-sm"
-                    className="studio-icon-btn size-7 rounded-none border-border/80 bg-background/70 text-muted-foreground hover:text-foreground"
+                    className="studio-icon-btn size-7 shrink-0 rounded-none border-border/80 bg-background/70 text-muted-foreground hover:text-foreground"
                   >
                     <MoreHorizontal className="size-3.5" />
                     <span className="sr-only">More editor options</span>
@@ -275,7 +275,7 @@ export function EditorPanel() {
             <DropdownMenuContent align="end" className="w-52 rounded-none font-sans">
               <DropdownMenuLabel className="text-[10px] uppercase font-sans text-muted-foreground flex items-center justify-between">
                 <span>Editor Options</span>
-                <span className="text-[10px] text-muted-foreground/80 font-normal">
+                <span className="text-[10px] text-muted-foreground/80 font-normal tabular-nums">
                   {lineCount} lines
                 </span>
               </DropdownMenuLabel>
@@ -290,7 +290,7 @@ export function EditorPanel() {
                 </span>
                 <Badge
                   variant="secondary"
-                  className="h-4 min-w-4 px-1.5 rounded-none text-[10px] font-sans font-medium"
+                  className="h-4 min-w-4 px-1.5 rounded-none text-[10px] font-sans font-medium tabular-nums"
                 >
                   {dependencies.length}
                 </Badge>
@@ -304,7 +304,7 @@ export function EditorPanel() {
                   <AlignLeft className="size-3.5" />
                   <span>Format Code</span>
                 </span>
-                <kbd className="font-sans text-[10px] text-muted-foreground/70 bg-muted px-1 rounded-none border border-border/40">
+                <kbd className="font-mono text-[10px] text-muted-foreground/70 bg-muted px-1 rounded-none border border-border/40">
                   Ctrl+S
                 </kbd>
               </DropdownMenuItem>
@@ -343,11 +343,11 @@ export function EditorPanel() {
         )}
       </AnimatePresence>
 
-      {/* 21st.dev Breadcrumb File Path Header */}
-      <div className="flex h-8 shrink-0 items-center justify-between border-b border-border/60 bg-muted/20 px-3 font-mono text-[11px] text-muted-foreground select-none">
-        <div className="flex items-center gap-1.5 overflow-hidden text-ellipsis whitespace-nowrap">
+      {/* 21st.dev Breadcrumb File Path Header (Container-Responsive) */}
+      <div className="flex h-8 shrink-0 items-center justify-between gap-2 border-b border-border/60 bg-muted/20 px-2.5 @[420px]:px-3 font-mono text-[11px] text-muted-foreground select-none overflow-hidden">
+        <div className="flex items-center gap-1.5 min-w-0 flex-1 overflow-hidden whitespace-nowrap">
           {effectiveTab === "index.css" ? (
-            <span className="font-bold text-muted-foreground">#</span>
+            <span className="font-bold text-muted-foreground shrink-0">#</span>
           ) : (
             <svg
               className="size-3.5 text-sky-400 shrink-0"
@@ -363,35 +363,55 @@ export function EditorPanel() {
               <ellipse rx="11" ry="4.2" transform="rotate(120)" />
             </svg>
           )}
-          <span className="opacity-70">project</span>
-          <span className="opacity-40">/</span>
-          <span className="opacity-70">sandbox</span>
-          <span className="opacity-40">/</span>
-          <span className="opacity-70">src</span>
-          <span className="opacity-40">/</span>
+          {/* Full project/sandbox prefix on wide editor containers */}
+          <span className="hidden @[480px]:inline-flex items-center gap-1.5 shrink-0">
+            <span className="opacity-70">project</span>
+            <span className="opacity-40">/</span>
+            <span className="opacity-70">sandbox</span>
+            <span className="opacity-40">/</span>
+          </span>
+          {/* Compact ellipsis root indicator on narrower split widths */}
+          <span className="@[480px]:hidden inline-flex items-center gap-1.5 shrink-0 opacity-50">
+            <span>…</span>
+            <span className="opacity-60">/</span>
+          </span>
+          <span className="hidden @[340px]:inline-flex items-center gap-1.5 shrink-0">
+            <span className="opacity-70">src</span>
+            <span className="opacity-40">/</span>
+          </span>
           {effectiveTab === "component.tsx" && (
             <>
-              <span className="opacity-70">components</span>
-              <span className="opacity-40">/</span>
-              <span className="opacity-70">ui</span>
-              <span className="opacity-40">/</span>
-              <span className="font-semibold text-foreground">component.tsx</span>
+              <span className="hidden @[410px]:inline-flex items-center gap-1.5 shrink-0">
+                <span className="opacity-70">components</span>
+                <span className="opacity-40">/</span>
+                <span className="opacity-70">ui</span>
+                <span className="opacity-40">/</span>
+              </span>
+              <span className="font-semibold text-foreground truncate min-w-0">
+                component.tsx
+              </span>
             </>
           )}
           {(effectiveTab === "default.tsx" || effectiveTab === "demo.tsx") && (
             <>
-              <span className="opacity-70">demos</span>
-              <span className="opacity-40">/</span>
-              <span className="font-semibold text-foreground">default.tsx</span>
+              <span className="hidden @[380px]:inline-flex items-center gap-1.5 shrink-0">
+                <span className="opacity-70">demos</span>
+                <span className="opacity-40">/</span>
+              </span>
+              <span className="font-semibold text-foreground truncate min-w-0">
+                default.tsx
+              </span>
             </>
           )}
           {effectiveTab === "index.css" && (
-            <span className="font-semibold text-foreground">index.css</span>
+            <span className="font-semibold text-foreground truncate min-w-0">
+              index.css
+            </span>
           )}
         </div>
 
-        {/* 1-Click Icon-Only Copy for 21st.dev Button */}
-        <div className="flex items-center gap-2">
+        {/* Right: 1-Click Copy for 21st.dev Button & Non-Wrapping Line Count */}
+        <div className="flex items-center gap-1.5 shrink-0 whitespace-nowrap pl-1">
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
@@ -399,7 +419,7 @@ export function EditorPanel() {
                 size="icon-sm"
                 onClick={handleCopyFor21st}
                 aria-label="Copy for 21st.dev"
-                className="studio-icon-btn size-6 rounded-none text-muted-foreground hover:text-foreground"
+                className="studio-icon-btn size-6 shrink-0 rounded-none text-muted-foreground hover:text-foreground"
               >
                 {copied ? (
                   <Check className="size-3 text-emerald-500" />
@@ -413,7 +433,7 @@ export function EditorPanel() {
               {copied ? "Copied to clipboard!" : "Copy file code for 21st.dev"}
             </TooltipContent>
           </Tooltip>
-          <span className="text-[10px] text-muted-foreground/60 hidden sm:inline">
+          <span className="text-[10px] font-sans text-muted-foreground/70 tabular-nums whitespace-nowrap hidden @[300px]:inline">
             {lineCount} lines
           </span>
         </div>
@@ -430,16 +450,18 @@ export function EditorPanel() {
       </div>
 
       {/* Clean Status Footer */}
-      <div className="studio-toolbar-surface flex h-7 shrink-0 items-center justify-between border-t border-border px-3 text-xs text-muted-foreground select-none">
-        <div className="flex items-center gap-2 text-[11px]">
-          <span className="text-foreground font-medium">{activeTab}</span>
-          <span className="text-border">•</span>
-          <span>{lineCount} lines</span>
+      <div className="studio-toolbar-surface flex h-7 shrink-0 items-center justify-between gap-2 border-t border-border px-2.5 @[420px]:px-3 text-xs text-muted-foreground select-none overflow-hidden whitespace-nowrap">
+        <div className="flex items-center gap-2 text-[11px] min-w-0 overflow-hidden">
+          <span className="text-foreground font-mono text-[11px] font-medium truncate">
+            {activeTab}
+          </span>
+          <span className="text-border shrink-0">•</span>
+          <span className="font-sans tabular-nums shrink-0">{lineCount} lines</span>
         </div>
 
-        <div className="flex items-center gap-2 text-[11px]">
-          <span>TypeScript</span>
-          <span className="text-border">•</span>
+        <div className="flex items-center gap-2 text-[11px] shrink-0">
+          <span className="hidden @[320px]:inline">TypeScript</span>
+          <span className="text-border hidden @[320px]:inline">•</span>
           <span>UTF-8</span>
         </div>
       </div>
