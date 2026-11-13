@@ -78,22 +78,42 @@ export function StudioSkeleton() {
         {/* Right Column Skeleton (Canvas) */}
         <div className="w-[52%] h-full flex flex-col bg-background">
           <div className="flex h-11 items-center justify-between border-b border-border bg-background px-3">
-            <div className="h-7 w-48 rounded-md bg-muted/60 animate-shimmer" />
+            <div className="h-7 w-48 rounded-none bg-muted/60 animate-shimmer" />
             <div className="flex items-center gap-1.5">
-              <div className="size-7 rounded-md bg-muted/60 animate-shimmer" />
-              <div className="size-7 rounded-md bg-muted/60 animate-shimmer" />
+              <div className="size-7 rounded-none bg-muted/60 animate-shimmer" />
+              <div className="size-7 rounded-none bg-muted/60 animate-shimmer" />
             </div>
           </div>
 
           {/* Viewport Frame */}
           <div className="flex-1 p-6 flex items-center justify-center bg-muted/20">
-            <div className="w-full max-w-xl h-[70vh] rounded-xl border border-border bg-background shadow-md flex flex-col items-center justify-center gap-3 overflow-hidden">
-              <div className="flex size-10 items-center justify-center rounded-lg border border-border bg-muted/60">
-                <Monitor className="size-5 text-muted-foreground animate-pulse" />
+            <div className="w-full max-w-xl h-[70vh] rounded-none border border-border bg-background shadow-vercel-floating flex flex-col justify-between overflow-hidden relative">
+              <div className="flex h-10 items-center justify-between border-b border-border px-4 bg-muted/20">
+                <div className="h-3 w-24 rounded-none bg-muted/60 animate-shimmer" />
+                <div className="h-5 w-16 rounded-none bg-muted/60 animate-shimmer" />
               </div>
-              <span className="text-xs text-muted-foreground">
-                Initializing Sandbox Environment...
-              </span>
+
+              <div className="flex-1 flex flex-col items-center justify-center gap-3 p-6">
+                <div className="flex size-10 items-center justify-center rounded-none border border-border bg-muted/60">
+                  <Monitor className="size-5 text-muted-foreground animate-pulse" />
+                </div>
+                <span className="font-sans text-xs font-medium text-foreground">
+                  Initializing Sandbox Environment...
+                </span>
+                <span className="font-sans text-[11px] text-muted-foreground">
+                  Preparing AST compiler and ESM dependency import map
+                </span>
+                <div className="w-48 grid grid-cols-3 gap-1.5 h-1.5 mt-1">
+                  <div className="bg-primary animate-shimmer" />
+                  <div className="bg-muted" />
+                  <div className="bg-muted" />
+                </div>
+              </div>
+
+              <div className="flex h-8 items-center justify-between border-t border-border px-4 bg-muted/10">
+                <div className="h-2.5 w-28 rounded-none bg-muted/50 animate-shimmer" />
+                <div className="h-2.5 w-16 rounded-none bg-muted/50 animate-shimmer" />
+              </div>
             </div>
           </div>
         </div>

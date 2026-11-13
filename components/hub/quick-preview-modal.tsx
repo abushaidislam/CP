@@ -58,6 +58,9 @@ export function QuickPreviewModal({
   const [copiedCode, setCopiedCode] = useState<boolean>(false);
   const [copiedCli, setCopiedCli] = useState<boolean>(false);
   const [isIframeLoading, setIsIframeLoading] = useState<boolean>(true);
+  const [previewHydrationStage, setPreviewHydrationStage] = useState<
+    "compiling" | "hydrating-deps" | "mounting"
+  >("compiling");
   const copyTimerRef = useRef<NodeJS.Timeout | null>(null);
   const cliTimerRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -167,7 +170,19 @@ export function QuickPreviewModal({
   useEffect(() => {
     if (!isOpen) return;
     setIsIframeLoading(true);
+    setPreviewHydrationStage("compiling");
+    const advanceTimer = setTimeout(() => {
+      setPreviewHydrationStage((prev) =>
+        prev === "compiling" ? "hydrating-deps" : prev
+      );
+    }, 90);
     const handleMsg = (e: MessageEvent) => {
+      if (
+        e.data?.type === "SANDBOX_STAGE" &&
+        (e.data.stage === "hydrating-deps" || e.data.stage === "mounting")
+      ) {
+        setPreviewHydrationStage(e.data.stage);
+      }
       if (e.data?.type === "RENDER_SUCCESS" || e.data?.type === "RUNTIME_ERROR") {
         setIsIframeLoading(false);
       }
@@ -176,6 +191,7 @@ export function QuickPreviewModal({
     const timer = setTimeout(() => setIsIframeLoading(false), 2500);
     return () => {
       window.removeEventListener("message", handleMsg);
+      clearTimeout(advanceTimer);
       clearTimeout(timer);
     };
   }, [isOpen, component?.id, reloadKey, previewTheme]);
@@ -307,11 +323,56 @@ export function QuickPreviewModal({
 
               <div className="w-full h-[440px] rounded-none border border-border bg-background overflow-hidden relative">
                 {isIframeLoading && !compileError && (
-                  <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-background/70 backdrop-blur-xs gap-2 font-sans select-none pointer-events-none">
-                    <Loader2 className="size-6 animate-spin text-primary" />
-                    <span className="font-sans text-xs text-muted-foreground animate-pulse">
-                      Rendering live component preview...
-                    </span>
+                  <div
+                    role="status"
+                    aria-live="polite"
+                    aria-busy="true"
+                    className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-background/85 backdrop-blur-xs gap-3 font-sans select-none pointer-events-none p-6"
+                  >
+                    <div className="w-full max-w-sm rounded-none border border-border bg-card/95 p-4 shadow-vercel-floating flex flex-col gap-3">
+                      <div className="flex items-center justify-between gap-2">
+                        <Badge variant="eyebrow" className="rounded-none">
+                          SANDBOX HYDRATION
+                        </Badge>
+                        <span className="font-mono text-[11px] text-muted-foreground tabular-nums">
+                          {previewHydrationStage === "compiling"
+                            ? "35%"
+                            : previewHydrationStage === "hydrating-deps"
+                            ? "68%"
+                            : "92%"}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2.5">
+                        <Loader2 className="size-4 animate-spin text-primary shrink-0" />
+                        <span className="font-sans text-xs font-medium text-foreground">
+                          {previewHydrationStage === "compiling"
+                            ? "Initializing sandbox environment..."
+                            : previewHydrationStage === "hydrating-deps"
+                            ? "Hydrating sandbox ESM dependencies..."
+                            : "Rendering live component preview..."}
+                        </span>
+                      </div>
+                      <div
+                        aria-hidden="true"
+                        className="grid grid-cols-3 gap-1 h-1 w-full"
+                      >
+                        <div className="h-full bg-primary animate-shimmer" />
+                        <div
+                          className={
+                            previewHydrationStage === "compiling"
+                              ? "h-full bg-muted"
+                              : "h-full bg-primary animate-shimmer"
+                          }
+                        />
+                        <div
+                          className={
+                            previewHydrationStage === "mounting"
+                              ? "h-full bg-primary animate-shimmer"
+                              : "h-full bg-muted"
+                          }
+                        />
+                      </div>
+                    </div>
                   </div>
                 )}
                 <iframe

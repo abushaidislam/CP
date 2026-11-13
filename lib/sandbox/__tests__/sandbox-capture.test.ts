@@ -163,4 +163,20 @@ describe("Live Canvas Snapshot Capture Protocol (compileSandboxHtml)", () => {
     // Verify notifyParent RENDER_SUCCESS
     expect(result.html).toContain('notifyParent({ type: "RENDER_SUCCESS" })');
   });
+
+  it("should emit SANDBOX_STAGE progressive hydration lifecycle events and return detectedDependencies", () => {
+    const result = compileSandboxHtml(
+      sampleComponent,
+      sampleDemo,
+      "",
+      ["framer-motion", "lucide-react"]
+    );
+
+    expect(result.error).toBeNull();
+    expect(result.detectedDependencies).toContain("framer-motion");
+    expect(result.detectedDependencies).toContain("lucide-react");
+    expect(result.html).toContain('type: "SANDBOX_STAGE"');
+    expect(result.html).toContain('stage: "hydrating-deps"');
+    expect(result.html).toContain('stage: "mounting"');
+  });
 });

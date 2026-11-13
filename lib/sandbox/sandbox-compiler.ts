@@ -4,6 +4,7 @@ import { extractCodeImports } from "@/lib/sandbox/package-utils";
 export interface CompileResult {
   html: string;
   error: string | null;
+  detectedDependencies?: string[];
 }
 
 /**
@@ -371,6 +372,12 @@ export function compileSandboxHtml(
       } catch (e) {}
     }
 
+    notifyParent({
+      type: "SANDBOX_STAGE",
+      stage: "hydrating-deps",
+      packages: ${JSON.stringify(detectedDeps)}
+    });
+
     function renderErrorOverlay(title, msg) {
       console.error("[Runtime Error]:", msg);
       const rootEl = document.getElementById("root");
@@ -523,6 +530,12 @@ export function compileSandboxHtml(
 
     async function bootstrap() {
       try {
+        notifyParent({
+          type: "SANDBOX_STAGE",
+          stage: "mounting",
+          packages: ${JSON.stringify(detectedDeps)}
+        });
+
         // 1. Import component.tsx module (try import map bare specifier first, then relative, fallback to blob)
         let componentModule;
         try {
@@ -825,7 +838,7 @@ export function compileSandboxHtml(
 </body>
 </html>`;
 
-  return { html, error: null };
+  return { html, error: null, detectedDependencies: detectedDeps };
 }
 
 /**
