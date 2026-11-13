@@ -67,6 +67,8 @@ import {
   Eye,
   AlertCircle,
   X,
+  Lock,
+  Unlock,
 } from "lucide-react";
 
 const MODEL_OPTIONS = [
@@ -107,6 +109,7 @@ export function AiAssistantPanel({ isMobile = false, onClose }: AiAssistantPanel
     isAiPanelOpen,
     aiPanelWidth,
     aiModel,
+    preserveDesignSkill,
     aiChatMessages,
     isAiThinking,
     compilerError,
@@ -114,6 +117,7 @@ export function AiAssistantPanel({ isMobile = false, onClose }: AiAssistantPanel
     setAiPanelOpen,
     setAiPanelWidth,
     setAiModel,
+    togglePreserveDesignSkill,
     addAiChatMessage,
     approveAiMessageChanges,
     rejectAiMessageChanges,
@@ -456,6 +460,7 @@ export function AiAssistantPanel({ isMobile = false, onClose }: AiAssistantPanel
           dependencies,
           model: currentModelObj.id,
           role: "copilot",
+          preserveDesign: preserveDesignSkill,
           history: historyPayload,
           images: currentImages.map((img) => ({
             name: img.name,
@@ -657,6 +662,41 @@ export function AiAssistantPanel({ isMobile = false, onClose }: AiAssistantPanel
                   </DropdownMenuItem>
                 );
               })}
+              <DropdownMenuSeparator />
+              <DropdownMenuLabel className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+                Copilot Skill
+              </DropdownMenuLabel>
+              <DropdownMenuItem
+                onClick={() => togglePreserveDesignSkill()}
+                className="flex flex-col items-start gap-1 py-1.5 cursor-pointer font-sans"
+              >
+                <div className="flex items-center justify-between w-full">
+                  <div className="flex items-center gap-1.5">
+                    {preserveDesignSkill ? (
+                      <Lock className="size-3.5 text-emerald-500" />
+                    ) : (
+                      <Unlock className="size-3.5 text-muted-foreground" />
+                    )}
+                    <span className="font-medium text-xs text-foreground">
+                      Preserve UI & Design Lock
+                    </span>
+                    <Badge
+                      variant="secondary"
+                      className={cn(
+                        "text-[9px] py-0 px-1 font-normal font-sans",
+                        preserveDesignSkill &&
+                          "bg-emerald-500/15 text-emerald-500 border-emerald-500/30"
+                      )}
+                    >
+                      {preserveDesignSkill ? "Active" : "Off"}
+                    </Badge>
+                  </div>
+                  {preserveDesignSkill && <Check className="size-3.5 text-emerald-500" />}
+                </div>
+                <span className="text-[10px] text-muted-foreground leading-snug">
+                  Edits code, logic, and types without altering existing UI design or layout.
+                </span>
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
@@ -742,7 +782,7 @@ export function AiAssistantPanel({ isMobile = false, onClose }: AiAssistantPanel
             defaultOpen={true}
             onAutoFix={() =>
               handleSubmitPrompt(
-                "Audit component.tsx, default.tsx, and index.css against all 21st.dev guidelines and auto-fix all missing requirements (className forwarding, cn(), props interface, use client).",
+                "Audit component.tsx, default.tsx, and index.css against all 21st.dev guidelines and auto-fix all missing requirements (className forwarding, cn(), props interface, use client) while keeping the existing UI design, layout, colors, and styling 100% unchanged.",
                 "autofix"
               )
             }
@@ -821,7 +861,7 @@ export function AiAssistantPanel({ isMobile = false, onClose }: AiAssistantPanel
                 size="sm"
                 onClick={() =>
                   handleSubmitPrompt(
-                    "Audit component.tsx against 21st.dev standards and fix all missing requirements (className forwarding, cn(), props interface, use client).",
+                    "Audit component.tsx against 21st.dev standards and fix all missing requirements (className forwarding, cn(), props interface, use client) while keeping the existing UI design, layout, and styling 100% unchanged.",
                     "autofix"
                   )
                 }
@@ -835,7 +875,7 @@ export function AiAssistantPanel({ isMobile = false, onClose }: AiAssistantPanel
                 size="sm"
                 onClick={() =>
                   handleSubmitPrompt(
-                    "Add smooth Framer Motion spring entry, hover scaling, and tap micro-interactions to component.tsx.",
+                    "Add smooth Framer Motion spring entry, hover scaling, and tap micro-interactions to component.tsx while preserving the existing UI layout and visual design.",
                     "chat"
                   )
                 }
@@ -849,7 +889,7 @@ export function AiAssistantPanel({ isMobile = false, onClose }: AiAssistantPanel
                 size="sm"
                 onClick={() =>
                   handleSubmitPrompt(
-                    "Add complete dark and light mode support with Tailwind dark: classes and elegant contrast.",
+                    "Add complete dark and light mode support with Tailwind dark: classes while preserving the existing component layout and design structure.",
                     "chat"
                   )
                 }
@@ -863,7 +903,7 @@ export function AiAssistantPanel({ isMobile = false, onClose }: AiAssistantPanel
                 size="sm"
                 onClick={() =>
                   handleSubmitPrompt(
-                    "Refactor component.tsx to optimize performance, clean up types, and ensure modularity.",
+                    "Refactor component.tsx to optimize performance, clean up types, and ensure modularity while keeping the existing UI design, layout, and visual styling 100% unchanged.",
                     "chat"
                   )
                 }
@@ -917,7 +957,7 @@ export function AiAssistantPanel({ isMobile = false, onClose }: AiAssistantPanel
                   variant="outline"
                   onClick={() =>
                     handleSubmitPrompt(
-                      `Audit component.tsx against 21st.dev standards and fix all failing requirements: ${failingChecks.map((c) => c.title).join(", ")}. Ensure className forwarding with cn(), typed props, and clean structure.`,
+                      `Audit component.tsx against 21st.dev standards and fix all failing requirements: ${failingChecks.map((c) => c.title).join(", ")}. Ensure className forwarding with cn(), typed props, and clean structure while keeping the existing UI design, layout, and styling 100% unchanged.`,
                       "autofix"
                     )
                   }
@@ -951,7 +991,7 @@ export function AiAssistantPanel({ isMobile = false, onClose }: AiAssistantPanel
                 variant="outline"
                 onClick={() =>
                   handleSubmitPrompt(
-                    "Add smooth Framer Motion spring entry, hover scaling, and tap micro-interactions to component.tsx.",
+                    "Add smooth Framer Motion spring entry, hover scaling, and tap micro-interactions to component.tsx while keeping the existing UI layout and visual design intact.",
                     "chat"
                   )
                 }
@@ -984,7 +1024,7 @@ export function AiAssistantPanel({ isMobile = false, onClose }: AiAssistantPanel
                 variant="outline"
                 onClick={() =>
                   handleSubmitPrompt(
-                    "Add complete dark and light mode support with Tailwind dark: classes and elegant contrast.",
+                    "Add complete dark and light mode support with Tailwind dark: classes while preserving the existing component layout and design structure.",
                     "chat"
                   )
                 }
@@ -1017,7 +1057,7 @@ export function AiAssistantPanel({ isMobile = false, onClose }: AiAssistantPanel
                 variant="outline"
                 onClick={() =>
                   handleSubmitPrompt(
-                    "Audit component.tsx for web accessibility (a11y), add ARIA labels, role attributes, and keyboard focus states.",
+                    "Audit component.tsx for web accessibility (a11y), add ARIA labels, role attributes, and keyboard focus states while keeping the existing UI design and layout 100% unchanged.",
                     "chat"
                   )
                 }
@@ -1050,7 +1090,7 @@ export function AiAssistantPanel({ isMobile = false, onClose }: AiAssistantPanel
                 variant="outline"
                 onClick={() =>
                   handleSubmitPrompt(
-                    "Refactor component.tsx to extract reusable subcomponents, streamline TypeScript props, and memoize callbacks.",
+                    "Refactor component.tsx to extract reusable subcomponents, streamline TypeScript props, and memoize callbacks while keeping the existing UI design, layout, and visual styling 100% unchanged.",
                     "chat"
                   )
                 }
@@ -1342,13 +1382,43 @@ export function AiAssistantPanel({ isMobile = false, onClose }: AiAssistantPanel
           onAttachCodeClick={() => setIsAttachCodeDialogOpen(true)}
           onImageFilesPasted={handleImageFilesAdded}
           modelBadge={
-            <Badge
-              variant="outline"
-              className="text-[10px] py-0.5 px-2 font-normal text-muted-foreground border-border/80 font-sans shrink-0 whitespace-nowrap flex items-center gap-1 bg-muted/40"
-            >
-              <Sparkles className="size-2.5 text-primary shrink-0" />
-              <span>{currentModelObj.name.replace("Gemini ", "")}</span>
-            </Badge>
+            <div className="flex items-center gap-1 shrink-0">
+              <Badge
+                variant="outline"
+                className="text-[10px] py-0.5 px-2 font-normal text-muted-foreground border-border/80 font-sans shrink-0 whitespace-nowrap flex items-center gap-1 bg-muted/40"
+              >
+                <Sparkles className="size-2.5 text-primary shrink-0" />
+                <span>{currentModelObj.name.replace("Gemini ", "")}</span>
+              </Badge>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={togglePreserveDesignSkill}
+                    className={cn(
+                      "h-5 gap-1 px-1.5 text-[10px] font-normal font-sans rounded-md transition-colors",
+                      preserveDesignSkill
+                        ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/15"
+                        : "border-border/80 bg-muted/30 text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    {preserveDesignSkill ? (
+                      <Lock className="size-2.5 shrink-0" />
+                    ) : (
+                      <Unlock className="size-2.5 shrink-0" />
+                    )}
+                    <span>{preserveDesignSkill ? "UI Locked" : "UI Editable"}</span>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="top">
+                  {preserveDesignSkill
+                    ? "Preserve UI Skill Active: Code edits & fixes will NOT alter existing design or layout (click to unlock)"
+                    : "UI Editable: Copilot may modify visual styling when editing (click to lock UI design)"}
+                </TooltipContent>
+              </Tooltip>
+            </div>
           }
         />
 

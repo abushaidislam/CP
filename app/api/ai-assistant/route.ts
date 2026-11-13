@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenAI } from "@google/genai";
 import { auditComponentGuidelines } from "@/lib/sandbox/guideline-linter";
-import { COPILOT_PREMIUM_DESIGN_MANIFESTO } from "@/lib/sandbox/copilot-design-knowledge";
+import {
+  COPILOT_PREMIUM_DESIGN_MANIFESTO,
+  COPILOT_UI_PRESERVATION_SKILL,
+} from "@/lib/sandbox/copilot-design-knowledge";
 
 interface ChatHistoryItem {
   role: "user" | "assistant" | "model" | "system";
@@ -30,6 +33,7 @@ interface RequestBody {
   dependencies?: string[];
   model?: string;
   role?: string;
+  preserveDesign?: boolean;
   history?: ChatHistoryItem[];
   images?: AttachedImagePayload[];
   codeSnippets?: AttachedCodePayload[];
@@ -56,27 +60,22 @@ THE PLATFORM & WORKFLOW:
 
 STRICT BEHAVIORAL PROTOCOLS:
 
-1. SURGICAL BUG FIXING & ERROR CORRECTION (ZERO UNINTENDED DESIGN CHANGES):
-- When the developer reports an error, bug, rendering failure, syntax issue, TypeScript problem, or says something is broken or not working:
-  * DO NOT alter, rewrite, or redesign existing layout structure, padding, margins, colors, borders, or animations.
-  * PRESERVE 100% of the developer's styling decisions, class names, and visual aesthetics.
-  * Touch ONLY the specific lines causing the bug, runtime crash, broken state, or type error.
-  * Be a surgical engineer: fix the exact faulty logic or syntax without interfering with the visual design.
+1. DEFAULT SURGICAL PRESERVATION (ZERO UNINTENDED DESIGN CHANGES):
+- Whenever the developer asks to modify logic, add features/props/state, refactor code, fix bugs/errors, add accessibility, or auto-fix guidelines:
+  * DO NOT alter, rewrite, or redesign existing layout structure, padding, margins, colors, gradients, borders, shadows, border-radius, typography, or animations.
+  * PRESERVE 100% of the developer's styling decisions, Tailwind class names, DOM hierarchy, and visual aesthetics.
+  * Touch ONLY the specific lines needed for the requested logic, functionality, bug fix, or type/standard requirement.
+  * Keep the UI looking 100% identical to how it looked before your edit.
 
 2. ON-DEMAND UI & MOTION REFINEMENT (ONLY WHEN EXPLICITLY REQUESTED):
-- ONLY when the developer explicitly asks to improve the design, polish UI, enhance animations, or make it look/feel better:
-  * Apply premium visual aesthetics inspired by modern design systems (Linear, Vercel, Apple, Stripe).
-  * Use fluid Framer Motion spring physics (e.g., transition={{ type: "spring", stiffness: 350, damping: 25 }}) instead of sluggish or robotic linear transitions.
-  * Ensure refined typography, subtle borders (e.g. border-border/40), and crisp optical spacing.
-  * Ensure full Light and Dark mode contrast balance.
-  * Provide tasteful micro-interactions (hover, active tap states like 'whileTap={{ scale: 0.98 }}', accessible focus-visible rings).
+- ONLY when the developer explicitly asks to change the visual design, restyle UI, change colors/theme, or add new animations:
+  * Modify ONLY the specific visual aspect requested while keeping the rest of the component's layout and design intact.
 
 3. 100% COPY-PASTE & REUSABLE STANDARDS:
   * Always include '"use client";' at the very top of "component.tsx" whenever hooks (useState, useEffect, useRef, etc.) or interactive events are used.
   * Export a single main component with an explicit TypeScript Props interface extending standard HTML attributes (e.g., 'export interface ComponentProps extends React.HTMLAttributes<HTMLDivElement>').
-  * Merge custom className using 'cn(...)' from '@/lib/utils'.
-  * Avoid hardcoded absolute pixel widths where responsive layout is expected; prefer flex, grid, and Tailwind responsive utilities.
-  * "default.tsx" must have default export 'export default function Demo() { ... }' demonstrating realistic, beautiful mock content.
+  * Merge custom className using 'cn(...)' from '@/lib/utils' while keeping all existing Tailwind classes verbatim.
+  * "default.tsx" must have default export 'export default function Demo() { ... }'.
 
 CRITICAL CODE MODIFICATION RULES:
 - Never return partial code, pseudocode, or '// rest of code stays the same' comments.
@@ -159,6 +158,7 @@ export async function POST(req: NextRequest) {
       dependencies = [],
       model: requestedModel = "gemini-4-hydrogen",
       role: requestedRole = "copilot",
+      preserveDesign = true,
       history = [],
       images = [],
       codeSnippets = [],
@@ -229,7 +229,7 @@ export async function POST(req: NextRequest) {
     });
 
     const systemInstruction = `${MASTER_COPILOT_INSTRUCTION}
-
+${preserveDesign ? `\n${COPILOT_UI_PRESERVATION_SKILL}\n` : ""}
 CONVERSATION & RESPONSE INSTRUCTIONS:
 - You are engaged in a multi-turn conversation with the developer. Maintain full context across previous turns.
 - Provide insightful, friendly, and technically precise feedback.
@@ -297,8 +297,13 @@ CRITICAL: Never output partial code with placeholders like '// rest of code'. Ch
     const userPrompt =
       prompt ||
       (action === "autofix"
-        ? "Auto-fix any guideline violations"
+        ? "Auto-fix any guideline violations while keeping the existing UI design, layout, and styling 100% unchanged."
         : "Audit this component");
+    const designLockReminder = preserveDesign
+      ? `\n\n[ACTIVE SKILL: UI & DESIGN LOCK ON]
+CRITICAL RULE FOR THIS TURN: Keep the existing UI, layout structure, spacing, colors, gradients, border-radius, shadows, and visual appearance 100% UNCHANGED. Apply the requested changes, fixes, or code improvements WITHOUT altering how the component looks unless the user prompt above explicitly asks for a specific visual/style change.`
+      : "";
+
     let currentTurnText = `Current Editor Context:
 Active Dependencies: ${JSON.stringify(dependencies)}
 
@@ -312,7 +317,7 @@ ${activeDemoCode}
 ${cssCode}
 
 User Request (${action}):
-${userPrompt}`;
+${userPrompt}${designLockReminder}`;
 
     // Append attached code snippets if any
     if (codeSnippets && Array.isArray(codeSnippets) && codeSnippets.length > 0) {

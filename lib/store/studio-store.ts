@@ -185,6 +185,7 @@ export interface StudioState {
   geminiApiKey: string;
   aiModel: string;
   aiRole: AiChatRole;
+  preserveDesignSkill: boolean;
   aiChatMessages: AiChatMessage[];
   isAiThinking: boolean;
 
@@ -260,6 +261,8 @@ export interface StudioState {
   setGeminiApiKey: (key: string) => void;
   setAiModel: (model: string) => void;
   setAiRole: (role: AiChatRole) => void;
+  setPreserveDesignSkill: (preserve: boolean) => void;
+  togglePreserveDesignSkill: () => void;
   addAiChatMessage: (msg: Omit<AiChatMessage, "id" | "timestamp">) => void;
   markAiMessageApplied: (id: string) => void;
   approveAiMessageChanges: (
@@ -943,6 +946,7 @@ export const useStudioStore = create<StudioState>()(
       geminiApiKey: "",
       aiModel: "gemini-4-hydrogen",
       aiRole: "copilot",
+      preserveDesignSkill: true,
       aiChatMessages: [],
       isAiThinking: false,
 
@@ -1940,6 +1944,11 @@ export const useStudioStore = create<StudioState>()(
 
       setAiRole: (role) => set({ aiRole: role }),
 
+      setPreserveDesignSkill: (preserve) => set({ preserveDesignSkill: preserve }),
+
+      togglePreserveDesignSkill: () =>
+        set((state) => ({ preserveDesignSkill: !state.preserveDesignSkill })),
+
       addAiChatMessage: (msg) =>
         set((state) => ({
           aiChatMessages: [
@@ -2164,6 +2173,7 @@ export const useStudioStore = create<StudioState>()(
         geminiApiKey: state.geminiApiKey,
         aiModel: state.aiModel,
         aiRole: state.aiRole,
+        preserveDesignSkill: state.preserveDesignSkill,
         variantsByTemplate: state.variantsByTemplate,
         activeVariantByTemplate: state.activeVariantByTemplate,
         userComponents: state.userComponents,
