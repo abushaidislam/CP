@@ -44,6 +44,8 @@ import {
   Loader2,
   MoreHorizontal,
   Keyboard,
+  ShieldCheck,
+  Lock,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -71,6 +73,8 @@ export function StudioHeader() {
     setSaveCheckpointDialogOpen,
     isHistorySheetOpen,
     setHistorySheetOpen,
+    isOwnerAuthenticated,
+    setSecurityModalOpen,
   } = useStudioStore();
 
   const [isDark, setIsDark] = useState(true);
@@ -592,6 +596,40 @@ export function StudioHeader() {
 
         <Separator orientation="vertical" className="hidden md:block h-4 mx-0.5" />
 
+        {/* Owner Security & API Credit Shield Button */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => setSecurityModalOpen(true)}
+              aria-label={
+                isOwnerAuthenticated
+                  ? "Security Shield (Owner Session Active)"
+                  : "Security Shield (Read-Only · Unlock Owner Session)"
+              }
+              className={cn(
+                "studio-icon-btn relative size-8 rounded-none border-border/80",
+                isOwnerAuthenticated
+                  ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/40 hover:bg-emerald-500/20"
+                  : "bg-card/60 text-amber-500 hover:text-amber-400 border-amber-500/30"
+              )}
+            >
+              {isOwnerAuthenticated ? (
+                <ShieldCheck className="size-3.5 text-emerald-500" />
+              ) : (
+                <Lock className="size-3.5 text-amber-500" />
+              )}
+              <span className="sr-only">Security Shield</span>
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" className="font-sans text-xs">
+            {isOwnerAuthenticated
+              ? "Security Shield: Owner Verified (AI Credits Active)"
+              : "Security Shield: Read-Only Mode (Click to Unlock AI Credits)"}
+          </TooltipContent>
+        </Tooltip>
+
         {/* Keyboard Shortcuts Button (Icon-Only) */}
         <div className="hidden lg:flex items-center">
           <Tooltip>
@@ -713,6 +751,30 @@ export function StudioHeader() {
                 Studio Actions
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
+
+              {/* Security Shield */}
+              <DropdownMenuItem
+                onClick={() => setSecurityModalOpen(true)}
+                className="gap-2.5 cursor-pointer rounded-none font-sans text-xs"
+              >
+                {isOwnerAuthenticated ? (
+                  <ShieldCheck className="size-3.5 text-emerald-500" />
+                ) : (
+                  <Lock className="size-3.5 text-amber-500" />
+                )}
+                <span className="flex-1">Security & Credit Guard</span>
+                <Badge
+                  variant="secondary"
+                  className={cn(
+                    "h-4 rounded-none px-1 text-[9px] font-sans",
+                    isOwnerAuthenticated
+                      ? "bg-emerald-500/15 text-emerald-500"
+                      : "bg-amber-500/15 text-amber-500"
+                  )}
+                >
+                  {isOwnerAuthenticated ? "Active" : "Locked"}
+                </Badge>
+              </DropdownMenuItem>
 
               {/* Capture Snapshot */}
               <DropdownMenuItem

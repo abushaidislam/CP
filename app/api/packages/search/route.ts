@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { checkRateLimit, getClientIp } from "@/lib/security/api-guard";
 
 export interface NpmSearchResult {
   name: string;
@@ -10,6 +11,11 @@ export interface NpmSearchResult {
 
 export async function GET(req: NextRequest) {
   try {
+    const rateCheck = checkRateLimit(getClientIp(req), "packages-search", 45, 60_000);
+    if (!rateCheck.allowed) {
+      return NextResponse.json({ results: [], error: "Rate limit exceeded" }, { status: 429 });
+    }
+
     const query = req.nextUrl.searchParams.get("q")?.trim() || "";
 
     if (!query || query.length < 2) {

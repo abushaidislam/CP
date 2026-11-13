@@ -26,8 +26,11 @@ import {
   ArrowLeft,
   X,
   Keyboard,
+  ShieldCheck,
+  Lock,
 } from "lucide-react";
 import { KeyboardShortcutsDialog } from "@/components/studio/keyboard-shortcuts-dialog";
+import { SecurityShieldModal } from "@/components/studio/security-shield-modal";
 
 export interface ComponentHubProps {
   onNavigateStudio?: (componentId: string) => void;
@@ -63,6 +66,8 @@ export function ComponentHub({
     duplicateUserComponent,
     deleteUserComponent,
     loadComponent,
+    isOwnerAuthenticated,
+    setSecurityModalOpen,
   } = useStudioStore();
 
   const [searchQuery, setSearchQuery] = useState(initialSearchQuery);
@@ -327,8 +332,40 @@ export function ComponentHub({
             </div>
           </div>
 
-          {/* Right Actions: Keyboard Shortcuts, Theme Toggle & New Component Button */}
+          {/* Right Actions: Security Shield, Keyboard Shortcuts, Theme Toggle & New Component Button */}
           <div className="flex items-center gap-1.5">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setSecurityModalOpen(true)}
+                  className={cn(
+                    "studio-icon-btn size-8 rounded-none border-border/80",
+                    isOwnerAuthenticated
+                      ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/40 hover:bg-emerald-500/20"
+                      : "bg-card/70 text-amber-500 hover:text-amber-400 border-amber-500/30"
+                  )}
+                  aria-label={
+                    isOwnerAuthenticated
+                      ? "Security Shield (Owner Session Active)"
+                      : "Security Shield (Read-Only · Unlock Owner Session)"
+                  }
+                >
+                  {isOwnerAuthenticated ? (
+                    <ShieldCheck className="size-4 text-emerald-500" aria-hidden="true" />
+                  ) : (
+                    <Lock className="size-4 text-amber-500" aria-hidden="true" />
+                  )}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="font-sans text-xs">
+                {isOwnerAuthenticated
+                  ? "Security Shield: Owner Verified (AI Credits Active)"
+                  : "Security Shield: Read-Only Mode (Click to Unlock AI Credits)"}
+              </TooltipContent>
+            </Tooltip>
+
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
@@ -619,6 +656,7 @@ export function ComponentHub({
         <CreateComponentDialog onCreated={handleCreated} />
         <QuickPreviewModal onOpenStudio={handleOpenStudio} />
         <KeyboardShortcutsDialog open={isShortcutsOpen} onOpenChange={setIsShortcutsOpen} />
+        <SecurityShieldModal />
       </div>
     </TooltipProvider>
   );

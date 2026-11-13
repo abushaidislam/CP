@@ -5,6 +5,18 @@ import {
   COPILOT_PREMIUM_DESIGN_MANIFESTO,
   COPILOT_UI_PRESERVATION_SKILL,
 } from "@/lib/sandbox/copilot-design-knowledge";
+import {
+  checkDailyAiQuota,
+  checkRateLimit,
+  getClientIp,
+  getConfiguredAiRateLimitPerMin,
+  getDailyQuotaSummary,
+  incrementDailyAiQuota,
+  isOwnerRequestAuthenticated,
+  recordBlockedRequest,
+  verifyPayloadSize,
+  verifySameOriginRequest,
+} from "@/lib/security/api-guard";
 
 interface ChatHistoryItem {
   role: "user" | "assistant" | "model" | "system";
@@ -37,7 +49,6 @@ interface RequestBody {
   history?: ChatHistoryItem[];
   images?: AttachedImagePayload[];
   codeSnippets?: AttachedCodePayload[];
-  apiKey?: string;
 }
 
 // Supported official Gemini models from @google/genai skill specification
@@ -147,6 +158,73 @@ function parseJsonResponseSafely(textOutput: string): {
 
 export async function POST(req: NextRequest) {
   try {
+    // 1. Enforce payload size cap (12MB max for multimodal image prompts)
+    const sizeCheck = verifyPayloadSize(req, 12 * 1024 * 1024);
+    if (!sizeCheck.valid && sizeCheck.errorResponse) {
+      return sizeCheck.errorResponse;
+    }
+
+    // 2. Enforce Same-Origin & CSRF verification
+    const originCheck = verifySameOriginRequest(req);
+    if (!originCheck.valid) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: originCheck.reason || "Cross-origin request rejected by API Credit Shield.",
+        },
+        { status: 403 }
+      );
+    }
+
+    // 3. Enforce Owner Session Authentication before allowing AI credit usage
+    if (!isOwnerRequestAuthenticated(req)) {
+      recordBlockedRequest();
+      return NextResponse.json(
+        {
+          success: false,
+          requiresOwnerAuth: true,
+          error:
+            "Owner Session Locked: Please unlock with your Owner Passcode to use Gemini AI credits.",
+        },
+        { status: 401 }
+      );
+    }
+
+    // 4. Enforce Sliding-Window Per-IP Burst Rate Limit
+    const clientIp = getClientIp(req);
+    const limitPerMin = getConfiguredAiRateLimitPerMin();
+    const rateCheck = checkRateLimit(clientIp, "ai-assistant", limitPerMin, 60_000);
+    if (!rateCheck.allowed) {
+      return NextResponse.json(
+        {
+          success: false,
+          rateLimited: true,
+          retryAfterSeconds: rateCheck.retryAfterSeconds,
+          error: `Rate limit reached (${limitPerMin} requests/min). Please wait ${rateCheck.retryAfterSeconds}s before sending another AI request.`,
+        },
+        {
+          status: 429,
+          headers: {
+            "Retry-After": String(rateCheck.retryAfterSeconds),
+          },
+        }
+      );
+    }
+
+    // 5. Enforce Daily AI Credit Quota Guard
+    const quotaCheck = checkDailyAiQuota();
+    if (!quotaCheck.allowed) {
+      return NextResponse.json(
+        {
+          success: false,
+          quotaExceeded: true,
+          dailyQuota: getDailyQuotaSummary(),
+          error: `Daily AI credit protection cap reached (${quotaCheck.used}/${quotaCheck.limit} requests today). You can increase or reset your daily limit in the Security Shield modal.`,
+        },
+        { status: 429 }
+      );
+    }
+
     const body: RequestBody = await req.json();
     const {
       prompt,
@@ -175,7 +253,8 @@ export async function POST(req: NextRequest) {
       dependencies
     );
 
-    const apiKey = (process.env.GEMINI_API_KEY || body.apiKey)?.trim();
+    // Server-only API key enforcement (never accept client-provided API keys)
+    const apiKey = process.env.GEMINI_API_KEY?.trim();
 
     // If server has no API key configured, return static analysis fallback
     if (!apiKey) {
@@ -187,6 +266,7 @@ export async function POST(req: NextRequest) {
         success: true,
         source: "static-linter",
         hasApiKey: false,
+        dailyQuota: getDailyQuotaSummary(),
         complianceScore: staticAudit.score,
         checks: staticAudit.checks,
         modelUsed: activeModel,
@@ -366,7 +446,8 @@ ${userPrompt}${designLockReminder}`;
       });
     }
 
-    // Invoke Gemini multi-turn generation
+    // Invoke Gemini multi-turn generation and record daily credit consumption
+    const updatedQuota = incrementDailyAiQuota();
     const response = await ai.models.generateContent({
       model: activeModel,
       contents,
@@ -433,6 +514,7 @@ ${userPrompt}${designLockReminder}`;
       success: true,
       source: "gemini-api",
       hasApiKey: true,
+      dailyQuota: updatedQuota,
       modelUsed: activeModel,
       roleUsed: requestedRole || "copilot",
       complianceScore: parsedResult.complianceScore ?? staticAudit.score,

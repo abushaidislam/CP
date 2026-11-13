@@ -13,6 +13,7 @@ import { CreateVariantDialog } from "./create-variant-dialog";
 import { VersionHistorySheet } from "./version-history-sheet";
 import { TerminalPanel } from "./terminal-panel";
 import { KeyboardShortcutsDialog } from "./keyboard-shortcuts-dialog";
+import { SecurityShieldModal } from "./security-shield-modal";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Code, Eye, Sparkles } from "lucide-react";
 import { useStudioStore } from "@/lib/store/studio-store";
@@ -273,6 +274,7 @@ export function StudioContainer({ componentId: _componentId }: StudioContainerPr
       <CreateVariantDialog />
       <VersionHistorySheet />
       <KeyboardShortcutsDialog />
+      <SecurityShieldModal />
     </div>
   );
 }

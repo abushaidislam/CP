@@ -172,6 +172,25 @@ export interface StudioState {
   isRecordingModalOpen: boolean;
   isPublishModalOpen: boolean;
   isDependencyModalOpen: boolean;
+  isSecurityModalOpen: boolean;
+  isOwnerAuthenticated: boolean;
+  securityTelemetry: {
+    authenticated: boolean;
+    hasEnvPasscode: boolean;
+    hasCustomPasscode: boolean;
+    requiresPasscodeSetup: boolean;
+    dailyQuota: {
+      used: number;
+      limit: number;
+      remaining: number;
+      resetAt: string;
+    };
+    rateLimit: {
+      limitPerMinute: number;
+      remainingPerMinute: number;
+    };
+    blockedRequestsCount: number;
+  } | null;
 
   // Terminal & Console
   terminalLogs: TerminalLogEntry[];
@@ -245,6 +264,11 @@ export interface StudioState {
   setRecordingModalOpen: (open: boolean) => void;
   setPublishModalOpen: (open: boolean) => void;
   setDependencyModalOpen: (open: boolean) => void;
+  setSecurityModalOpen: (open: boolean) => void;
+  setOwnerAuthenticated: (authenticated: boolean) => void;
+  setSecurityTelemetry: (
+    telemetry: StudioState["securityTelemetry"]
+  ) => void;
 
   // Terminal Actions
   addTerminalLog: (entry: { type: TerminalLogLevel; message: string }) => void;
@@ -927,6 +951,9 @@ export const useStudioStore = create<StudioState>()(
       isRecordingModalOpen: false,
       isPublishModalOpen: false,
       isDependencyModalOpen: false,
+      isSecurityModalOpen: false,
+      isOwnerAuthenticated: false,
+      securityTelemetry: null,
 
       terminalLogs: [
         {
@@ -1882,6 +1909,14 @@ export const useStudioStore = create<StudioState>()(
       setRecordingModalOpen: (open) => set({ isRecordingModalOpen: open }),
       setPublishModalOpen: (open) => set({ isPublishModalOpen: open }),
       setDependencyModalOpen: (open) => set({ isDependencyModalOpen: open }),
+      setSecurityModalOpen: (open) => set({ isSecurityModalOpen: open }),
+      setOwnerAuthenticated: (authenticated) =>
+        set({ isOwnerAuthenticated: authenticated }),
+      setSecurityTelemetry: (telemetry) =>
+        set({
+          securityTelemetry: telemetry,
+          isOwnerAuthenticated: Boolean(telemetry?.authenticated),
+        }),
 
       addTerminalLog: ({ type, message }) =>
         set((state) => {
@@ -2170,7 +2205,6 @@ export const useStudioStore = create<StudioState>()(
         terminalFilter: state.terminalFilter,
         isAiPanelOpen: state.isAiPanelOpen,
         aiPanelWidth: state.aiPanelWidth,
-        geminiApiKey: state.geminiApiKey,
         aiModel: state.aiModel,
         aiRole: state.aiRole,
         preserveDesignSkill: state.preserveDesignSkill,

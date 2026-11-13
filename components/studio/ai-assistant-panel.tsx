@@ -113,7 +113,11 @@ export function AiAssistantPanel({ isMobile = false, onClose }: AiAssistantPanel
     aiChatMessages,
     isAiThinking,
     compilerError,
-    geminiApiKey,
+    isOwnerAuthenticated,
+    securityTelemetry,
+    setSecurityModalOpen,
+    setOwnerAuthenticated,
+    setSecurityTelemetry,
     setAiPanelOpen,
     setAiPanelWidth,
     setAiModel,
@@ -449,7 +453,10 @@ export function AiAssistantPanel({ isMobile = false, onClose }: AiAssistantPanel
 
       const res = await fetch("/api/ai-assistant", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "X-Studio-Client": "component-studio",
+        },
         body: JSON.stringify({
           prompt: userMessageContent,
           action,
@@ -472,7 +479,6 @@ export function AiAssistantPanel({ isMobile = false, onClose }: AiAssistantPanel
             language: cs.language,
             code: cs.code,
           })),
-          apiKey: geminiApiKey || undefined,
         }),
       });
 
@@ -480,6 +486,16 @@ export function AiAssistantPanel({ isMobile = false, onClose }: AiAssistantPanel
       type AiAssistantApiResponse = {
         error?: string;
         message?: string;
+        requiresOwnerAuth?: boolean;
+        quotaExceeded?: boolean;
+        rateLimited?: boolean;
+        dailyQuota?: {
+          used: number;
+          limit: number;
+          remaining: number;
+          resetAt?: string;
+          resetAtUtc?: string;
+        };
         reasoningSummary?: string;
         reasoningSteps?: Array<{ title: string; description?: string; detail?: string }>;
         changedFiles?: Partial<{
@@ -500,12 +516,31 @@ export function AiAssistantPanel({ isMobile = false, onClose }: AiAssistantPanel
         };
       }
 
+      if (data.dailyQuota && securityTelemetry) {
+        setSecurityTelemetry({
+          ...securityTelemetry,
+          dailyQuota: {
+            used: data.dailyQuota.used,
+            limit: data.dailyQuota.limit,
+            remaining: data.dailyQuota.remaining,
+            resetAt:
+              data.dailyQuota.resetAt ||
+              data.dailyQuota.resetAtUtc ||
+              securityTelemetry.dailyQuota.resetAt,
+          },
+        });
+      }
+
       const elapsedSeconds = Math.max(
         1,
         Math.round((Date.now() - requestStartTimeRef.current) / 1000)
       );
 
       if (!res.ok) {
+        if (res.status === 401 || data.requiresOwnerAuth) {
+          setOwnerAuthenticated(false);
+          setSecurityModalOpen(true);
+        }
         addAiChatMessage({
           role: "assistant",
           authorRole: "Co-Pilot",
@@ -790,6 +825,45 @@ export function AiAssistantPanel({ isMobile = false, onClose }: AiAssistantPanel
             <TooltipContent side="bottom">Close panel (Ctrl+I)</TooltipContent>
           </Tooltip>
         </div>
+      </div>
+
+      {/* Owner Security & API Credit Protection Status Bar */}
+      <div
+        className={cn(
+          "flex items-center justify-between gap-2 border-b border-border px-3 py-1.5 text-[11px] font-sans select-none",
+          isOwnerAuthenticated
+            ? "bg-emerald-500/5 text-foreground"
+            : "bg-amber-500/10 text-amber-500"
+        )}
+      >
+        <div className="flex items-center gap-1.5 min-w-0">
+          {isOwnerAuthenticated ? (
+            <ShieldCheck className="size-3.5 text-emerald-500 shrink-0" />
+          ) : (
+            <Lock className="size-3.5 text-amber-500 shrink-0" />
+          )}
+          <span className="truncate font-medium">
+            {isOwnerAuthenticated
+              ? "Owner Session Active"
+              : "AI Credits Locked (Read-Only)"}
+          </span>
+          {securityTelemetry?.dailyQuota && (
+            <Badge
+              variant="outline"
+              className="rounded-none text-[9px] py-0 px-1 font-mono tabular-nums border-border/80 text-muted-foreground"
+            >
+              {securityTelemetry.dailyQuota.remaining}/{securityTelemetry.dailyQuota.limit} left
+            </Badge>
+          )}
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setSecurityModalOpen(true)}
+          className="h-6 rounded-none px-2 text-[10px] font-sans shrink-0"
+        >
+          {isOwnerAuthenticated ? "Shield" : "Unlock Owner"}
+        </Button>
       </div>
 
       {/* Collapsible Guidelines Drawer Banner */}
