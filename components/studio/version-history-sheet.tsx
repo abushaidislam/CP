@@ -70,6 +70,7 @@ export function VersionHistorySheet() {
   const [confirmDiffRestore, setConfirmDiffRestore] = useState(false);
   const [forkingId, setForkingId] = useState<string | null>(null);
   const [forkName, setForkName] = useState<string>("");
+  const closeBtnRef = React.useRef<HTMLButtonElement | null>(null);
 
   // Resolve active variant and its checkpoints
   const variants = variantsByTemplate[currentTemplateId] || [];
@@ -86,9 +87,12 @@ export function VersionHistorySheet() {
     setHistorySheetOpen(false);
   }, [setSelectedCheckpointId, setHistorySheetOpen]);
 
-  // Close sheet on Escape key
+  // Close sheet on Escape key & move focus into sheet when opened
   useEffect(() => {
     if (!isHistorySheetOpen) return;
+    const focusTimer = setTimeout(() => {
+      closeBtnRef.current?.focus();
+    }, 50);
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.defaultPrevented) return;
       if (e.key === "Escape") {
@@ -96,7 +100,10 @@ export function VersionHistorySheet() {
       }
     };
     window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
+    return () => {
+      clearTimeout(focusTimer);
+      window.removeEventListener("keydown", handleKeyDown);
+    };
   }, [isHistorySheetOpen, handleClose]);
 
   return (
@@ -148,6 +155,7 @@ export function VersionHistorySheet() {
               </div>
 
               <Button
+                ref={closeBtnRef}
                 variant="ghost"
                 size="icon"
                 className="size-8"

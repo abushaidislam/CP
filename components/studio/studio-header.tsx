@@ -43,6 +43,7 @@ import {
   Camera,
   Loader2,
   MoreHorizontal,
+  Keyboard,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -374,7 +375,11 @@ export function StudioHeader() {
 
       {/* Center: Icon-Only Layout View Mode Switcher with Sliding Indicator */}
       <div className="hidden sm:flex items-center">
-        <div className="relative flex items-center bg-muted/60 p-0.5 rounded-none border border-border">
+        <div
+          role="group"
+          aria-label="Workspace layout view"
+          className="relative flex items-center bg-muted/60 p-0.5 rounded-none border border-border"
+        >
           {(["split", "editor", "preview"] as const).map((mode) => {
             const isActive = layoutMode === mode;
             const modeLabel =
@@ -386,8 +391,9 @@ export function StudioHeader() {
                     type="button"
                     onClick={() => setLayoutMode(mode)}
                     aria-label={`${modeLabel} view`}
+                    aria-pressed={isActive}
                     className={cn(
-                      "relative z-10 flex size-7 items-center justify-center text-xs font-sans font-medium transition-colors cursor-pointer select-none rounded-none",
+                      "relative z-10 flex size-7 items-center justify-center text-xs font-sans font-medium transition-colors cursor-pointer select-none rounded-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                       isActive
                         ? "text-foreground font-medium"
                         : "text-muted-foreground hover:text-foreground"
@@ -488,6 +494,7 @@ export function StudioHeader() {
                 size="icon"
                 onClick={() => setHistorySheetOpen(!isHistorySheetOpen)}
                 aria-label="Version History & Snapshots"
+                aria-pressed={isHistorySheetOpen}
                 className={cn(
                   "studio-icon-btn relative size-8 rounded-none border-border/80",
                   isHistorySheetOpen
@@ -522,6 +529,7 @@ export function StudioHeader() {
                 size="icon"
                 onClick={toggleTerminal}
                 aria-label="Toggle Terminal & Dev Console"
+                aria-pressed={isTerminalOpen}
                 className={cn(
                   "studio-icon-btn relative size-8 rounded-none border-border/80",
                   isTerminalOpen
@@ -563,6 +571,7 @@ export function StudioHeader() {
                 size="icon"
                 onClick={toggleAiPanel}
                 aria-label="Toggle Copilot Assistant (Ctrl+I)"
+                aria-pressed={isAiPanelOpen}
                 className={cn(
                   "studio-icon-btn size-8 rounded-none border-border/80",
                   isAiPanelOpen
@@ -583,6 +592,27 @@ export function StudioHeader() {
 
         <Separator orientation="vertical" className="hidden md:block h-4 mx-0.5" />
 
+        {/* Keyboard Shortcuts Button (Icon-Only) */}
+        <div className="hidden lg:flex items-center">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => window.dispatchEvent(new CustomEvent("studio:open-shortcuts"))}
+                aria-label="Keyboard shortcuts (?)"
+                className="studio-icon-btn size-8 rounded-none border-border/80 bg-card/60 text-muted-foreground hover:text-foreground"
+              >
+                <Keyboard className="size-3.5" />
+                <span className="sr-only">Keyboard shortcuts</span>
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="font-sans text-xs">
+              Keyboard shortcuts (?)
+            </TooltipContent>
+          </Tooltip>
+        </div>
+
         {/* Theme Switcher (Icon-Only) */}
         <div className="hidden sm:flex items-center">
           <Tooltip>
@@ -591,6 +621,7 @@ export function StudioHeader() {
                 variant="outline"
                 size="icon"
                 onClick={toggleTheme}
+                aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
                 className="studio-icon-btn size-8 rounded-none border-border/80 bg-card/60 text-muted-foreground hover:text-foreground"
               >
                 <motion.div
@@ -784,6 +815,18 @@ export function StudioHeader() {
               >
                 {isDark ? <Sun className="size-3.5" /> : <Moon className="size-3.5" />}
                 <span>{isDark ? "Light Mode" : "Dark Mode"}</span>
+              </DropdownMenuItem>
+
+              {/* Keyboard Shortcuts */}
+              <DropdownMenuItem
+                onClick={() => window.dispatchEvent(new CustomEvent("studio:open-shortcuts"))}
+                className="gap-2.5 cursor-pointer rounded-none font-sans text-xs"
+              >
+                <Keyboard className="size-3.5" />
+                <span className="flex-1">Keyboard Shortcuts</span>
+                <kbd className="px-1 py-0.2 rounded-none bg-muted-foreground/10 text-[9px] font-mono text-muted-foreground">
+                  ?
+                </kbd>
               </DropdownMenuItem>
 
               <DropdownMenuSeparator />

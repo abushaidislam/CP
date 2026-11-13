@@ -356,13 +356,16 @@ export function TerminalPanel() {
         role="separator"
         aria-orientation="horizontal"
         aria-label="Terminal height divider"
+        aria-valuenow={terminalHeight}
+        aria-valuemin={140}
+        aria-valuemax={600}
         tabIndex={0}
         onMouseDown={handleMouseDown}
         onKeyDown={(e) => {
           if (e.key === "ArrowUp") setTerminalHeight(terminalHeight + 24);
           if (e.key === "ArrowDown") setTerminalHeight(terminalHeight - 24);
         }}
-        className="absolute top-0 left-0 right-0 h-1.5 cursor-ns-resize hover:bg-primary/40 transition-colors z-30 group focus-visible:outline-none"
+        className="absolute top-0 left-0 right-0 h-1.5 cursor-ns-resize hover:bg-primary/40 transition-colors z-30 group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         title="Drag up/down or use arrow keys to resize terminal"
       >
         <div
@@ -383,7 +386,11 @@ export function TerminalPanel() {
           </div>
 
           {/* Filter Pills with sliding indicator */}
-          <div className="relative flex items-center bg-zinc-950/70 p-0.5 rounded-md border border-zinc-800 text-[11px]">
+          <div
+            role="group"
+            aria-label="Terminal log filters"
+            className="relative flex items-center bg-zinc-950/70 p-0.5 rounded-md border border-zinc-800 text-[11px]"
+          >
             {(
               [
                 { id: "all", label: `All (${terminalLogs.length})` },
@@ -411,9 +418,10 @@ export function TerminalPanel() {
                 <button
                   key={tab.id}
                   type="button"
+                  aria-pressed={isActive}
                   onClick={() => setTerminalFilter(tab.id as any)}
                   className={cn(
-                    "relative z-10 flex h-6 items-center gap-1 px-2 py-0.5 rounded text-[11px] font-sans font-medium transition-colors cursor-pointer",
+                    "relative z-10 flex h-6 items-center gap-1 px-2 py-0.5 rounded text-[11px] font-sans font-medium transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
                     isActive ? "text-white" : "text-zinc-400 hover:text-zinc-200"
                   )}
                 >
@@ -520,6 +528,9 @@ export function TerminalPanel() {
       {/* Log Output Stream */}
       <div
         ref={scrollRef}
+        role="log"
+        aria-live="polite"
+        aria-label="Terminal output logs"
         className="flex-1 overflow-y-auto overflow-x-hidden p-2 space-y-1 select-text scroll-smooth"
       >
         {filteredLogs.length === 0 ? (
@@ -613,7 +624,7 @@ export function TerminalPanel() {
                   variant="ghost"
                   size="icon"
                   onClick={() => handleCopyLog(log.id, log.message)}
-                  className="size-5 opacity-0 group-hover:opacity-100 transition-opacity p-0 text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800/80 select-none cursor-pointer"
+                  className="size-5 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity p-0 text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800/80 select-none cursor-pointer"
                   title="Copy log entry"
                 >
                   {copiedId === log.id ? (
@@ -634,8 +645,14 @@ export function TerminalPanel() {
         onSubmit={handleExecute}
         className="flex h-8 shrink-0 items-center gap-2 border-t border-zinc-800/80 bg-zinc-900/90 px-3"
       >
-        <span className="text-emerald-400 font-bold select-none">&gt;</span>
+        <label htmlFor="terminal-repl-input" className="sr-only">
+          Terminal command or JavaScript expression
+        </label>
+        <span className="text-emerald-400 font-bold select-none" aria-hidden="true">
+          &gt;
+        </span>
         <input
+          id="terminal-repl-input"
           ref={inputRef}
           type="text"
           value={inputVal}
@@ -648,6 +665,7 @@ export function TerminalPanel() {
           type="submit"
           variant="ghost"
           size="icon"
+          aria-label="Execute command"
           className="size-5 text-zinc-400 hover:text-emerald-400 hover:bg-zinc-800"
           title="Execute (Enter)"
         >

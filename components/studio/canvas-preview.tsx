@@ -476,7 +476,7 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
         </div>
 
         {/* Center: Subtle Status & Toast */}
-        <div className="flex items-center gap-2">
+        <div role="status" aria-live="polite" className="flex items-center gap-2">
           {toastMessage ? (
             <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-none bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-[11px] font-sans font-medium animate-in fade-in zoom-in-95 duration-200">
               <Check className="size-3 shrink-0" />
@@ -819,9 +819,41 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
           </div>
 
           <div
+            role="separator"
+            aria-orientation="vertical"
+            aria-label="Resize preview viewport width"
+            aria-valuenow={
+              draggedWidth ??
+              (viewport === "mobile"
+                ? 375
+                : viewport === "tablet"
+                ? 768
+                : 1200)
+            }
+            aria-valuemin={320}
+            aria-valuemax={1600}
+            tabIndex={0}
             onMouseDown={handleResizeStart}
-            title="Drag horizontally to resize preview width"
-            className="absolute right-0 top-0 bottom-0 w-3 cursor-ew-resize hover:bg-primary/10 flex items-center justify-center transition-colors duration-150 ease-smooth-out group z-20"
+            onKeyDown={(e) => {
+              const step = e.shiftKey ? 50 : 20;
+              const currentW =
+                draggedWidth ??
+                (cardRef.current?.offsetWidth ||
+                  (viewport === "mobile"
+                    ? 375
+                    : viewport === "tablet"
+                    ? 768
+                    : 1200));
+              if (e.key === "ArrowLeft") {
+                e.preventDefault();
+                setDraggedWidth(Math.max(320, currentW - step));
+              } else if (e.key === "ArrowRight") {
+                e.preventDefault();
+                setDraggedWidth(Math.min(1600, currentW + step));
+              }
+            }}
+            title="Drag or use arrow keys to resize preview width"
+            className="absolute right-0 top-0 bottom-0 w-3 cursor-ew-resize hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring flex items-center justify-center transition-colors duration-150 ease-smooth-out group z-20"
           >
             <div
               className={cn(

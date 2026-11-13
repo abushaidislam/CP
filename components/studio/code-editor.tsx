@@ -193,6 +193,9 @@ export function CodeEditor({ filename, value, onChange, onFormat }: CodeEditorPr
       langExtension,
       ...customKeymaps,
       EditorView.lineWrapping,
+      EditorView.contentAttributes.of({
+        "aria-label": `Code editor for ${filename}`,
+      }),
     ];
   }, [filename, isDark, onFormat]);
 

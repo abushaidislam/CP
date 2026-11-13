@@ -47,6 +47,12 @@ export default function RootLayout({
         suppressHydrationWarning
         className="min-h-full bg-background text-foreground flex flex-col font-sans selection:bg-primary/20 selection:text-foreground"
       >
+        <a
+          href="#main-content"
+          className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[100] focus:px-4 focus:py-2 focus:bg-primary focus:text-primary-foreground focus:font-sans focus:text-xs focus:font-medium focus:shadow-lg focus:outline-none focus:ring-2 focus:ring-ring"
+        >
+          Skip to main content
+        </a>
         <TooltipProvider delayDuration={80}>
           {children}
         </TooltipProvider>

@@ -1,4 +1,4 @@
-import { mock, describe, it, expect, beforeEach, afterAll } from "bun:test";
+import { mock, describe, it, expect, beforeEach, afterEach, afterAll } from "bun:test";
 import React from "react";
 import { renderToString } from "react-dom/server";
 
@@ -83,19 +83,18 @@ if (typeof globalThis.document === "undefined") {
 }
 
 // Intercept React.useEffect to capture and manually run effects during test renders
+const originalUseEffect = React.useEffect;
 const clientInternals = (React as any).__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE;
 const previousH = clientInternals?.H;
-if (clientInternals) {
-  clientInternals.H = {
-    useEffect: (fn: any) => {
-      capturedEffects.push(fn);
-    },
-    useState: (init: any) => [typeof init === "function" ? init() : init, () => {}],
-    useMemo: (fn: any) => fn(),
-    useCallback: (fn: any) => fn,
-    useRef: (init: any) => ({ current: init }),
-  };
-}
+const customDispatcher = {
+  useEffect: (fn: any) => {
+    capturedEffects.push(fn);
+  },
+  useState: (init: any) => [typeof init === "function" ? init() : init, () => {}],
+  useMemo: (fn: any) => fn(),
+  useCallback: (fn: any) => fn,
+  useRef: (init: any) => ({ current: init }),
+};
 
 const runEffects = () => {
   const effects = [...capturedEffects];
@@ -184,14 +183,7 @@ mock.module(import.meta.resolve("@/lib/store/studio-store"), () => ({
   useStudioStore: storeWrapper,
 }));
 
-// Mock @/components/hub/component-hub for route testing
-let hubOnNavigateStudio: ((id: string) => void) | undefined = undefined;
-mock.module(import.meta.resolve("@/components/hub/component-hub"), () => ({
-  ComponentHub: ({ onNavigateStudio }: any) => {
-    hubOnNavigateStudio = onNavigateStudio;
-    return <div data-testid="component-hub">Component Hub</div>;
-  },
-}));
+// Note: We do not mock @/components/hub/component-hub globally so component-hub.test.tsx tests the real component
 
 // Mock @/components/studio/studio-container for route testing
 let renderedStudioContainerProps: any = null;
@@ -212,12 +204,28 @@ const StudioRedirectPage = (await import("@/app/studio/page")).default;
 
 describe("StudioHeader Navigation & Route Integration", () => {
   beforeEach(() => {
+    if (clientInternals) {
+      clientInternals.H = customDispatcher;
+    }
+    React.useEffect = (fn: any) => {
+      capturedEffects.push(fn);
+    };
+    (globalThis.window as any).addEventListener = (event: string, cb: any) => {
+      listeners[event] = listeners[event] || [];
+      listeners[event].push(cb);
+    };
+    (globalThis.window as any).removeEventListener = (event: string, cb: any) => {
+      if (listeners[event]) {
+        listeners[event] = listeners[event].filter((l) => l !== cb);
+      }
+    };
+    (globalThis.window as any).dispatchEvent = dispatchEventMock;
+
     capturedEffects = [];
     buttonClickMap.clear();
     dispatchedEvents.length = 0;
     mockPush.mockClear();
     mockReplace.mockClear();
-    hubOnNavigateStudio = undefined;
     renderedStudioContainerProps = null;
     mockParams = { id: "custom-neon-button" };
 
@@ -499,12 +507,12 @@ describe("StudioHeader Navigation & Route Integration", () => {
 
   describe("Route Integration", () => {
     it("app/page.tsx should render ComponentHub and route to /studio/[id] on navigation", () => {
-      const html = renderToString(<HomePage />);
-      expect(html).toContain("Component Hub");
-      expect(hubOnNavigateStudio).toBeDefined();
+      const element = HomePage() as any;
+      expect(element).toBeDefined();
+      expect(typeof element.props.onNavigateStudio).toBe("function");
 
       // Trigger navigation callback
-      hubOnNavigateStudio!("glass-card");
+      element.props.onNavigateStudio("glass-card");
       expect(mockPush).toHaveBeenCalledWith("/studio/glass-card");
     });
 
@@ -537,7 +545,15 @@ describe("StudioHeader Navigation & Route Integration", () => {
     });
   });
 
+  afterEach(() => {
+    React.useEffect = originalUseEffect;
+    if (clientInternals) {
+      clientInternals.H = previousH;
+    }
+  });
+
   afterAll(() => {
+    React.useEffect = originalUseEffect;
     if (clientInternals) {
       clientInternals.H = previousH;
     }

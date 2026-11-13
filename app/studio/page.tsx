@@ -16,5 +16,9 @@ export default function StudioRedirectPage() {
     }
   }, [router, currentTemplateId]);
 
-  return null;
+  return (
+    <div role="status" aria-live="polite" className="sr-only font-sans">
+      Redirecting to Component Studio workspace...
+    </div>
+  );
 }

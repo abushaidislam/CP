@@ -3,7 +3,12 @@ import { Monitor } from "lucide-react";
 
 export function StudioSkeleton() {
   return (
-    <div className="flex h-screen w-screen flex-col overflow-hidden bg-background text-foreground font-sans">
+    <div
+      role="status"
+      aria-busy="true"
+      aria-label="Loading Component Studio workspace"
+      className="flex h-screen w-screen flex-col overflow-hidden bg-background text-foreground font-sans"
+    >
       {/* Top Header Skeleton */}
       <header className="flex h-11 shrink-0 items-center justify-between border-b border-border bg-background px-3">
         <div className="flex items-center gap-2">

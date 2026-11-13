@@ -82,6 +82,9 @@ export function CreateVariantDialog() {
               </label>
               <Input
                 id="variant-name-input"
+                aria-required="true"
+                aria-invalid={Boolean(error)}
+                aria-describedby={error ? "variant-name-error" : undefined}
                 value={name}
                 onChange={(e) => {
                   setName(e.target.value);
@@ -93,7 +96,11 @@ export function CreateVariantDialog() {
                 maxLength={40}
               />
               {error && (
-                <span className="text-[11px] text-destructive font-sans animate-in fade-in-0 slide-in-from-top-1 duration-150">
+                <span
+                  id="variant-name-error"
+                  role="alert"
+                  className="text-[11px] text-destructive font-sans animate-in fade-in-0 slide-in-from-top-1 duration-150"
+                >
                   {error}
                 </span>
               )}

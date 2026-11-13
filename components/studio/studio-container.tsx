@@ -12,6 +12,7 @@ import { SaveCheckpointDialog } from "./save-checkpoint-dialog";
 import { CreateVariantDialog } from "./create-variant-dialog";
 import { VersionHistorySheet } from "./version-history-sheet";
 import { TerminalPanel } from "./terminal-panel";
+import { KeyboardShortcutsDialog } from "./keyboard-shortcuts-dialog";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Code, Eye, Sparkles } from "lucide-react";
 import { useStudioStore } from "@/lib/store/studio-store";
@@ -132,7 +133,12 @@ export function StudioContainer({ componentId: _componentId }: StudioContainerPr
       </div>
 
       {/* Main Workspace Body */}
-      <div className="relative flex flex-1 flex-col overflow-hidden">
+      <main
+        id="main-content"
+        tabIndex={-1}
+        aria-label="Component Studio Workspace"
+        className="relative flex flex-1 flex-col overflow-hidden focus:outline-none"
+      >
         {/* Full-screen drag overlay to prevent iframe event interception */}
         {isDragging && (
           <div className="fixed inset-0 z-50 cursor-col-resize select-none bg-transparent" />
@@ -172,8 +178,16 @@ export function StudioContainer({ componentId: _componentId }: StudioContainerPr
               onKeyDown={(e) => {
                 if (e.key === "ArrowLeft") setSplitRatio((r) => Math.max(25, r - 2));
                 if (e.key === "ArrowRight") setSplitRatio((r) => Math.min(75, r + 2));
+                if (e.key === "Home") {
+                  e.preventDefault();
+                  setSplitRatio(25);
+                }
+                if (e.key === "End") {
+                  e.preventDefault();
+                  setSplitRatio(75);
+                }
               }}
-              className={`hidden md:flex relative w-1.5 cursor-col-resize items-center justify-center bg-background transition-colors duration-150 ease-smooth-out z-20 group focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring ${
+              className={`hidden md:flex relative w-1.5 cursor-col-resize items-center justify-center bg-background transition-colors duration-150 ease-smooth-out z-20 group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
                 isDragging ? "bg-primary/20" : "hover:bg-primary/20"
               }`}
               title="Drag or use arrow keys to resize panels"
@@ -250,7 +264,7 @@ export function StudioContainer({ componentId: _componentId }: StudioContainerPr
             </motion.div>
           )}
         </AnimatePresence>
-      </div>
+      </main>
 
       {/* Modals & Dialogs */}
       <PublishModal />
@@ -258,6 +272,7 @@ export function StudioContainer({ componentId: _componentId }: StudioContainerPr
       <SaveCheckpointDialog />
       <CreateVariantDialog />
       <VersionHistorySheet />
+      <KeyboardShortcutsDialog />
     </div>
   );
 }

@@ -945,10 +945,14 @@ export function AttachCodeDialog({
           {/* Title and Language Selection */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             <div className="space-y-1">
-              <label className="text-[11px] font-medium text-foreground/80 font-sans">
+              <label
+                htmlFor="attach-snippet-title"
+                className="text-[11px] font-medium text-foreground/80 font-sans"
+              >
                 Snippet Name / File
               </label>
               <Input
+                id="attach-snippet-title"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="e.g. CardVariants.tsx"
@@ -957,16 +961,24 @@ export function AttachCodeDialog({
             </div>
 
             <div className="space-y-1">
-              <label className="text-[11px] font-medium text-foreground/80 font-sans">
+              <label
+                id="attach-snippet-lang-label"
+                className="text-[11px] font-medium text-foreground/80 font-sans"
+              >
                 Syntax / Language
               </label>
-              <div className="flex flex-wrap gap-1">
+              <div
+                role="group"
+                aria-labelledby="attach-snippet-lang-label"
+                className="flex flex-wrap gap-1"
+              >
                 {COMMON_LANGUAGES.slice(0, 4).map((lang) => (
                   <Button
                     key={lang.id}
                     type="button"
                     variant={language === lang.id ? "secondary" : "outline"}
                     size="sm"
+                    aria-pressed={language === lang.id}
                     onClick={() => setLanguage(lang.id)}
                     className="h-6 px-2 text-[10px] font-sans"
                   >
@@ -980,7 +992,10 @@ export function AttachCodeDialog({
           {/* Code Textarea */}
           <div className="space-y-1">
             <div className="flex items-center justify-between">
-              <label className="text-[11px] font-medium text-foreground/80 font-sans">
+              <label
+                htmlFor="attach-snippet-code"
+                className="text-[11px] font-medium text-foreground/80 font-sans"
+              >
                 Code Content
               </label>
               <div className="flex items-center gap-1.5 text-[10px]">
@@ -1018,6 +1033,7 @@ export function AttachCodeDialog({
             </div>
 
             <Textarea
+              id="attach-snippet-code"
               value={code}
               onChange={(e) => setCode(e.target.value)}
               placeholder="// Paste your React component, Tailwind styles, or TypeScript types here..."
@@ -1398,6 +1414,7 @@ export function PromptInput({
       {/* Main Textarea */}
       <Textarea
         ref={textareaRef}
+        aria-label="Copilot prompt input"
         rows={2}
         value={value}
         onChange={onChange}

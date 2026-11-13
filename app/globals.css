@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
 
 @theme inline {
   --color-background: var(--background);
@@ -48,13 +49,13 @@
     --secondary: #f1f3f5;
     --secondary-foreground: #09090b;
     --muted: #f1f3f5;
-    --muted-foreground: #71717a;
+    --muted-foreground: #52525b;
     --accent: #f4f4f5;
     --accent-foreground: #09090b;
-    --destructive: #e11d48;
+    --destructive: #be123c;
     --destructive-foreground: #ffffff;
-    --border: #e4e4e7;
-    --input: #e4e4e7;
+    --border: #d4d4d8;
+    --input: #d4d4d8;
     --ring: #18181b;
     --radius: 0px;
 
@@ -102,13 +103,13 @@
     --secondary: #141417;
     --secondary-foreground: #f4f4f5;
     --muted: #121215;
-    --muted-foreground: #8e8e93;
+    --muted-foreground: #a1a1aa;
     --accent: #18181c;
     --accent-foreground: #f4f4f5;
     --destructive: #f43f5e;
     --destructive-foreground: #ffffff;
-    --border: #1f1f24;
-    --input: #1f1f24;
+    --border: #27272a;
+    --input: #27272a;
     --ring: #fafafa;
   }
 
@@ -127,6 +128,17 @@
 
   code, pre, kbd {
     font-family: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }
 

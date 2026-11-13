@@ -1,4 +1,4 @@
-import { mock, describe, it, expect, beforeEach } from "bun:test";
+import { mock, describe, it, expect, beforeEach, afterAll } from "bun:test";
 import React from "react";
 import { renderToString } from "react-dom/server";
 
@@ -123,9 +123,6 @@ mock.module(import.meta.resolve("@/lib/store/studio-store"), () => ({
 
 // Intercept React.useEffect to capture and manually run effects during SSR
 const originalUseEffect = React.useEffect;
-React.useEffect = (effect: any, deps?: any) => {
-  capturedEffects.push(effect);
-};
 
 const { useStudioStore } = await import("@/lib/store/studio-store");
 const { TooltipProvider } = await import("@/components/ui/tooltip");
@@ -133,6 +130,18 @@ const { StudioHeader } = await import("../studio-header");
 
 describe("StudioHeader Version Control Integration", () => {
   beforeEach(() => {
+    React.useEffect = (effect: any, _deps?: any) => {
+      capturedEffects.push(effect);
+    };
+    (globalThis.window as any).addEventListener = (event: string, cb: any) => {
+      listeners[event] = listeners[event] || [];
+      listeners[event].push(cb);
+    };
+    (globalThis.window as any).removeEventListener = (event: string, cb: any) => {
+      if (listeners[event]) {
+        listeners[event] = listeners[event].filter((l) => l !== cb);
+      }
+    };
     capturedEffects = [];
     buttonClickMap.clear();
     for (const key in listeners) {
@@ -312,5 +321,9 @@ describe("StudioHeader Version Control Integration", () => {
 
     expect(defaultPrevented).toBe(true);
     expect(useStudioStore.getState().isSaveCheckpointDialogOpen).toBe(true);
+  });
+
+  afterAll(() => {
+    React.useEffect = originalUseEffect;
   });
 });

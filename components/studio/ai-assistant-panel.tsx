@@ -586,9 +586,26 @@ export function AiAssistantPanel({ isMobile = false, onClose }: AiAssistantPanel
         {/* Resizable Left Edge Drag Handle (desktop only) */}
         {!isMobile && (
           <div
+            role="separator"
+            aria-orientation="vertical"
+            aria-label="Resize Copilot panel width"
+            aria-valuenow={aiPanelWidth}
+            aria-valuemin={340}
+            aria-valuemax={800}
+            tabIndex={0}
             onMouseDown={handleResizeStart}
-            className="absolute -left-1 top-0 bottom-0 w-2 cursor-ew-resize touch-none hover:bg-primary/20 active:bg-primary/30 transition-colors z-30 group"
-            title="Drag left/right to resize Copilot panel"
+            onKeyDown={(e) => {
+              const step = e.shiftKey ? 40 : 20;
+              if (e.key === "ArrowLeft") {
+                e.preventDefault();
+                setAiPanelWidth(Math.min(800, aiPanelWidth + step));
+              } else if (e.key === "ArrowRight") {
+                e.preventDefault();
+                setAiPanelWidth(Math.max(340, aiPanelWidth - step));
+              }
+            }}
+            className="absolute -left-1 top-0 bottom-0 w-2 cursor-ew-resize touch-none hover:bg-primary/20 active:bg-primary/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring transition-colors z-30 group"
+            title="Drag left/right or use arrow keys to resize Copilot panel"
           >
             <div className="h-full w-px bg-border group-hover:bg-primary transition-colors mx-auto" />
           </div>
@@ -709,6 +726,8 @@ export function AiAssistantPanel({ isMobile = false, onClose }: AiAssistantPanel
               <Button
                 variant="ghost"
                 size="sm"
+                aria-expanded={showGuidelinesDrawer}
+                aria-label={`Toggle 21st.dev component standards (${passedCount} of ${planTasks.length} passed)`}
                 onClick={() => setShowGuidelinesDrawer((prev) => !prev)}
                 className={`h-6.5 gap-1.5 px-2 text-[11px] font-sans rounded-md transition-colors ${
                   allPassed
@@ -793,6 +812,9 @@ export function AiAssistantPanel({ isMobile = false, onClose }: AiAssistantPanel
       {/* Main Multi-Turn Chat Thread */}
       <div
         ref={chatScrollRef}
+        role="log"
+        aria-live="polite"
+        aria-label="Copilot conversation history"
         className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden p-4 space-y-4 select-text font-sans scroll-smooth"
       >
         {/* Empty State / Welcome Screen */}
@@ -1426,6 +1448,7 @@ export function AiAssistantPanel({ isMobile = false, onClose }: AiAssistantPanel
         <input
           ref={fileInputRef}
           type="file"
+          aria-label="Upload image attachment"
           accept="image/png,image/jpeg,image/webp,image/gif"
           multiple
           className="hidden"

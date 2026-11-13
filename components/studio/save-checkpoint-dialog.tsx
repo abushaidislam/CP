@@ -82,6 +82,9 @@ export function SaveCheckpointDialog() {
               </label>
               <Input
                 id="checkpoint-name-input"
+                aria-required="true"
+                aria-invalid={Boolean(error)}
+                aria-describedby={error ? "checkpoint-name-error" : undefined}
                 value={name}
                 onChange={(e) => {
                   setName(e.target.value);
@@ -93,7 +96,11 @@ export function SaveCheckpointDialog() {
                 maxLength={60}
               />
               {error && (
-                <span className="text-[11px] text-destructive font-sans animate-in fade-in-0 slide-in-from-top-1 duration-150">
+                <span
+                  id="checkpoint-name-error"
+                  role="alert"
+                  className="text-[11px] text-destructive font-sans animate-in fade-in-0 slide-in-from-top-1 duration-150"
+                >
                   {error}
                 </span>
               )}

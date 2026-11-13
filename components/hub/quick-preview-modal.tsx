@@ -285,7 +285,10 @@ export function QuickPreviewModal({
               </div>
 
               {compileError && (
-                <div className="rounded-none border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive font-sans flex items-center justify-between gap-2">
+                <div
+                  role="alert"
+                  className="rounded-none border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive font-sans flex items-center justify-between gap-2"
+                >
                   <span>Preview compilation error: {compileError}</span>
                   <Button
                     variant="outline"
@@ -373,6 +376,13 @@ export function QuickPreviewModal({
                     <Copy className="size-3.5" />
                   )}
                 </Button>
+                <span className="sr-only" role="status" aria-live="polite">
+                  {copiedCode
+                    ? `${selectedCodeFile} copied to clipboard`
+                    : copiedCli
+                    ? "CLI command copied to clipboard"
+                    : ""}
+                </span>
               </div>
 
               {/* Code Viewer */}

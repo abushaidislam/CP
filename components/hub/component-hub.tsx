@@ -25,7 +25,9 @@ import {
   ArrowRight,
   ArrowLeft,
   X,
+  Keyboard,
 } from "lucide-react";
+import { KeyboardShortcutsDialog } from "@/components/studio/keyboard-shortcuts-dialog";
 
 export interface ComponentHubProps {
   onNavigateStudio?: (componentId: string) => void;
@@ -66,6 +68,7 @@ export function ComponentHub({
   const [searchQuery, setSearchQuery] = useState(initialSearchQuery);
   const [selectedCategory, setSelectedCategory] = useState<CategoryType>(initialCategory);
   const [isDark, setIsDark] = useState(true);
+  const [isShortcutsOpen, setIsShortcutsOpen] = useState(false);
 
   // Sync theme with document element
   useEffect(() => {
@@ -315,17 +318,34 @@ export function ComponentHub({
               </svg>
             </div>
             <div className="flex items-center gap-2">
-              <span className="font-sans font-semibold text-sm sm:text-base tracking-tight text-foreground">
+              <h1 className="font-sans font-semibold text-sm sm:text-base tracking-tight text-foreground m-0">
                 Component Studio
-              </span>
+              </h1>
               <Badge variant="eyebrow" className="rounded-none">
                 21ST WORKSPACE
               </Badge>
             </div>
           </div>
 
-          {/* Right Actions: Pure Icon-Only Theme Toggle & New Component Button */}
+          {/* Right Actions: Keyboard Shortcuts, Theme Toggle & New Component Button */}
           <div className="flex items-center gap-1.5">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setIsShortcutsOpen(true)}
+                  className="studio-icon-btn size-8 rounded-none border-border/80 bg-card/70 text-muted-foreground hover:text-foreground"
+                  aria-label="Keyboard shortcuts"
+                >
+                  <Keyboard className="size-4" aria-hidden="true" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="font-sans text-xs">
+                Keyboard shortcuts (?)
+              </TooltipContent>
+            </Tooltip>
+
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
@@ -333,9 +353,9 @@ export function ComponentHub({
                   size="icon"
                   onClick={toggleTheme}
                   className="studio-icon-btn size-8 rounded-none border-border/80 bg-card/70 text-muted-foreground hover:text-foreground"
-                  aria-label="Toggle theme"
+                  aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
                 >
-                  {isDark ? <Sun className="size-4" /> : <Moon className="size-4" />}
+                  {isDark ? <Sun className="size-4" aria-hidden="true" /> : <Moon className="size-4" aria-hidden="true" />}
                 </Button>
               </TooltipTrigger>
               <TooltipContent side="bottom" className="font-sans text-xs">
@@ -352,7 +372,7 @@ export function ComponentHub({
                   aria-label="Create new component"
                   className="size-8 rounded-none shadow-none"
                 >
-                  <Plus className="size-4" />
+                  <Plus className="size-4" aria-hidden="true" />
                   <span className="sr-only">New Component</span>
                 </Button>
               </TooltipTrigger>
@@ -364,14 +384,29 @@ export function ComponentHub({
         </header>
 
         {/* Main Showcase Area */}
-        <main className="flex-1 container mx-auto max-w-7xl px-4 sm:px-6 py-6 space-y-6">
+        <main
+          id="main-content"
+          tabIndex={-1}
+          className="flex-1 container mx-auto max-w-7xl px-4 sm:px-6 py-6 space-y-6 focus:outline-none"
+        >
+          {/* Screen-reader live region announcing filter/search result count */}
+          <div className="sr-only" role="status" aria-live="polite" aria-atomic="true">
+            {`Showing ${filteredComponents.length} ${
+              filteredComponents.length === 1 ? "component" : "components"
+            } in ${selectedCategory}${searchQuery.trim() ? ` matching "${searchQuery.trim()}"` : ""}`}
+          </div>
+
           {/* Architectural Filter & Search Control Bar (Zero Radius) */}
           <section
             aria-label="Filter and search toolbar"
             className="studio-toolbar-surface rounded-none border border-border p-2 sm:p-2.5 flex flex-col lg:flex-row gap-2.5 items-stretch lg:items-center justify-between"
           >
             {/* Category Filter Navigation */}
-            <div className="flex items-center gap-1 overflow-x-auto pb-1 lg:pb-0 scrollbar-none">
+            <div
+              role="group"
+              aria-label="Component category filters"
+              className="flex items-center gap-1 overflow-x-auto pb-1 lg:pb-0 scrollbar-none"
+            >
               {CATEGORIES.map((category) => {
                 const isActive = selectedCategory === category;
                 const count = categoryCounts[category];
@@ -380,6 +415,7 @@ export function ComponentHub({
                     key={category}
                     variant={isActive ? "default" : "ghost"}
                     size="sm"
+                    aria-pressed={isActive}
                     onClick={() => setSelectedCategory(category)}
                     className={cn(
                       "h-8 rounded-none px-3 text-xs font-sans gap-1.5 transition-colors select-none shrink-0",
@@ -408,7 +444,10 @@ export function ComponentHub({
 
             {/* Search Input with Search Icon */}
             <div className="relative w-full lg:w-80 shrink-0">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none" />
+              <Search
+                aria-hidden="true"
+                className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none"
+              />
               <Input
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
@@ -424,7 +463,7 @@ export function ComponentHub({
                   aria-label="Clear search query"
                   className="absolute right-1 top-1/2 -translate-y-1/2 size-6 rounded-none text-muted-foreground hover:text-foreground"
                 >
-                  <X className="size-3.5" />
+                  <X className="size-3.5" aria-hidden="true" />
                 </Button>
               )}
             </div>
@@ -579,6 +618,7 @@ export function ComponentHub({
         {/* Modal Integration */}
         <CreateComponentDialog onCreated={handleCreated} />
         <QuickPreviewModal onOpenStudio={handleOpenStudio} />
+        <KeyboardShortcutsDialog open={isShortcutsOpen} onOpenChange={setIsShortcutsOpen} />
       </div>
     </TooltipProvider>
   );

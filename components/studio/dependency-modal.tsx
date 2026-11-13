@@ -219,7 +219,11 @@ export function DependencyModal() {
             </div>
 
             {syncSuccessMessage && (
-              <div className="mt-2 text-[11px] text-emerald-500 flex items-center gap-1 animate-in fade-in">
+              <div
+                role="status"
+                aria-live="polite"
+                className="mt-2 text-[11px] text-emerald-500 flex items-center gap-1 animate-in fade-in"
+              >
                 <Check className="size-3" />
                 <span>{syncSuccessMessage}</span>
               </div>
@@ -233,6 +237,7 @@ export function DependencyModal() {
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none" />
                 <Input
                   type="text"
+                  aria-label="Search npm packages"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Search npm registry (e.g. vaul, recharts, @radix-ui/react-tooltip)..."
@@ -255,7 +260,10 @@ export function DependencyModal() {
             </form>
 
             {errorMessage && (
-              <div className="mt-1.5 flex items-center gap-1.5 text-xs text-destructive font-sans animate-in fade-in">
+              <div
+                role="alert"
+                className="mt-1.5 flex items-center gap-1.5 text-xs text-destructive font-sans animate-in fade-in"
+              >
                 <AlertCircle className="size-3.5" />
                 <span>{errorMessage}</span>
               </div>
@@ -370,6 +378,7 @@ export function DependencyModal() {
                         onClick={() => removeDependency(dep)}
                         className="size-4 rounded-none p-0 ml-1 text-muted-foreground hover:text-destructive cursor-pointer"
                         title={`Remove ${dep}`}
+                        aria-label={`Remove package ${dep}`}
                       >
                         <Trash2 className="size-3" />
                       </Button>
@@ -424,6 +433,7 @@ export function DependencyModal() {
                     key={pkg.name}
                     type="button"
                     variant="ghost"
+                    aria-pressed={isInstalled}
                     onClick={() => toggleDependency(pkg.name)}
                     className={cn(
                       "h-auto w-full whitespace-normal overflow-hidden text-left flex cursor-pointer items-start justify-between rounded-none p-3 transition-colors select-none",

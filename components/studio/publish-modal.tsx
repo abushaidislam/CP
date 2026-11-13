@@ -227,14 +227,22 @@ export function PublishModal() {
               </div>
 
               <div className="sm:col-span-3">
-                <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider font-sans">
+                <label
+                  id="publish-visibility-label"
+                  className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider font-sans"
+                >
                   Visibility
                 </label>
-                <div className="mt-1 grid grid-cols-2 gap-px bg-border border border-border h-8 font-sans">
+                <div
+                  role="group"
+                  aria-labelledby="publish-visibility-label"
+                  className="mt-1 grid grid-cols-2 gap-px bg-border border border-border h-8 font-sans"
+                >
                   <Button
                     variant={visibility === "published" ? "default" : "ghost"}
                     size="sm"
                     type="button"
+                    aria-pressed={visibility === "published"}
                     onClick={() => setVisibility("published")}
                     className="rounded-none h-full text-[11px] font-sans px-1"
                   >
@@ -244,6 +252,7 @@ export function PublishModal() {
                     variant={visibility === "private" ? "default" : "ghost"}
                     size="sm"
                     type="button"
+                    aria-pressed={visibility === "private"}
                     onClick={() => setVisibility("private")}
                     className="rounded-none h-full text-[11px] font-sans px-1"
                   >
@@ -375,11 +384,16 @@ export function PublishModal() {
               </div>
 
               <div className="flex items-center gap-2">
-                <div className="inline-flex rounded-none border border-border bg-card p-0.5 text-xs font-sans">
+                <div
+                  role="group"
+                  aria-label="CLI file path style"
+                  className="inline-flex rounded-none border border-border bg-card p-0.5 text-xs font-sans"
+                >
                   <Button
                     variant={pathStyle === "folder" ? "default" : "ghost"}
                     size="sm"
                     type="button"
+                    aria-pressed={pathStyle === "folder"}
                     onClick={() => setPathStyle("folder")}
                     className="rounded-none h-6 px-2 text-[10px] font-sans"
                   >
@@ -389,6 +403,7 @@ export function PublishModal() {
                     variant={pathStyle === "project" ? "default" : "ghost"}
                     size="sm"
                     type="button"
+                    aria-pressed={pathStyle === "project"}
                     onClick={() => setPathStyle("project")}
                     className="rounded-none h-6 px-2 text-[10px] font-sans"
                   >
@@ -396,11 +411,16 @@ export function PublishModal() {
                   </Button>
                 </div>
 
-                <div className="inline-flex rounded-none border border-border bg-card p-0.5 text-xs font-sans">
+                <div
+                  role="group"
+                  aria-label="CLI shell format"
+                  className="inline-flex rounded-none border border-border bg-card p-0.5 text-xs font-sans"
+                >
                   <Button
                     variant={cliFormat === "oneline" ? "default" : "ghost"}
                     size="sm"
                     type="button"
+                    aria-pressed={cliFormat === "oneline"}
                     onClick={() => setCliFormat("oneline")}
                     className="rounded-none h-6 px-2 text-[10px] font-sans"
                   >
@@ -410,6 +430,7 @@ export function PublishModal() {
                     variant={cliFormat === "powershell" ? "default" : "ghost"}
                     size="sm"
                     type="button"
+                    aria-pressed={cliFormat === "powershell"}
                     onClick={() => setCliFormat("powershell")}
                     className="rounded-none h-6 px-2 text-[10px] font-sans"
                   >
@@ -419,6 +440,7 @@ export function PublishModal() {
                     variant={cliFormat === "bash" ? "default" : "ghost"}
                     size="sm"
                     type="button"
+                    aria-pressed={cliFormat === "bash"}
                     onClick={() => setCliFormat("bash")}
                     className="rounded-none h-6 px-2 text-[10px] font-sans"
                   >
@@ -487,6 +509,7 @@ export function PublishModal() {
               variant="ghost"
               size="sm"
               type="button"
+              aria-expanded={showAdvanced}
               onClick={() => setShowAdvanced(!showAdvanced)}
               className="rounded-none h-7 px-2 gap-1.5 text-[11px] text-muted-foreground hover:text-foreground font-sans"
             >
@@ -509,10 +532,14 @@ export function PublishModal() {
                 >
                   <div className="mt-2 rounded-none border border-border bg-background p-3.5 space-y-3 font-sans text-xs">
                     <div>
-                      <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider font-sans">
+                      <label
+                        htmlFor="publish-custom-description"
+                        className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider font-sans"
+                      >
                         Description
                       </label>
                       <Input
+                        id="publish-custom-description"
                         type="text"
                         value={customDescription}
                         onChange={(e) => setCustomDescription(e.target.value)}
@@ -521,10 +548,14 @@ export function PublishModal() {
                       />
                     </div>
                     <div>
-                      <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider font-sans">
+                      <label
+                        htmlFor="publish-custom-tags"
+                        className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider font-sans"
+                      >
                         Tags (comma separated)
                       </label>
                       <Input
+                        id="publish-custom-tags"
                         type="text"
                         value={customTags}
                         onChange={(e) => setCustomTags(e.target.value)}

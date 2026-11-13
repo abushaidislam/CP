@@ -226,6 +226,7 @@ export function CreateComponentDialog({ onCreated }: CreateComponentDialogProps)
               {error && (
                 <span
                   id="component-name-error"
+                  role="alert"
                   className="text-[11px] text-destructive font-sans animate-in fade-in-0 slide-in-from-top-1 duration-150"
                 >
                   {error}
@@ -235,10 +236,14 @@ export function CreateComponentDialog({ onCreated }: CreateComponentDialogProps)
 
             {/* Category Segmented Hairline Grid */}
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-medium text-foreground font-sans">
+              <label id="component-category-label" className="text-xs font-medium text-foreground font-sans">
                 Category
               </label>
-              <div className="grid grid-cols-5 gap-px bg-border border border-border rounded-none overflow-hidden">
+              <div
+                role="radiogroup"
+                aria-labelledby="component-category-label"
+                className="grid grid-cols-5 gap-px bg-border border border-border rounded-none overflow-hidden"
+              >
                 {COMPONENT_CATEGORIES.map((cat) => {
                   const isSelected = category === cat;
                   return (
@@ -247,6 +252,7 @@ export function CreateComponentDialog({ onCreated }: CreateComponentDialogProps)
                       type="button"
                       variant={isSelected ? "default" : "ghost"}
                       size="sm"
+                      aria-pressed={isSelected}
                       onClick={() => {
                         categoryRef.current = cat;
                         setCategory(cat);
@@ -293,7 +299,7 @@ export function CreateComponentDialog({ onCreated }: CreateComponentDialogProps)
             {/* Starter Template Selection - Connected Hairline Grid with Proper Text Wrapping */}
             <div className="flex flex-col gap-2">
               <div className="flex items-center justify-between">
-                <label className="text-xs font-medium text-foreground font-sans">
+                <label id="starter-template-label" className="text-xs font-medium text-foreground font-sans">
                   Starter Template
                 </label>
                 <span className="text-[11px] text-muted-foreground font-sans">
@@ -301,7 +307,11 @@ export function CreateComponentDialog({ onCreated }: CreateComponentDialogProps)
                 </span>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-px bg-border border border-border rounded-none overflow-hidden">
+              <div
+                role="radiogroup"
+                aria-labelledby="starter-template-label"
+                className="grid grid-cols-1 sm:grid-cols-2 gap-px bg-border border border-border rounded-none overflow-hidden"
+              >
                 {STARTER_TEMPLATES.map((tmpl, index) => {
                   const isSelected = selectedTemplateId === tmpl.id;
                   const Icon = tmpl.icon;
@@ -312,6 +322,7 @@ export function CreateComponentDialog({ onCreated }: CreateComponentDialogProps)
                       key={tmpl.id ?? "blank-slate"}
                       type="button"
                       variant="ghost"
+                      aria-pressed={isSelected}
                       onClick={() => handleSelectTemplate(tmpl)}
                       className={cn(
                         "h-auto w-full whitespace-normal overflow-hidden flex flex-col items-start justify-start p-3.5 text-left rounded-none transition-colors duration-150 relative",

@@ -175,7 +175,7 @@ export function ComponentCard({
             }
           }}
           aria-label={`Preview ${component.name}`}
-          className="aspect-[4/3] w-full rounded-none bg-zinc-950 border-b border-border/70 relative overflow-hidden flex items-center justify-center cursor-pointer group/canvas transition-colors duration-200"
+          className="aspect-[4/3] w-full rounded-none bg-zinc-950 border-b border-border/70 relative overflow-hidden flex items-center justify-center cursor-pointer group/canvas transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
         >
           {/* Subtle Architectural Grid Backdrop */}
           <div
@@ -208,12 +208,14 @@ export function ComponentCard({
             )
           )}
 
-          {/* Live Interactive Sandboxed Component Preview */}
+          {/* Live Interactive Sandboxed Component Preview (excluded from sequential tab order to prevent keyboard traps) */}
           {isInView && compiledPreviewHtml && (
-            <div className="absolute inset-0 z-10 overflow-hidden">
+            <div className="absolute inset-0 z-10 overflow-hidden pointer-events-none" aria-hidden="true">
               <iframe
                 title={`${component.name} live stage`}
                 srcDoc={compiledPreviewHtml}
+                tabIndex={-1}
+                aria-hidden="true"
                 onLoad={() => setIsIframeReady(true)}
                 sandbox="allow-scripts allow-same-origin"
                 className={`w-[200%] h-[200%] origin-top-left scale-50 border-0 transition-opacity duration-300 ${
@@ -233,7 +235,7 @@ export function ComponentCard({
             </Badge>
           </div>
 
-          {/* Top-Right Hover Menu Action */}
+          {/* Top-Right Hover & Focus Menu Action */}
           <div
             className="absolute top-2.5 right-2.5 z-20 flex items-center gap-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity duration-150"
             onClick={(e) => e.stopPropagation()}
@@ -244,9 +246,9 @@ export function ComponentCard({
                   variant="secondary"
                   size="icon-sm"
                   className="size-7 rounded-none bg-zinc-900/95 text-zinc-300 hover:text-white hover:bg-zinc-800 border border-zinc-700/80 shadow-none"
-                  aria-label="More options"
+                  aria-label={`More options for ${component.name}`}
                 >
-                  <MoreVertical className="size-3.5" />
+                  <MoreVertical className="size-3.5" aria-hidden="true" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-44 rounded-none font-sans">

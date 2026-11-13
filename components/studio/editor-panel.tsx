@@ -134,16 +134,23 @@ export function EditorPanel() {
       <div className="studio-toolbar-surface flex h-11 shrink-0 items-center justify-between border-b border-border px-3 select-none">
         {/* Left: File Navigation with sliding active pill & Line Count Badge */}
         <div className="flex items-center gap-2 min-w-0">
-          <div className="relative flex items-center bg-muted/60 p-0.5 rounded-none border border-border/80">
+          <div
+            role="tablist"
+            aria-label="Component source files"
+            className="relative flex items-center bg-muted/60 p-0.5 rounded-none border border-border/80"
+          >
             {tabs.map((tab) => {
               const isActive = effectiveTab === tab.id || activeTab === tab.id;
               return (
                 <button
                   key={tab.id}
                   type="button"
+                  role="tab"
+                  aria-selected={isActive}
+                  aria-label={tab.label}
                   onClick={() => setActiveTab(tab.id as StudioFileName)}
                   className={cn(
-                    "relative z-10 flex h-6 items-center gap-1.5 px-2 sm:px-2.5 text-xs font-sans transition-colors cursor-pointer select-none rounded-none",
+                    "relative z-10 flex h-6 items-center gap-1.5 px-2 sm:px-2.5 text-xs font-sans transition-colors cursor-pointer select-none rounded-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                     isActive
                       ? "text-foreground font-medium"
                       : "text-muted-foreground hover:text-foreground"
@@ -324,7 +331,11 @@ export function EditorPanel() {
             transition={{ duration: 0.18, ease: "easeOut" }}
             className="overflow-hidden"
           >
-            <div className="flex items-center gap-2 border-b border-destructive/20 bg-destructive/10 px-3 py-1.5 text-xs text-destructive">
+            <div
+              role="alert"
+              aria-live="assertive"
+              className="flex items-center gap-2 border-b border-destructive/20 bg-destructive/10 px-3 py-1.5 text-xs text-destructive"
+            >
               <AlertCircle className="size-3.5 shrink-0" />
               <span className="truncate text-[11px] font-sans">{compilerError}</span>
             </div>

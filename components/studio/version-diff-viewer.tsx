@@ -221,6 +221,8 @@ export function VersionDiffViewer({
 
   return (
     <div
+      role="region"
+      aria-label={`Diff viewer for ${filename} (${addedCount} additions, ${removedCount} deletions)`}
       className={cn(
         "rounded-lg border border-border bg-card/60 overflow-hidden flex flex-col transition-all duration-200",
         className
