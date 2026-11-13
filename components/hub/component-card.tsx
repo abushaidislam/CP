@@ -48,7 +48,7 @@ export interface ComponentCardProps {
 }
 
 function renderCategoryIcon(category?: string, customClassName?: string) {
-  const className = customClassName || "size-4 text-muted-foreground/40 shrink-0";
+  const className = customClassName || "size-4 text-muted-foreground/60 shrink-0";
   switch ((category || "").toLowerCase()) {
     case "heroes":
       return <LayoutTemplate className={className} />;
@@ -161,9 +161,9 @@ export function ComponentCard({
     <>
       <div
         ref={cardRef}
-        className="relative flex flex-col justify-between overflow-hidden bg-card p-3 sm:p-4 text-card-foreground transition-colors duration-200 hover:bg-muted/10 font-sans h-full group"
+        className="relative flex flex-col justify-between overflow-hidden rounded-none bg-card text-card-foreground transition-colors duration-200 hover:bg-muted/15 font-sans h-full group"
       >
-        {/* Pure 21st.dev-style Inner Dark Stage */}
+        {/* Sharp 0px-Radius Visual Stage */}
         <div
           role="button"
           tabIndex={0}
@@ -175,26 +175,32 @@ export function ComponentCard({
             }
           }}
           aria-label={`Preview ${component.name}`}
-          className="aspect-[4/3] w-full rounded-xl bg-zinc-950/90 dark:bg-zinc-950/95 border border-border/40 relative overflow-hidden flex items-center justify-center cursor-pointer group/canvas transition-all duration-200 group-hover:border-border/80"
+          className="aspect-[4/3] w-full rounded-none bg-zinc-950 border-b border-border/70 relative overflow-hidden flex items-center justify-center cursor-pointer group/canvas transition-colors duration-200"
         >
+          {/* Subtle Architectural Grid Backdrop */}
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0 opacity-20 bg-[linear-gradient(to_right,#27272a_1px,transparent_1px),linear-gradient(to_bottom,#27272a_1px,transparent_1px)] bg-[size:24px_24px]"
+          />
+
           {/* Fallback / Initial Preview Visual */}
           {component.previewImage ? (
             <img
               src={component.previewImage}
               alt={component.name}
-              className={`w-full h-full object-contain p-4 pointer-events-none select-none transition-all duration-300 group-hover:scale-105 drop-shadow-md ${
+              className={`relative z-10 w-full h-full object-contain p-5 pointer-events-none select-none transition-all duration-300 group-hover:scale-105 drop-shadow-md ${
                 isIframeReady ? "opacity-0" : "opacity-100"
               }`}
             />
           ) : (
             !isIframeReady && (
-              <div className="flex flex-col items-center justify-center gap-2 select-none pointer-events-none">
-                <div className="flex size-9 items-center justify-center rounded-md bg-muted/20 border border-border/30 text-muted-foreground/50">
-                  {renderCategoryIcon(component.category, "size-4 text-muted-foreground/60")}
+              <div className="relative z-10 flex flex-col items-center justify-center gap-2 select-none pointer-events-none">
+                <div className="flex size-9 items-center justify-center rounded-none bg-zinc-900 border border-zinc-800 text-zinc-400">
+                  {renderCategoryIcon(component.category, "size-4 text-zinc-400")}
                 </div>
                 <Badge
                   variant="outline"
-                  className="font-sans text-[10px] text-muted-foreground/60 font-normal px-2 py-0 border-border/30"
+                  className="font-sans text-[10px] text-zinc-400 font-normal px-2 py-0.5 rounded-none border-zinc-800 bg-zinc-900/80"
                 >
                   Preview canvas
                 </Badge>
@@ -204,7 +210,7 @@ export function ComponentCard({
 
           {/* Live Interactive Sandboxed Component Preview */}
           {isInView && compiledPreviewHtml && (
-            <div className="absolute inset-0 overflow-hidden">
+            <div className="absolute inset-0 z-10 overflow-hidden">
               <iframe
                 title={`${component.name} live stage`}
                 srcDoc={compiledPreviewHtml}
@@ -217,9 +223,19 @@ export function ComponentCard({
             </div>
           )}
 
+          {/* Top-Left Category Tag on Stage */}
+          <div className="pointer-events-none absolute top-2.5 left-2.5 z-20">
+            <Badge
+              variant="secondary"
+              className="rounded-none bg-zinc-900/90 text-zinc-300 border border-zinc-800 px-2 py-0.5 text-[10px] font-sans font-medium uppercase tracking-wider backdrop-blur-xs"
+            >
+              {component.category || "Custom"}
+            </Badge>
+          </div>
+
           {/* Top-Right Hover Menu Action */}
           <div
-            className="absolute top-2.5 right-2.5 z-20 flex items-center gap-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity duration-200"
+            className="absolute top-2.5 right-2.5 z-20 flex items-center gap-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity duration-150"
             onClick={(e) => e.stopPropagation()}
           >
             <DropdownMenu>
@@ -227,16 +243,16 @@ export function ComponentCard({
                 <Button
                   variant="secondary"
                   size="icon-sm"
-                  className="size-7 rounded-lg bg-zinc-900/90 text-zinc-300 hover:text-white hover:bg-zinc-800 border border-zinc-800/80 shadow-sm backdrop-blur-md"
+                  className="size-7 rounded-none bg-zinc-900/95 text-zinc-300 hover:text-white hover:bg-zinc-800 border border-zinc-700/80 shadow-none"
                   aria-label="More options"
                 >
                   <MoreVertical className="size-3.5" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-44 font-sans">
+              <DropdownMenuContent align="end" className="w-44 rounded-none font-sans">
                 <DropdownMenuItem
                   onClick={handleDuplicate}
-                  className="gap-2 cursor-pointer font-sans text-xs"
+                  className="gap-2 cursor-pointer rounded-none font-sans text-xs"
                 >
                   <Copy className="size-3.5" />
                   <span>Duplicate Component</span>
@@ -248,7 +264,7 @@ export function ComponentCard({
                       onClick={() => {
                         setIsDeleteDialogOpen(true);
                       }}
-                      className="gap-2 cursor-pointer font-sans text-xs text-destructive focus:text-destructive focus:bg-destructive/10"
+                      className="gap-2 cursor-pointer rounded-none font-sans text-xs text-destructive focus:text-destructive focus:bg-destructive/10"
                     >
                       <Trash2 className="size-3.5" />
                       <span>Delete Component</span>
@@ -258,50 +274,54 @@ export function ComponentCard({
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
+        </div>
 
-          {/* Bottom Hover-Only Title & Quick Actions Bar */}
-          <div
-            className="absolute inset-x-0 bottom-0 z-20 flex items-center justify-between gap-2 p-3 pt-6 bg-gradient-to-t from-zinc-950/95 via-zinc-950/80 to-transparent opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity duration-200"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 className="min-w-0 flex-1 truncate">
-              <button
-                type="button"
-                onClick={handlePreview}
-                className="w-full text-left font-sans font-medium text-xs sm:text-sm text-zinc-100 truncate hover:text-white transition-colors focus:outline-hidden cursor-pointer"
-              >
-                {component.name}
-              </button>
-            </h3>
-
-            <div className="flex items-center gap-1.5 shrink-0">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handlePreview}
-                className="font-sans text-xs h-7 px-2.5 gap-1 bg-zinc-900/90 text-zinc-100 border-zinc-700/80 hover:bg-zinc-800 hover:text-white"
-              >
-                <Eye className="size-3" />
-                <span>Preview</span>
-              </Button>
-
-              <Button
-                variant="default"
-                size="sm"
-                onClick={handleOpenStudio}
-                className="font-sans text-xs h-7 px-2.5 gap-1 shadow-sm"
-              >
-                <ExternalLink className="size-3" />
-                <span>Studio</span>
-              </Button>
+        {/* Always-Visible Architectural Footer Bar (Zero Radius) */}
+        <div
+          className="flex items-center justify-between gap-3 px-3.5 py-3 bg-card rounded-none"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="flex items-center gap-2.5 min-w-0 flex-1">
+            <div className="flex size-7 shrink-0 items-center justify-center rounded-none border border-border/80 bg-muted/30 text-muted-foreground">
+              {renderCategoryIcon(component.category, "size-3.5 text-muted-foreground")}
             </div>
+            <div className="min-w-0 flex-1">
+              <h3 className="truncate font-sans font-medium text-xs sm:text-sm text-foreground leading-tight">
+                {component.name}
+              </h3>
+              <p className="truncate font-sans text-[11px] text-muted-foreground mt-0.5">
+                {component.description || `${component.category || "Custom"} component`}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-1 shrink-0">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handlePreview}
+              className="rounded-none font-sans text-xs h-7 px-2.5 gap-1 border-border/80 bg-background hover:bg-muted/60"
+            >
+              <Eye className="size-3" />
+              <span>Preview</span>
+            </Button>
+
+            <Button
+              variant="default"
+              size="sm"
+              onClick={handleOpenStudio}
+              className="rounded-none font-sans text-xs h-7 px-2.5 gap-1 shadow-none"
+            >
+              <ExternalLink className="size-3" />
+              <span>Studio</span>
+            </Button>
           </div>
         </div>
       </div>
 
       {/* Delete Confirmation Dialog */}
       <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <DialogContent className="sm:max-w-md font-sans">
+        <DialogContent className="sm:max-w-md rounded-none font-sans">
           <DialogHeader>
             <div className="flex items-center gap-2 text-destructive mb-1">
               <AlertTriangle className="size-5" />
@@ -316,7 +336,7 @@ export function ComponentCard({
               variant="outline"
               size="sm"
               onClick={() => setIsDeleteDialogOpen(false)}
-              className="font-sans text-xs"
+              className="rounded-none font-sans text-xs"
             >
               Cancel
             </Button>
@@ -324,7 +344,7 @@ export function ComponentCard({
               variant="destructive"
               size="sm"
               onClick={handleConfirmDelete}
-              className="font-sans text-xs gap-1.5"
+              className="rounded-none font-sans text-xs gap-1.5"
             >
               <Trash2 className="size-3.5" />
               <span>Delete</span>
@@ -335,4 +355,3 @@ export function ComponentCard({
     </>
   );
 }
-

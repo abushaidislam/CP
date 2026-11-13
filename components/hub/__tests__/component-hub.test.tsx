@@ -246,7 +246,7 @@ describe("ComponentCard & ComponentHub", () => {
       expect(html).not.toContain("2 Variants");
       expect(html).not.toContain("3 Checkpoints");
       expect(html).toContain(
-        "relative flex flex-col justify-between overflow-hidden bg-card p-3 sm:p-4 text-card-foreground transition-colors duration-200 hover:bg-muted/10 font-sans h-full group"
+        "relative flex flex-col justify-between overflow-hidden rounded-none bg-card text-card-foreground transition-colors duration-200 hover:bg-muted/15 font-sans h-full group"
       );
     });
 
@@ -385,7 +385,7 @@ describe("ComponentCard & ComponentHub", () => {
 
       expect(html).toContain("Component Studio");
       expect(html).toContain("21ST WORKSPACE");
-      expect(html).toContain("+ New Component");
+      expect(html).toContain("New Component");
     });
 
     it("should open create component dialog when + New Component is clicked", () => {
@@ -427,9 +427,9 @@ describe("ComponentCard & ComponentHub", () => {
     it("should render connected 4-column border grid with all 8 starter templates", () => {
       const html = renderToString(<ComponentHub />);
 
-      // Verify connected border grid container and 4-column grid layout
-      expect(html).toContain("rounded-xl border border-border/80 overflow-hidden bg-border/50 shadow-xs");
-      expect(html).toContain("grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-px bg-border/60");
+      // Verify connected border grid container and 4-column grid layout with zero radius
+      expect(html).toContain("rounded-none border border-border overflow-hidden bg-border");
+      expect(html).toContain("grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-px bg-border");
 
       // Verify all 8 starter templates are rendered in the hub
       expect(html).toContain("Ink Orbit 3D Hero");

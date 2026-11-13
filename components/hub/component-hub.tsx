@@ -17,6 +17,7 @@ import {
   FolderSearch,
   RotateCcw,
   ArrowRight,
+  X,
 } from "lucide-react";
 
 export interface ComponentHubProps {
@@ -184,65 +185,68 @@ export function ComponentHub({
     searchQuery,
   ]);
 
-  // Curated 21st.dev-style showcase sections when viewing "All" with no active search
+  // Logical, non-repetitive showcase sections when viewing "All" with no active search
   const showcaseSections = useMemo(() => {
     const sections: {
       id: string;
+      eyebrow: string;
       title: string;
       targetCategory: CategoryType;
       items: UserComponent[];
     }[] = [];
 
-    if (newestComponents.length > 0) {
+    const newestSlice = newestComponents.slice(0, 4);
+    const newestIds = new Set(newestSlice.map((c) => c.id));
+
+    if (newestSlice.length > 0) {
       sections.push({
         id: "newest",
+        eyebrow: "LATEST CONSTRUCTS",
         title: "Newest",
         targetCategory: "Newest",
-        items: newestComponents.slice(0, 4),
+        items: newestSlice,
       });
     }
 
-    if (popularComponents.length > 0) {
+    // Prioritize popular components not already shown in Newest so cards don't duplicate unnecessarily
+    const distinctPopular = popularComponents.filter((c) => !newestIds.has(c.id));
+    const popularSlice =
+      distinctPopular.length >= 4
+        ? distinctPopular.slice(0, 4)
+        : [
+            ...distinctPopular,
+            ...popularComponents.filter((c) => newestIds.has(c.id)),
+          ].slice(0, 4);
+
+    if (popularSlice.length > 0) {
       sections.push({
         id: "popular",
+        eyebrow: "MOST USED",
         title: "Popular",
         targetCategory: "Popular",
-        items: popularComponents.slice(0, 4),
+        items: popularSlice,
       });
     }
 
-    const categoryGroupings: { title: string; category: CategoryType }[] = [
-      { title: "Heroes", category: "Heroes" },
-      { title: "Cards", category: "Cards" },
-      { title: "Buttons", category: "Buttons" },
-      { title: "Badges", category: "Badges" },
-      { title: "Custom", category: "Custom" },
-    ];
+    // If user has created additional components beyond the 8 shown above, display them in a unified registry section
+    const shownIds = new Set([
+      ...newestSlice.map((c) => c.id),
+      ...popularSlice.map((c) => c.id),
+    ]);
+    const remainingComponents = newestComponents.filter((c) => !shownIds.has(c.id));
 
-    for (const group of categoryGroupings) {
-      const groupItems = allComponents.filter((c) => {
-        const cat = c.category?.toLowerCase() || "";
-        if (group.category === "Custom") {
-          return (
-            cat === "custom" ||
-            !["heroes", "cards", "buttons", "badges"].includes(cat)
-          );
-        }
-        return cat === group.category.toLowerCase();
+    if (remainingComponents.length > 0) {
+      sections.push({
+        id: "more-components",
+        eyebrow: "EXTENDED LIBRARY",
+        title: "More Components",
+        targetCategory: "Newest",
+        items: remainingComponents,
       });
-
-      if (groupItems.length > 0) {
-        sections.push({
-          id: group.category.toLowerCase(),
-          title: group.title,
-          targetCategory: group.category,
-          items: groupItems,
-        });
-      }
     }
 
     return sections;
-  }, [allComponents, newestComponents, popularComponents]);
+  }, [newestComponents, popularComponents]);
 
   const handleOpenStudio = (id: string) => {
     loadComponent(id);
@@ -255,8 +259,8 @@ export function ComponentHub({
   };
 
   const renderCardGrid = (items: UserComponent[]) => (
-    <div className="rounded-xl border border-border/80 overflow-hidden bg-border/50 shadow-xs">
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-px bg-border/60">
+    <div className="rounded-none border border-border overflow-hidden bg-border">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-px bg-border">
         {items.map((component) => {
           const variants = variantsByTemplate?.[component.id] || [];
           const variantsCount = variants.length || 1;
@@ -293,7 +297,7 @@ export function ComponentHub({
       <header className="sticky top-0 z-20 flex h-14 shrink-0 items-center justify-between border-b border-border bg-background/95 px-4 sm:px-6 backdrop-blur-sm select-none">
         {/* Brand / Title & Workspace Eyebrow */}
         <div className="flex items-center gap-3">
-          <div className="flex size-7 items-center justify-center rounded-lg bg-foreground text-background shadow-2xs">
+          <div className="flex size-7 items-center justify-center rounded-none bg-foreground text-background">
             <svg
               width="14"
               height="14"
@@ -308,7 +312,9 @@ export function ComponentHub({
             <span className="font-sans font-semibold text-sm sm:text-base tracking-tight text-foreground">
               Component Studio
             </span>
-            <Badge variant="eyebrow">21ST WORKSPACE</Badge>
+            <Badge variant="eyebrow" className="rounded-none">
+              21ST WORKSPACE
+            </Badge>
           </div>
         </div>
 
@@ -318,7 +324,7 @@ export function ComponentHub({
             variant="ghost"
             size="icon"
             onClick={toggleTheme}
-            className="size-8 text-muted-foreground hover:text-foreground"
+            className="size-8 rounded-none text-muted-foreground hover:text-foreground"
             aria-label="Toggle theme"
           >
             {isDark ? <Sun className="size-4" /> : <Moon className="size-4" />}
@@ -328,23 +334,23 @@ export function ComponentHub({
             variant="default"
             size="sm"
             onClick={() => setCreateComponentDialogOpen(true)}
-            className="h-8 gap-1.5 px-3 font-sans text-xs font-medium shadow-2xs"
+            className="h-8 rounded-none gap-1.5 px-3 font-sans text-xs font-medium shadow-none"
           >
             <Plus className="size-4" />
-            <span>+ New Component</span>
+            <span>New Component</span>
           </Button>
         </div>
       </header>
 
       {/* Main Showcase Area */}
-      <main className="flex-1 container mx-auto max-w-7xl px-4 sm:px-6 py-6 space-y-8">
-        {/* Streamlined Filter & Search Toolbar */}
+      <main className="flex-1 container mx-auto max-w-7xl px-4 sm:px-6 py-6 space-y-6">
+        {/* Architectural Filter & Search Control Bar (Zero Radius) */}
         <section
           aria-label="Filter and search toolbar"
-          className="flex flex-col lg:flex-row gap-3 items-stretch lg:items-center justify-between"
+          className="rounded-none border border-border bg-card/60 p-2 sm:p-2.5 flex flex-col lg:flex-row gap-2.5 items-stretch lg:items-center justify-between"
         >
           {/* Category Filter Navigation */}
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 lg:pb-0 scrollbar-none">
+          <div className="flex items-center gap-1 overflow-x-auto pb-1 lg:pb-0 scrollbar-none">
             {CATEGORIES.map((category) => {
               const isActive = selectedCategory === category;
               const count = categoryCounts[category];
@@ -355,9 +361,9 @@ export function ComponentHub({
                   size="sm"
                   onClick={() => setSelectedCategory(category)}
                   className={cn(
-                    "h-8 rounded-lg px-3 text-xs font-sans gap-1.5 transition-all select-none shrink-0",
+                    "h-8 rounded-none px-3 text-xs font-sans gap-1.5 transition-colors select-none shrink-0",
                     isActive
-                      ? "bg-primary text-primary-foreground shadow-2xs"
+                      ? "bg-primary text-primary-foreground shadow-none"
                       : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
                   )}
                 >
@@ -366,7 +372,7 @@ export function ComponentHub({
                     variant="secondary"
                     suppressHydrationWarning
                     className={cn(
-                      "px-1.5 py-0 text-[10px] font-sans tabular-nums rounded-md",
+                      "px-1.5 py-0 text-[10px] font-sans tabular-nums rounded-none",
                       isActive
                         ? "bg-primary-foreground/20 text-primary-foreground"
                         : "bg-muted text-muted-foreground"
@@ -380,33 +386,57 @@ export function ComponentHub({
           </div>
 
           {/* Search Input with Search Icon */}
-          <div className="relative w-full lg:w-72 shrink-0">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none" />
+          <div className="relative w-full lg:w-80 shrink-0">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none" />
             <Input
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               aria-label="Search components by name or description"
               placeholder="Search components by name or description..."
-              className="pl-9 font-sans text-xs h-8 bg-card"
+              className="pl-9 pr-8 rounded-none font-sans text-xs h-8 bg-background border-border"
             />
+            {searchQuery.trim().length > 0 && (
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                onClick={() => setSearchQuery("")}
+                aria-label="Clear search query"
+                className="absolute right-1 top-1/2 -translate-y-1/2 size-6 rounded-none text-muted-foreground hover:text-foreground"
+              >
+                <X className="size-3.5" />
+              </Button>
+            )}
           </div>
         </section>
 
         {/* Component Showcase Sections / Grid */}
-        <section aria-label="Component cards grid" className="space-y-10">
+        <section aria-label="Component cards grid" className="space-y-8">
           {filteredComponents.length > 0 ? (
             showCuratedSections ? (
               showcaseSections.map((section) => (
-                <div key={section.id} className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <h2 className="font-sans text-base sm:text-lg font-semibold tracking-tight text-foreground">
-                      {section.title}
-                    </h2>
+                <div key={section.id} className="rounded-none">
+                  {/* Integrated Architectural Section Header Bar */}
+                  <div className="flex items-center justify-between border border-b-0 border-border bg-muted/25 px-4 py-2.5 rounded-none">
+                    <div className="flex items-center gap-2.5">
+                      <span className="font-mono text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                        {section.eyebrow}
+                      </span>
+                      <span className="text-border select-none">/</span>
+                      <h2 className="font-sans text-sm sm:text-base font-semibold tracking-tight text-foreground">
+                        {section.title}
+                      </h2>
+                      <Badge
+                        variant="secondary"
+                        className="rounded-none px-1.5 py-0 text-[10px] font-sans tabular-nums"
+                      >
+                        {section.items.length}
+                      </Badge>
+                    </div>
                     <Button
                       variant="ghost"
                       size="sm"
                       onClick={() => setSelectedCategory(section.targetCategory)}
-                      className="h-7 px-2.5 text-xs font-sans text-muted-foreground hover:text-foreground gap-1.5"
+                      className="h-7 rounded-none px-2.5 text-xs font-sans text-muted-foreground hover:text-foreground gap-1.5"
                     >
                       <span>View all</span>
                       <ArrowRight className="size-3.5" />
@@ -416,19 +446,35 @@ export function ComponentHub({
                 </div>
               ))
             ) : (
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <h2 className="font-sans text-base sm:text-lg font-semibold tracking-tight text-foreground">
-                    {searchQuery.trim()
-                      ? `Search results (${filteredComponents.length})`
-                      : selectedCategory}
-                  </h2>
-                  {selectedCategory !== "All" && (
+              <div className="rounded-none">
+                {/* Integrated Architectural Filtered Header Bar */}
+                <div className="flex items-center justify-between border border-b-0 border-border bg-muted/25 px-4 py-2.5 rounded-none">
+                  <div className="flex items-center gap-2.5">
+                    <span className="font-mono text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                      {searchQuery.trim() ? "SEARCH QUERY" : "CATEGORY FILTER"}
+                    </span>
+                    <span className="text-border select-none">/</span>
+                    <h2 className="font-sans text-sm sm:text-base font-semibold tracking-tight text-foreground">
+                      {searchQuery.trim()
+                        ? `Search results (${filteredComponents.length})`
+                        : selectedCategory}
+                    </h2>
+                    <Badge
+                      variant="secondary"
+                      className="rounded-none px-1.5 py-0 text-[10px] font-sans tabular-nums"
+                    >
+                      {filteredComponents.length}
+                    </Badge>
+                  </div>
+                  {(selectedCategory !== "All" || searchQuery.trim()) && (
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => setSelectedCategory("All")}
-                      className="h-7 px-2.5 text-xs font-sans text-muted-foreground hover:text-foreground gap-1.5"
+                      onClick={() => {
+                        setSelectedCategory("All");
+                        setSearchQuery("");
+                      }}
+                      className="h-7 rounded-none px-2.5 text-xs font-sans text-muted-foreground hover:text-foreground gap-1.5"
                     >
                       <span>Back to all</span>
                     </Button>
@@ -438,8 +484,8 @@ export function ComponentHub({
               </div>
             )
           ) : (
-            /* Clean Empty State */
-            <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border/80 p-12 text-center my-6 bg-muted/10">
+            /* Clean Sharp Empty State (Zero Radius) */
+            <div className="flex flex-col items-center justify-center rounded-none border border-dashed border-border p-12 text-center my-6 bg-muted/10">
               <FolderSearch className="size-10 text-muted-foreground/60 mb-3" />
               <h3 className="font-sans font-medium text-base text-foreground">
                 No components found
@@ -455,7 +501,7 @@ export function ComponentHub({
                     setSearchQuery("");
                     setSelectedCategory("All");
                   }}
-                  className="font-sans text-xs h-8 gap-1.5"
+                  className="rounded-none font-sans text-xs h-8 gap-1.5"
                 >
                   <RotateCcw className="size-3.5" />
                   <span>Reset filters</span>
@@ -464,10 +510,10 @@ export function ComponentHub({
                   variant="default"
                   size="sm"
                   onClick={() => setCreateComponentDialogOpen(true)}
-                  className="font-sans text-xs h-8 gap-1.5"
+                  className="rounded-none font-sans text-xs h-8 gap-1.5"
                 >
                   <Plus className="size-3.5" />
-                  <span>+ New Component</span>
+                  <span>New Component</span>
                 </Button>
               </div>
             </div>
@@ -481,4 +527,3 @@ export function ComponentHub({
     </div>
   );
 }
-
