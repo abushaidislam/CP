@@ -276,9 +276,9 @@ export function ComponentCard({
           </div>
         </div>
 
-        {/* Always-Visible Architectural Footer Bar (Zero Radius) */}
+        {/* Always-Visible Architectural Footer Bar with Icon-Only Action Buttons */}
         <div
-          className="flex items-center justify-between gap-3 px-3.5 py-3 bg-card rounded-none"
+          className="studio-toolbar-surface flex items-center justify-between gap-3 px-3.5 py-3 bg-card rounded-none"
           onClick={(e) => e.stopPropagation()}
         >
           <div className="flex items-center gap-2.5 min-w-0 flex-1">
@@ -298,22 +298,26 @@ export function ComponentCard({
           <div className="flex items-center gap-1 shrink-0">
             <Button
               variant="outline"
-              size="sm"
+              size="icon-sm"
               onClick={handlePreview}
-              className="rounded-none font-sans text-xs h-7 px-2.5 gap-1 border-border/80 bg-background hover:bg-muted/60"
+              title={`Quick Preview ${component.name}`}
+              aria-label={`Quick Preview ${component.name}`}
+              className="studio-icon-btn size-7 rounded-none border-border/80 bg-background hover:bg-muted/60 text-muted-foreground hover:text-foreground"
             >
-              <Eye className="size-3" />
-              <span>Preview</span>
+              <Eye className="size-3.5" />
+              <span className="sr-only">Preview</span>
             </Button>
 
             <Button
               variant="default"
-              size="sm"
+              size="icon-sm"
               onClick={handleOpenStudio}
-              className="rounded-none font-sans text-xs h-7 px-2.5 gap-1 shadow-none"
+              title={`Open ${component.name} in Studio`}
+              aria-label={`Open ${component.name} in Studio`}
+              className="size-7 rounded-none shadow-none"
             >
-              <ExternalLink className="size-3" />
-              <span>Studio</span>
+              <ExternalLink className="size-3.5" />
+              <span className="sr-only">Studio</span>
             </Button>
           </div>
         </div>

@@ -25,6 +25,7 @@ import {
   FileCode,
   Loader2,
 } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 export interface CreateComponentDialogProps {
   onCreated?: (id: string) => void;
@@ -143,22 +144,23 @@ export function CreateComponentDialog({ onCreated }: CreateComponentDialogProps)
 
     const effectiveCategory = (categoryRef.current || category || "Custom").trim();
     const effectiveDescription = (descriptionRef.current || description).trim() || undefined;
-    const effectiveTemplateId = templateIdRef.current !== undefined ? templateIdRef.current : selectedTemplateId;
+    const effectiveTemplateId =
+      templateIdRef.current !== undefined ? templateIdRef.current : selectedTemplateId;
 
     setIsSubmitting(true);
     try {
       const newId = createComponent({
-      name: effectiveName,
-      description: effectiveDescription,
-      category: effectiveCategory || "Custom",
-      starterTemplateId: effectiveTemplateId || undefined,
-    });
+        name: effectiveName,
+        description: effectiveDescription,
+        category: effectiveCategory || "Custom",
+        starterTemplateId: effectiveTemplateId || undefined,
+      });
 
-    if (onCreated && newId) {
-      onCreated(newId);
-    }
+      if (onCreated && newId) {
+        onCreated(newId);
+      }
 
-    handleOpenChange(false);
+      handleOpenChange(false);
     } finally {
       setIsSubmitting(false);
     }
@@ -166,16 +168,19 @@ export function CreateComponentDialog({ onCreated }: CreateComponentDialogProps)
 
   return (
     <Dialog open={isCreateComponentDialogOpen} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-xl w-[calc(100vw-2rem)] max-h-[90vh] overflow-y-auto overflow-x-hidden flex flex-col font-sans p-6 gap-5">
-        <DialogHeader>
+      <DialogContent className="sm:max-w-xl w-[calc(100vw-2rem)] max-h-[90vh] overflow-y-auto overflow-x-hidden flex flex-col font-sans p-0 gap-0 rounded-none border border-border bg-card">
+        {/* Architectural Header Bar */}
+        <DialogHeader className="studio-toolbar-surface border-b border-border px-6 py-4 pr-12 shrink-0">
           <div className="flex items-center gap-2">
-            <Badge variant="eyebrow">NEW COMPONENT</Badge>
+            <Badge variant="eyebrow" className="rounded-none">
+              NEW COMPONENT
+            </Badge>
           </div>
           <div className="flex items-start gap-3 mt-1.5">
-            <div className="flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary shrink-0 mt-0.5">
-              <Layers className="size-4.5" />
+            <div className="flex size-9 items-center justify-center rounded-none border border-border bg-background text-foreground shrink-0 mt-0.5">
+              <Layers className="size-4" />
             </div>
-            <div>
+            <div className="min-w-0">
               <DialogTitle className="text-base sm:text-lg font-semibold font-sans tracking-tight text-foreground">
                 Create New Component
               </DialogTitle>
@@ -186,161 +191,184 @@ export function CreateComponentDialog({ onCreated }: CreateComponentDialogProps)
           </div>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-          {/* Component Name Field */}
-          <div className="flex flex-col gap-1.5">
-            <label
-              htmlFor="component-name-input"
-              className="text-xs font-medium text-foreground font-sans flex items-center justify-between"
-            >
-              <span>
-                Component Name <span className="text-destructive">*</span>
-              </span>
-              <span className="text-[11px] text-muted-foreground font-sans">
-                {name.length}/60
-              </span>
-            </label>
-            <Input
-              id="component-name-input"
-              aria-invalid={Boolean(error)}
-              aria-describedby={error ? "component-name-error" : undefined}
-              aria-required="true"
-              value={name}
-              onChange={(e) => {
-                nameRef.current = e.target.value;
-                setName(e.target.value);
-                if (error) setError("");
-              }}
-              placeholder="e.g. Animated Pricing Card"
-              className="text-xs font-sans h-9 transition-colors duration-150"
-              autoFocus
-              maxLength={60}
-            />
-            {error && (
-              <span className="text-[11px] text-destructive font-sans animate-in fade-in-0 slide-in-from-top-1 duration-150">
-                {error}
-              </span>
-            )}
-          </div>
-
-          {/* Category Selector */}
-          <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-medium text-foreground font-sans">
-              Category
-            </label>
-            <div className="flex flex-wrap items-center gap-1.5">
-              {COMPONENT_CATEGORIES.map((cat) => {
-                const isSelected = category === cat;
-                return (
-                  <Button
-                    key={cat}
-                    type="button"
-                    variant={isSelected ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => {
-                      categoryRef.current = cat;
-                      setCategory(cat);
-                    }}
-                    className="font-sans text-xs h-7 px-3 transition-colors duration-150"
-                  >
-                    {cat}
-                  </Button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Description Field (Optional) */}
-          <div className="flex flex-col gap-1.5">
-            <label
-              htmlFor="component-description-input"
-              className="text-xs font-medium text-foreground font-sans flex items-center justify-between"
-            >
-              <span>Description (Optional)</span>
-              <span className="text-[11px] text-muted-foreground font-sans">
-                {description.length}/200
-              </span>
-            </label>
-            <Textarea
-              id="component-description-input"
-              value={description}
-              onChange={(e) => {
-                descriptionRef.current = e.target.value;
-                setDescription(e.target.value);
-              }}
-              placeholder="e.g. Interactive glassmorphic card with dynamic lighting and tilt physics"
-              className="text-xs font-sans min-h-[64px] resize-none transition-colors duration-150"
-              rows={2}
-              maxLength={200}
-            />
-          </div>
-
-          {/* Starter Template Selection */}
-          <div className="flex flex-col gap-2">
-            <div className="flex items-center justify-between">
-              <label className="text-xs font-medium text-foreground font-sans">
-                Starter Template
+        {/* Scrollable Form Body */}
+        <form onSubmit={handleSubmit} className="flex flex-col">
+          <div className="px-6 py-5 space-y-4">
+            {/* Component Name Field */}
+            <div className="flex flex-col gap-1.5">
+              <label
+                htmlFor="component-name-input"
+                className="text-xs font-medium text-foreground font-sans flex items-center justify-between"
+              >
+                <span>
+                  Component Name <span className="text-destructive">*</span>
+                </span>
+                <span className="text-[11px] text-muted-foreground font-sans tabular-nums">
+                  {name.length}/60
+                </span>
               </label>
-              <span className="text-[11px] text-muted-foreground font-sans">
-                Select baseline code & dependencies
-              </span>
+              <Input
+                id="component-name-input"
+                aria-invalid={Boolean(error)}
+                aria-describedby={error ? "component-name-error" : undefined}
+                aria-required="true"
+                value={name}
+                onChange={(e) => {
+                  nameRef.current = e.target.value;
+                  setName(e.target.value);
+                  if (error) setError("");
+                }}
+                placeholder="e.g. Animated Pricing Card"
+                className="text-xs font-sans h-9 rounded-none bg-background border-border"
+                autoFocus
+                maxLength={60}
+              />
+              {error && (
+                <span
+                  id="component-name-error"
+                  className="text-[11px] text-destructive font-sans animate-in fade-in-0 slide-in-from-top-1 duration-150"
+                >
+                  {error}
+                </span>
+              )}
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-              {STARTER_TEMPLATES.map((tmpl) => {
-                const isSelected = selectedTemplateId === tmpl.id;
-                const Icon = tmpl.icon;
+            {/* Category Segmented Hairline Grid */}
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-medium text-foreground font-sans">
+                Category
+              </label>
+              <div className="grid grid-cols-5 gap-px bg-border border border-border rounded-none overflow-hidden">
+                {COMPONENT_CATEGORIES.map((cat) => {
+                  const isSelected = category === cat;
+                  return (
+                    <Button
+                      key={cat}
+                      type="button"
+                      variant={isSelected ? "default" : "ghost"}
+                      size="sm"
+                      onClick={() => {
+                        categoryRef.current = cat;
+                        setCategory(cat);
+                      }}
+                      className={cn(
+                        "rounded-none font-sans text-xs h-8 px-2 transition-colors duration-150",
+                        isSelected
+                          ? "bg-primary text-primary-foreground font-medium"
+                          : "bg-background text-muted-foreground hover:text-foreground hover:bg-muted/60"
+                      )}
+                    >
+                      {cat}
+                    </Button>
+                  );
+                })}
+              </div>
+            </div>
 
-                return (
-                  <Button
-                    key={tmpl.id ?? "blank-slate"}
-                    type="button"
-                    variant="outline"
-                    onClick={() => handleSelectTemplate(tmpl)}
-                    className={`h-auto flex flex-col items-start justify-start p-3 text-left border rounded-lg transition-all duration-150 relative ${
-                      isSelected
-                        ? "border-primary bg-primary/5 shadow-2xs"
-                        : "border-border hover:border-foreground/20 hover:bg-muted/40"
-                    }`}
-                  >
-                    <div className="flex items-center justify-between w-full mb-1">
-                      <div className="flex items-center gap-1.5 min-w-0 pr-1">
-                        <Icon className="size-3.5 text-muted-foreground shrink-0" />
-                        <span className="text-xs font-medium font-sans truncate text-foreground">
-                          {tmpl.name}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-1.5 shrink-0">
-                        <Badge
-                          variant={isSelected ? "default" : "secondary"}
-                          className="text-[10px] px-1.5 py-0 font-sans leading-tight"
-                        >
-                          {tmpl.badge}
-                        </Badge>
-                        {isSelected && (
-                          <div className="flex size-4 items-center justify-center rounded-full bg-primary text-primary-foreground">
-                            <Check className="size-2.5" />
+            {/* Description Field (Optional) */}
+            <div className="flex flex-col gap-1.5">
+              <label
+                htmlFor="component-description-input"
+                className="text-xs font-medium text-foreground font-sans flex items-center justify-between"
+              >
+                <span>Description (Optional)</span>
+                <span className="text-[11px] text-muted-foreground font-sans tabular-nums">
+                  {description.length}/200
+                </span>
+              </label>
+              <Textarea
+                id="component-description-input"
+                value={description}
+                onChange={(e) => {
+                  descriptionRef.current = e.target.value;
+                  setDescription(e.target.value);
+                }}
+                placeholder="e.g. Interactive glassmorphic card with dynamic lighting and tilt physics"
+                className="text-xs font-sans min-h-[56px] rounded-none resize-none bg-background border-border"
+                rows={2}
+                maxLength={200}
+              />
+            </div>
+
+            {/* Starter Template Selection - Connected Hairline Grid with Proper Text Wrapping */}
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-medium text-foreground font-sans">
+                  Starter Template
+                </label>
+                <span className="text-[11px] text-muted-foreground font-sans">
+                  Select baseline code & dependencies
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-px bg-border border border-border rounded-none overflow-hidden">
+                {STARTER_TEMPLATES.map((tmpl, index) => {
+                  const isSelected = selectedTemplateId === tmpl.id;
+                  const Icon = tmpl.icon;
+                  const isFullSpan = index === 0;
+
+                  return (
+                    <Button
+                      key={tmpl.id ?? "blank-slate"}
+                      type="button"
+                      variant="ghost"
+                      onClick={() => handleSelectTemplate(tmpl)}
+                      className={cn(
+                        "h-auto w-full whitespace-normal overflow-hidden flex flex-col items-start justify-start p-3.5 text-left rounded-none transition-colors duration-150 relative",
+                        isFullSpan && "sm:col-span-2",
+                        isSelected
+                          ? "bg-muted/80 text-foreground ring-1 ring-inset ring-primary"
+                          : "bg-background hover:bg-muted/40 text-foreground"
+                      )}
+                    >
+                      <div className="flex items-center justify-between gap-2 w-full mb-1.5">
+                        <div className="flex items-center gap-2 min-w-0 flex-1">
+                          <div
+                            className={cn(
+                              "flex size-6 shrink-0 items-center justify-center rounded-none border",
+                              isSelected
+                                ? "border-primary bg-primary text-primary-foreground"
+                                : "border-border bg-muted/40 text-muted-foreground"
+                            )}
+                          >
+                            <Icon className="size-3.5" />
                           </div>
-                        )}
+                          <span className="text-xs font-medium font-sans truncate text-foreground">
+                            {tmpl.name}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <Badge
+                            variant={isSelected ? "default" : "secondary"}
+                            className="rounded-none text-[10px] px-1.5 py-0 font-sans leading-tight"
+                          >
+                            {tmpl.badge}
+                          </Badge>
+                          {isSelected && (
+                            <div className="flex size-4 items-center justify-center rounded-none bg-primary text-primary-foreground">
+                              <Check className="size-2.5" />
+                            </div>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                    <p className="text-[11px] text-muted-foreground font-sans line-clamp-2 leading-relaxed">
-                      {tmpl.description}
-                    </p>
-                  </Button>
-                );
-              })}
+                      <p className="w-full text-[11px] text-muted-foreground font-sans whitespace-normal break-words line-clamp-2 leading-relaxed">
+                        {tmpl.description}
+                      </p>
+                    </Button>
+                  );
+                })}
+              </div>
             </div>
           </div>
 
-          {/* Dialog Footer Actions */}
-          <DialogFooter className="flex items-center justify-end gap-2 pt-3 border-t border-border mt-1">
+          {/* Sticky Architectural Dialog Footer */}
+          <DialogFooter className="studio-toolbar-surface sticky bottom-0 z-10 flex items-center justify-end gap-2 px-6 py-3.5 border-t border-border bg-card/95 backdrop-blur-xs">
             <Button
               type="button"
-              variant="ghost"
+              variant="outline"
               size="sm"
               onClick={() => handleOpenChange(false)}
-              className="font-sans text-xs active:scale-[0.98] transition-transform duration-100"
+              className="rounded-none font-sans text-xs h-8 px-3.5"
             >
               Cancel
             </Button>
@@ -349,7 +377,7 @@ export function CreateComponentDialog({ onCreated }: CreateComponentDialogProps)
               size="sm"
               disabled={isSubmitting}
               onClick={handleSubmit}
-              className="font-sans text-xs gap-1.5 active:scale-[0.98] transition-transform duration-100"
+              className="rounded-none font-sans text-xs h-8 px-4 gap-1.5"
             >
               {isSubmitting ? (
                 <>

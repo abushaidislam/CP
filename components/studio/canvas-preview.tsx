@@ -84,7 +84,7 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
   const captureTimeoutRef = useRef<NodeJS.Timeout | number | null>(null);
   const toastTimeoutRef = useRef<NodeJS.Timeout | number | null>(null);
 
-  // Debounce files (200ms) to ensure butter-smooth 60fps typing in CodeMirror without compiling on every single keystroke
+  // Debounce files (200ms) to ensure butter-smooth 60fps typing in CodeMirror
   const [debouncedFiles, setDebouncedFiles] = useState(files);
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -97,13 +97,11 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
   const cardRef = useRef<HTMLDivElement>(null);
   const isResizingRef = useRef(false);
 
-  // Reset custom dragged width when user picks a viewport button
   const handleSelectViewport = (vp: StudioViewport) => {
     setDraggedWidth(null);
     setViewport(vp);
   };
 
-  // Change preview theme (Dark / Light) with immediate postMessage to sandbox iframe
   const handleThemeChange = (nextTheme: PreviewTheme) => {
     setPreviewTheme(nextTheme);
 
@@ -118,7 +116,6 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
     }
   };
 
-  // Instant snapshot capture directly from canvas preview
   const handleCaptureSnapshot = (action: "both" | "download" | "copy" = "both") => {
     pendingCaptureActionRef.current = action;
     setIsCapturingSnapshot(true);
@@ -144,7 +141,7 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
     }
   };
 
-  // Compile sandbox HTML when code or settings change (using debounced files)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const { html, error } = useMemo(() => {
     return compileSandboxHtml(
       debouncedFiles["component.tsx"],
@@ -156,14 +153,12 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
     );
   }, [debouncedFiles, dependencies, canvasBg, previewTheme, reloadKey]);
 
-  // Reset sandbox loading state on code / reload changes
   useEffect(() => {
     setIsSandboxLoading(true);
     const timer = setTimeout(() => setIsSandboxLoading(false), 4500);
     return () => clearTimeout(timer);
   }, [html, reloadKey]);
 
-  // Sync compiler errors with store
   useEffect(() => {
     if (error) {
       setCompilerState(false, error);
@@ -172,7 +167,6 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
     }
   }, [error, setCompilerState]);
 
-  // Listen for iframe postMessage events
   useEffect(() => {
     function handleMessage(event: MessageEvent) {
       if (event.data) {
@@ -211,7 +205,6 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
             pendingCaptureActionRef.current = null;
 
             if (requestedAction) {
-              // 1. Automatic Download
               if (requestedAction === "both" || requestedAction === "download") {
                 try {
                   const downloadAnchor = document.createElement("a");
@@ -225,7 +218,6 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
                 }
               }
 
-              // 2. Clipboard Copy
               if (requestedAction === "both" || requestedAction === "copy") {
                 if (typeof window !== "undefined" && navigator.clipboard) {
                   fetch(dataUrl)
@@ -246,7 +238,6 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
                 }
               }
 
-              // 3. Success feedback & toast
               setCaptureSuccess(true);
               const message =
                 requestedAction === "both"
@@ -293,7 +284,6 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
     };
   }, [setCompilerState, addTerminalLog, updateComponentPreview, currentTemplateId]);
 
-  // Listen for custom preview capture requests from StudioHeader
   useEffect(() => {
     const handleRequestCapture = (e: Event) => {
       const customEvent = e as CustomEvent<{ componentId?: string }>;
@@ -311,7 +301,6 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
     };
   }, [iframeRef, currentTemplateId]);
 
-  // Interactive Drag-to-Resize Handle
   const handleResizeStart = (e: React.MouseEvent) => {
     e.preventDefault();
     isResizingRef.current = true;
@@ -345,7 +334,6 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
     };
   }, []);
 
-  // Determine current active width
   const getComputedWidth = () => {
     if (draggedWidth !== null) return `${draggedWidth}px`;
     switch (viewport) {
@@ -400,39 +388,84 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
         isFullscreen ? "fixed inset-0 z-50" : "relative"
       }`}
     >
-      {/* Top Toolbar */}
-      <div className="flex h-11 shrink-0 items-center justify-between border-b border-border/70 bg-card/50 dark:bg-card/30 backdrop-blur-xs px-3 select-none transition-colors">
-        {/* Left: Viewport & Dimension Badge */}
+      {/* Top Toolbar: Pure Icon-Only Instrument Strip */}
+      <div className="studio-toolbar-surface flex h-11 shrink-0 items-center justify-between border-b border-border px-3 select-none transition-colors">
+        {/* Left: Icon-Only Viewport Switcher & Dimension Badge */}
         <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
-          {/* Viewport Control via Shadcn Tabs */}
           <Tabs
             value={isFluidResponsive ? "responsive" : viewport}
             onValueChange={(val) => handleSelectViewport(val as StudioViewport)}
           >
-            <TabsList className="h-7 bg-muted/60 dark:bg-muted/40 p-0.5 rounded-lg border border-border/40 gap-0.5">
-              <TabsTrigger value="responsive" className="h-6 gap-1 sm:gap-1.5 px-2 sm:px-2.5 text-xs font-sans rounded-md transition-colors">
-                <Layers className="size-3.5" />
-                <span className="hidden xl:inline font-sans">Fluid</span>
-              </TabsTrigger>
-              <TabsTrigger value="desktop" className="h-6 gap-1 sm:gap-1.5 px-2 sm:px-2.5 text-xs font-sans rounded-md transition-colors">
-                <Monitor className="size-3.5" />
-                <span className="hidden xl:inline font-sans">Desktop</span>
-              </TabsTrigger>
-              <TabsTrigger value="tablet" className="h-6 gap-1 sm:gap-1.5 px-2 sm:px-2.5 text-xs font-sans rounded-md transition-colors">
-                <Tablet className="size-3.5" />
-                <span className="hidden xl:inline font-sans">Tablet</span>
-              </TabsTrigger>
-              <TabsTrigger value="mobile" className="h-6 gap-1 sm:gap-1.5 px-2 sm:px-2.5 text-xs font-sans rounded-md transition-colors">
-                <Smartphone className="size-3.5" />
-                <span className="hidden xl:inline font-sans">Mobile</span>
-              </TabsTrigger>
+            <TabsList className="h-7 bg-muted/60 dark:bg-muted/40 p-0.5 rounded-none border border-border/80 gap-0.5">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <TabsTrigger
+                    value="responsive"
+                    aria-label="Fluid responsive viewport"
+                    className="size-6 p-0 text-xs font-sans rounded-none transition-colors"
+                  >
+                    <Layers className="size-3.5" />
+                    <span className="sr-only">Fluid</span>
+                  </TabsTrigger>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="font-sans text-xs">
+                  Fluid Viewport (100%)
+                </TooltipContent>
+              </Tooltip>
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <TabsTrigger
+                    value="desktop"
+                    aria-label="Desktop viewport"
+                    className="size-6 p-0 text-xs font-sans rounded-none transition-colors"
+                  >
+                    <Monitor className="size-3.5" />
+                    <span className="sr-only">Desktop</span>
+                  </TabsTrigger>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="font-sans text-xs">
+                  Desktop Viewport (1200px)
+                </TooltipContent>
+              </Tooltip>
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <TabsTrigger
+                    value="tablet"
+                    aria-label="Tablet viewport"
+                    className="size-6 p-0 text-xs font-sans rounded-none transition-colors"
+                  >
+                    <Tablet className="size-3.5" />
+                    <span className="sr-only">Tablet</span>
+                  </TabsTrigger>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="font-sans text-xs">
+                  Tablet Viewport (768px)
+                </TooltipContent>
+              </Tooltip>
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <TabsTrigger
+                    value="mobile"
+                    aria-label="Mobile viewport"
+                    className="size-6 p-0 text-xs font-sans rounded-none transition-colors"
+                  >
+                    <Smartphone className="size-3.5" />
+                    <span className="sr-only">Mobile</span>
+                  </TabsTrigger>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="font-sans text-xs">
+                  Mobile Viewport (375px)
+                </TooltipContent>
+              </Tooltip>
             </TabsList>
           </Tabs>
 
-          {/* Width Indicator Badge matching EditorPanel */}
           <Badge
             variant="outline"
-            className="hidden xl:inline-flex h-5 px-1.5 text-[11px] font-sans font-normal text-muted-foreground border-border/40 bg-muted/30 tabular-nums shrink-0"
+            className="hidden xl:inline-flex h-5 rounded-none px-1.5 text-[11px] font-sans font-normal text-muted-foreground border-border/60 bg-muted/30 tabular-nums shrink-0"
           >
             {draggedWidth !== null
               ? `${draggedWidth}px`
@@ -445,7 +478,7 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
         {/* Center: Subtle Status & Toast */}
         <div className="flex items-center gap-2">
           {toastMessage ? (
-            <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-[11px] font-sans font-medium animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-none bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-[11px] font-sans font-medium animate-in fade-in zoom-in-95 duration-200">
               <Check className="size-3 shrink-0" />
               <span>{toastMessage}</span>
             </div>
@@ -456,23 +489,24 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
           ) : null}
         </div>
 
-        {/* Right: Controls & Zoom */}
+        {/* Right: Pure Icon-Only Canvas Controls */}
         <div className="flex items-center gap-1 shrink-0">
-          {/* Simulated Hover trigger (Desktop / Wide screen) */}
+          {/* Simulated Hover trigger - Icon-Only */}
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
-                variant="ghost"
-                size="sm"
+                variant="outline"
+                size="icon-sm"
                 onClick={triggerTestSimulation}
                 disabled={isSimulatingHover}
-                className="hidden xl:inline-flex h-7 px-2.5 text-xs gap-1.5 text-muted-foreground hover:text-foreground rounded-md transition-colors"
+                aria-label="Simulate pointer hover"
+                className="studio-icon-btn hidden xl:inline-flex size-7 rounded-none border-border/80 bg-background/70 text-muted-foreground hover:text-foreground"
               >
                 <MousePointerClick className="size-3.5" />
-                <span className="text-xs font-sans">Simulate</span>
+                <span className="sr-only">Simulate</span>
               </Button>
             </TooltipTrigger>
-            <TooltipContent side="bottom">
+            <TooltipContent side="bottom" className="font-sans text-xs">
               Simulate pointer hover & interactions inside sandbox
             </TooltipContent>
           </Tooltip>
@@ -481,10 +515,10 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
-                variant="ghost"
-                size="icon"
+                variant="outline"
+                size="icon-sm"
                 onClick={() => handleThemeChange(previewTheme === "dark" ? "light" : "dark")}
-                className="size-7 text-muted-foreground hover:text-foreground rounded-md transition-colors"
+                className="studio-icon-btn size-7 rounded-none border-border/80 bg-background/70 text-muted-foreground hover:text-foreground"
               >
                 {previewTheme === "dark" ? (
                   <Sun className="size-3.5 text-amber-500" />
@@ -494,74 +528,51 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
                 <span className="sr-only">Toggle preview theme</span>
               </Button>
             </TooltipTrigger>
-            <TooltipContent side="bottom">
+            <TooltipContent side="bottom" className="font-sans text-xs">
               Preview theme: {previewTheme === "dark" ? "Dark (click for Light)" : "Light (click for Dark)"}
             </TooltipContent>
           </Tooltip>
 
-          {/* Canvas Background Dropdown (Desktop / Wide screen) */}
+          {/* Canvas Background Dropdown */}
           <DropdownMenu>
             <Tooltip>
               <TooltipTrigger asChild>
                 <DropdownMenuTrigger asChild>
                   <Button
-                    variant="ghost"
-                    size="icon"
-                    className="hidden xl:inline-flex size-7 text-muted-foreground hover:text-foreground rounded-md transition-colors"
+                    variant="outline"
+                    size="icon-sm"
+                    className="studio-icon-btn hidden xl:inline-flex size-7 rounded-none border-border/80 bg-background/70 text-muted-foreground hover:text-foreground"
                   >
                     <Paintbrush className="size-3.5" />
                     <span className="sr-only">Canvas background</span>
                   </Button>
                 </DropdownMenuTrigger>
               </TooltipTrigger>
-              <TooltipContent side="bottom">Canvas background style</TooltipContent>
+              <TooltipContent side="bottom" className="font-sans text-xs">
+                Canvas background style
+              </TooltipContent>
             </Tooltip>
-            <DropdownMenuContent align="end" className="w-40 font-sans">
+            <DropdownMenuContent align="end" className="w-40 rounded-none font-sans">
               <DropdownMenuLabel className="text-[10px] uppercase font-sans text-muted-foreground">
                 Backdrop
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => setCanvasBg("mesh")}>
+              <DropdownMenuItem onClick={() => setCanvasBg("mesh")} className="rounded-none">
                 Subtle Ambient
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setCanvasBg("grid")}>
+              <DropdownMenuItem onClick={() => setCanvasBg("grid")} className="rounded-none">
                 Dot Grid
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setCanvasBg("light")}>
+              <DropdownMenuItem onClick={() => setCanvasBg("light")} className="rounded-none">
                 Solid Light
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setCanvasBg("dark")}>
+              <DropdownMenuItem onClick={() => setCanvasBg("dark")} className="rounded-none">
                 Neutral Dark
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => setCanvasBg("black")}>
+              <DropdownMenuItem onClick={() => setCanvasBg("black")} className="rounded-none">
                 Pure Black
               </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-
-          {/* Zoom Dropdown (Desktop / Wide screen) */}
-          <DropdownMenu>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="hidden xl:inline-flex h-7 px-2 text-[11px] font-sans text-muted-foreground hover:text-foreground rounded-md tabular-nums transition-colors"
-                  >
-                    {zoom}%
-                  </Button>
-                </DropdownMenuTrigger>
-              </TooltipTrigger>
-              <TooltipContent side="bottom">Canvas Zoom</TooltipContent>
-            </Tooltip>
-            <DropdownMenuContent align="end" className="w-24 font-sans">
-              <DropdownMenuItem onClick={() => setZoom(50)}>50%</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setZoom(75)}>75%</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setZoom(100)}>100%</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setZoom(125)}>125%</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setZoom(150)}>150%</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
 
@@ -571,14 +582,14 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
-                variant="ghost"
-                size="icon"
+                variant="outline"
+                size="icon-sm"
                 onClick={() => {
                   setIsReloading(true);
                   setReloadKey((k) => k + 1);
                   setTimeout(() => setIsReloading(false), 500);
                 }}
-                className="size-7 text-muted-foreground hover:text-foreground rounded-md transition-colors"
+                className="studio-icon-btn size-7 rounded-none border-border/80 bg-background/70 text-muted-foreground hover:text-foreground"
               >
                 <RefreshCw
                   className={cn(
@@ -589,21 +600,23 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
                 <span className="sr-only">Reload sandbox</span>
               </Button>
             </TooltipTrigger>
-            <TooltipContent side="bottom">Force reload sandbox</TooltipContent>
+            <TooltipContent side="bottom" className="font-sans text-xs">
+              Force reload sandbox
+            </TooltipContent>
           </Tooltip>
 
           {/* Instant Snapshot Capture Button */}
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
-                variant="ghost"
-                size="icon"
+                variant="outline"
+                size="icon-sm"
                 onClick={() => handleCaptureSnapshot("both")}
                 disabled={isCapturingSnapshot}
                 className={cn(
-                  "size-7 rounded-md transition-colors",
+                  "studio-icon-btn size-7 rounded-none border-border/80 bg-background/70 transition-colors",
                   captureSuccess
-                    ? "text-emerald-600 dark:text-emerald-400 bg-emerald-500/10"
+                    ? "text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border-emerald-500/40"
                     : "text-muted-foreground hover:text-foreground"
                 )}
               >
@@ -617,7 +630,7 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
                 <span className="sr-only">Capture preview snapshot</span>
               </Button>
             </TooltipTrigger>
-            <TooltipContent side="bottom" className="font-sans">
+            <TooltipContent side="bottom" className="font-sans text-xs">
               {captureSuccess
                 ? "Snapshot downloaded & copied!"
                 : isCapturingSnapshot
@@ -630,10 +643,10 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
-                variant="ghost"
-                size="icon"
+                variant="outline"
+                size="icon-sm"
                 onClick={() => setIsFullscreen(!isFullscreen)}
-                className="size-7 text-muted-foreground hover:text-foreground rounded-md transition-colors"
+                className="studio-icon-btn size-7 rounded-none border-border/80 bg-background/70 text-muted-foreground hover:text-foreground"
               >
                 {isFullscreen ? (
                   <Minimize2 className="size-3.5" />
@@ -643,7 +656,7 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
                 <span className="sr-only">Fullscreen preview</span>
               </Button>
             </TooltipTrigger>
-            <TooltipContent side="bottom">
+            <TooltipContent side="bottom" className="font-sans text-xs">
               {isFullscreen ? "Exit fullscreen" : "Fullscreen preview"}
             </TooltipContent>
           </Tooltip>
@@ -654,18 +667,20 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
               <TooltipTrigger asChild>
                 <DropdownMenuTrigger asChild>
                   <Button
-                    variant="ghost"
-                    size="icon"
-                    className="size-7 text-muted-foreground hover:text-foreground rounded-md transition-colors"
+                    variant="outline"
+                    size="icon-sm"
+                    className="studio-icon-btn size-7 rounded-none border-border/80 bg-background/70 text-muted-foreground hover:text-foreground"
                   >
                     <MoreHorizontal className="size-3.5" />
                     <span className="sr-only">More canvas options</span>
                   </Button>
                 </DropdownMenuTrigger>
               </TooltipTrigger>
-              <TooltipContent side="bottom">More options</TooltipContent>
+              <TooltipContent side="bottom" className="font-sans text-xs">
+                More options
+              </TooltipContent>
             </Tooltip>
-            <DropdownMenuContent align="end" className="w-56 font-sans">
+            <DropdownMenuContent align="end" className="w-56 rounded-none font-sans">
               <DropdownMenuLabel className="text-[10px] uppercase font-sans text-muted-foreground flex items-center justify-between">
                 <span>Canvas Options</span>
                 <span className="text-[10px] text-muted-foreground/80 font-normal">
@@ -676,7 +691,7 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
               <DropdownMenuItem
                 onClick={triggerTestSimulation}
                 disabled={isSimulatingHover}
-                className="flex items-center gap-2 text-xs cursor-pointer font-sans"
+                className="flex items-center gap-2 rounded-none text-xs cursor-pointer font-sans"
               >
                 <MousePointerClick className="size-3.5" />
                 <span>Simulate Interaction</span>
@@ -688,7 +703,7 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
               <DropdownMenuItem
                 onClick={() => handleCaptureSnapshot("both")}
                 disabled={isCapturingSnapshot}
-                className="flex items-center gap-2 text-xs cursor-pointer font-sans"
+                className="flex items-center gap-2 rounded-none text-xs cursor-pointer font-sans"
               >
                 <Camera className="size-3.5" />
                 <span>Download & Copy Snapshot</span>
@@ -696,7 +711,7 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
               <DropdownMenuItem
                 onClick={() => handleCaptureSnapshot("download")}
                 disabled={isCapturingSnapshot}
-                className="flex items-center gap-2 text-xs cursor-pointer font-sans"
+                className="flex items-center gap-2 rounded-none text-xs cursor-pointer font-sans"
               >
                 <Download className="size-3.5" />
                 <span>Download PNG only</span>
@@ -704,7 +719,7 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
               <DropdownMenuItem
                 onClick={() => handleCaptureSnapshot("copy")}
                 disabled={isCapturingSnapshot}
-                className="flex items-center gap-2 text-xs cursor-pointer font-sans"
+                className="flex items-center gap-2 rounded-none text-xs cursor-pointer font-sans"
               >
                 <Copy className="size-3.5" />
                 <span>Copy image to clipboard</span>
@@ -723,7 +738,7 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
                 <DropdownMenuItem
                   key={item.id}
                   onClick={() => setCanvasBg(item.id)}
-                  className="flex items-center justify-between text-xs cursor-pointer"
+                  className="flex items-center justify-between rounded-none text-xs cursor-pointer"
                 >
                   <span>{item.label}</span>
                   {canvasBg === item.id && <Check className="size-3.5 text-primary" />}
@@ -737,7 +752,7 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
                 <DropdownMenuItem
                   key={level}
                   onClick={() => setZoom(level)}
-                  className="flex items-center justify-between text-xs cursor-pointer"
+                  className="flex items-center justify-between rounded-none text-xs cursor-pointer"
                 >
                   <span>{level}%</span>
                   {zoom === level && <Check className="size-3.5 text-primary" />}
@@ -754,12 +769,11 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
           canvasBg
         )}`}
       >
-        {/* Full-screen drag overlay when resizing canvas width */}
         {isResizing && (
           <div className="fixed inset-0 z-50 cursor-ew-resize select-none bg-transparent" />
         )}
 
-        {/* Elevated Canvas Card */}
+        {/* Sharp Architectural Canvas Card */}
         <div
           ref={cardRef}
           style={{
@@ -771,14 +785,13 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
             transformOrigin: "center center",
           }}
           className={cn(
-            "relative rounded-xl border border-border shadow-md overflow-hidden bg-background flex flex-col",
+            "relative rounded-none border border-border shadow-vercel-floating overflow-hidden bg-background flex flex-col",
             isFluidResponsive ? "w-full" : "",
             draggedWidth !== null
               ? "transition-none"
               : "transition-[width,transform] duration-250 ease-smooth-out"
           )}
         >
-          {/* Sandboxed Live Iframe with matching theme surface */}
           <div
             className={`relative flex-1 w-full h-full overflow-hidden transition-colors duration-250 ease-smooth-out ${
               previewTheme === "dark" ? "bg-zinc-950" : "bg-white"
@@ -805,7 +818,6 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
             />
           </div>
 
-          {/* Interactive Right Edge Drag-to-Resize Handle */}
           <div
             onMouseDown={handleResizeStart}
             title="Drag horizontally to resize preview width"
@@ -813,7 +825,7 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
           >
             <div
               className={cn(
-                "h-8 w-1 rounded-full transition-colors duration-150 ease-smooth-out",
+                "h-8 w-1 rounded-none transition-colors duration-150 ease-smooth-out",
                 isResizing ? "bg-primary" : "bg-border group-hover:bg-primary"
               )}
             />

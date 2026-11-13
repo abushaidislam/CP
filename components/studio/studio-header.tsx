@@ -170,26 +170,33 @@ export function StudioHeader() {
     "Component Studio";
 
   return (
-    <header className="flex h-12 shrink-0 items-center justify-between border-b border-border bg-background/95 px-3 sm:px-4 backdrop-blur-sm select-none z-30">
-      {/* Left: Brand & Template Selector */}
-      <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-        <Button
-          variant="ghost"
-          size="sm"
-          asChild
-          className="font-sans text-xs gap-1.5 h-8 px-2 text-muted-foreground hover:text-foreground shrink-0"
-        >
-          <Link href="/">
-            <ArrowLeft className="size-4" />
-            <span className="hidden sm:inline">Library</span>
-          </Link>
-        </Button>
+    <header className="studio-glass-header flex h-12 shrink-0 items-center justify-between border-b border-border px-3 sm:px-4 select-none z-30">
+      {/* Left: Icon-Only Back Button, Brand Mark & Breadcrumb Selectors */}
+      <div className="flex items-center gap-2 min-w-0">
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="outline"
+              size="icon"
+              asChild
+              className="studio-icon-btn size-8 rounded-none border-border/80 bg-card/60 text-muted-foreground hover:text-foreground shrink-0"
+            >
+              <Link href="/" aria-label="Back to Component Library">
+                <ArrowLeft className="size-3.5" />
+                <span className="sr-only">Library</span>
+              </Link>
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" className="font-sans text-xs">
+            Back to Component Library
+          </TooltipContent>
+        </Tooltip>
 
-        {/* Vercel Geometric Triangle Mark */}
-        <div className="flex size-6 items-center justify-center rounded-md bg-foreground text-background shadow-2xs shrink-0">
+        {/* Geometric Brand Mark */}
+        <div className="flex size-7 items-center justify-center rounded-none bg-foreground text-background shrink-0">
           <svg
             viewBox="0 0 24 24"
-            className="size-3 fill-current transform -translate-y-px"
+            className="size-3.5 fill-current transform -translate-y-px"
           >
             <polygon points="12,2 22,20 2,20" />
           </svg>
@@ -197,10 +204,10 @@ export function StudioHeader() {
 
         {/* Unified Logical Breadcrumb Navigation */}
         <nav aria-label="Breadcrumb" className="flex items-center gap-1 sm:gap-1.5 text-xs font-sans min-w-0">
-          <span className="font-semibold text-xs tracking-tight text-foreground hidden sm:inline shrink-0">
+          <span className="font-semibold text-xs tracking-tight text-foreground hidden md:inline shrink-0">
             Component Studio
           </span>
-          <span className="text-muted-foreground/40 font-sans text-xs hidden sm:inline">/</span>
+          <span className="text-muted-foreground/40 font-sans text-xs hidden md:inline">/</span>
 
           {/* Active Template Selector as Breadcrumb Leaf */}
           <DropdownMenu>
@@ -210,7 +217,7 @@ export function StudioHeader() {
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="h-7 gap-1 sm:gap-1.5 px-1.5 sm:px-2 text-xs font-medium text-foreground hover:bg-muted/70 rounded-md font-sans max-w-[110px] sm:max-w-[160px] truncate"
+                    className="h-7 gap-1.5 px-2 text-xs font-medium text-foreground hover:bg-muted/70 rounded-none border border-transparent hover:border-border/80 font-sans max-w-[130px] sm:max-w-[180px] truncate"
                   >
                     <Layers className="size-3 text-muted-foreground shrink-0" />
                     <span className="font-medium text-xs truncate">{componentName}</span>
@@ -221,7 +228,7 @@ export function StudioHeader() {
               <TooltipContent side="bottom">Switch component template</TooltipContent>
             </Tooltip>
 
-            <DropdownMenuContent align="start" className="w-68 font-sans">
+            <DropdownMenuContent align="start" className="w-68 rounded-none font-sans">
               <DropdownMenuLabel className="text-[10px] uppercase font-semibold text-muted-foreground tracking-wider">
                 Component Templates
               </DropdownMenuLabel>
@@ -234,13 +241,13 @@ export function StudioHeader() {
                         loadComponent(comp.id);
                         router?.push?.(`/studio/${comp.id}`);
                       }}
-                      className="flex flex-col items-start gap-0.5 py-2 cursor-pointer font-sans"
+                      className="flex flex-col items-start gap-0.5 py-2 cursor-pointer rounded-none font-sans"
                     >
                       <div className="flex items-center justify-between w-full">
                         <span className="font-medium text-xs text-foreground">
                           {comp.name}
                         </span>
-                        <Badge variant="secondary" className="text-[9px] py-0 px-1 font-normal font-sans">
+                        <Badge variant="secondary" className="rounded-none text-[9px] py-0 px-1 font-normal font-sans">
                           {comp.category}
                         </Badge>
                       </div>
@@ -258,13 +265,13 @@ export function StudioHeader() {
                         loadTemplate(tmpl.id);
                         router?.push?.(`/studio/${tmpl.id}`);
                       }}
-                      className="flex flex-col items-start gap-0.5 py-2 cursor-pointer font-sans"
+                      className="flex flex-col items-start gap-0.5 py-2 cursor-pointer rounded-none font-sans"
                     >
                       <div className="flex items-center justify-between w-full">
                         <span className="font-medium text-xs text-foreground">
                           {tmpl.name}
                         </span>
-                        <Badge variant="secondary" className="text-[9px] py-0 px-1 font-normal font-sans">
+                        <Badge variant="secondary" className="rounded-none text-[9px] py-0 px-1 font-normal font-sans">
                           {tmpl.category}
                         </Badge>
                       </div>
@@ -286,7 +293,7 @@ export function StudioHeader() {
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="h-7 gap-1 sm:gap-1.5 px-1.5 sm:px-2 text-xs font-medium text-foreground hover:bg-muted/70 rounded-md font-sans active:scale-[0.98] transition-all duration-100 max-w-[85px] sm:max-w-[130px] truncate hidden xs:inline-flex"
+                    className="h-7 gap-1.5 px-2 text-xs font-medium text-foreground hover:bg-muted/70 rounded-none border border-transparent hover:border-border/80 font-sans active:scale-[0.98] transition-all duration-100 max-w-[95px] sm:max-w-[140px] truncate hidden xs:inline-flex"
                   >
                     <GitBranch className="size-3 text-muted-foreground shrink-0" />
                     <span className="font-medium text-xs truncate">{activeVariant.name}</span>
@@ -297,7 +304,7 @@ export function StudioHeader() {
               <TooltipContent side="bottom">Switch or create component variants</TooltipContent>
             </Tooltip>
 
-            <DropdownMenuContent align="start" className="w-56 font-sans">
+            <DropdownMenuContent align="start" className="w-56 rounded-none font-sans">
               <DropdownMenuLabel className="text-[10px] uppercase font-semibold text-muted-foreground tracking-wider font-sans">
                 Component Variants
               </DropdownMenuLabel>
@@ -308,7 +315,7 @@ export function StudioHeader() {
                   <DropdownMenuItem
                     key={v.id}
                     onClick={() => switchVariant(v.id)}
-                    className="flex items-center justify-between py-1.5 cursor-pointer font-sans text-xs"
+                    className="flex items-center justify-between py-1.5 cursor-pointer rounded-none font-sans text-xs"
                   >
                     <div className="flex items-center gap-1.5 min-w-0">
                       {isActive ? (
@@ -323,7 +330,7 @@ export function StudioHeader() {
                     <div className="flex items-center gap-1.5 ml-2 shrink-0">
                       <Badge
                         variant="outline"
-                        className="text-[9px] font-sans py-0 px-1 text-muted-foreground"
+                        className="rounded-none text-[9px] font-sans py-0 px-1 text-muted-foreground"
                       >
                         {v.checkpoints?.length || 0} snaps
                       </Badge>
@@ -341,7 +348,7 @@ export function StudioHeader() {
                               deleteVariant(v.id);
                             }
                           }}
-                          className="p-1 rounded-sm text-muted-foreground/60 hover:text-destructive hover:bg-destructive/10 transition-colors cursor-pointer"
+                          className="p-1 rounded-none text-muted-foreground/60 hover:text-destructive hover:bg-destructive/10 transition-colors cursor-pointer"
                           title={`Delete variant "${v.name}"`}
                           aria-label={`Delete variant ${v.name}`}
                         >
@@ -355,7 +362,7 @@ export function StudioHeader() {
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 onClick={() => setCreateVariantDialogOpen(true)}
-                className="gap-2 cursor-pointer font-sans text-xs text-primary font-medium"
+                className="gap-2 cursor-pointer rounded-none font-sans text-xs text-primary font-medium"
               >
                 <Plus className="size-3.5" />
                 <span>Create Variant...</span>
@@ -365,54 +372,61 @@ export function StudioHeader() {
         </nav>
       </div>
 
-      {/* Center: Layout View Mode Switcher with sliding indicator */}
+      {/* Center: Icon-Only Layout View Mode Switcher with Sliding Indicator */}
       <div className="hidden sm:flex items-center">
-        <div className="relative flex items-center bg-muted/50 p-0.5 rounded-lg border border-border">
+        <div className="relative flex items-center bg-muted/60 p-0.5 rounded-none border border-border">
           {(["split", "editor", "preview"] as const).map((mode) => {
             const isActive = layoutMode === mode;
+            const modeLabel =
+              mode === "editor" ? "Code" : mode === "split" ? "Split" : "Preview";
             return (
-              <button
-                key={mode}
-                type="button"
-                onClick={() => setLayoutMode(mode)}
-                className={cn(
-                  "relative z-10 flex h-7 items-center gap-1.5 px-2.5 text-xs font-sans font-medium transition-colors cursor-pointer select-none",
-                  isActive
-                    ? "text-foreground font-medium"
-                    : "text-muted-foreground hover:text-foreground"
-                )}
-              >
-                {isActive && (
-                  <motion.div
-                    layoutId="active-header-layout-pill"
-                    className="absolute inset-0 rounded-md bg-background shadow-2xs z-[-1]"
-                    transition={{ type: "spring", bounce: 0, duration: 0.22 }}
-                  />
-                )}
-                {mode === "split" && <Columns2 className="size-3.5" />}
-                {mode === "editor" && <Code2 className="size-3.5" />}
-                {mode === "preview" && <Eye className="size-3.5" />}
-                <span>
-                  {mode === "editor" ? "Code" : mode === "split" ? "Split" : "Preview"}
-                </span>
-              </button>
+              <Tooltip key={mode}>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={() => setLayoutMode(mode)}
+                    aria-label={`${modeLabel} view`}
+                    className={cn(
+                      "relative z-10 flex size-7 items-center justify-center text-xs font-sans font-medium transition-colors cursor-pointer select-none rounded-none",
+                      isActive
+                        ? "text-foreground font-medium"
+                        : "text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    {isActive && (
+                      <motion.div
+                        layoutId="active-header-layout-pill"
+                        className="absolute inset-0 rounded-none bg-background border border-border/80 shadow-2xs z-[-1]"
+                        transition={{ type: "spring", bounce: 0, duration: 0.22 }}
+                      />
+                    )}
+                    {mode === "split" && <Columns2 className="size-3.5" />}
+                    {mode === "editor" && <Code2 className="size-3.5" />}
+                    {mode === "preview" && <Eye className="size-3.5" />}
+                    <span className="sr-only">{modeLabel}</span>
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="font-sans text-xs">
+                  {modeLabel} View
+                </TooltipContent>
+              </Tooltip>
             );
           })}
         </div>
       </div>
 
-      {/* Right: Actions */}
-      <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
-        {/* Capture Preview Button - visible on xl screens */}
-        <div className="hidden xl:flex items-center">
+      {/* Right: Pure Icon-Only Studio Action Strip */}
+      <div className="flex items-center gap-1 shrink-0">
+        {/* Capture Preview Button (Icon-Only) */}
+        <div className="hidden md:flex items-center">
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
-                variant="ghost"
-                size="sm"
+                variant="outline"
+                size="icon"
                 onClick={handleCapturePreview}
                 disabled={isCapturing || capturedSuccess}
-                className="font-sans text-xs gap-1.5 h-8 px-2.5 text-muted-foreground hover:text-foreground"
+                className="studio-icon-btn size-8 rounded-none border-border/80 bg-card/60 text-muted-foreground hover:text-foreground"
                 aria-label={
                   capturedSuccess
                     ? "Preview snapshot saved"
@@ -424,17 +438,17 @@ export function StudioHeader() {
                 {capturedSuccess ? (
                   <>
                     <Check className="size-3.5 text-emerald-500" />
-                    <span className="text-emerald-500 font-medium">Saved!</span>
+                    <span className="sr-only">Saved!</span>
                   </>
                 ) : isCapturing ? (
                   <>
                     <Loader2 className="size-3.5 animate-spin" />
-                    <span>Capturing...</span>
+                    <span className="sr-only">Capturing...</span>
                   </>
                 ) : (
                   <>
                     <Camera className="size-3.5" />
-                    <span>Capture</span>
+                    <span className="sr-only">Capture</span>
                   </>
                 )}
               </Button>
@@ -445,135 +459,139 @@ export function StudioHeader() {
           </Tooltip>
         </div>
 
-        {/* Save Checkpoint Button */}
+        {/* Save Checkpoint Button (Icon-Only) */}
         <Tooltip>
           <TooltipTrigger asChild>
             <Button
               variant="outline"
-              size="sm"
+              size="icon"
               onClick={() => setSaveCheckpointDialogOpen(true)}
-              className="h-8 gap-1.5 px-2 sm:px-2.5 text-xs font-sans border-border/80 hover:bg-muted/60 active:scale-[0.98] transition-all duration-100"
+              aria-label="Save Checkpoint (Ctrl+S)"
+              className="studio-icon-btn size-8 rounded-none border-border/80 bg-card/60 text-muted-foreground hover:text-foreground"
             >
               <BookmarkPlus className="size-3.5 text-primary" />
-              <span className="hidden sm:inline">Save</span>
-              <kbd className="hidden xl:inline-block ml-0.5 px-1 py-0.2 rounded bg-muted-foreground/10 text-[9px] font-mono text-muted-foreground">
-                Ctrl+S
-              </kbd>
+              <span className="sr-only">Save</span>
+              <kbd className="sr-only">Ctrl+S</kbd>
             </Button>
           </TooltipTrigger>
-          <TooltipContent side="bottom">Save Checkpoint (Ctrl+S)</TooltipContent>
+          <TooltipContent side="bottom" className="font-sans text-xs">
+            Save Checkpoint (Ctrl+S)
+          </TooltipContent>
         </Tooltip>
 
-        {/* History Button - visible on md screens */}
-        <div className="hidden md:flex items-center">
+        {/* Version History Button (Icon-Only with micro count badge) */}
+        <div className="hidden sm:flex items-center">
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
-                variant={isHistorySheetOpen ? "secondary" : "ghost"}
-                size="sm"
+                variant={isHistorySheetOpen ? "secondary" : "outline"}
+                size="icon"
                 onClick={() => setHistorySheetOpen(!isHistorySheetOpen)}
+                aria-label="Version History & Snapshots"
                 className={cn(
-                  "h-8 gap-1.5 px-2.5 text-xs font-sans transition-all duration-100 active:scale-[0.98]",
+                  "studio-icon-btn relative size-8 rounded-none border-border/80",
                   isHistorySheetOpen
-                    ? "bg-muted text-foreground font-medium"
-                    : "text-muted-foreground hover:text-foreground"
+                    ? "bg-muted text-foreground border-foreground/30"
+                    : "bg-card/60 text-muted-foreground hover:text-foreground"
                 )}
               >
                 <History className="size-3.5 text-primary" />
-                <span className="hidden sm:inline">History</span>
+                <span className="sr-only">History</span>
                 {checkpointCount > 0 && (
                   <Badge
                     variant="secondary"
-                    className="h-4 px-1 text-[9px] font-sans tabular-nums animate-in zoom-in-75 fade-in-0 duration-150"
+                    className="pointer-events-none absolute -top-1 -right-1 h-3.5 min-w-3.5 rounded-none px-1 py-0 text-[9px] font-sans font-semibold tabular-nums bg-primary text-primary-foreground"
                   >
                     {checkpointCount}
                   </Badge>
                 )}
               </Button>
             </TooltipTrigger>
-            <TooltipContent side="bottom">
-              Version History & Snapshots
+            <TooltipContent side="bottom" className="font-sans text-xs">
+              Version History & Snapshots ({checkpointCount})
             </TooltipContent>
           </Tooltip>
         </div>
 
-        {/* Terminal Toggle Button - visible on lg screens */}
-        <div className="hidden lg:flex items-center">
+        {/* Terminal Toggle Button (Icon-Only with micro status badge) */}
+        <div className="hidden md:flex items-center">
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
-                variant={isTerminalOpen ? "secondary" : "ghost"}
-                size="sm"
+                variant={isTerminalOpen ? "secondary" : "outline"}
+                size="icon"
                 onClick={toggleTerminal}
-                className={`h-8 gap-1.5 px-2.5 text-xs font-sans transition-colors ${
+                aria-label="Toggle Terminal & Dev Console"
+                className={cn(
+                  "studio-icon-btn relative size-8 rounded-none border-border/80",
                   isTerminalOpen
-                    ? "bg-muted text-foreground font-medium"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
+                    ? "bg-muted text-foreground border-foreground/30"
+                    : "bg-card/60 text-muted-foreground hover:text-foreground"
+                )}
               >
                 <Terminal className="size-3.5 text-emerald-500" />
-                <span className="hidden sm:inline">Terminal</span>
+                <span className="sr-only">Terminal</span>
                 {errorCount > 0 ? (
                   <Badge
                     variant="destructive"
-                    className="h-4 px-1 text-[9px] font-semibold font-sans tabular-nums animate-in zoom-in-75 duration-150"
+                    className="pointer-events-none absolute -top-1 -right-1 h-3.5 min-w-3.5 rounded-none px-1 py-0 text-[9px] font-semibold font-sans tabular-nums"
                   >
                     {errorCount}
                   </Badge>
                 ) : warnCount > 0 ? (
                   <Badge
                     variant="secondary"
-                    className="h-4 px-1 text-[9px] text-amber-500 bg-amber-500/10 font-sans tabular-nums animate-in zoom-in-75 duration-150"
+                    className="pointer-events-none absolute -top-1 -right-1 h-3.5 min-w-3.5 rounded-none px-1 py-0 text-[9px] text-amber-500 bg-amber-500/20 font-sans tabular-nums"
                   >
                     {warnCount}
                   </Badge>
                 ) : null}
               </Button>
             </TooltipTrigger>
-            <TooltipContent side="bottom">
+            <TooltipContent side="bottom" className="font-sans text-xs">
               Toggle Terminal & Dev Console (Ctrl+`)
             </TooltipContent>
           </Tooltip>
         </div>
 
-        {/* AI Copilot Toggle Button - visible on lg screens */}
-        <div className="hidden lg:flex items-center">
+        {/* AI Copilot Toggle Button (Icon-Only) */}
+        <div className="hidden md:flex items-center">
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
-                variant={isAiPanelOpen ? "secondary" : "ghost"}
-                size="sm"
+                variant={isAiPanelOpen ? "secondary" : "outline"}
+                size="icon"
                 onClick={toggleAiPanel}
-                className={`h-8 gap-1.5 px-2.5 text-xs font-sans transition-colors ${
+                aria-label="Toggle Copilot Assistant (Ctrl+I)"
+                className={cn(
+                  "studio-icon-btn size-8 rounded-none border-border/80",
                   isAiPanelOpen
-                    ? "bg-muted text-foreground font-medium border border-border"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
+                    ? "bg-sky-500/15 text-sky-400 border-sky-500/40"
+                    : "bg-card/60 text-muted-foreground hover:text-foreground"
+                )}
               >
                 <Sparkles className="size-3.5 text-sky-400" />
-                <span className="hidden sm:inline">Copilot</span>
-                <kbd className="hidden lg:inline-block ml-0.5 px-1 py-0.2 rounded bg-muted-foreground/10 text-[9px] font-mono text-muted-foreground">
-                  Ctrl+I
-                </kbd>
+                <span className="sr-only">Copilot</span>
+                <kbd className="sr-only">Ctrl+I</kbd>
               </Button>
             </TooltipTrigger>
-            <TooltipContent side="bottom">
+            <TooltipContent side="bottom" className="font-sans text-xs">
               Toggle Copilot Assistant (Ctrl+I)
             </TooltipContent>
           </Tooltip>
         </div>
 
-        <Separator orientation="vertical" className="hidden lg:block h-4 mx-0.5" />
+        <Separator orientation="vertical" className="hidden md:block h-4 mx-0.5" />
 
-        {/* Theme Switcher - visible on sm screens */}
+        {/* Theme Switcher (Icon-Only) */}
         <div className="hidden sm:flex items-center">
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
-                variant="ghost"
+                variant="outline"
                 size="icon"
                 onClick={toggleTheme}
-                className="size-8 text-muted-foreground hover:text-foreground"
+                className="studio-icon-btn size-8 rounded-none border-border/80 bg-card/60 text-muted-foreground hover:text-foreground"
               >
                 <motion.div
                   key={isDark ? "sun" : "moon"}
@@ -587,39 +605,40 @@ export function StudioHeader() {
                 <span className="sr-only">Toggle theme</span>
               </Button>
             </TooltipTrigger>
-            <TooltipContent side="bottom">
+            <TooltipContent side="bottom" className="font-sans text-xs">
               {isDark ? "Switch to light mode" : "Switch to dark mode"}
             </TooltipContent>
           </Tooltip>
         </div>
 
-        {/* 21st.dev Publish Button */}
+        {/* 21st.dev Publish Button (Icon-Only High-Contrast Primary) */}
         <Tooltip>
           <TooltipTrigger asChild>
             <Button
               variant="default"
-              size="sm"
+              size="icon"
               onClick={() => setPublishModalOpen(true)}
-              className="h-8 gap-1.5 sm:gap-2 px-2.5 sm:px-3 text-xs font-medium font-sans shadow-2xs shrink-0"
+              aria-label="Publish component"
+              className="size-8 rounded-none shadow-none shrink-0"
             >
               <UploadCloud className="size-3.5" />
-              <span>Publish</span>
+              <span className="sr-only">Publish</span>
             </Button>
           </TooltipTrigger>
-          <TooltipContent side="bottom">
-            Generate AST metadata & publish package
+          <TooltipContent side="bottom" className="font-sans text-xs">
+            Publish Component & Generate AST Metadata
           </TooltipContent>
         </Tooltip>
 
-        {/* 21st.dev Marketplace External Link - visible on xl screens */}
+        {/* 21st.dev Marketplace External Link (Icon-Only) */}
         <div className="hidden xl:flex items-center">
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
-                variant="ghost"
+                variant="outline"
                 size="icon"
                 asChild
-                className="size-8 text-muted-foreground hover:text-foreground"
+                className="studio-icon-btn size-8 rounded-none border-border/80 bg-card/60 text-muted-foreground hover:text-foreground"
               >
                 <a
                   href="https://21st.dev"
@@ -631,7 +650,9 @@ export function StudioHeader() {
                 </a>
               </Button>
             </TooltipTrigger>
-            <TooltipContent side="bottom">Browse 21st.dev marketplace</TooltipContent>
+            <TooltipContent side="bottom" className="font-sans text-xs">
+              Browse 21st.dev marketplace
+            </TooltipContent>
           </Tooltip>
         </div>
 
@@ -642,9 +663,9 @@ export function StudioHeader() {
               <TooltipTrigger asChild>
                 <DropdownMenuTrigger asChild>
                   <Button
-                    variant="ghost"
+                    variant="outline"
                     size="icon"
-                    className="size-8 text-muted-foreground hover:text-foreground rounded-md"
+                    className="studio-icon-btn size-8 rounded-none border-border/80 bg-card/60 text-muted-foreground hover:text-foreground"
                     aria-label="More options"
                   >
                     <MoreHorizontal className="size-4" />
@@ -656,7 +677,7 @@ export function StudioHeader() {
               </TooltipContent>
             </Tooltip>
 
-            <DropdownMenuContent align="end" className="w-56 font-sans">
+            <DropdownMenuContent align="end" className="w-56 rounded-none font-sans">
               <DropdownMenuLabel className="text-[10px] uppercase font-semibold text-muted-foreground tracking-wider font-sans">
                 Studio Actions
               </DropdownMenuLabel>
@@ -666,7 +687,7 @@ export function StudioHeader() {
               <DropdownMenuItem
                 onClick={handleCapturePreview}
                 disabled={isCapturing || capturedSuccess}
-                className="gap-2.5 cursor-pointer font-sans text-xs"
+                className="gap-2.5 cursor-pointer rounded-none font-sans text-xs"
               >
                 {capturedSuccess ? (
                   <Check className="size-3.5 text-emerald-500" />
@@ -680,58 +701,58 @@ export function StudioHeader() {
                 </span>
               </DropdownMenuItem>
 
-              {/* Version History (dropdown item on < md screens) */}
+              {/* Version History */}
               <DropdownMenuItem
                 onClick={() => setHistorySheetOpen(!isHistorySheetOpen)}
-                className="gap-2.5 cursor-pointer font-sans text-xs md:hidden"
+                className="gap-2.5 cursor-pointer rounded-none font-sans text-xs sm:hidden"
               >
                 <History className="size-3.5 text-primary" />
                 <span className="flex-1">Version History</span>
                 {checkpointCount > 0 && (
-                  <Badge variant="secondary" className="h-4 px-1 text-[9px] font-sans tabular-nums">
+                  <Badge variant="secondary" className="h-4 rounded-none px-1 text-[9px] font-sans tabular-nums">
                     {checkpointCount}
                   </Badge>
                 )}
               </DropdownMenuItem>
 
-              {/* Terminal (dropdown item on < lg screens) */}
+              {/* Terminal */}
               <DropdownMenuItem
                 onClick={toggleTerminal}
-                className="gap-2.5 cursor-pointer font-sans text-xs lg:hidden"
+                className="gap-2.5 cursor-pointer rounded-none font-sans text-xs md:hidden"
               >
                 <Terminal className="size-3.5 text-emerald-500" />
                 <span className="flex-1">Terminal</span>
                 {errorCount > 0 ? (
-                  <Badge variant="destructive" className="h-4 px-1 text-[9px] font-sans font-semibold">
+                  <Badge variant="destructive" className="h-4 rounded-none px-1 text-[9px] font-sans font-semibold">
                     {errorCount}
                   </Badge>
                 ) : warnCount > 0 ? (
-                  <Badge variant="secondary" className="h-4 px-1 text-[9px] text-amber-500 bg-amber-500/10 font-sans">
+                  <Badge variant="secondary" className="h-4 rounded-none px-1 text-[9px] text-amber-500 bg-amber-500/10 font-sans">
                     {warnCount}
                   </Badge>
                 ) : null}
               </DropdownMenuItem>
 
-              {/* Copilot Assistant (dropdown item on < lg screens) */}
+              {/* Copilot Assistant */}
               <DropdownMenuItem
                 onClick={toggleAiPanel}
-                className="gap-2.5 cursor-pointer font-sans text-xs lg:hidden"
+                className="gap-2.5 cursor-pointer rounded-none font-sans text-xs md:hidden"
               >
                 <Sparkles className="size-3.5 text-sky-400" />
                 <span className="flex-1">AI Copilot</span>
-                <kbd className="px-1 py-0.2 rounded bg-muted-foreground/10 text-[9px] font-mono text-muted-foreground">
+                <kbd className="px-1 py-0.2 rounded-none bg-muted-foreground/10 text-[9px] font-mono text-muted-foreground">
                   Ctrl+I
                 </kbd>
               </DropdownMenuItem>
 
-              {/* Responsive Layout Mode Switcher (on screens < md where top center tabs are hidden) */}
-              <DropdownMenuSeparator className="md:hidden" />
-              <DropdownMenuLabel className="text-[10px] uppercase font-semibold text-muted-foreground tracking-wider font-sans md:hidden">
+              {/* Responsive Layout Mode Switcher */}
+              <DropdownMenuSeparator className="sm:hidden" />
+              <DropdownMenuLabel className="text-[10px] uppercase font-semibold text-muted-foreground tracking-wider font-sans sm:hidden">
                 Layout View
               </DropdownMenuLabel>
               <DropdownMenuItem
                 onClick={() => setLayoutMode("split")}
-                className="gap-2.5 cursor-pointer font-sans text-xs md:hidden"
+                className="gap-2.5 cursor-pointer rounded-none font-sans text-xs sm:hidden"
               >
                 <Columns2 className="size-3.5" />
                 <span className="flex-1">Split View</span>
@@ -739,7 +760,7 @@ export function StudioHeader() {
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={() => setLayoutMode("editor")}
-                className="gap-2.5 cursor-pointer font-sans text-xs md:hidden"
+                className="gap-2.5 cursor-pointer rounded-none font-sans text-xs sm:hidden"
               >
                 <Code2 className="size-3.5" />
                 <span className="flex-1">Code Editor</span>
@@ -747,7 +768,7 @@ export function StudioHeader() {
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={() => setLayoutMode("preview")}
-                className="gap-2.5 cursor-pointer font-sans text-xs md:hidden"
+                className="gap-2.5 cursor-pointer rounded-none font-sans text-xs sm:hidden"
               >
                 <Eye className="size-3.5" />
                 <span className="flex-1">Live Preview</span>
@@ -759,7 +780,7 @@ export function StudioHeader() {
               {/* Theme Toggle (< sm screens) */}
               <DropdownMenuItem
                 onClick={toggleTheme}
-                className="gap-2.5 cursor-pointer font-sans text-xs sm:hidden"
+                className="gap-2.5 cursor-pointer rounded-none font-sans text-xs sm:hidden"
               >
                 {isDark ? <Sun className="size-3.5" /> : <Moon className="size-3.5" />}
                 <span>{isDark ? "Light Mode" : "Dark Mode"}</span>
@@ -768,7 +789,7 @@ export function StudioHeader() {
               <DropdownMenuSeparator />
 
               {/* 21st.dev Link */}
-              <DropdownMenuItem asChild className="gap-2.5 cursor-pointer font-sans text-xs">
+              <DropdownMenuItem asChild className="gap-2.5 cursor-pointer rounded-none font-sans text-xs">
                 <a href="https://21st.dev" target="_blank" rel="noreferrer">
                   <ExternalLink className="size-3.5" />
                   <span>Visit 21st.dev</span>

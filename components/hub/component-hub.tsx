@@ -8,6 +8,12 @@ import { QuickPreviewModal } from "./quick-preview-modal";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import {
   Plus,
@@ -17,6 +23,7 @@ import {
   FolderSearch,
   RotateCcw,
   ArrowRight,
+  ArrowLeft,
   X,
 } from "lucide-react";
 
@@ -208,7 +215,6 @@ export function ComponentHub({
       });
     }
 
-    // Prioritize popular components not already shown in Newest so cards don't duplicate unnecessarily
     const distinctPopular = popularComponents.filter((c) => !newestIds.has(c.id));
     const popularSlice =
       distinctPopular.length >= 4
@@ -228,7 +234,6 @@ export function ComponentHub({
       });
     }
 
-    // If user has created additional components beyond the 8 shown above, display them in a unified registry section
     const shownIds = new Set([
       ...newestSlice.map((c) => c.id),
       ...popularSlice.map((c) => c.id),
@@ -292,238 +297,289 @@ export function ComponentHub({
     selectedCategory === "All" && !searchQuery.trim() && filteredComponents.length > 0;
 
   return (
-    <div className="flex flex-col min-h-screen w-full bg-background text-foreground font-sans selection:bg-primary/20 selection:text-foreground">
-      {/* 1. Top Navigation Bar */}
-      <header className="sticky top-0 z-20 flex h-14 shrink-0 items-center justify-between border-b border-border bg-background/95 px-4 sm:px-6 backdrop-blur-sm select-none">
-        {/* Brand / Title & Workspace Eyebrow */}
-        <div className="flex items-center gap-3">
-          <div className="flex size-7 items-center justify-center rounded-none bg-foreground text-background">
-            <svg
-              width="14"
-              height="14"
-              viewBox="0 0 24 24"
-              fill="currentColor"
-              aria-hidden="true"
-            >
-              <polygon points="12,2 22,20 2,20" />
-            </svg>
+    <TooltipProvider delayDuration={150}>
+      <div className="studio-grid-backdrop flex flex-col min-h-screen w-full bg-background text-foreground font-sans selection:bg-primary/20 selection:text-foreground">
+        {/* 1. Top Navigation Bar with Pure Icon Action Buttons */}
+        <header className="studio-glass-header sticky top-0 z-20 flex h-14 shrink-0 items-center justify-between border-b border-border px-4 sm:px-6 select-none">
+          {/* Brand / Title & Workspace Eyebrow */}
+          <div className="flex items-center gap-3">
+            <div className="flex size-7 items-center justify-center rounded-none bg-foreground text-background">
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="currentColor"
+                aria-hidden="true"
+              >
+                <polygon points="12,2 22,20 2,20" />
+              </svg>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="font-sans font-semibold text-sm sm:text-base tracking-tight text-foreground">
+                Component Studio
+              </span>
+              <Badge variant="eyebrow" className="rounded-none">
+                21ST WORKSPACE
+              </Badge>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            <span className="font-sans font-semibold text-sm sm:text-base tracking-tight text-foreground">
-              Component Studio
-            </span>
-            <Badge variant="eyebrow" className="rounded-none">
-              21ST WORKSPACE
-            </Badge>
-          </div>
-        </div>
 
-        {/* Right Actions: Theme Toggle & + New Component */}
-        <div className="flex items-center gap-2">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={toggleTheme}
-            className="size-8 rounded-none text-muted-foreground hover:text-foreground"
-            aria-label="Toggle theme"
-          >
-            {isDark ? <Sun className="size-4" /> : <Moon className="size-4" />}
-          </Button>
-
-          <Button
-            variant="default"
-            size="sm"
-            onClick={() => setCreateComponentDialogOpen(true)}
-            className="h-8 rounded-none gap-1.5 px-3 font-sans text-xs font-medium shadow-none"
-          >
-            <Plus className="size-4" />
-            <span>New Component</span>
-          </Button>
-        </div>
-      </header>
-
-      {/* Main Showcase Area */}
-      <main className="flex-1 container mx-auto max-w-7xl px-4 sm:px-6 py-6 space-y-6">
-        {/* Architectural Filter & Search Control Bar (Zero Radius) */}
-        <section
-          aria-label="Filter and search toolbar"
-          className="rounded-none border border-border bg-card/60 p-2 sm:p-2.5 flex flex-col lg:flex-row gap-2.5 items-stretch lg:items-center justify-between"
-        >
-          {/* Category Filter Navigation */}
-          <div className="flex items-center gap-1 overflow-x-auto pb-1 lg:pb-0 scrollbar-none">
-            {CATEGORIES.map((category) => {
-              const isActive = selectedCategory === category;
-              const count = categoryCounts[category];
-              return (
+          {/* Right Actions: Pure Icon-Only Theme Toggle & New Component Button */}
+          <div className="flex items-center gap-1.5">
+            <Tooltip>
+              <TooltipTrigger asChild>
                 <Button
-                  key={category}
-                  variant={isActive ? "default" : "ghost"}
-                  size="sm"
-                  onClick={() => setSelectedCategory(category)}
-                  className={cn(
-                    "h-8 rounded-none px-3 text-xs font-sans gap-1.5 transition-colors select-none shrink-0",
-                    isActive
-                      ? "bg-primary text-primary-foreground shadow-none"
-                      : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
-                  )}
+                  variant="outline"
+                  size="icon"
+                  onClick={toggleTheme}
+                  className="studio-icon-btn size-8 rounded-none border-border/80 bg-card/70 text-muted-foreground hover:text-foreground"
+                  aria-label="Toggle theme"
                 >
-                  <span>{category}</span>
-                  <Badge
-                    variant="secondary"
-                    suppressHydrationWarning
+                  {isDark ? <Sun className="size-4" /> : <Moon className="size-4" />}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="font-sans text-xs">
+                {isDark ? "Switch to light mode" : "Switch to dark mode"}
+              </TooltipContent>
+            </Tooltip>
+
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="default"
+                  size="icon"
+                  onClick={() => setCreateComponentDialogOpen(true)}
+                  aria-label="Create new component"
+                  className="size-8 rounded-none shadow-none"
+                >
+                  <Plus className="size-4" />
+                  <span className="sr-only">New Component</span>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="font-sans text-xs">
+                Create New Component
+              </TooltipContent>
+            </Tooltip>
+          </div>
+        </header>
+
+        {/* Main Showcase Area */}
+        <main className="flex-1 container mx-auto max-w-7xl px-4 sm:px-6 py-6 space-y-6">
+          {/* Architectural Filter & Search Control Bar (Zero Radius) */}
+          <section
+            aria-label="Filter and search toolbar"
+            className="studio-toolbar-surface rounded-none border border-border p-2 sm:p-2.5 flex flex-col lg:flex-row gap-2.5 items-stretch lg:items-center justify-between"
+          >
+            {/* Category Filter Navigation */}
+            <div className="flex items-center gap-1 overflow-x-auto pb-1 lg:pb-0 scrollbar-none">
+              {CATEGORIES.map((category) => {
+                const isActive = selectedCategory === category;
+                const count = categoryCounts[category];
+                return (
+                  <Button
+                    key={category}
+                    variant={isActive ? "default" : "ghost"}
+                    size="sm"
+                    onClick={() => setSelectedCategory(category)}
                     className={cn(
-                      "px-1.5 py-0 text-[10px] font-sans tabular-nums rounded-none",
+                      "h-8 rounded-none px-3 text-xs font-sans gap-1.5 transition-colors select-none shrink-0",
                       isActive
-                        ? "bg-primary-foreground/20 text-primary-foreground"
-                        : "bg-muted text-muted-foreground"
+                        ? "bg-primary text-primary-foreground shadow-none"
+                        : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
                     )}
                   >
-                    {count}
-                  </Badge>
+                    <span>{category}</span>
+                    <Badge
+                      variant="secondary"
+                      suppressHydrationWarning
+                      className={cn(
+                        "px-1.5 py-0 text-[10px] font-sans tabular-nums rounded-none",
+                        isActive
+                          ? "bg-primary-foreground/20 text-primary-foreground"
+                          : "bg-muted text-muted-foreground"
+                      )}
+                    >
+                      {count}
+                    </Badge>
+                  </Button>
+                );
+              })}
+            </div>
+
+            {/* Search Input with Search Icon */}
+            <div className="relative w-full lg:w-80 shrink-0">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none" />
+              <Input
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                aria-label="Search components by name or description"
+                placeholder="Search components by name or description..."
+                className="pl-9 pr-8 rounded-none font-sans text-xs h-8 bg-background border-border"
+              />
+              {searchQuery.trim().length > 0 && (
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  onClick={() => setSearchQuery("")}
+                  aria-label="Clear search query"
+                  className="absolute right-1 top-1/2 -translate-y-1/2 size-6 rounded-none text-muted-foreground hover:text-foreground"
+                >
+                  <X className="size-3.5" />
                 </Button>
-              );
-            })}
-          </div>
+              )}
+            </div>
+          </section>
 
-          {/* Search Input with Search Icon */}
-          <div className="relative w-full lg:w-80 shrink-0">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none" />
-            <Input
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              aria-label="Search components by name or description"
-              placeholder="Search components by name or description..."
-              className="pl-9 pr-8 rounded-none font-sans text-xs h-8 bg-background border-border"
-            />
-            {searchQuery.trim().length > 0 && (
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                onClick={() => setSearchQuery("")}
-                aria-label="Clear search query"
-                className="absolute right-1 top-1/2 -translate-y-1/2 size-6 rounded-none text-muted-foreground hover:text-foreground"
-              >
-                <X className="size-3.5" />
-              </Button>
-            )}
-          </div>
-        </section>
-
-        {/* Component Showcase Sections / Grid */}
-        <section aria-label="Component cards grid" className="space-y-8">
-          {filteredComponents.length > 0 ? (
-            showCuratedSections ? (
-              showcaseSections.map((section) => (
-                <div key={section.id} className="rounded-none">
-                  {/* Integrated Architectural Section Header Bar */}
-                  <div className="flex items-center justify-between border border-b-0 border-border bg-muted/25 px-4 py-2.5 rounded-none">
+          {/* Component Showcase Sections / Grid */}
+          <section aria-label="Component cards grid" className="space-y-8">
+            {filteredComponents.length > 0 ? (
+              showCuratedSections ? (
+                showcaseSections.map((section) => (
+                  <div key={section.id} className="rounded-none bg-card/80 backdrop-blur-xs">
+                    {/* Integrated Architectural Section Header Bar */}
+                    <div className="studio-toolbar-surface flex items-center justify-between border border-b-0 border-border px-4 py-2.5 rounded-none">
+                      <div className="flex items-center gap-2.5">
+                        <span className="font-mono text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                          {section.eyebrow}
+                        </span>
+                        <span className="text-border select-none">/</span>
+                        <h2 className="font-sans text-sm sm:text-base font-semibold tracking-tight text-foreground">
+                          {section.title}
+                        </h2>
+                        <Badge
+                          variant="secondary"
+                          className="rounded-none px-1.5 py-0 text-[10px] font-sans tabular-nums"
+                        >
+                          {section.items.length}
+                        </Badge>
+                      </div>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="outline"
+                            size="icon-sm"
+                            onClick={() => setSelectedCategory(section.targetCategory)}
+                            aria-label={`View all ${section.title}`}
+                            className="studio-icon-btn size-7 rounded-none border-border/80 bg-background/80 text-muted-foreground hover:text-foreground"
+                          >
+                            <ArrowRight className="size-3.5" />
+                            <span className="sr-only">View all</span>
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent side="left" className="font-sans text-xs">
+                          View all {section.title}
+                        </TooltipContent>
+                      </Tooltip>
+                    </div>
+                    {renderCardGrid(section.items)}
+                  </div>
+                ))
+              ) : (
+                <div className="rounded-none bg-card/80 backdrop-blur-xs">
+                  {/* Integrated Architectural Filtered Header Bar */}
+                  <div className="studio-toolbar-surface flex items-center justify-between border border-b-0 border-border px-4 py-2.5 rounded-none">
                     <div className="flex items-center gap-2.5">
                       <span className="font-mono text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-                        {section.eyebrow}
+                        {searchQuery.trim() ? "SEARCH QUERY" : "CATEGORY FILTER"}
                       </span>
                       <span className="text-border select-none">/</span>
                       <h2 className="font-sans text-sm sm:text-base font-semibold tracking-tight text-foreground">
-                        {section.title}
+                        {searchQuery.trim()
+                          ? `Search results (${filteredComponents.length})`
+                          : selectedCategory}
                       </h2>
                       <Badge
                         variant="secondary"
                         className="rounded-none px-1.5 py-0 text-[10px] font-sans tabular-nums"
                       >
-                        {section.items.length}
+                        {filteredComponents.length}
                       </Badge>
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setSelectedCategory(section.targetCategory)}
-                      className="h-7 rounded-none px-2.5 text-xs font-sans text-muted-foreground hover:text-foreground gap-1.5"
-                    >
-                      <span>View all</span>
-                      <ArrowRight className="size-3.5" />
-                    </Button>
+                    {(selectedCategory !== "All" || searchQuery.trim()) && (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="outline"
+                            size="icon-sm"
+                            onClick={() => {
+                              setSelectedCategory("All");
+                              setSearchQuery("");
+                            }}
+                            aria-label="Back to all components"
+                            className="studio-icon-btn size-7 rounded-none border-border/80 bg-background/80 text-muted-foreground hover:text-foreground"
+                          >
+                            <ArrowLeft className="size-3.5" />
+                            <span className="sr-only">Back to all</span>
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent side="left" className="font-sans text-xs">
+                          Back to all components
+                        </TooltipContent>
+                      </Tooltip>
+                    )}
                   </div>
-                  {renderCardGrid(section.items)}
+                  {renderCardGrid(filteredComponents)}
                 </div>
-              ))
+              )
             ) : (
-              <div className="rounded-none">
-                {/* Integrated Architectural Filtered Header Bar */}
-                <div className="flex items-center justify-between border border-b-0 border-border bg-muted/25 px-4 py-2.5 rounded-none">
-                  <div className="flex items-center gap-2.5">
-                    <span className="font-mono text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-                      {searchQuery.trim() ? "SEARCH QUERY" : "CATEGORY FILTER"}
-                    </span>
-                    <span className="text-border select-none">/</span>
-                    <h2 className="font-sans text-sm sm:text-base font-semibold tracking-tight text-foreground">
-                      {searchQuery.trim()
-                        ? `Search results (${filteredComponents.length})`
-                        : selectedCategory}
-                    </h2>
-                    <Badge
-                      variant="secondary"
-                      className="rounded-none px-1.5 py-0 text-[10px] font-sans tabular-nums"
-                    >
-                      {filteredComponents.length}
-                    </Badge>
-                  </div>
-                  {(selectedCategory !== "All" || searchQuery.trim()) && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => {
-                        setSelectedCategory("All");
-                        setSearchQuery("");
-                      }}
-                      className="h-7 rounded-none px-2.5 text-xs font-sans text-muted-foreground hover:text-foreground gap-1.5"
-                    >
-                      <span>Back to all</span>
-                    </Button>
-                  )}
-                </div>
-                {renderCardGrid(filteredComponents)}
-              </div>
-            )
-          ) : (
-            /* Clean Sharp Empty State (Zero Radius) */
-            <div className="flex flex-col items-center justify-center rounded-none border border-dashed border-border p-12 text-center my-6 bg-muted/10">
-              <FolderSearch className="size-10 text-muted-foreground/60 mb-3" />
-              <h3 className="font-sans font-medium text-base text-foreground">
-                No components found
-              </h3>
-              <p className="font-sans text-xs text-muted-foreground max-w-sm mt-1 mb-4">
-                No components match your search query or category filter. Try resetting your search or create a new component.
-              </p>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    setSearchQuery("");
-                    setSelectedCategory("All");
-                  }}
-                  className="rounded-none font-sans text-xs h-8 gap-1.5"
-                >
-                  <RotateCcw className="size-3.5" />
-                  <span>Reset filters</span>
-                </Button>
-                <Button
-                  variant="default"
-                  size="sm"
-                  onClick={() => setCreateComponentDialogOpen(true)}
-                  className="rounded-none font-sans text-xs h-8 gap-1.5"
-                >
-                  <Plus className="size-3.5" />
-                  <span>New Component</span>
-                </Button>
-              </div>
-            </div>
-          )}
-        </section>
-      </main>
+              /* Clean Sharp Empty State (Zero Radius) */
+              <div className="flex flex-col items-center justify-center rounded-none border border-dashed border-border p-12 text-center my-6 bg-card/60 backdrop-blur-xs">
+                <FolderSearch className="size-10 text-muted-foreground/60 mb-3" />
+                <h3 className="font-sans font-medium text-base text-foreground">
+                  No components found
+                </h3>
+                <p className="font-sans text-xs text-muted-foreground max-w-sm mt-1 mb-4">
+                  No components match your search query or category filter. Try resetting your search or create a new component.
+                </p>
+                <div className="flex items-center gap-2">
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => {
+                          setSearchQuery("");
+                          setSelectedCategory("All");
+                        }}
+                        aria-label="Reset filters"
+                        className="studio-icon-btn size-8 rounded-none"
+                      >
+                        <RotateCcw className="size-3.5" />
+                        <span className="sr-only">Reset filters</span>
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom" className="font-sans text-xs">
+                      Reset filters
+                    </TooltipContent>
+                  </Tooltip>
 
-      {/* Modal Integration */}
-      <CreateComponentDialog onCreated={handleCreated} />
-      <QuickPreviewModal onOpenStudio={handleOpenStudio} />
-    </div>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="default"
+                        size="icon"
+                        onClick={() => setCreateComponentDialogOpen(true)}
+                        aria-label="Create new component"
+                        className="size-8 rounded-none shadow-none"
+                      >
+                        <Plus className="size-3.5" />
+                        <span className="sr-only">New Component</span>
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom" className="font-sans text-xs">
+                      Create New Component
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
+              </div>
+            )}
+          </section>
+        </main>
+
+        {/* Modal Integration */}
+        <CreateComponentDialog onCreated={handleCreated} />
+        <QuickPreviewModal onOpenStudio={handleOpenStudio} />
+      </div>
+    </TooltipProvider>
   );
 }
