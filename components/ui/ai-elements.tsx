@@ -1303,26 +1303,52 @@ export function PromptInput({
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
       className={cn(
-        "flex flex-col rounded-xl border border-border/70 bg-card/70 p-2 shadow-2xs transition-all duration-150 focus-within:border-primary/40 focus-within:ring-2 focus-within:ring-primary/10 focus-within:bg-background/95",
-        isDragOver && "border-foreground/50 ring-2 ring-foreground/20 bg-muted/30",
+        "@container flex flex-col rounded-none border border-border bg-background/95 shadow-2xs transition-all duration-150 focus-within:border-primary/60 focus-within:ring-1 focus-within:ring-primary/20 focus-within:bg-background",
+        isDragOver && "border-primary ring-2 ring-primary/20 bg-primary/5",
         className
       )}
     >
+      {/* Top Context Strip: Active File & Model / UI Skill Controls */}
+      <div className="flex flex-wrap items-center justify-between gap-1.5 px-2.5 py-1.5 border-b border-border/60 bg-muted/25 select-none">
+        <div className="flex items-center gap-1.5 min-w-0">
+          <div className="inline-flex items-center gap-1 px-1.5 py-0.5 border border-border/70 bg-background/80 text-[10px] text-muted-foreground font-sans shrink-0">
+            <FileCode className="size-3 text-primary/80 shrink-0" />
+            <span className="font-mono text-[10px] text-foreground font-medium">
+              component.tsx
+            </span>
+          </div>
+          {hasAttachments && (
+            <Badge
+              variant="secondary"
+              className="rounded-none px-1.5 py-0 text-[10px] font-sans tabular-nums"
+            >
+              {attachedImages.length + attachedCodeSnippets.length} attached
+            </Badge>
+          )}
+        </div>
+
+        {modelBadge && (
+          <div className="flex items-center gap-1 min-w-0 shrink-0 ml-auto">
+            {modelBadge}
+          </div>
+        )}
+      </div>
+
       {/* Attached Files & Snippets Tray */}
       {hasAttachments && (
-        <div className="flex flex-wrap items-center gap-1.5 pb-2 mb-1.5 border-b border-border/40 select-none animate-in fade-in duration-150 max-h-24 overflow-y-auto pr-1">
+        <div className="grid grid-cols-1 @[420px]:grid-cols-2 gap-1.5 p-2 border-b border-border/50 bg-muted/10 select-none animate-in fade-in duration-150 max-h-28 overflow-y-auto">
           {/* Images */}
           {attachedImages.map((img) => (
             <div
               key={img.id}
-              className="group relative flex items-center gap-1.5 rounded-lg border border-border/80 bg-muted/50 p-1 pr-2 hover:bg-muted/80 transition-all max-w-[190px]"
+              className="group relative flex items-center gap-2 rounded-none border border-border/80 bg-card/90 p-1.5 pr-2 hover:bg-muted/60 transition-colors min-w-0"
             >
               {/* Thumbnail image with preview zoom on click */}
               <button
                 type="button"
                 onClick={() => onPreviewImage?.(img)}
                 title="Click to preview image"
-                className="relative size-7 shrink-0 overflow-hidden rounded border border-border/60 cursor-pointer"
+                className="relative size-7 shrink-0 overflow-hidden rounded-none border border-border/70 cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
@@ -1337,10 +1363,10 @@ export function PromptInput({
                 className="min-w-0 flex-1 cursor-pointer"
                 title={img.name}
               >
-                <div className="text-[11px] font-medium text-foreground truncate font-sans">
+                <div className="text-[11px] font-medium text-foreground truncate font-sans leading-tight">
                   {img.name}
                 </div>
-                <div className="text-[9px] text-muted-foreground font-sans">
+                <div className="text-[10px] text-muted-foreground font-sans tabular-nums mt-0.5">
                   {img.sizeBytes
                     ? `${(img.sizeBytes / 1024).toFixed(0)} KB`
                     : "Image"}
@@ -1351,12 +1377,12 @@ export function PromptInput({
                 <Button
                   type="button"
                   variant="ghost"
-                  size="icon"
+                  size="icon-sm"
                   onClick={(e) => {
                     e.stopPropagation();
                     onRemoveImage(img.id);
                   }}
-                  className="size-4 rounded-full p-0 text-muted-foreground hover:text-foreground hover:bg-muted"
+                  className="size-5 rounded-none p-0 text-muted-foreground hover:text-foreground hover:bg-muted shrink-0"
                   title="Remove image"
                 >
                   <X className="size-3" />
@@ -1370,22 +1396,24 @@ export function PromptInput({
           {attachedCodeSnippets.map((snip) => (
             <div
               key={snip.id}
-              className="group relative flex items-center gap-1.5 rounded-lg border border-border/80 bg-muted/50 px-2 py-1 hover:bg-muted/80 transition-all max-w-[200px]"
+              className="group relative flex items-center gap-2 rounded-none border border-border/80 bg-card/90 px-2 py-1.5 hover:bg-muted/60 transition-colors min-w-0"
             >
               <div
                 onClick={() => onPreviewCodeSnippet?.(snip)}
-                className="flex items-center gap-1.5 min-w-0 flex-1 cursor-pointer"
+                className="flex items-center gap-2 min-w-0 flex-1 cursor-pointer"
                 title={snip.title}
               >
-                <Code2 className="size-3 text-muted-foreground shrink-0" />
+                <div className="flex size-6 shrink-0 items-center justify-center rounded-none border border-border/70 bg-muted/50">
+                  <Code2 className="size-3 text-muted-foreground" />
+                </div>
                 <div className="min-w-0 flex-1">
-                  <div className="text-[11px] font-medium text-foreground truncate font-sans">
+                  <div className="text-[11px] font-medium text-foreground truncate font-sans leading-tight">
                     {snip.title}
                   </div>
-                  <div className="flex items-center gap-1 text-[9px] text-muted-foreground font-sans">
-                    <span className="uppercase font-mono">{snip.language}</span>
-                    <span>•</span>
-                    <span>{snip.code.split("\n").length}L</span>
+                  <div className="flex items-center gap-1 text-[10px] text-muted-foreground font-sans mt-0.5">
+                    <span className="uppercase font-mono text-[9px]">{snip.language}</span>
+                    <span>·</span>
+                    <span className="tabular-nums">{snip.code.split("\n").length} lines</span>
                   </div>
                 </div>
               </div>
@@ -1394,12 +1422,12 @@ export function PromptInput({
                 <Button
                   type="button"
                   variant="ghost"
-                  size="icon"
+                  size="icon-sm"
                   onClick={(e) => {
                     e.stopPropagation();
                     onRemoveCodeSnippet(snip.id);
                   }}
-                  className="size-4 rounded-full p-0 text-muted-foreground hover:text-foreground hover:bg-muted"
+                  className="size-5 rounded-none p-0 text-muted-foreground hover:text-foreground hover:bg-muted shrink-0"
                   title="Remove code snippet"
                 >
                   <X className="size-3" />
@@ -1422,28 +1450,28 @@ export function PromptInput({
         onPaste={handlePaste}
         placeholder={placeholder}
         disabled={isLoading}
-        className="min-h-[48px] max-h-[140px] resize-none border-0 p-1 text-xs bg-transparent shadow-none focus-visible:ring-0 placeholder:text-muted-foreground/60 font-sans leading-relaxed text-foreground"
+        className="min-h-[56px] max-h-[150px] w-full resize-none rounded-none border-0 px-2.5 py-2 text-xs bg-transparent shadow-none focus-visible:ring-0 placeholder:text-muted-foreground/60 font-sans leading-relaxed text-foreground"
       />
 
       {/* Bottom Command Toolbar */}
-      <div className="flex items-center justify-between pt-1.5 border-t border-border/40 select-none">
-        <div className="flex items-center gap-1">
+      <div className="flex flex-wrap items-center justify-between gap-1.5 px-2 py-1.5 border-t border-border/60 bg-muted/15 select-none">
+        <div className="flex items-center gap-1 min-w-0">
           {/* Attach Image Button */}
           {onAttachImageClick && (
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
                   type="button"
-                  variant="ghost"
+                  variant="outline"
                   size="sm"
                   onClick={onAttachImageClick}
-                  className="h-6 gap-1 px-1.5 text-[11px] font-normal text-muted-foreground hover:text-foreground hover:bg-muted font-sans rounded-md"
+                  className="h-6.5 gap-1.5 px-2 text-[11px] font-normal text-muted-foreground hover:text-foreground bg-background/70 hover:bg-muted border-border/70 font-sans rounded-none shrink-0"
                 >
-                  <ImagePlus className="size-3.5" />
-                  <span className="hidden sm:inline">Image</span>
+                  <ImagePlus className="size-3.5 shrink-0" />
+                  <span>Image</span>
                 </Button>
               </TooltipTrigger>
-              <TooltipContent side="top">
+              <TooltipContent side="top" className="font-sans text-xs">
                 Attach image mockup or screenshot (Ctrl+V supported)
               </TooltipContent>
             </Tooltip>
@@ -1455,41 +1483,29 @@ export function PromptInput({
               <TooltipTrigger asChild>
                 <Button
                   type="button"
-                  variant="ghost"
+                  variant="outline"
                   size="sm"
                   onClick={onAttachCodeClick}
-                  className="h-6 gap-1 px-1.5 text-[11px] font-normal text-muted-foreground hover:text-foreground hover:bg-muted font-sans rounded-md"
+                  className="h-6.5 gap-1.5 px-2 text-[11px] font-normal text-muted-foreground hover:text-foreground bg-background/70 hover:bg-muted border-border/70 font-sans rounded-none shrink-0"
                 >
-                  <Code2 className="size-3.5" />
-                  <span className="hidden sm:inline">Paste Code</span>
+                  <Code2 className="size-3.5 shrink-0" />
+                  <span className="hidden @[340px]:inline">Paste Code</span>
+                  <span className="@[340px]:hidden">Code</span>
                 </Button>
               </TooltipTrigger>
-              <TooltipContent side="top">
+              <TooltipContent side="top" className="font-sans text-xs">
                 Paste external code snippet or style reference
               </TooltipContent>
             </Tooltip>
           )}
-
-          <div className="h-3 w-px bg-border/60 mx-0.5 shrink-0" />
-
-          {modelBadge && (
-            <div className="shrink-0 whitespace-nowrap flex items-center">
-              {modelBadge}
-            </div>
-          )}
-
-          <div className="hidden sm:flex items-center gap-1 text-[10px] text-muted-foreground/75 font-sans shrink-0">
-            <FileCode className="size-3 text-muted-foreground/60 shrink-0" />
-            <span className="font-mono text-[10px]">component.tsx</span>
-          </div>
         </div>
 
-        <div className="flex items-center gap-1.5 shrink-0">
-          <span className="text-[10px] text-muted-foreground/60 hidden sm:inline-block font-sans">
-            <kbd className="px-1 py-0.5 rounded bg-muted/80 font-mono text-[9px] border border-border/40">
+        <div className="flex items-center gap-2 shrink-0 ml-auto">
+          <span className="text-[10px] text-muted-foreground/70 hidden @[400px]:inline-flex items-center gap-1 font-sans">
+            <kbd className="px-1 py-0.5 rounded-none bg-muted font-mono text-[9px] border border-border/60">
               Enter
-            </kbd>{" "}
-            to send
+            </kbd>
+            <span>to send</span>
           </span>
 
           <Button
@@ -1499,17 +1515,23 @@ export function PromptInput({
             onClick={onSubmit}
             disabled={!canSubmit}
             className={cn(
-              "size-7 p-0 rounded-lg shrink-0 font-sans transition-all duration-150",
+              "h-6.5 px-2.5 gap-1 rounded-none shrink-0 font-sans text-[11px] font-medium transition-all duration-150 shadow-none",
               canSubmit
-                ? "bg-primary text-primary-foreground shadow-xs hover:bg-primary/90 hover:scale-105 active:scale-95"
-                : "opacity-40"
+                ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                : "opacity-45"
             )}
             title="Send prompt (Enter)"
           >
             {isLoading ? (
-              <Loader2 className="size-3.5 animate-spin" />
+              <>
+                <Loader2 className="size-3.5 animate-spin shrink-0" />
+                <span className="hidden @[320px]:inline">Working</span>
+              </>
             ) : (
-              <ArrowUp className="size-3.5 stroke-[2.5]" />
+              <>
+                <span className="hidden @[320px]:inline">Send</span>
+                <ArrowUp className="size-3.5 stroke-[2.2] shrink-0" />
+              </>
             )}
             <span className="sr-only">Send prompt</span>
           </Button>
@@ -1518,3 +1540,4 @@ export function PromptInput({
     </div>
   );
 }
+
