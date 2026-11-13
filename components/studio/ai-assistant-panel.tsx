@@ -54,8 +54,6 @@ import {
   Wand2,
   CheckCircle2,
   Trash2,
-  SlidersHorizontal,
-  Moon,
   Zap,
   ShieldCheck,
   ChevronDown,
@@ -73,8 +71,8 @@ import {
 
 const MODEL_OPTIONS = [
   {
-    id: "gemini-3.8-flash",
-    name: "Gemini 3.8 Flash",
+    id: "gemini-4-hydrogen",
+    name: "Gemini 4 Hydrogen",
     tag: "Standard",
     description: "Best for component design, TypeScript architecture, and fast edits.",
     icon: Cpu,
@@ -112,7 +110,6 @@ export function AiAssistantPanel({ isMobile = false, onClose }: AiAssistantPanel
     aiChatMessages,
     isAiThinking,
     compilerError,
-    currentTemplateId,
     geminiApiKey,
     setAiPanelOpen,
     setAiPanelWidth,
@@ -208,15 +205,17 @@ export function AiAssistantPanel({ isMobile = false, onClose }: AiAssistantPanel
     setAttachedCodeSnippets((prev) => [...prev, newSnippet]);
   };
 
+  const activeDemoCode = files["default.tsx"] ?? files["demo.tsx"] ?? "";
+
   // Real-time static guideline audit
   const auditResult = useMemo(() => {
     return auditComponentGuidelines(
       files["component.tsx"],
-      files["demo.tsx"],
+      activeDemoCode,
       files["index.css"],
       dependencies
     );
-  }, [files, dependencies]);
+  }, [files, activeDemoCode, dependencies]);
 
   // Guidelines plan checklist
   const planTasks = useMemo<TaskItemProps[]>(() => {
@@ -312,14 +311,23 @@ export function AiAssistantPanel({ isMobile = false, onClose }: AiAssistantPanel
     }
   }, [aiChatMessages, isAiThinking]);
 
-  // Keep DOM width synced when aiPanelWidth changes from store
+  // Keep DOM width synced when aiPanelWidth or viewport mode changes
   useEffect(() => {
     if (panelRef.current && !isResizingRef.current) {
-      panelRef.current.style.width = `${aiPanelWidth}px`;
+      if (isMobile) {
+        panelRef.current.style.width = "100%";
+      } else {
+        const clamped = Math.max(
+          340,
+          Math.min(aiPanelWidth, Math.max(340, window.innerWidth - 48))
+        );
+        panelRef.current.style.width = `${clamped}px`;
+      }
     }
-  }, [aiPanelWidth]);
+  }, [aiPanelWidth, isMobile]);
 
   const handleResizeStart = (e: React.MouseEvent) => {
+    if (isMobile) return;
     e.preventDefault();
     isResizingRef.current = true;
     startXRef.current = e.clientX;
@@ -335,18 +343,7 @@ export function AiAssistantPanel({ isMobile = false, onClose }: AiAssistantPanel
   };
 
   useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
-      if (!isResizingRef.current) return;
-      const deltaX = startXRef.current - e.clientX;
-      const nextWidth = Math.max(340, Math.min(800, startWidthRef.current + deltaX));
-      currentWidthRef.current = nextWidth;
-
-      if (panelRef.current) {
-        panelRef.current.style.width = `${nextWidth}px`;
-      }
-    };
-
-    const handleMouseUp = () => {
+    const restoreResizeState = () => {
       if (isResizingRef.current) {
         isResizingRef.current = false;
         document.body.style.cursor = "";
@@ -363,11 +360,26 @@ export function AiAssistantPanel({ isMobile = false, onClose }: AiAssistantPanel
       }
     };
 
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isResizingRef.current) return;
+      const deltaX = startXRef.current - e.clientX;
+      const maxAllowedWidth = Math.max(340, Math.min(800, window.innerWidth - 48));
+      const nextWidth = Math.max(340, Math.min(maxAllowedWidth, startWidthRef.current + deltaX));
+      currentWidthRef.current = nextWidth;
+
+      if (panelRef.current) {
+        panelRef.current.style.width = `${nextWidth}px`;
+      }
+    };
+
     window.addEventListener("mousemove", handleMouseMove);
-    window.addEventListener("mouseup", handleMouseUp);
+    window.addEventListener("mouseup", restoreResizeState);
+    window.addEventListener("blur", restoreResizeState);
     return () => {
       window.removeEventListener("mousemove", handleMouseMove);
-      window.removeEventListener("mouseup", handleMouseUp);
+      window.removeEventListener("mouseup", restoreResizeState);
+      window.removeEventListener("blur", restoreResizeState);
+      restoreResizeState();
     };
   }, [setAiPanelWidth]);
 
@@ -404,7 +416,8 @@ export function AiAssistantPanel({ isMobile = false, onClose }: AiAssistantPanel
     // Capture baseline snapshot before request
     const baselineSnapshot = {
       "component.tsx": files["component.tsx"],
-      "demo.tsx": files["demo.tsx"],
+      "default.tsx": activeDemoCode,
+      "demo.tsx": activeDemoCode,
       "index.css": files["index.css"],
     };
 
@@ -437,10 +450,11 @@ export function AiAssistantPanel({ isMobile = false, onClose }: AiAssistantPanel
           prompt: userMessageContent,
           action,
           componentCode: files["component.tsx"],
-          demoCode: files["demo.tsx"],
+          defaultCode: activeDemoCode,
+          demoCode: activeDemoCode,
           cssCode: files["index.css"],
           dependencies,
-          model: aiModel,
+          model: currentModelObj.id,
           role: "copilot",
           history: historyPayload,
           images: currentImages.map((img) => ({
@@ -457,7 +471,30 @@ export function AiAssistantPanel({ isMobile = false, onClose }: AiAssistantPanel
         }),
       });
 
-      const data = await res.json();
+      const rawText = await res.text();
+      type AiAssistantApiResponse = {
+        error?: string;
+        message?: string;
+        reasoningSummary?: string;
+        reasoningSteps?: Array<{ title: string; description?: string; detail?: string }>;
+        changedFiles?: Partial<{
+          "component.tsx": string;
+          "default.tsx": string;
+          "demo.tsx": string;
+          "index.css": string;
+        }>;
+      };
+      let data: AiAssistantApiResponse = {};
+      try {
+        data = rawText ? (JSON.parse(rawText) as AiAssistantApiResponse) : {};
+      } catch {
+        data = {
+          error: res.ok
+            ? "Invalid response format from AI server."
+            : `Server error (${res.status}). Please try again.`,
+        };
+      }
+
       const elapsedSeconds = Math.max(
         1,
         Math.round((Date.now() - requestStartTimeRef.current) / 1000)
@@ -467,24 +504,24 @@ export function AiAssistantPanel({ isMobile = false, onClose }: AiAssistantPanel
         addAiChatMessage({
           role: "assistant",
           authorRole: "Co-Pilot",
-          modelUsed: aiModel,
-          content: data.error || "Failed to process request with Gemini AI.",
+          modelUsed: currentModelObj.id,
+          content:
+            (typeof data.error === "string" && data.error) ||
+            "Failed to process request with Gemini AI.",
         });
         return;
       }
 
       const hasChangedFiles =
-        data.changedFiles && Object.keys(data.changedFiles).length > 0;
+        !!data.changedFiles && Object.keys(data.changedFiles).length > 0;
 
       const recordedSteps: ReasoningStep[] = Array.isArray(data.reasoningSteps)
-        ? data.reasoningSteps.map(
-            (st: { title: string; description?: string; detail?: string }) => ({
-              title: st.title,
-              description: st.description,
-              detail: st.detail,
-              status: "done" as const,
-            })
-          )
+        ? data.reasoningSteps.map((st) => ({
+            title: st.title,
+            description: st.description,
+            detail: st.detail,
+            status: "done" as const,
+          }))
         : [
             {
               title: "Reading component structure & exports",
@@ -501,7 +538,7 @@ export function AiAssistantPanel({ isMobile = false, onClose }: AiAssistantPanel
       addAiChatMessage({
         role: "assistant",
         authorRole: "Co-Pilot",
-        modelUsed: aiModel,
+        modelUsed: currentModelObj.id,
         content: data.message || "I've reviewed your component.",
         reasoning: {
           durationSeconds: elapsedSeconds,
@@ -518,7 +555,7 @@ export function AiAssistantPanel({ isMobile = false, onClose }: AiAssistantPanel
       addAiChatMessage({
         role: "assistant",
         authorRole: "Co-Pilot",
-        modelUsed: aiModel,
+        modelUsed: currentModelObj.id,
         content: `Connection error: ${errorMsg}. Please verify your network connection and server configuration.`,
       });
     } finally {
@@ -531,9 +568,13 @@ export function AiAssistantPanel({ isMobile = false, onClose }: AiAssistantPanel
   return (
     <div
       ref={panelRef}
-      style={isMobile ? { width: "100%" } : { width: `${aiPanelWidth}px` }}
+      style={
+        isMobile
+          ? { width: "100%" }
+          : { width: `${aiPanelWidth}px`, maxWidth: "calc(100vw - 48px)" }
+      }
       className={cn(
-        "relative flex h-full flex-col bg-background text-foreground font-sans select-none z-20 shrink-0",
+        "relative flex h-full min-h-0 flex-col overflow-hidden bg-background text-foreground font-sans select-none z-20 shrink-0",
         isMobile ? "w-full border-0" : "border-l border-border"
       )}
     >
@@ -541,7 +582,7 @@ export function AiAssistantPanel({ isMobile = false, onClose }: AiAssistantPanel
         {!isMobile && (
           <div
             onMouseDown={handleResizeStart}
-            className="absolute left-0 top-0 bottom-0 w-2 -left-1 cursor-ew-resize hover:bg-primary/20 active:bg-primary/30 transition-colors z-30 group"
+            className="absolute -left-1 top-0 bottom-0 w-2 cursor-ew-resize touch-none hover:bg-primary/20 active:bg-primary/30 transition-colors z-30 group"
             title="Drag left/right to resize Copilot panel"
           >
             <div className="h-full w-px bg-border group-hover:bg-primary transition-colors mx-auto" />
@@ -701,7 +742,7 @@ export function AiAssistantPanel({ isMobile = false, onClose }: AiAssistantPanel
             defaultOpen={true}
             onAutoFix={() =>
               handleSubmitPrompt(
-                "Audit component.tsx, demo.tsx, and index.css against all 21st.dev guidelines and auto-fix all missing requirements (className forwarding, cn(), props interface, use client).",
+                "Audit component.tsx, default.tsx, and index.css against all 21st.dev guidelines and auto-fix all missing requirements (className forwarding, cn(), props interface, use client).",
                 "autofix"
               )
             }
@@ -712,7 +753,7 @@ export function AiAssistantPanel({ isMobile = false, onClose }: AiAssistantPanel
       {/* Main Multi-Turn Chat Thread */}
       <div
         ref={chatScrollRef}
-        className="flex-1 overflow-y-auto p-4 space-y-4 select-text font-sans scroll-smooth"
+        className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden p-4 space-y-4 select-text font-sans scroll-smooth"
       >
         {/* Empty State / Welcome Screen */}
         {aiChatMessages.length === 0 ? (
@@ -733,7 +774,7 @@ export function AiAssistantPanel({ isMobile = false, onClose }: AiAssistantPanel
                 </h3>
                 <Badge
                   variant="secondary"
-                  className="text-[9px] py-0 px-1.5 font-mono uppercase tracking-wider text-primary bg-primary/10 border-primary/20"
+                  className="text-[9px] py-0 px-1.5 font-sans font-medium uppercase tracking-wider text-primary bg-primary/10 border-primary/20"
                 >
                   AI CO-ENGINEER
                 </Badge>
@@ -857,7 +898,7 @@ export function AiAssistantPanel({ isMobile = false, onClose }: AiAssistantPanel
                       </span>
                       <Badge
                         variant="secondary"
-                        className="text-[9px] py-0 px-1 font-mono uppercase bg-rose-500/20 text-rose-500 border border-rose-500/30"
+                        className="text-[9px] py-0 px-1 font-sans font-medium uppercase bg-rose-500/20 text-rose-500 border border-rose-500/30"
                       >
                         CRITICAL
                       </Badge>
@@ -888,13 +929,13 @@ export function AiAssistantPanel({ isMobile = false, onClose }: AiAssistantPanel
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center justify-between gap-1">
                       <span className="text-xs font-semibold text-amber-600 dark:text-amber-400">
-                        Fix ${failingChecks.length} Missing Standard${failingChecks.length > 1 ? "s" : ""}
+                        Fix {failingChecks.length} Missing Standard{failingChecks.length > 1 ? "s" : ""}
                       </span>
                       <Badge
                         variant="secondary"
-                        className="text-[9px] py-0 px-1 font-mono uppercase bg-amber-500/20 text-amber-500 border border-amber-500/30"
+                        className="text-[9px] py-0 px-1 font-sans font-medium uppercase bg-amber-500/20 text-amber-500 border border-amber-500/30 tabular-nums"
                       >
-                        ${failingChecks.length} ISSUES
+                        {failingChecks.length} {failingChecks.length === 1 ? "ISSUE" : "ISSUES"}
                       </Badge>
                     </div>
                     <div className="text-[11px] font-normal text-muted-foreground leading-normal mt-0.5 line-clamp-1">
@@ -926,7 +967,7 @@ export function AiAssistantPanel({ isMobile = false, onClose }: AiAssistantPanel
                     </span>
                     <Badge
                       variant="secondary"
-                      className="text-[9px] py-0 px-1 font-mono uppercase text-muted-foreground group-hover:text-foreground"
+                      className="text-[9px] py-0 px-1 font-sans font-medium uppercase text-muted-foreground group-hover:text-foreground"
                     >
                       MOTION
                     </Badge>
@@ -959,7 +1000,7 @@ export function AiAssistantPanel({ isMobile = false, onClose }: AiAssistantPanel
                     </span>
                     <Badge
                       variant="secondary"
-                      className="text-[9px] py-0 px-1 font-mono uppercase text-muted-foreground group-hover:text-foreground"
+                      className="text-[9px] py-0 px-1 font-sans font-medium uppercase text-muted-foreground group-hover:text-foreground"
                     >
                       THEMING
                     </Badge>
@@ -992,7 +1033,7 @@ export function AiAssistantPanel({ isMobile = false, onClose }: AiAssistantPanel
                     </span>
                     <Badge
                       variant="secondary"
-                      className="text-[9px] py-0 px-1 font-mono uppercase text-muted-foreground group-hover:text-foreground"
+                      className="text-[9px] py-0 px-1 font-sans font-medium uppercase text-muted-foreground group-hover:text-foreground"
                     >
                       A11Y
                     </Badge>
@@ -1025,7 +1066,7 @@ export function AiAssistantPanel({ isMobile = false, onClose }: AiAssistantPanel
                     </span>
                     <Badge
                       variant="secondary"
-                      className="text-[9px] py-0 px-1 font-mono uppercase text-muted-foreground group-hover:text-foreground"
+                      className="text-[9px] py-0 px-1 font-sans font-medium uppercase text-muted-foreground group-hover:text-foreground"
                     >
                       CLEAN CODE
                     </Badge>
@@ -1191,13 +1232,24 @@ export function AiAssistantPanel({ isMobile = false, onClose }: AiAssistantPanel
                               "component.tsx":
                                 msg.previousFiles["component.tsx"] ??
                                 files["component.tsx"],
+                              "default.tsx":
+                                msg.previousFiles["default.tsx"] ??
+                                msg.previousFiles["demo.tsx"] ??
+                                activeDemoCode,
                               "demo.tsx":
-                                msg.previousFiles["demo.tsx"] ?? files["demo.tsx"],
+                                msg.previousFiles["demo.tsx"] ??
+                                msg.previousFiles["default.tsx"] ??
+                                activeDemoCode,
                               "index.css":
                                 msg.previousFiles["index.css"] ??
                                 files["index.css"],
                             }
-                          : (files as unknown as Record<string, string>)
+                          : {
+                              "component.tsx": files["component.tsx"],
+                              "default.tsx": activeDemoCode,
+                              "demo.tsx": activeDemoCode,
+                              "index.css": files["index.css"],
+                            }
                       }
                       approvalStatus={resolvedStatus}
                       onApprove={() =>
@@ -1320,7 +1372,7 @@ export function AiAssistantPanel({ isMobile = false, onClose }: AiAssistantPanel
           open={isAttachCodeDialogOpen}
           onOpenChange={setIsAttachCodeDialogOpen}
           onAttach={handleAttachCodeSnippet}
-          currentDemoCode={files["demo.tsx"]}
+          currentDemoCode={activeDemoCode}
           currentCssCode={files["index.css"]}
         />
 

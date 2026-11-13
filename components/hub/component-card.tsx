@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import { UserComponent, useStudioStore } from "@/lib/store/studio-store";
-import { formatRelativeTime } from "@/lib/utils";
+import { compileSandboxHtml } from "@/lib/sandbox/sandbox-compiler";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -26,8 +26,6 @@ import {
   MoreVertical,
   Copy,
   Trash2,
-  GitBranch,
-  Bookmark,
   Sparkles,
   LayoutTemplate,
   CreditCard,
@@ -67,9 +65,6 @@ function renderCategoryIcon(category?: string, customClassName?: string) {
 
 export function ComponentCard({
   component,
-  variantsCount = 1,
-  checkpointsCount = 0,
-  isRecent = false,
   onPreview,
   onOpenStudio,
   onDuplicate,
@@ -78,11 +73,56 @@ export function ComponentCard({
   onDeleteDialogOpenChange,
 }: ComponentCardProps) {
   const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
+  const [isInView, setIsInView] = useState(false);
+  const [isIframeReady, setIsIframeReady] = useState(false);
+  const cardRef = useRef<HTMLDivElement | null>(null);
+
   const isDeleteDialogOpen = controlledOpen !== undefined ? controlledOpen : uncontrolledOpen;
   const setIsDeleteDialogOpen = (open: boolean) => {
     setUncontrolledOpen(open);
     onDeleteDialogOpenChange?.(open);
   };
+
+  // Lazy-mount live sandboxed preview when card enters viewport
+  useEffect(() => {
+    const el = cardRef.current;
+    if (!el) return;
+    if (typeof IntersectionObserver === "undefined") {
+      setIsInView(true);
+      return;
+    }
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) {
+            setIsInView(true);
+            observer.disconnect();
+            break;
+          }
+        }
+      },
+      { rootMargin: "200px" }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  const compiledPreviewHtml = useMemo(() => {
+    if (!isInView || !component?.files) return "";
+    try {
+      const res = compileSandboxHtml(
+        component.files["component.tsx"] || "",
+        component.files["demo.tsx"] || "",
+        component.files["index.css"] || "",
+        component.dependencies || [],
+        "dark",
+        "dark"
+      );
+      return res.error ? "" : res.html;
+    } catch {
+      return "";
+    }
+  }, [isInView, component]);
 
   const handlePreview = () => {
     if (onPreview) {
@@ -119,87 +159,36 @@ export function ComponentCard({
 
   return (
     <>
-      <div className="relative flex flex-col justify-between overflow-hidden bg-card p-4 text-card-foreground transition-colors duration-200 hover:bg-muted/10 font-sans h-full group">
-        <div>
-          {/* Header */}
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-1.5 flex-wrap">
-              <Badge variant="outline" className="font-sans text-[11px] font-normal px-2 py-0.5">
-                {component.category}
-              </Badge>
-              {isRecent && (
-                <Badge variant="blue" className="font-sans text-[10px] font-medium px-1.5 py-0">
-                  Recent
-                </Badge>
-              )}
-            </div>
-
-            <div className="flex items-center gap-1.5">
-              <span suppressHydrationWarning className="font-sans text-[11px] text-muted-foreground tabular-nums">
-                {formatRelativeTime(component.updatedAt)}
-              </span>
-
-              {/* More options dropdown */}
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    className="size-7 text-muted-foreground hover:text-foreground rounded-md"
-                    aria-label="More options"
-                  >
-                    <MoreVertical className="size-3.5" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-44 font-sans">
-                  <DropdownMenuItem
-                    onClick={handleDuplicate}
-                    className="gap-2 cursor-pointer font-sans text-xs"
-                  >
-                    <Copy className="size-3.5" />
-                    <span>Duplicate Component</span>
-                  </DropdownMenuItem>
-                  {!component.isBuiltIn && (
-                    <>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem
-                        onClick={() => {
-                          setIsDeleteDialogOpen(true);
-                        }}
-                        className="gap-2 cursor-pointer font-sans text-xs text-destructive focus:text-destructive focus:bg-destructive/10"
-                      >
-                        <Trash2 className="size-3.5" />
-                        <span>Delete Component</span>
-                      </DropdownMenuItem>
-                    </>
-                  )}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-          </div>
-
-          {/* Visual Showcase Canvas Frame */}
-          <div
-            role="button"
-            tabIndex={0}
-            onClick={handlePreview}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                handlePreview();
-              }
-            }}
-            aria-label={`Preview ${component.name}`}
-            className="aspect-[16/10] w-full rounded-lg bg-zinc-950/80 dark:bg-zinc-950/90 border border-border/40 relative overflow-hidden flex items-center justify-center p-3 my-2.5 cursor-pointer group/canvas transition-colors hover:border-border"
-          >
-            {component.previewImage ? (
-              <img
-                src={component.previewImage}
-                alt={component.name}
-                className="w-full h-full object-contain pointer-events-none select-none transition-transform duration-300 group-hover:scale-105 drop-shadow-md"
-              />
-            ) : (
-              <div className="flex flex-col items-center justify-center gap-2 select-none">
+      <div
+        ref={cardRef}
+        className="relative flex flex-col justify-between overflow-hidden bg-card p-3 sm:p-4 text-card-foreground transition-colors duration-200 hover:bg-muted/10 font-sans h-full group"
+      >
+        {/* Pure 21st.dev-style Inner Dark Stage */}
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={handlePreview}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              handlePreview();
+            }
+          }}
+          aria-label={`Preview ${component.name}`}
+          className="aspect-[4/3] w-full rounded-xl bg-zinc-950/90 dark:bg-zinc-950/95 border border-border/40 relative overflow-hidden flex items-center justify-center cursor-pointer group/canvas transition-all duration-200 group-hover:border-border/80"
+        >
+          {/* Fallback / Initial Preview Visual */}
+          {component.previewImage ? (
+            <img
+              src={component.previewImage}
+              alt={component.name}
+              className={`w-full h-full object-contain p-4 pointer-events-none select-none transition-all duration-300 group-hover:scale-105 drop-shadow-md ${
+                isIframeReady ? "opacity-0" : "opacity-100"
+              }`}
+            />
+          ) : (
+            !isIframeReady && (
+              <div className="flex flex-col items-center justify-center gap-2 select-none pointer-events-none">
                 <div className="flex size-9 items-center justify-center rounded-md bg-muted/20 border border-border/30 text-muted-foreground/50">
                   {renderCategoryIcon(component.category, "size-4 text-muted-foreground/60")}
                 </div>
@@ -210,84 +199,102 @@ export function ComponentCard({
                   Preview canvas
                 </Badge>
               </div>
-            )}
+            )
+          )}
 
-            {/* Hover overlay */}
-            <div className="absolute inset-0 bg-background/20 backdrop-blur-[1px] opacity-0 group-hover/canvas:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
-              <Badge
-                variant="secondary"
-                className="gap-1.5 font-sans text-xs px-2.5 py-1 bg-background/90 text-foreground shadow-sm"
-              >
-                <Eye className="size-3.5" /> <span>Quick Preview</span>
-              </Badge>
+          {/* Live Interactive Sandboxed Component Preview */}
+          {isInView && compiledPreviewHtml && (
+            <div className="absolute inset-0 overflow-hidden">
+              <iframe
+                title={`${component.name} live stage`}
+                srcDoc={compiledPreviewHtml}
+                onLoad={() => setIsIframeReady(true)}
+                sandbox="allow-scripts allow-same-origin"
+                className={`w-[200%] h-[200%] origin-top-left scale-50 border-0 transition-opacity duration-300 ${
+                  isIframeReady ? "opacity-100" : "opacity-0"
+                }`}
+              />
             </div>
+          )}
+
+          {/* Top-Right Hover Menu Action */}
+          <div
+            className="absolute top-2.5 right-2.5 z-20 flex items-center gap-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="secondary"
+                  size="icon-sm"
+                  className="size-7 rounded-lg bg-zinc-900/90 text-zinc-300 hover:text-white hover:bg-zinc-800 border border-zinc-800/80 shadow-sm backdrop-blur-md"
+                  aria-label="More options"
+                >
+                  <MoreVertical className="size-3.5" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-44 font-sans">
+                <DropdownMenuItem
+                  onClick={handleDuplicate}
+                  className="gap-2 cursor-pointer font-sans text-xs"
+                >
+                  <Copy className="size-3.5" />
+                  <span>Duplicate Component</span>
+                </DropdownMenuItem>
+                {!component.isBuiltIn && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      onClick={() => {
+                        setIsDeleteDialogOpen(true);
+                      }}
+                      className="gap-2 cursor-pointer font-sans text-xs text-destructive focus:text-destructive focus:bg-destructive/10"
+                    >
+                      <Trash2 className="size-3.5" />
+                      <span>Delete Component</span>
+                    </DropdownMenuItem>
+                  </>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
 
-          {/* Title & Description */}
-          <div className="min-w-0">
-            <h3 className="truncate">
+          {/* Bottom Hover-Only Title & Quick Actions Bar */}
+          <div
+            className="absolute inset-x-0 bottom-0 z-20 flex items-center justify-between gap-2 p-3 pt-6 bg-gradient-to-t from-zinc-950/95 via-zinc-950/80 to-transparent opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="min-w-0 flex-1 truncate">
               <button
                 type="button"
                 onClick={handlePreview}
-                className="w-full text-left font-sans font-medium text-sm text-foreground truncate group-hover:text-primary transition-colors focus:outline-hidden cursor-pointer"
+                className="w-full text-left font-sans font-medium text-xs sm:text-sm text-zinc-100 truncate hover:text-white transition-colors focus:outline-hidden cursor-pointer"
               >
                 {component.name}
               </button>
             </h3>
-            <p className="font-sans text-xs text-muted-foreground line-clamp-1 mt-0.5">
-              {component.description || "Interactive dynamic component."}
-            </p>
-          </div>
-        </div>
 
-        {/* Footer & Action Bar */}
-        <div className="pt-3 border-t border-border/50 flex items-center justify-between gap-2 mt-3">
-          {/* Metadata badges */}
-          <div className="flex items-center gap-1.5 flex-wrap">
-            <Badge
-              variant="secondary"
-              suppressHydrationWarning
-              className="gap-1 font-sans text-[10px] font-normal px-1.5 py-0 text-muted-foreground"
-              title={`${variantsCount} variant${variantsCount !== 1 ? "s" : ""}`}
-            >
-              <GitBranch className="size-2.5" />
-              <span>{`${variantsCount} ${variantsCount === 1 ? "Variant" : "Variants"}`}</span>
-            </Badge>
-
-            {checkpointsCount > 0 && (
-              <Badge
-                variant="secondary"
-                suppressHydrationWarning
-                className="gap-1 font-sans text-[10px] font-normal px-1.5 py-0 text-muted-foreground"
-                title={`${checkpointsCount} saved snapshot${checkpointsCount !== 1 ? "s" : ""}`}
+            <div className="flex items-center gap-1.5 shrink-0">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handlePreview}
+                className="font-sans text-xs h-7 px-2.5 gap-1 bg-zinc-900/90 text-zinc-100 border-zinc-700/80 hover:bg-zinc-800 hover:text-white"
               >
-                <Bookmark className="size-2.5" />
-                <span>{`${checkpointsCount} ${checkpointsCount === 1 ? "Checkpoint" : "Checkpoints"}`}</span>
-              </Badge>
-            )}
-          </div>
+                <Eye className="size-3" />
+                <span>Preview</span>
+              </Button>
 
-          {/* Quick action buttons */}
-          <div className="flex items-center gap-1.5">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handlePreview}
-              className="font-sans text-xs h-7 px-2.5 gap-1.5"
-            >
-              <Eye className="size-3" />
-              <span>Preview</span>
-            </Button>
-
-            <Button
-              variant="default"
-              size="sm"
-              onClick={handleOpenStudio}
-              className="font-sans text-xs h-7 px-2.5 gap-1.5"
-            >
-              <ExternalLink className="size-3" />
-              <span>Studio</span>
-            </Button>
+              <Button
+                variant="default"
+                size="sm"
+                onClick={handleOpenStudio}
+                className="font-sans text-xs h-7 px-2.5 gap-1 shadow-sm"
+              >
+                <ExternalLink className="size-3" />
+                <span>Studio</span>
+              </Button>
+            </div>
           </div>
         </div>
       </div>
@@ -328,3 +335,4 @@ export function ComponentCard({
     </>
   );
 }
+

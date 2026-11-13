@@ -199,7 +199,7 @@ export function StudioContainer({ componentId: _componentId }: StudioContainerPr
 
           {/* Desktop AI Assistant Slide-over with AnimatePresence */}
           <AnimatePresence>
-            {isAiPanelOpen && mobileTab !== "ai" && (
+            {isAiPanelOpen && (
               <motion.div
                 key="desktop-ai-copilot-drawer"
                 initial={{ x: "100%", opacity: 0.8 }}
@@ -211,7 +211,7 @@ export function StudioContainer({ componentId: _componentId }: StudioContainerPr
                   stiffness: 320,
                   mass: 0.8,
                 }}
-                className="hidden md:flex absolute top-0 right-0 bottom-0 z-30 shadow-2xl"
+                className="hidden md:flex absolute top-0 right-0 bottom-0 z-30 shadow-2xl max-w-[calc(100vw-48px)]"
               >
                 <AiAssistantPanel
                   isMobile={false}
@@ -223,7 +223,7 @@ export function StudioContainer({ componentId: _componentId }: StudioContainerPr
 
           {/* Mobile AI Panel View */}
           {mobileTab === "ai" && (
-            <div className="flex md:hidden w-full h-full">
+            <div className="flex md:hidden w-full h-full min-h-0 min-w-0 overflow-hidden">
               <AiAssistantPanel
                 isMobile={true}
                 onClose={() => {

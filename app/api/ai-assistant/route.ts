@@ -24,6 +24,7 @@ interface RequestBody {
   prompt?: string;
   action?: "audit" | "chat" | "autofix";
   componentCode: string;
+  defaultCode?: string;
   demoCode?: string;
   cssCode?: string;
   dependencies?: string[];
@@ -35,10 +36,10 @@ interface RequestBody {
   apiKey?: string;
 }
 
-// Supported official Gemini models matching instructions
+// Supported official Gemini models from @google/genai skill specification
 const VALID_MODELS = [
-  "gemini-3.8-flash",     // General tasks (default)
-  "gemini-4-argon",       // Complex tasks & deep reasoning
+  "gemini-4-hydrogen",     // General tasks & fast coding (default)
+  "gemini-4-argon",        // Complex tasks & deep reasoning
   "gemini-3.1-flash-lite", // Fast tasks & instant feedback
 ];
 
@@ -48,7 +49,7 @@ THE PLATFORM & WORKFLOW:
 1. Live Component Playground:
    The developer creates and edits components in real time.
    - "component.tsx": The primary reusable component.
-   - "demo.tsx": The isolated preview showcase that renders the component in the canvas.
+   - "default.tsx": The isolated preview showcase that renders the component in the canvas (importing from "../components/ui/component").
    - "index.css": Any custom CSS / Tailwind directives.
 2. The developer renders the component live in the preview canvas to see how it works and feels.
 3. The developer will copy the final code from "component.tsx" directly into their application pages (e.g., "page.tsx") or publish it. Therefore, "component.tsx" MUST be 100% self-contained, typed, compilable, and ready to paste into any Next.js page.
@@ -75,13 +76,75 @@ STRICT BEHAVIORAL PROTOCOLS:
   * Export a single main component with an explicit TypeScript Props interface extending standard HTML attributes (e.g., 'export interface ComponentProps extends React.HTMLAttributes<HTMLDivElement>').
   * Merge custom className using 'cn(...)' from '@/lib/utils'.
   * Avoid hardcoded absolute pixel widths where responsive layout is expected; prefer flex, grid, and Tailwind responsive utilities.
-  * "demo.tsx" must have default export 'export default function Demo() { ... }' demonstrating realistic, beautiful mock content.
+  * "default.tsx" must have default export 'export default function Demo() { ... }' demonstrating realistic, beautiful mock content.
 
 CRITICAL CODE MODIFICATION RULES:
 - Never return partial code, pseudocode, or '// rest of code stays the same' comments.
 - Always provide the COMPLETE, compilable, valid TypeScript code for any modified file in the "changedFiles" object.
 
 ${COPILOT_PREMIUM_DESIGN_MANIFESTO}`;
+
+function normalizeGeminiModel(requestedModel?: string): string {
+  if (requestedModel && VALID_MODELS.includes(requestedModel)) {
+    return requestedModel;
+  }
+  const lower = (requestedModel || "").toLowerCase();
+  if (lower.includes("argon") || lower.includes("pro")) {
+    return "gemini-4-argon";
+  }
+  if (lower.includes("lite")) {
+    return "gemini-3.1-flash-lite";
+  }
+  return "gemini-4-hydrogen";
+}
+
+function parseJsonResponseSafely(textOutput: string): {
+  reasoningSteps?: Array<{ title: string; description?: string; detail?: string }>;
+  reasoningSummary?: string;
+  message?: string;
+  complianceScore?: number;
+  issuesFound?: string[];
+  issuesFixed?: string[];
+  changedFiles?: Partial<Record<string, string | null>>;
+} {
+  const trimmed = (textOutput || "").trim();
+  if (!trimmed) {
+    return {
+      message: "I processed your request, but received an empty response. Please try again.",
+      changedFiles: {},
+    };
+  }
+
+  try {
+    return JSON.parse(trimmed);
+  } catch {
+    // Strip markdown fences if wrapped
+    const fenceMatch = trimmed.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
+    if (fenceMatch?.[1]) {
+      try {
+        return JSON.parse(fenceMatch[1].trim());
+      } catch {
+        // continue
+      }
+    }
+
+    // Attempt to extract first top-level JSON object
+    const firstBrace = trimmed.indexOf("{");
+    const lastBrace = trimmed.lastIndexOf("}");
+    if (firstBrace !== -1 && lastBrace > firstBrace) {
+      try {
+        return JSON.parse(trimmed.slice(firstBrace, lastBrace + 1));
+      } catch {
+        // continue
+      }
+    }
+
+    return {
+      message: trimmed,
+      changedFiles: {},
+    };
+  }
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -90,35 +153,29 @@ export async function POST(req: NextRequest) {
       prompt,
       action = "chat",
       componentCode = "",
+      defaultCode,
       demoCode = "",
       cssCode = "",
       dependencies = [],
-      model: requestedModel = "gemini-3.8-flash",
-      role: requestedRole = "architect",
+      model: requestedModel = "gemini-4-hydrogen",
+      role: requestedRole = "copilot",
       history = [],
       images = [],
       codeSnippets = [],
     } = body;
 
-    // Sanitize and validate model choice
-    let activeModel = "gemini-3.8-flash";
-    if (requestedModel && VALID_MODELS.includes(requestedModel)) {
-      activeModel = requestedModel;
-    } else if (requestedModel?.includes("argon") || requestedModel?.includes("pro")) {
-      activeModel = "gemini-4-argon";
-    } else if (requestedModel?.includes("lite")) {
-      activeModel = "gemini-3.1-flash-lite";
-    }
+    const activeDemoCode = defaultCode ?? demoCode ?? "";
+    const activeModel = normalizeGeminiModel(requestedModel);
 
     // Run static guideline audit first (instant zero-latency baseline)
     const staticAudit = auditComponentGuidelines(
       componentCode,
-      demoCode,
+      activeDemoCode,
       cssCode,
       dependencies
     );
 
-    const apiKey = (body.apiKey || process.env.GEMINI_API_KEY)?.trim();
+    const apiKey = (process.env.GEMINI_API_KEY || body.apiKey)?.trim();
 
     // If server has no API key configured, return static analysis fallback
     if (!apiKey) {
@@ -146,7 +203,7 @@ export async function POST(req: NextRequest) {
             detail: `${staticAudit.score}/100`,
           },
         ],
-        reasoningSummary: `Executed static guideline verification across component.tsx, demo.tsx, and index.css (score: ${staticAudit.score}/100).`,
+        reasoningSummary: `Executed static guideline verification across component.tsx, default.tsx, and index.css (score: ${staticAudit.score}/100).`,
         message:
           action === "audit"
             ? `Static 21st.dev compliance score: ${staticAudit.score}/100. ${
@@ -154,7 +211,7 @@ export async function POST(req: NextRequest) {
                   ? `Identified ${issueTexts.length} issue(s) to address.`
                   : "All foundational 21st.dev guidelines satisfied!"
               }`
-            : "Gemini AI is ready. Ensure GEMINI_API_KEY is configured in your server environment to execute multi-turn conversational modifications.",
+            : "Gemini AI is not configured yet on the server. Ensure GEMINI_API_KEY is set in your environment secrets to run live AI edits.",
         issuesFound: issueTexts,
         issuesFixed: [],
         changedFiles: {},
@@ -178,7 +235,7 @@ CONVERSATION & RESPONSE INSTRUCTIONS:
 - Provide insightful, friendly, and technically precise feedback.
 - Document your internal chain-of-thought in "reasoningSteps" (3 to 4 sequential thoughts where each step has a short "title", a natural 1-sentence "description" of the work/analysis done in that step, and an optional "detail" like a filename) and a 1-sentence "reasoningSummary".
 - MULTIMODAL CAPABILITY: If image attachments are provided (mockups, wireframes, screenshots), carefully analyze their visual hierarchy, typography, colors, padding, alignment, and motion cues, and implement matching production React + Tailwind code.
-- CODE ATTACHMENT CAPABILITY: If external code snippets or references are attached, analyze their logic, interfaces, or styles and integrate them into component.tsx / demo.tsx / index.css.
+- CODE ATTACHMENT CAPABILITY: If external code snippets or references are attached, analyze their logic, interfaces, or styles and integrate them into component.tsx / default.tsx / index.css.
 - If the user asks for code changes, enhancements, fixes, or styling, you MUST supply the COMPLETE updated file code in the "changedFiles" object.
 - If the user asks a general question, advice, or brainstorming without requiring code changes, leave "changedFiles" as an empty object {}.
 
@@ -198,13 +255,13 @@ JSON Output Format (Strictly enforce valid JSON):
   "issuesFixed": ["Short descriptions of issues addressed, if any"],
   "changedFiles": {
     "component.tsx": "<COMPLETE compilable code if changed, or null>",
-    "demo.tsx": "<COMPLETE compilable code if changed, or null>",
+    "default.tsx": "<COMPLETE compilable code if changed, or null>",
     "index.css": "<COMPLETE compilable code if changed, or null>"
   }
 }
 CRITICAL: Never output partial code with placeholders like '// rest of code'. Changed files must be complete and compilable.`;
 
-    // Filter and build multi-turn contents from conversation history
+    // Filter and build multi-turn contents enforcing strict user -> model alternation
     const contents: Array<{
       role: "user" | "model";
       parts: Array<
@@ -213,29 +270,43 @@ CRITICAL: Never output partial code with placeholders like '// rest of code'. Ch
       >;
     }> = [];
 
-    // Add prior valid conversation turns (limiting to last 10 turns for token efficiency)
     const recentHistory = history.slice(-10);
     for (const item of recentHistory) {
-      if (item.role === "system") continue;
-      const turnRole = item.role === "assistant" || item.role === "model" ? "model" : "user";
-      if (item.content && item.content.trim()) {
+      if (item.role === "system" || !item.content || !item.content.trim()) continue;
+      const turnRole: "user" | "model" =
+        item.role === "assistant" || item.role === "model" ? "model" : "user";
+      const text = item.content.trim();
+
+      // Gemini requires multi-turn history to start with a user message
+      if (contents.length === 0 && turnRole === "model") {
+        continue;
+      }
+
+      const lastTurn = contents[contents.length - 1];
+      if (lastTurn && lastTurn.role === turnRole) {
+        lastTurn.parts.push({ text });
+      } else {
         contents.push({
           role: turnRole,
-          parts: [{ text: item.content.trim() }],
+          parts: [{ text }],
         });
       }
     }
 
     // Construct the current turn message with live editor context
-    const userPrompt = prompt || (action === "autofix" ? "Auto-fix any guideline violations" : "Audit this component");
+    const userPrompt =
+      prompt ||
+      (action === "autofix"
+        ? "Auto-fix any guideline violations"
+        : "Audit this component");
     let currentTurnText = `Current Editor Context:
 Active Dependencies: ${JSON.stringify(dependencies)}
 
 --- component.tsx ---
 ${componentCode}
 
---- demo.tsx ---
-${demoCode}
+--- default.tsx ---
+${activeDemoCode}
 
 --- index.css ---
 ${cssCode}
@@ -279,10 +350,16 @@ ${userPrompt}`;
 
     userParts.push({ text: currentTurnText });
 
-    contents.push({
-      role: "user",
-      parts: userParts,
-    });
+    // If the last history item was already "user", append current parts to it to preserve alternation
+    const lastHistoryTurn = contents[contents.length - 1];
+    if (lastHistoryTurn && lastHistoryTurn.role === "user") {
+      lastHistoryTurn.parts.push(...userParts);
+    } else {
+      contents.push({
+        role: "user",
+        parts: userParts,
+      });
+    }
 
     // Invoke Gemini multi-turn generation
     const response = await ai.models.generateContent({
@@ -295,40 +372,30 @@ ${userPrompt}`;
     });
 
     const textOutput = response.text || "";
-    let parsedResult: {
-      reasoningSteps?: Array<{ title: string; description?: string; detail?: string }>;
-      reasoningSummary?: string;
-      message?: string;
-      complianceScore?: number;
-      issuesFound?: string[];
-      issuesFixed?: string[];
-      changedFiles?: Partial<Record<string, string | null>>;
-    };
+    const parsedResult = parseJsonResponseSafely(textOutput);
 
-    try {
-      parsedResult = JSON.parse(textOutput);
-    } catch {
-      // Fallback in case of markdown codeblock wrapping
-      const cleaned = textOutput.replace(/```(?:json)?\s*([\s\S]*?)\s*```/, "$1").trim();
-      parsedResult = JSON.parse(cleaned);
-    }
-
-    // Filter changedFiles so only non-null, non-empty modified files are returned
+    // Filter changedFiles so only non-null, non-empty modified files are returned,
+    // normalizing any "demo.tsx" alias to "default.tsx"
     const sanitizedChangedFiles: Partial<Record<string, string>> = {};
     if (parsedResult.changedFiles && typeof parsedResult.changedFiles === "object") {
       const origMap: Record<string, string> = {
         "component.tsx": componentCode,
-        "demo.tsx": demoCode,
+        "default.tsx": activeDemoCode,
+        "demo.tsx": activeDemoCode,
         "index.css": cssCode,
       };
-      for (const [k, val] of Object.entries(parsedResult.changedFiles)) {
+      for (const [rawKey, val] of Object.entries(parsedResult.changedFiles)) {
+        const targetKey = rawKey === "demo.tsx" ? "default.tsx" : rawKey;
         if (
           typeof val === "string" &&
           val.trim().length > 0 &&
           val !== "null" &&
-          val.trim() !== (origMap[k] || "").trim()
+          val.trim() !== (origMap[rawKey] || "").trim()
         ) {
-          sanitizedChangedFiles[k] = val;
+          if (targetKey === "default.tsx" && sanitizedChangedFiles["default.tsx"]) {
+            continue;
+          }
+          sanitizedChangedFiles[targetKey] = val;
         }
       }
     }
@@ -383,18 +450,33 @@ ${userPrompt}`;
     const isApiKeyError =
       message.includes("API key not valid") ||
       message.includes("API_KEY_INVALID") ||
+      message.includes("PERMISSION_DENIED") ||
       message.includes("unauthenticated") ||
       message.includes("401");
+    const isQuotaError =
+      message.includes("RESOURCE_EXHAUSTED") || message.includes("429");
+    const isNotFoundError =
+      message.includes("NOT_FOUND") || message.includes("404");
+
+    let userFriendlyError = `AI Assistant Error: ${message}`;
+    if (isApiKeyError) {
+      userFriendlyError =
+        "Invalid or unauthorized Gemini API Key. Please check GEMINI_API_KEY in Settings > Secrets.";
+    } else if (isQuotaError) {
+      userFriendlyError =
+        "Gemini API rate limit or quota exceeded (429). Try switching to Gemini 4 Hydrogen or Gemini 3.1 Flash Lite, or check your billing quota.";
+    } else if (isNotFoundError) {
+      userFriendlyError =
+        "Selected Gemini model was not found (404). Please try Gemini 4 Hydrogen or Gemini 3.1 Flash Lite.";
+    }
 
     return NextResponse.json(
       {
         success: false,
-        error: isApiKeyError
-          ? "Invalid Gemini API Key in server environment."
-          : `AI Assistant Error: ${message}`,
+        error: userFriendlyError,
         isApiKeyError,
       },
-      { status: isApiKeyError ? 401 : 500 }
+      { status: isApiKeyError ? 401 : isQuotaError ? 429 : isNotFoundError ? 404 : 500 }
     );
   }
 }

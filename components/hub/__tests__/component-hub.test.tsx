@@ -230,7 +230,7 @@ describe("ComponentCard & ComponentHub", () => {
       dependencies: ["framer-motion"],
     };
 
-    it("should render component title, category badge, description, and counters", () => {
+    it("should render pure canvas stage with hover-only title and action buttons without static metadata clutter", () => {
       const html = renderToString(
         <ComponentCard
           component={mockComponent}
@@ -241,14 +241,12 @@ describe("ComponentCard & ComponentHub", () => {
       );
 
       expect(html).toContain("Interactive Hologram Card");
-      expect(html).toContain("Cards");
-      expect(html).toContain("A 3D holographic card with multi-layer depth.");
-      expect(html).toContain("2 Variants");
-      expect(html).toContain("3 Checkpoints");
       expect(html).toContain("Preview");
       expect(html).toContain("Studio");
+      expect(html).not.toContain("2 Variants");
+      expect(html).not.toContain("3 Checkpoints");
       expect(html).toContain(
-        "relative flex flex-col justify-between overflow-hidden bg-card p-4 text-card-foreground transition-colors duration-200 hover:bg-muted/10 font-sans h-full group"
+        "relative flex flex-col justify-between overflow-hidden bg-card p-3 sm:p-4 text-card-foreground transition-colors duration-200 hover:bg-muted/10 font-sans h-full group"
       );
     });
 
@@ -261,14 +259,12 @@ describe("ComponentCard & ComponentHub", () => {
       expect(html).toContain("<img");
       expect(html).toContain("data:image/svg+xml;utf8");
       expect(html).toContain('alt="Interactive Hologram Card"');
-      expect(html).toContain("Quick Preview");
       expect(html).toContain("group-hover:scale-105");
     });
 
     it("should render fallback placeholder when previewImage is missing", () => {
       const html = renderToString(<ComponentCard component={mockComponent} />);
       expect(html).not.toContain("<img");
-      expect(html).toContain("Quick Preview");
       expect(html).toContain("Preview canvas");
     });
 
@@ -276,7 +272,7 @@ describe("ComponentCard & ComponentHub", () => {
       const html = renderToString(<ComponentCard component={mockComponent} />);
       expect(html).toContain('role="button"');
       expect(html).toContain('aria-label="Preview Interactive Hologram Card"');
-      expect(html).toContain("aspect-[16/10]");
+      expect(html).toContain("aspect-[4/3]");
     });
 
     it("should invoke onPreview callback when Preview button is clicked", () => {
@@ -403,17 +399,14 @@ describe("ComponentCard & ComponentHub", () => {
       expect(useStudioStore.getState().isCreateComponentDialogOpen).toBe(true);
     });
 
-    it("should render Work History & Metrics Bar with 4 stats cards", () => {
+    it("should render 21st.dev-style Newest and Popular showcase sections without KPI card clutter", () => {
       const html = renderToString(<ComponentHub />);
 
-      expect(html).toContain("Total Components");
-      expect(html).toContain("Custom Created");
-      expect(html).toContain("Saved Checkpoints");
-      expect(html).toContain("Recent Activity");
-
-      // Verify stats values
-      const totalCount = Object.keys(useStudioStore.getState().userComponents).length;
-      expect(html).toContain(String(totalCount));
+      expect(html).toContain("Newest");
+      expect(html).toContain("Popular");
+      expect(html).toContain("View all");
+      expect(html).not.toContain("Total Components");
+      expect(html).not.toContain("Saved Checkpoints");
     });
 
     it("should render Search & Category Filter toolbar with counts", () => {
@@ -421,6 +414,8 @@ describe("ComponentCard & ComponentHub", () => {
 
       expect(html).toContain("Search components by name or description...");
       expect(html).toContain("All");
+      expect(html).toContain("Newest");
+      expect(html).toContain("Popular");
       expect(html).toContain("Recent Work");
       expect(html).toContain("Heroes");
       expect(html).toContain("Cards");

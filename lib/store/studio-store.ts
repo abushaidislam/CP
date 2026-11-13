@@ -75,11 +75,13 @@ export interface AiChatMessage {
   };
   changedFiles?: Partial<{
     "component.tsx": string;
+    "default.tsx": string;
     "demo.tsx": string;
     "index.css": string;
   }>;
   previousFiles?: Partial<{
     "component.tsx": string;
+    "default.tsx": string;
     "demo.tsx": string;
     "index.css": string;
   }>;
@@ -264,6 +266,7 @@ export interface StudioState {
     id: string,
     changedFiles: Partial<{
       "component.tsx": string;
+      "default.tsx": string;
       "demo.tsx": string;
       "index.css": string;
     }>
@@ -274,6 +277,7 @@ export interface StudioState {
   setAiThinking: (thinking: boolean) => void;
   applyAiChanges: (files: Partial<{
     "component.tsx": string;
+    "default.tsx": string;
     "demo.tsx": string;
     "index.css": string;
   }>) => void;
@@ -736,7 +740,8 @@ export function createInitialUserComponents(): Record<string, UserComponent> {
       updatedAt: 1700000000000,
       files: {
         "component.tsx": tmpl.files["component.tsx"],
-        "demo.tsx": tmpl.files["demo.tsx"],
+        "default.tsx": tmpl.files["default.tsx"] ?? tmpl.files["demo.tsx"] ?? "",
+        "demo.tsx": tmpl.files["demo.tsx"] ?? tmpl.files["default.tsx"] ?? "",
         "index.css": tmpl.files["index.css"],
       },
       dependencies: [...tmpl.dependencies],
@@ -757,7 +762,8 @@ const createDefaultVariant = (
   updatedAt: 1700000000000,
   files: {
     "component.tsx": files["component.tsx"],
-    "demo.tsx": files["demo.tsx"],
+    "default.tsx": files["default.tsx"] ?? files["demo.tsx"] ?? "",
+    "demo.tsx": files["demo.tsx"] ?? files["default.tsx"] ?? "",
     "index.css": files["index.css"],
   },
   dependencies: [...dependencies],
@@ -816,9 +822,39 @@ export function studioPersistMerge(
 ): StudioState {
   const persisted = (persistedState || {}) as Partial<StudioState>;
   const initialComponents = createInitialUserComponents();
+
+  // Migrate legacy/invalid persisted model IDs to valid Gemini models
+  const VALID_AI_MODELS = new Set([
+    "gemini-4-hydrogen",
+    "gemini-4-argon",
+    "gemini-3.1-flash-lite",
+  ]);
+  const persistedModel =
+    persisted.aiModel && VALID_AI_MODELS.has(persisted.aiModel)
+      ? persisted.aiModel
+      : "gemini-4-hydrogen";
+
+  const mergedFiles: StudioFiles = {
+    ...currentState.files,
+    ...(persisted.files || {}),
+    "default.tsx":
+      persisted.files?.["default.tsx"] ??
+      persisted.files?.["demo.tsx"] ??
+      currentState.files["default.tsx"] ??
+      currentState.files["demo.tsx"] ??
+      "",
+    "demo.tsx":
+      persisted.files?.["demo.tsx"] ??
+      persisted.files?.["default.tsx"] ??
+      currentState.files["demo.tsx"] ??
+      "",
+  };
+
   return {
     ...currentState,
     ...persisted,
+    aiModel: persistedModel,
+    files: mergedFiles,
     userComponents: {
       ...initialComponents,
       ...(persisted.userComponents || {}),
@@ -905,17 +941,22 @@ export const useStudioStore = create<StudioState>()(
       isAiPanelOpen: false,
       aiPanelWidth: 380,
       geminiApiKey: "",
-      aiModel: "gemini-3.8-flash",
+      aiModel: "gemini-4-hydrogen",
       aiRole: "copilot",
       aiChatMessages: [],
       isAiThinking: false,
 
       updateFile: (name, content) =>
         set((state) => {
-          const nextFiles = {
+          const nextFiles: StudioFiles = {
             ...state.files,
             [name]: content,
           };
+          if (name === "default.tsx") {
+            nextFiles["demo.tsx"] = content;
+          } else if (name === "demo.tsx") {
+            nextFiles["default.tsx"] = content;
+          }
           const sync = syncVariantWithWorking(
             state.variantsByTemplate,
             state.activeVariantByTemplate,
@@ -1927,18 +1968,23 @@ export const useStudioStore = create<StudioState>()(
         set((state) => {
           const previousSnapshot: Partial<{
             "component.tsx": string;
+            "default.tsx": string;
             "demo.tsx": string;
             "index.css": string;
           }> = {};
-          const nextFiles = { ...state.files };
+          const nextFiles: StudioFiles = { ...state.files };
 
           if (changedFiles["component.tsx"] !== undefined && changedFiles["component.tsx"] !== null) {
             previousSnapshot["component.tsx"] = state.files["component.tsx"];
             nextFiles["component.tsx"] = changedFiles["component.tsx"];
           }
-          if (changedFiles["demo.tsx"] !== undefined && changedFiles["demo.tsx"] !== null) {
-            previousSnapshot["demo.tsx"] = state.files["demo.tsx"];
-            nextFiles["demo.tsx"] = changedFiles["demo.tsx"];
+          const nextDemoCode = changedFiles["default.tsx"] ?? changedFiles["demo.tsx"];
+          if (nextDemoCode !== undefined && nextDemoCode !== null) {
+            const prevDemoCode = state.files["default.tsx"] ?? state.files["demo.tsx"];
+            previousSnapshot["default.tsx"] = prevDemoCode;
+            previousSnapshot["demo.tsx"] = prevDemoCode;
+            nextFiles["default.tsx"] = nextDemoCode;
+            nextFiles["demo.tsx"] = nextDemoCode;
           }
           if (changedFiles["index.css"] !== undefined && changedFiles["index.css"] !== null) {
             previousSnapshot["index.css"] = state.files["index.css"];
@@ -1953,8 +1999,21 @@ export const useStudioStore = create<StudioState>()(
             state.dependencies
           );
 
+          const currentComp = state.userComponents?.[state.currentTemplateId];
+          const updatedUserComponents = currentComp
+            ? {
+                ...state.userComponents,
+                [state.currentTemplateId]: {
+                  ...currentComp,
+                  files: nextFiles,
+                  updatedAt: Date.now(),
+                },
+              }
+            : state.userComponents;
+
           return {
             files: nextFiles,
+            userComponents: updatedUserComponents,
             ...sync,
             aiChatMessages: state.aiChatMessages.map((m) =>
               m.id === id
@@ -1991,12 +2050,15 @@ export const useStudioStore = create<StudioState>()(
             };
           }
 
-          const nextFiles = { ...state.files };
+          const nextFiles: StudioFiles = { ...state.files };
           if (targetMsg.previousFiles["component.tsx"] !== undefined) {
             nextFiles["component.tsx"] = targetMsg.previousFiles["component.tsx"];
           }
-          if (targetMsg.previousFiles["demo.tsx"] !== undefined) {
-            nextFiles["demo.tsx"] = targetMsg.previousFiles["demo.tsx"];
+          const prevDemoCode =
+            targetMsg.previousFiles["default.tsx"] ?? targetMsg.previousFiles["demo.tsx"];
+          if (prevDemoCode !== undefined) {
+            nextFiles["default.tsx"] = prevDemoCode;
+            nextFiles["demo.tsx"] = prevDemoCode;
           }
           if (targetMsg.previousFiles["index.css"] !== undefined) {
             nextFiles["index.css"] = targetMsg.previousFiles["index.css"];
@@ -2010,8 +2072,21 @@ export const useStudioStore = create<StudioState>()(
             state.dependencies
           );
 
+          const currentComp = state.userComponents?.[state.currentTemplateId];
+          const updatedUserComponents = currentComp
+            ? {
+                ...state.userComponents,
+                [state.currentTemplateId]: {
+                  ...currentComp,
+                  files: nextFiles,
+                  updatedAt: Date.now(),
+                },
+              }
+            : state.userComponents;
+
           return {
             files: nextFiles,
+            userComponents: updatedUserComponents,
             ...sync,
             aiChatMessages: state.aiChatMessages.map((m) =>
               m.id === id
@@ -2030,12 +2105,14 @@ export const useStudioStore = create<StudioState>()(
 
       applyAiChanges: (changedFiles) =>
         set((state) => {
-          const nextFiles = { ...state.files };
+          const nextFiles: StudioFiles = { ...state.files };
           if (changedFiles["component.tsx"] !== undefined && changedFiles["component.tsx"] !== null) {
             nextFiles["component.tsx"] = changedFiles["component.tsx"];
           }
-          if (changedFiles["demo.tsx"] !== undefined && changedFiles["demo.tsx"] !== null) {
-            nextFiles["demo.tsx"] = changedFiles["demo.tsx"];
+          const nextDemoCode = changedFiles["default.tsx"] ?? changedFiles["demo.tsx"];
+          if (nextDemoCode !== undefined && nextDemoCode !== null) {
+            nextFiles["default.tsx"] = nextDemoCode;
+            nextFiles["demo.tsx"] = nextDemoCode;
           }
           if (changedFiles["index.css"] !== undefined && changedFiles["index.css"] !== null) {
             nextFiles["index.css"] = changedFiles["index.css"];

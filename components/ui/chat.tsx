@@ -88,7 +88,7 @@ MessageFooter.displayName = "MessageFooter";
 
 // Bubble Surface Primitive - Sleek, refined, non-cheap
 const bubbleVariants = cva(
-  "relative text-xs transition-colors duration-150 leading-relaxed font-sans",
+  "relative text-xs transition-colors duration-150 leading-relaxed font-sans min-w-0 max-w-full",
   {
     variants: {
       variant: {

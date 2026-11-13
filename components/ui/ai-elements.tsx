@@ -990,13 +990,13 @@ export function AttachCodeDialog({
                     variant="ghost"
                     size="sm"
                     onClick={() => {
-                      setTitle("demo.tsx");
+                      setTitle("default.tsx");
                       setLanguage("tsx");
                       setCode(currentDemoCode);
                     }}
                     className="h-5 px-1.5 text-[10px] text-muted-foreground hover:text-foreground font-sans"
                   >
-                    Use demo.tsx
+                    Use default.tsx
                   </Button>
                 )}
                 {currentCssCode && (

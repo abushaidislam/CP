@@ -12,14 +12,11 @@ import { cn } from "@/lib/utils";
 import {
   Plus,
   Search,
-  Layers,
-  Sparkles,
-  Bookmark,
-  Clock,
   Sun,
   Moon,
   FolderSearch,
   RotateCcw,
+  ArrowRight,
 } from "lucide-react";
 
 export interface ComponentHubProps {
@@ -30,6 +27,8 @@ export interface ComponentHubProps {
 
 const CATEGORIES = [
   "All",
+  "Newest",
+  "Popular",
   "Recent Work",
   "Heroes",
   "Cards",
@@ -77,39 +76,43 @@ export function ComponentHub({
     }
   };
 
-  // Metrics calculations
   const allComponents = useMemo(
     () => Object.values(userComponents || {}),
     [userComponents]
   );
-
-  const totalComponentsCount = allComponents.length;
-  const customComponentsCount = useMemo(
-    () => allComponents.filter((c) => !c.isBuiltIn).length,
-    [allComponents]
-  );
-
-  const totalCheckpointsCount = useMemo(() => {
-    return Object.values(variantsByTemplate || {}).reduce((acc, variants) => {
-      return (
-        acc +
-        (variants || []).reduce(
-          (cAcc, v) => cAcc + (v.checkpoints?.length || 0),
-          0
-        )
-      );
-    }, 0);
-  }, [variantsByTemplate]);
 
   const recentCount = useMemo(() => {
     const existingIds = new Set(allComponents.map((c) => c.id));
     return (recentComponentIds || []).filter((id) => existingIds.has(id)).length;
   }, [allComponents, recentComponentIds]);
 
+  // Sorted newest & popular lists
+  const newestComponents = useMemo(
+    () =>
+      [...allComponents].sort(
+        (a, b) => (b.updatedAt || b.createdAt || 0) - (a.updatedAt || a.createdAt || 0)
+      ),
+    [allComponents]
+  );
+
+  const popularComponents = useMemo(() => {
+    return [...allComponents].sort((a, b) => {
+      const aVariants = variantsByTemplate?.[a.id]?.length || 0;
+      const bVariants = variantsByTemplate?.[b.id]?.length || 0;
+      if (bVariants !== aVariants) return bVariants - aVariants;
+      const aRecent = (recentComponentIds || []).includes(a.id) ? 1 : 0;
+      const bRecent = (recentComponentIds || []).includes(b.id) ? 1 : 0;
+      if (bRecent !== aRecent) return bRecent - aRecent;
+      return (a.createdAt || 0) - (b.createdAt || 0);
+    });
+  }, [allComponents, variantsByTemplate, recentComponentIds]);
+
   // Category counts
   const categoryCounts = useMemo(() => {
     const counts: Record<CategoryType, number> = {
       All: allComponents.length,
+      Newest: allComponents.length,
+      Popular: allComponents.length,
       "Recent Work": recentCount,
       Heroes: 0,
       Cards: 0,
@@ -139,10 +142,10 @@ export function ComponentHub({
       list = (recentComponentIds || [])
         .map((id) => compMap[id])
         .filter((c): c is UserComponent => Boolean(c));
-    } else if (selectedCategory === "All") {
-      list = [...allComponents].sort(
-        (a, b) => (b.updatedAt || 0) - (a.updatedAt || 0)
-      );
+    } else if (selectedCategory === "All" || selectedCategory === "Newest") {
+      list = newestComponents;
+    } else if (selectedCategory === "Popular") {
+      list = popularComponents;
     } else if (selectedCategory === "Custom") {
       list = allComponents
         .filter(
@@ -171,7 +174,75 @@ export function ComponentHub({
     }
 
     return list;
-  }, [userComponents, allComponents, recentComponentIds, selectedCategory, searchQuery]);
+  }, [
+    userComponents,
+    allComponents,
+    newestComponents,
+    popularComponents,
+    recentComponentIds,
+    selectedCategory,
+    searchQuery,
+  ]);
+
+  // Curated 21st.dev-style showcase sections when viewing "All" with no active search
+  const showcaseSections = useMemo(() => {
+    const sections: {
+      id: string;
+      title: string;
+      targetCategory: CategoryType;
+      items: UserComponent[];
+    }[] = [];
+
+    if (newestComponents.length > 0) {
+      sections.push({
+        id: "newest",
+        title: "Newest",
+        targetCategory: "Newest",
+        items: newestComponents.slice(0, 4),
+      });
+    }
+
+    if (popularComponents.length > 0) {
+      sections.push({
+        id: "popular",
+        title: "Popular",
+        targetCategory: "Popular",
+        items: popularComponents.slice(0, 4),
+      });
+    }
+
+    const categoryGroupings: { title: string; category: CategoryType }[] = [
+      { title: "Heroes", category: "Heroes" },
+      { title: "Cards", category: "Cards" },
+      { title: "Buttons", category: "Buttons" },
+      { title: "Badges", category: "Badges" },
+      { title: "Custom", category: "Custom" },
+    ];
+
+    for (const group of categoryGroupings) {
+      const groupItems = allComponents.filter((c) => {
+        const cat = c.category?.toLowerCase() || "";
+        if (group.category === "Custom") {
+          return (
+            cat === "custom" ||
+            !["heroes", "cards", "buttons", "badges"].includes(cat)
+          );
+        }
+        return cat === group.category.toLowerCase();
+      });
+
+      if (groupItems.length > 0) {
+        sections.push({
+          id: group.category.toLowerCase(),
+          title: group.title,
+          targetCategory: group.category,
+          items: groupItems,
+        });
+      }
+    }
+
+    return sections;
+  }, [allComponents, newestComponents, popularComponents]);
 
   const handleOpenStudio = (id: string) => {
     loadComponent(id);
@@ -182,6 +253,39 @@ export function ComponentHub({
     loadComponent(newId);
     onNavigateStudio?.(newId);
   };
+
+  const renderCardGrid = (items: UserComponent[]) => (
+    <div className="rounded-xl border border-border/80 overflow-hidden bg-border/50 shadow-xs">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-px bg-border/60">
+        {items.map((component) => {
+          const variants = variantsByTemplate?.[component.id] || [];
+          const variantsCount = variants.length || 1;
+          const checkpointsCount = variants.reduce(
+            (acc, v) => acc + (v.checkpoints?.length || 0),
+            0
+          );
+          const isRecent = (recentComponentIds || []).includes(component.id);
+
+          return (
+            <ComponentCard
+              key={component.id}
+              component={component}
+              variantsCount={variantsCount}
+              checkpointsCount={checkpointsCount}
+              isRecent={isRecent}
+              onPreview={(id) => setQuickPreviewComponentId(id)}
+              onOpenStudio={handleOpenStudio}
+              onDuplicate={(id) => duplicateUserComponent(id)}
+              onDelete={(id) => deleteUserComponent(id)}
+            />
+          );
+        })}
+      </div>
+    </div>
+  );
+
+  const showCuratedSections =
+    selectedCategory === "All" && !searchQuery.trim() && filteredComponents.length > 0;
 
   return (
     <div className="flex flex-col min-h-screen w-full bg-background text-foreground font-sans selection:bg-primary/20 selection:text-foreground">
@@ -232,107 +336,14 @@ export function ComponentHub({
         </div>
       </header>
 
-      {/* Main Content Area */}
-      <main className="flex-1 container mx-auto max-w-7xl px-4 sm:px-6 py-6 space-y-6">
-        {/* Dashboard Title & Eyebrow */}
-        <div>
-          <Badge variant="eyebrow">WORKSPACE DASHBOARD</Badge>
-          <h1 className="text-xl sm:text-2xl font-bold tracking-tight mt-1 text-foreground">
-            Component Work History
-          </h1>
-          <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">
-            Explore built-in templates, saved version checkpoints, and custom design constructs.
-          </p>
-        </div>
-
-        {/* 2. Work History & Metrics Bar (4 Stats Cards) */}
-        <section
-          aria-label="Work history metrics"
-          className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4"
-        >
-          {/* Card 1: Total Components */}
-          <div className="rounded-xl border border-border/70 bg-card p-4 shadow-2xs flex flex-col justify-between transition-colors">
-            <div className="flex items-center justify-between text-muted-foreground">
-              <span className="font-sans text-xs font-medium">Total Components</span>
-              <Layers className="size-4 text-muted-foreground/70" />
-            </div>
-            <div className="mt-2">
-              <div suppressHydrationWarning className="font-sans text-2xl font-bold tracking-tight text-foreground tabular-nums">
-                {totalComponentsCount}
-              </div>
-              <p className="font-sans text-[11px] text-muted-foreground/80 mt-0.5">
-                Templates & custom library
-              </p>
-            </div>
-          </div>
-
-          {/* Card 2: Custom Created */}
-          <div className="rounded-xl border border-border/70 bg-card p-4 shadow-2xs flex flex-col justify-between transition-colors">
-            <div className="flex items-center justify-between text-muted-foreground">
-              <span className="font-sans text-xs font-medium">Custom Created</span>
-              <Sparkles className="size-4 text-primary" />
-            </div>
-            <div className="mt-2">
-              <div suppressHydrationWarning className="font-sans text-2xl font-bold tracking-tight text-foreground tabular-nums">
-                {customComponentsCount}
-              </div>
-              <p className="font-sans text-[11px] text-muted-foreground/80 mt-0.5">
-                Authored components
-              </p>
-            </div>
-          </div>
-
-          {/* Card 3: Saved Checkpoints */}
-          <div className="rounded-xl border border-border/70 bg-card p-4 shadow-2xs flex flex-col justify-between transition-colors">
-            <div className="flex items-center justify-between text-muted-foreground">
-              <span className="font-sans text-xs font-medium">Saved Checkpoints</span>
-              <Bookmark className="size-4 text-amber-500" />
-            </div>
-            <div className="mt-2">
-              <div suppressHydrationWarning className="font-sans text-2xl font-bold tracking-tight text-foreground tabular-nums">
-                {totalCheckpointsCount}
-              </div>
-              <p className="font-sans text-[11px] text-muted-foreground/80 mt-0.5">
-                Across all variant branches
-              </p>
-            </div>
-          </div>
-
-          {/* Card 4: Recent Activity */}
-          <div className="rounded-xl border border-border/70 bg-card p-4 shadow-2xs flex flex-col justify-between transition-colors">
-            <div className="flex items-center justify-between text-muted-foreground">
-              <span className="font-sans text-xs font-medium">Recent Activity</span>
-              <Clock className="size-4 text-sky-500" />
-            </div>
-            <div className="mt-2">
-              <div suppressHydrationWarning className="font-sans text-2xl font-bold tracking-tight text-foreground tabular-nums">
-                {recentCount}
-              </div>
-              <p className="font-sans text-[11px] text-muted-foreground/80 mt-0.5">
-                Recently visited components
-              </p>
-            </div>
-          </div>
-        </section>
-
-        {/* 3. Filter & Search Toolbar */}
+      {/* Main Showcase Area */}
+      <main className="flex-1 container mx-auto max-w-7xl px-4 sm:px-6 py-6 space-y-8">
+        {/* Streamlined Filter & Search Toolbar */}
         <section
           aria-label="Filter and search toolbar"
-          className="flex flex-col lg:flex-row gap-3 items-stretch lg:items-center justify-between pt-2"
+          className="flex flex-col lg:flex-row gap-3 items-stretch lg:items-center justify-between"
         >
-          {/* Search Input with Search Icon */}
-          <div className="relative w-full lg:w-80">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none" />
-            <Input
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              aria-label="Search components by name or description"
-              placeholder="Search components by name or description..."
-              className="pl-9 font-sans text-xs h-9 bg-card"
-            />
-          </div>
-
-          {/* Category Filter Pills */}
+          {/* Category Filter Navigation */}
           <div className="flex items-center gap-1.5 overflow-x-auto pb-1 lg:pb-0 scrollbar-none">
             {CATEGORIES.map((category) => {
               const isActive = selectedCategory === category;
@@ -340,14 +351,14 @@ export function ComponentHub({
               return (
                 <Button
                   key={category}
-                  variant={isActive ? "default" : "outline"}
+                  variant={isActive ? "default" : "ghost"}
                   size="sm"
                   onClick={() => setSelectedCategory(category)}
                   className={cn(
-                    "h-8 rounded-full px-3 text-xs font-sans gap-1.5 transition-all select-none shrink-0",
+                    "h-8 rounded-lg px-3 text-xs font-sans gap-1.5 transition-all select-none shrink-0",
                     isActive
                       ? "bg-primary text-primary-foreground shadow-2xs"
-                      : "text-muted-foreground hover:text-foreground"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
                   )}
                 >
                   <span>{category}</span>
@@ -355,7 +366,7 @@ export function ComponentHub({
                     variant="secondary"
                     suppressHydrationWarning
                     className={cn(
-                      "px-1.5 py-0 text-[10px] font-sans tabular-nums rounded-full",
+                      "px-1.5 py-0 text-[10px] font-sans tabular-nums rounded-md",
                       isActive
                         ? "bg-primary-foreground/20 text-primary-foreground"
                         : "bg-muted text-muted-foreground"
@@ -367,38 +378,65 @@ export function ComponentHub({
               );
             })}
           </div>
+
+          {/* Search Input with Search Icon */}
+          <div className="relative w-full lg:w-72 shrink-0">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none" />
+            <Input
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              aria-label="Search components by name or description"
+              placeholder="Search components by name or description..."
+              className="pl-9 font-sans text-xs h-8 bg-card"
+            />
+          </div>
         </section>
 
-        {/* 4. Component Cards Grid */}
-        <section aria-label="Component cards grid">
+        {/* Component Showcase Sections / Grid */}
+        <section aria-label="Component cards grid" className="space-y-10">
           {filteredComponents.length > 0 ? (
-            <div className="rounded-xl border border-border/80 overflow-hidden bg-border/50 shadow-xs">
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-px bg-border/60">
-                {filteredComponents.map((component) => {
-                  const variants = variantsByTemplate?.[component.id] || [];
-                  const variantsCount = variants.length || 1;
-                  const checkpointsCount = variants.reduce(
-                    (acc, v) => acc + (v.checkpoints?.length || 0),
-                    0
-                  );
-                  const isRecent = (recentComponentIds || []).includes(component.id);
-
-                  return (
-                    <ComponentCard
-                      key={component.id}
-                      component={component}
-                      variantsCount={variantsCount}
-                      checkpointsCount={checkpointsCount}
-                      isRecent={isRecent}
-                      onPreview={(id) => setQuickPreviewComponentId(id)}
-                      onOpenStudio={handleOpenStudio}
-                      onDuplicate={(id) => duplicateUserComponent(id)}
-                      onDelete={(id) => deleteUserComponent(id)}
-                    />
-                  );
-                })}
+            showCuratedSections ? (
+              showcaseSections.map((section) => (
+                <div key={section.id} className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h2 className="font-sans text-base sm:text-lg font-semibold tracking-tight text-foreground">
+                      {section.title}
+                    </h2>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setSelectedCategory(section.targetCategory)}
+                      className="h-7 px-2.5 text-xs font-sans text-muted-foreground hover:text-foreground gap-1.5"
+                    >
+                      <span>View all</span>
+                      <ArrowRight className="size-3.5" />
+                    </Button>
+                  </div>
+                  {renderCardGrid(section.items)}
+                </div>
+              ))
+            ) : (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <h2 className="font-sans text-base sm:text-lg font-semibold tracking-tight text-foreground">
+                    {searchQuery.trim()
+                      ? `Search results (${filteredComponents.length})`
+                      : selectedCategory}
+                  </h2>
+                  {selectedCategory !== "All" && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setSelectedCategory("All")}
+                      className="h-7 px-2.5 text-xs font-sans text-muted-foreground hover:text-foreground gap-1.5"
+                    >
+                      <span>Back to all</span>
+                    </Button>
+                  )}
+                </div>
+                {renderCardGrid(filteredComponents)}
               </div>
-            </div>
+            )
           ) : (
             /* Clean Empty State */
             <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border/80 p-12 text-center my-6 bg-muted/10">
@@ -437,9 +475,10 @@ export function ComponentHub({
         </section>
       </main>
 
-      {/* 5. Modal Integration */}
+      {/* Modal Integration */}
       <CreateComponentDialog onCreated={handleCreated} />
       <QuickPreviewModal onOpenStudio={handleOpenStudio} />
     </div>
   );
 }
+
