@@ -144,6 +144,13 @@ export function RepoSyncModal() {
     }
   }, [isOpen, hydrateFromProjectRepo]);
 
+  useEffect(() => {
+    if (lastRepoSyncError && /github/i.test(lastRepoSyncError)) {
+      setShowAdvancedGit(true);
+      setPushToGithub(true);
+    }
+  }, [lastRepoSyncError]);
+
   const compCode = files["component.tsx"] || "";
   const demoCode = files["default.tsx"] || files["demo.tsx"] || "";
   const cssCode =

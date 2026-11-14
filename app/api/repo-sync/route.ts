@@ -155,6 +155,21 @@ async function tryLocalGitCommit(
   }
 }
 
+function normalizeGithubRepoInput(raw: string): string {
+  const cleaned = raw
+    .trim()
+    .replace(/^https?:\/\/(www\.)?github\.com\//i, "")
+    .replace(/^github\.com\//i, "")
+    .replace(/\.git$/i, "")
+    .replace(/^\/+|\/+$/g, "");
+
+  const parts = cleaned.split("/").filter(Boolean);
+  if (parts.length >= 2) {
+    return `${parts[0]}/${parts[1]}`;
+  }
+  return cleaned;
+}
+
 async function pushFilesToGithubRestApi(params: {
   repo: string;
   branch: string;
@@ -171,22 +186,19 @@ async function pushFilesToGithubRestApi(params: {
   commitUrl?: string;
   error?: string;
 }> {
-  const cleanRepo = params.repo
-    .trim()
-    .replace(/^https?:\/\/github\.com\//i, "")
-    .replace(/\.git$/i, "")
-    .replace(/^\/+|\/+$/g, "");
+  let cleanRepo = normalizeGithubRepoInput(params.repo);
+  const rawToken = params.token.trim();
 
-  if (!cleanRepo || !cleanRepo.includes("/")) {
+  if (!rawToken) {
     return {
       pushed: false,
-      error: "GitHub repository must be in 'owner/repo' format.",
+      error:
+        "GitHub Personal Access Token is required to push to GitHub. Configure it under 'Direct Remote GitHub Push'.",
     };
   }
 
-  const branch = params.branch.trim() || "main";
   const headers: Record<string, string> = {
-    Authorization: `Bearer ${params.token.trim()}`,
+    Authorization: `Bearer ${rawToken}`,
     Accept: "application/vnd.github+json",
     "Content-Type": "application/json",
     "X-GitHub-Api-Version": "2022-11-28",
@@ -194,17 +206,153 @@ async function pushFilesToGithubRestApi(params: {
   };
 
   try {
+    // If the user only typed a repository name without 'owner/', resolve their GitHub username from the token
+    if (cleanRepo && !cleanRepo.includes("/")) {
+      const userRes = await fetch("https://api.github.com/user", { headers });
+      if (userRes.ok) {
+        const userData = (await userRes.json()) as { login?: string };
+        if (userData.login) {
+          cleanRepo = `${userData.login}/${cleanRepo}`;
+        }
+      }
+    }
+
+    if (!cleanRepo || !cleanRepo.includes("/")) {
+      return {
+        pushed: false,
+        error:
+          "GitHub repository must be in 'owner/repo' format (e.g. 'username/my-components').",
+      };
+    }
+
+    let branch = params.branch.trim() || "main";
+
+    // 0. Inspect repository metadata & verify permissions / default branch
+    let repoRes = await fetch(`https://api.github.com/repos/${cleanRepo}`, {
+      headers,
+    });
+
+    if (repoRes.status === 401) {
+      return {
+        pushed: false,
+        error:
+          "GitHub authentication failed (401 Unauthorized). Please check that your Personal Access Token is valid and not expired.",
+      };
+    }
+
+    // If repository returns 404, check if the authenticated user owns the namespace and try auto-creating the repo,
+    // or return a clear explanation about token permissions / repo name.
+    if (repoRes.status === 404) {
+      const [repoOwner, repoName] = cleanRepo.split("/");
+      const userRes = await fetch("https://api.github.com/user", { headers });
+      const userData = userRes.ok
+        ? ((await userRes.json()) as { login?: string })
+        : null;
+
+      if (
+        userData?.login &&
+        userData.login.toLowerCase() === repoOwner.toLowerCase()
+      ) {
+        // Try auto-creating the repository if the token has permission
+        const createRepoRes = await fetch("https://api.github.com/user/repos", {
+          method: "POST",
+          headers,
+          body: JSON.stringify({
+            name: repoName,
+            description: "Component Studio Registry",
+            private: false,
+            auto_init: true,
+          }),
+        });
+        if (createRepoRes.ok) {
+          repoRes = await fetch(`https://api.github.com/repos/${cleanRepo}`, {
+            headers,
+          });
+        }
+      }
+
+      if (!repoRes.ok) {
+        return {
+          pushed: false,
+          error: `GitHub repository '${cleanRepo}' was not found (404)${
+            userData?.login ? ` for token user '@${userData.login}'` : ""
+          }. Please verify: (1) The repository '${cleanRepo}' exists on GitHub, and (2) Your Personal Access Token has 'repo' scope (Classic token) or 'Contents: Read and write' permission for '${cleanRepo}' (Fine-grained token).`,
+        };
+      }
+    }
+
+    const repoData = repoRes.ok
+      ? ((await repoRes.json()) as {
+          default_branch?: string;
+          permissions?: { push?: boolean };
+        })
+      : null;
+
+    if (repoData?.permissions && repoData.permissions.push === false) {
+      return {
+        pushed: false,
+        error: `Your GitHub token has read-only access to '${cleanRepo}'. Please grant 'repo' scope (Classic token) or 'Contents: Read and write' permission (Fine-grained token).`,
+      };
+    }
+
     // 1. Get reference for target branch
-    const refRes = await fetch(
+    let refRes = await fetch(
       `https://api.github.com/repos/${cleanRepo}/git/ref/heads/${encodeURIComponent(branch)}`,
       { headers }
     );
+
+    // Fallback A: If requested branch (e.g. 'main') was not found, check the repository's default_branch (e.g. 'master')
+    if (
+      !refRes.ok &&
+      repoData?.default_branch &&
+      repoData.default_branch !== branch
+    ) {
+      const defaultBranchRes = await fetch(
+        `https://api.github.com/repos/${cleanRepo}/git/ref/heads/${encodeURIComponent(
+          repoData.default_branch
+        )}`,
+        { headers }
+      );
+      if (defaultBranchRes.ok) {
+        branch = repoData.default_branch;
+        refRes = defaultBranchRes;
+      }
+    }
+
+    // Fallback B: If the repository is completely empty (0 commits -> 404 or 409 on git/ref/heads),
+    // bootstrap the initial commit using the Contents API so the branch and Git tree exist!
+    if (refRes.status === 404 || refRes.status === 409) {
+      const readmeInitContent = Buffer.from(
+        `# Component Studio Registry\n\nSynced from Component Studio into \`registry/components/\`.\n`,
+        "utf-8"
+      ).toString("base64");
+
+      const initRes = await fetch(
+        `https://api.github.com/repos/${cleanRepo}/contents/registry/README.md`,
+        {
+          method: "PUT",
+          headers,
+          body: JSON.stringify({
+            message: "chore(registry): initialize Component Studio registry",
+            content: readmeInitContent,
+            branch,
+          }),
+        }
+      );
+
+      if (initRes.ok) {
+        refRes = await fetch(
+          `https://api.github.com/repos/${cleanRepo}/git/ref/heads/${encodeURIComponent(branch)}`,
+          { headers }
+        );
+      }
+    }
 
     if (!refRes.ok) {
       const errBody = await refRes.text();
       return {
         pushed: false,
-        error: `GitHub branch '${branch}' lookup failed (${refRes.status}): ${errBody.slice(0, 180)}`,
+        error: `GitHub branch '${branch}' in '${cleanRepo}' lookup failed (${refRes.status}): ${errBody.slice(0, 180)}`,
       };
     }
 
@@ -241,7 +389,7 @@ async function pushFilesToGithubRestApi(params: {
       };
     }
 
-    // 3. Create a new Git tree with all component files (creating base64 blobs for binary files)
+    // 3. Create a new Git tree with all component files (uploading base64 blobs in parallel batches of 6)
     const treeEntries: Array<{
       path: string;
       mode: "100644";
@@ -250,38 +398,57 @@ async function pushFilesToGithubRestApi(params: {
       sha?: string;
     }> = [];
 
-    for (const file of params.filesToPush) {
-      const cleanPath = file.path.replace(/^\/+/, "");
-      if (file.encoding === "base64") {
-        const blobRes = await fetch(
-          `https://api.github.com/repos/${cleanRepo}/git/blobs`,
-          {
-            method: "POST",
-            headers,
-            body: JSON.stringify({
-              content: file.content,
-              encoding: "base64",
-            }),
+    const textFiles = params.filesToPush.filter((f) => f.encoding !== "base64");
+    const binaryFiles = params.filesToPush.filter(
+      (f) => f.encoding === "base64"
+    );
+
+    for (const file of textFiles) {
+      treeEntries.push({
+        path: file.path.replace(/^\/+/, ""),
+        mode: "100644",
+        type: "blob",
+        content: file.content,
+      });
+    }
+
+    const BLOB_CONCURRENCY = 6;
+    for (let i = 0; i < binaryFiles.length; i += BLOB_CONCURRENCY) {
+      const batch = binaryFiles.slice(i, i + BLOB_CONCURRENCY);
+      const uploaded = await Promise.all(
+        batch.map(async (file) => {
+          const cleanPath = file.path.replace(/^\/+/, "");
+          try {
+            const blobRes = await fetch(
+              `https://api.github.com/repos/${cleanRepo}/git/blobs`,
+              {
+                method: "POST",
+                headers,
+                body: JSON.stringify({
+                  content: file.content,
+                  encoding: "base64",
+                }),
+              }
+            );
+            if (blobRes.ok) {
+              const blobData = (await blobRes.json()) as { sha?: string };
+              if (blobData.sha) {
+                return {
+                  path: cleanPath,
+                  mode: "100644" as const,
+                  type: "blob" as const,
+                  sha: blobData.sha,
+                };
+              }
+            }
+          } catch {
+            // Ignore single thumbnail blob failure so code commit still succeeds
           }
-        );
-        if (blobRes.ok) {
-          const blobData = (await blobRes.json()) as { sha?: string };
-          if (blobData.sha) {
-            treeEntries.push({
-              path: cleanPath,
-              mode: "100644",
-              type: "blob",
-              sha: blobData.sha,
-            });
-          }
-        }
-      } else {
-        treeEntries.push({
-          path: cleanPath,
-          mode: "100644",
-          type: "blob",
-          content: file.content,
-        });
+          return null;
+        })
+      );
+      for (const item of uploaded) {
+        if (item) treeEntries.push(item);
       }
     }
 
