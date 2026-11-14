@@ -1,18 +1,18 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-14T17:41:03.734Z",
+  "updatedAt": "2026-11-14T17:41:06.572Z",
   "totalComponents": 10,
   "components": [
     {
-      "id": "comp-1792733253358-dfj51",
-      "slug": "card-swap",
-      "name": "Card Swap",
+      "id": "comp-1792853279780-z7w6h",
+      "slug": "div-switch",
+      "name": "Div Switch",
       "description": "",
       "category": "Custom",
       "isBuiltIn": false,
-      "updatedAt": 1792834847227,
-      "lastRepoSyncAt": 1794678063729,
-      "path": "registry/components/card-swap",
+      "updatedAt": 1793101738221,
+      "lastRepoSyncAt": 1794678066566,
+      "path": "registry/components/div-switch",
       "files": [
         "component.tsx",
         "default.tsx",
@@ -23,21 +23,20 @@
       "dependencies": []
     },
     {
-      "id": "comp-1792566184875-b6d4f",
-      "slug": "verified-vadge",
-      "name": "Verified Vadge",
+      "id": "comp-1792854346645-lz961",
+      "slug": "binto-1-3",
+      "name": "Binto 1*3",
       "description": "",
-      "category": "Badges",
+      "category": "Cards",
       "isBuiltIn": false,
-      "updatedAt": 1792678771756,
-      "lastRepoSyncAt": 1794678063729,
-      "path": "registry/components/verified-vadge",
+      "updatedAt": 1792854754899,
+      "lastRepoSyncAt": 1794678066566,
+      "path": "registry/components/binto-1-3",
       "files": [
         "component.tsx",
         "default.tsx",
         "index.css",
-        "manifest.json",
-        "preview.png"
+        "manifest.json"
       ],
       "dependencies": []
     },
