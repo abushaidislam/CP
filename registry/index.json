@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-14T17:54:24.328Z",
+  "updatedAt": "2026-11-14T17:54:29.099Z",
   "totalComponents": 18,
   "components": [
     {
@@ -70,7 +70,7 @@
       "category": "Custom",
       "isBuiltIn": false,
       "updatedAt": 1793525937887,
-      "lastRepoSyncAt": 1794678864275,
+      "lastRepoSyncAt": 1794678069781,
       "path": "registry/components/open-new-page",
       "files": [
         "component.tsx",
@@ -89,7 +89,7 @@
       "category": "Custom",
       "isBuiltIn": false,
       "updatedAt": 1793456829841,
-      "lastRepoSyncAt": 1794678073147,
+      "lastRepoSyncAt": 1794678869031,
       "path": "registry/components/praxd",
       "files": [
         "component.tsx",
