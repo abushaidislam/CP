@@ -1,0 +1,13 @@
+{
+  "id": "comp-1794626474629-cy0xn",
+  "slug": "swimmingpoolwidget",
+  "name": "Swimmingpoolwidget",
+  "description": "",
+  "category": "Cards",
+  "isBuiltIn": false,
+  "createdAt": 1794626474629,
+  "updatedAt": 1794630292381,
+  "lastRepoSyncAt": 1794678952161,
+  "dependencies": [],
+  "previewImage": "./preview.png"
+}
