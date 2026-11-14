@@ -1,27 +1,28 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-14T17:40:54.588Z",
-  "totalComponents": 8,
+  "updatedAt": "2026-11-14T17:40:57.250Z",
+  "totalComponents": 9,
   "components": [
     {
-      "id": "shimmer-button",
-      "slug": "shimmer-button",
-      "name": "Aurora Shimmer Button",
-      "description": "High-contrast border shimmer button with glowing conic gradient aura and micro-press physics.",
-      "category": "Buttons",
-      "isBuiltIn": true,
-      "updatedAt": 1794591242489,
-      "lastRepoSyncAt": 1794678054570,
-      "path": "registry/components/shimmer-button",
+      "id": "comp-1792522646826-3xyfx",
+      "slug": "career-hero",
+      "name": "Career Hero",
+      "description": "",
+      "category": "Custom",
+      "isBuiltIn": false,
+      "updatedAt": 1792523167172,
+      "lastRepoSyncAt": 1794678057232,
+      "path": "registry/components/career-hero",
       "files": [
         "component.tsx",
         "default.tsx",
         "index.css",
-        "manifest.json"
+        "manifest.json",
+        "preview.png"
       ],
       "dependencies": [
-        "framer-motion",
-        "lucide-react"
+        "clsx",
+        "tailwind-merge"
       ]
     },
     {
@@ -32,7 +33,7 @@
       "category": "Heroes",
       "isBuiltIn": true,
       "updatedAt": 1700000000000,
-      "lastRepoSyncAt": 1794678054570,
+      "lastRepoSyncAt": 1794676264105,
       "path": "registry/components/aurora-ambient-hero",
       "files": [
         "component.tsx",
@@ -52,7 +53,7 @@
       "category": "Cards",
       "isBuiltIn": true,
       "updatedAt": 1700000000000,
-      "lastRepoSyncAt": 1794678054570,
+      "lastRepoSyncAt": 1794676264105,
       "path": "registry/components/bento-metric-grid",
       "files": [
         "component.tsx",
@@ -72,7 +73,7 @@
       "category": "Heroes",
       "isBuiltIn": true,
       "updatedAt": 1700000000000,
-      "lastRepoSyncAt": 1794678054570,
+      "lastRepoSyncAt": 1794676264105,
       "path": "registry/components/ink-orbit-hero",
       "files": [
         "component.tsx",
@@ -90,7 +91,7 @@
       "category": "Badges",
       "isBuiltIn": true,
       "updatedAt": 1700000000000,
-      "lastRepoSyncAt": 1794676264105,
+      "lastRepoSyncAt": 1794678057232,
       "path": "registry/components/live-ping-status-pill",
       "files": [
         "component.tsx",
@@ -110,7 +111,7 @@
       "category": "Badges",
       "isBuiltIn": true,
       "updatedAt": 1700000000000,
-      "lastRepoSyncAt": 1794678054570,
+      "lastRepoSyncAt": 1794676264105,
       "path": "registry/components/metric-badge",
       "files": [
         "component.tsx",
@@ -130,7 +131,7 @@
       "category": "Buttons",
       "isBuiltIn": true,
       "updatedAt": 1700000000000,
-      "lastRepoSyncAt": 1794676264105,
+      "lastRepoSyncAt": 1794678057232,
       "path": "registry/components/neon-glow-button",
       "files": [
         "component.tsx",
@@ -143,6 +144,27 @@
       ]
     },
     {
+      "id": "shimmer-button",
+      "slug": "shimmer-button",
+      "name": "Aurora Shimmer Button",
+      "description": "High-contrast border shimmer button with glowing conic gradient aura and micro-press physics.",
+      "category": "Buttons",
+      "isBuiltIn": true,
+      "updatedAt": 1700000000000,
+      "lastRepoSyncAt": 1794676264105,
+      "path": "registry/components/shimmer-button",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "index.css",
+        "manifest.json"
+      ],
+      "dependencies": [
+        "framer-motion",
+        "lucide-react"
+      ]
+    },
+    {
       "id": "spotlight-card",
       "slug": "spotlight-card",
       "name": "Interactive Spotlight Card",
@@ -150,7 +172,7 @@
       "category": "Cards",
       "isBuiltIn": true,
       "updatedAt": 1700000000000,
-      "lastRepoSyncAt": 1794678054570,
+      "lastRepoSyncAt": 1794676264105,
       "path": "registry/components/spotlight-card",
       "files": [
         "component.tsx",
