@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-14T17:56:27.659Z",
+  "updatedAt": "2026-11-14T17:56:30.458Z",
   "totalComponents": 21,
   "components": [
     {
@@ -105,15 +105,15 @@
       ]
     },
     {
-      "id": "comp-1794052524543-39225",
-      "slug": "interactive-logo-grid",
-      "name": "InteractiveLogoGrid",
+      "id": "comp-1794303148718-az41d",
+      "slug": "multi-on-dock",
+      "name": "MultiOnDock",
       "description": "",
-      "category": "Cards",
+      "category": "Custom",
       "isBuiltIn": false,
-      "updatedAt": 1794053952246,
-      "lastRepoSyncAt": 1794678987563,
-      "path": "registry/components/interactive-logo-grid",
+      "updatedAt": 1794307285226,
+      "lastRepoSyncAt": 1794678990433,
+      "path": "registry/components/multi-on-dock",
       "files": [
         "component.tsx",
         "default.tsx",

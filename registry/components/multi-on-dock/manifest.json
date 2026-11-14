@@ -1,0 +1,13 @@
+{
+  "id": "comp-1794303148718-az41d",
+  "slug": "multi-on-dock",
+  "name": "MultiOnDock",
+  "description": "",
+  "category": "Custom",
+  "isBuiltIn": false,
+  "createdAt": 1794303148718,
+  "updatedAt": 1794307285226,
+  "lastRepoSyncAt": 1794678990433,
+  "dependencies": [],
+  "previewImage": "./preview.png"
+}
