@@ -1,18 +1,18 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-14T17:40:57.250Z",
+  "updatedAt": "2026-11-14T17:41:00.317Z",
   "totalComponents": 9,
   "components": [
     {
-      "id": "comp-1792522646826-3xyfx",
-      "slug": "career-hero",
-      "name": "Career Hero",
+      "id": "comp-1792523276168-z7cvi",
+      "slug": "value",
+      "name": "Value",
       "description": "",
       "category": "Custom",
       "isBuiltIn": false,
-      "updatedAt": 1792523167172,
-      "lastRepoSyncAt": 1794678057232,
-      "path": "registry/components/career-hero",
+      "updatedAt": 1794666731864,
+      "lastRepoSyncAt": 1794678060313,
+      "path": "registry/components/value",
       "files": [
         "component.tsx",
         "default.tsx",
@@ -20,10 +20,7 @@
         "manifest.json",
         "preview.png"
       ],
-      "dependencies": [
-        "clsx",
-        "tailwind-merge"
-      ]
+      "dependencies": []
     },
     {
       "id": "aurora-ambient-hero",
@@ -91,7 +88,7 @@
       "category": "Badges",
       "isBuiltIn": true,
       "updatedAt": 1700000000000,
-      "lastRepoSyncAt": 1794678057232,
+      "lastRepoSyncAt": 1794676264105,
       "path": "registry/components/live-ping-status-pill",
       "files": [
         "component.tsx",
@@ -131,7 +128,7 @@
       "category": "Buttons",
       "isBuiltIn": true,
       "updatedAt": 1700000000000,
-      "lastRepoSyncAt": 1794678057232,
+      "lastRepoSyncAt": 1794676264105,
       "path": "registry/components/neon-glow-button",
       "files": [
         "component.tsx",
