@@ -160,7 +160,11 @@ async function pushFilesToGithubRestApi(params: {
   branch: string;
   token: string;
   commitMessage: string;
-  filesToPush: Array<{ path: string; content: string }>;
+  filesToPush: Array<{
+    path: string;
+    content: string;
+    encoding?: "utf-8" | "base64";
+  }>;
 }): Promise<{
   pushed: boolean;
   commitSha?: string;
@@ -237,15 +241,53 @@ async function pushFilesToGithubRestApi(params: {
       };
     }
 
-    // 3. Create a new Git tree with all component files
+    // 3. Create a new Git tree with all component files (creating base64 blobs for binary files)
+    const treeEntries: Array<{
+      path: string;
+      mode: "100644";
+      type: "blob";
+      content?: string;
+      sha?: string;
+    }> = [];
+
+    for (const file of params.filesToPush) {
+      const cleanPath = file.path.replace(/^\/+/, "");
+      if (file.encoding === "base64") {
+        const blobRes = await fetch(
+          `https://api.github.com/repos/${cleanRepo}/git/blobs`,
+          {
+            method: "POST",
+            headers,
+            body: JSON.stringify({
+              content: file.content,
+              encoding: "base64",
+            }),
+          }
+        );
+        if (blobRes.ok) {
+          const blobData = (await blobRes.json()) as { sha?: string };
+          if (blobData.sha) {
+            treeEntries.push({
+              path: cleanPath,
+              mode: "100644",
+              type: "blob",
+              sha: blobData.sha,
+            });
+          }
+        }
+      } else {
+        treeEntries.push({
+          path: cleanPath,
+          mode: "100644",
+          type: "blob",
+          content: file.content,
+        });
+      }
+    }
+
     const treePayload = {
       base_tree: baseTreeSha,
-      tree: params.filesToPush.map((file) => ({
-        path: file.path.replace(/^\/+/, ""),
-        mode: "100644",
-        type: "blob",
-        content: file.content,
-      })),
+      tree: treeEntries,
     };
 
     const newTreeRes = await fetch(
@@ -535,7 +577,11 @@ export async function POST(req: NextRequest) {
     }
 
     const now = Date.now();
-    const writtenFilesForGithub: Array<{ path: string; content: string }> = [];
+    const writtenFilesForGithub: Array<{
+      path: string;
+      content: string;
+      encoding?: "utf-8" | "base64";
+    }> = [];
     const savedRecords: Array<{
       id: string;
       slug: string;
@@ -543,6 +589,8 @@ export async function POST(req: NextRequest) {
       lastRepoSyncAt: number;
       writtenFiles: string[];
     }> = [];
+    const inMemoryIndexEntries: RepoIndexEntry[] = [];
+    let localFsWriteError: string | null = null;
 
     for (const item of itemsToSave) {
       const comp = item.component;
@@ -552,7 +600,6 @@ export async function POST(req: NextRequest) {
       );
       const compRelDir = `${COMPONENTS_DIR_REL}/${slug}`;
       const compAbsDir = path.join(cwd, compRelDir);
-      await fs.mkdir(compAbsDir, { recursive: true });
 
       const componentTsx = comp.files["component.tsx"] || "";
       const defaultTsx =
@@ -563,9 +610,12 @@ export async function POST(req: NextRequest) {
 
       let manifestPreviewRef = comp.previewImage;
       let previewPngBuffer: Buffer | null = null;
+      let previewPngBase64: string | null = null;
       if (comp.previewImage?.startsWith("data:image/png;base64,")) {
-        const b64 = comp.previewImage.slice("data:image/png;base64,".length);
-        previewPngBuffer = Buffer.from(b64, "base64");
+        previewPngBase64 = comp.previewImage.slice(
+          "data:image/png;base64,".length
+        );
+        previewPngBuffer = Buffer.from(previewPngBase64, "base64");
         manifestPreviewRef = "./preview.png";
       }
 
@@ -597,13 +647,6 @@ export async function POST(req: NextRequest) {
 
       const manifestJson = JSON.stringify(manifest, null, 2) + "\n";
 
-      const writePromises: Promise<unknown>[] = [
-        fs.writeFile(path.join(compAbsDir, "component.tsx"), componentTsx, "utf-8"),
-        fs.writeFile(path.join(compAbsDir, "default.tsx"), defaultTsx, "utf-8"),
-        fs.writeFile(path.join(compAbsDir, "index.css"), indexCss, "utf-8"),
-        fs.writeFile(path.join(compAbsDir, "manifest.json"), manifestJson, "utf-8"),
-      ];
-
       const writtenFilePaths = [
         `${compRelDir}/component.tsx`,
         `${compRelDir}/default.tsx`,
@@ -612,13 +655,41 @@ export async function POST(req: NextRequest) {
       ];
 
       if (previewPngBuffer) {
-        writePromises.push(
-          fs.writeFile(path.join(compAbsDir, "preview.png"), previewPngBuffer)
-        );
         writtenFilePaths.push(`${compRelDir}/preview.png`);
       }
 
-      await Promise.all(writePromises);
+      try {
+        await fs.mkdir(compAbsDir, { recursive: true });
+        const writePromises: Promise<unknown>[] = [
+          fs.writeFile(
+            path.join(compAbsDir, "component.tsx"),
+            componentTsx,
+            "utf-8"
+          ),
+          fs.writeFile(
+            path.join(compAbsDir, "default.tsx"),
+            defaultTsx,
+            "utf-8"
+          ),
+          fs.writeFile(path.join(compAbsDir, "index.css"), indexCss, "utf-8"),
+          fs.writeFile(
+            path.join(compAbsDir, "manifest.json"),
+            manifestJson,
+            "utf-8"
+          ),
+        ];
+
+        if (previewPngBuffer) {
+          writePromises.push(
+            fs.writeFile(path.join(compAbsDir, "preview.png"), previewPngBuffer)
+          );
+        }
+
+        await Promise.all(writePromises);
+      } catch (fsErr: unknown) {
+        localFsWriteError =
+          fsErr instanceof Error ? fsErr.message : String(fsErr);
+      }
 
       writtenFilesForGithub.push(
         { path: `${compRelDir}/component.tsx`, content: componentTsx },
@@ -626,6 +697,36 @@ export async function POST(req: NextRequest) {
         { path: `${compRelDir}/index.css`, content: indexCss },
         { path: `${compRelDir}/manifest.json`, content: manifestJson }
       );
+
+      if (previewPngBase64) {
+        writtenFilesForGithub.push({
+          path: `${compRelDir}/preview.png`,
+          content: previewPngBase64,
+          encoding: "base64",
+        });
+      }
+
+      const fileList = [
+        "component.tsx",
+        "default.tsx",
+        "index.css",
+        "manifest.json",
+        ...(previewPngBase64 ? ["preview.png"] : []),
+      ];
+
+      inMemoryIndexEntries.push({
+        id: manifest.id,
+        slug,
+        name: manifest.name,
+        description: manifest.description,
+        category: manifest.category,
+        isBuiltIn: manifest.isBuiltIn,
+        updatedAt: manifest.updatedAt,
+        lastRepoSyncAt: manifest.lastRepoSyncAt,
+        path: compRelDir,
+        files: fileList,
+        dependencies: manifest.dependencies || [],
+      });
 
       savedRecords.push({
         id: comp.id,
@@ -637,8 +738,34 @@ export async function POST(req: NextRequest) {
     }
 
     // Rebuild master registry/index.json
-    const { indexEntries } = await readAllRepoComponents(cwd);
-    const indexContent = await writeRegistryIndexFile(cwd, indexEntries);
+    const { indexEntries: diskIndexEntries } = await readAllRepoComponents(cwd);
+    const mergedIndexMap = new Map<string, RepoIndexEntry>();
+    for (const entry of diskIndexEntries) {
+      mergedIndexMap.set(entry.slug, entry);
+    }
+    for (const entry of inMemoryIndexEntries) {
+      mergedIndexMap.set(entry.slug, entry);
+    }
+    const indexEntries = Array.from(mergedIndexMap.values()).sort(
+      (a, b) => (b.updatedAt || 0) - (a.updatedAt || 0)
+    );
+
+    let indexContent = "";
+    try {
+      indexContent = await writeRegistryIndexFile(cwd, indexEntries);
+    } catch {
+      indexContent =
+        JSON.stringify(
+          {
+            schemaVersion: "1.0.0",
+            updatedAt: new Date().toISOString(),
+            totalComponents: indexEntries.length,
+            components: indexEntries,
+          },
+          null,
+          2
+        ) + "\n";
+    }
     writtenFilesForGithub.push({
       path: INDEX_FILE_REL,
       content: indexContent,
@@ -654,7 +781,7 @@ export async function POST(req: NextRequest) {
     let localGitResult: { committed: boolean; commitSha?: string } = {
       committed: false,
     };
-    if (body.commitToGit !== false) {
+    if (body.commitToGit !== false && !localFsWriteError) {
       localGitResult = await tryLocalGitCommit(cwd, commitMessage);
     }
 
@@ -677,7 +804,11 @@ export async function POST(req: NextRequest) {
       error?: string;
     } | null = null;
 
-    if (body.pushToGithub && targetGithubRepo && targetGithubToken) {
+    const shouldPushToGithub =
+      Boolean(body.pushToGithub) ||
+      Boolean(localFsWriteError && targetGithubRepo && targetGithubToken);
+
+    if (shouldPushToGithub && targetGithubRepo && targetGithubToken) {
       githubPushResult = await pushFilesToGithubRestApi({
         repo: targetGithubRepo,
         branch: targetGithubBranch,
@@ -691,6 +822,18 @@ export async function POST(req: NextRequest) {
         error:
           "To push directly to a remote GitHub branch via API, provide a GitHub Repository (owner/repo) and Personal Access Token (or set GITHUB_REPO and GITHUB_TOKEN in .env).",
       };
+    }
+
+    if (localFsWriteError && !githubPushResult?.pushed) {
+      return NextResponse.json(
+        {
+          success: false,
+          error:
+            githubPushResult?.error ||
+            `Server filesystem is read-only (${localFsWriteError}). Expand 'Optional: Custom Git Commit & Direct Remote GitHub Push' below and enter your GitHub Repository (owner/repo) + Personal Access Token to push directly to GitHub.`,
+        },
+        { status: 500 }
+      );
     }
 
     const finalCommitSha =

@@ -73,6 +73,7 @@ export function RepoSyncModal() {
     saveComponentToProjectRepo,
     syncAllComponentsToProjectRepo,
     hydrateFromProjectRepo,
+    importWorkspaceBundle,
   } = useStudioStore();
 
   const isOpen = Boolean(isRepoSyncModalOpen || isPublishModalOpen);
@@ -238,6 +239,71 @@ export function RepoSyncModal() {
     navigator.clipboard?.writeText("npm i -g @21st-dev/cli && 21st login");
     setCopiedSetupCli(true);
     setTimeout(() => setCopiedSetupCli(false), 2000);
+  };
+
+  const [bundleStatusMsg, setBundleStatusMsg] = useState<string | null>(null);
+  const fileInputRef = React.useRef<HTMLInputElement | null>(null);
+
+  const handleExportWorkspaceJson = () => {
+    const rawStorage =
+      typeof window !== "undefined"
+        ? window.localStorage.getItem("21st-component-studio-storage-v3")
+        : null;
+    const payload =
+      rawStorage ||
+      JSON.stringify(
+        {
+          state: {
+            userComponents: userComponents || {},
+          },
+          version: 0,
+        },
+        null,
+        2
+      );
+    const blob = new Blob([payload], {
+      type: "application/json;charset=utf-8",
+    });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `component-studio-backup-${allComponentsCount}-components.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    setBundleStatusMsg(
+      `Exported all ${allComponentsCount} components to backup .json`
+    );
+    setTimeout(() => setBundleStatusMsg(null), 3500);
+  };
+
+  const handleImportWorkspaceJsonFile = (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const content = typeof reader.result === "string" ? reader.result : "";
+      const res = importWorkspaceBundle(content);
+      if (res.success) {
+        setBundleStatusMsg(
+          `Imported ${res.importedCount} components! Click 'Sync All to Repo' below to save them to GitHub.`
+        );
+        confetti({
+          particleCount: 55,
+          spread: 60,
+          origin: { y: 0.65 },
+        });
+      } else {
+        setBundleStatusMsg(res.error || "Failed to import JSON backup.");
+      }
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    };
+    reader.readAsText(file);
   };
 
   const handleSaveActiveToRepo = async () => {
@@ -560,6 +626,47 @@ export function RepoSyncModal() {
                   </span>
                 </div>
               </div>
+
+              {/* Browser LocalStorage Backup & Migration Bar */}
+              <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-border/60">
+                <div className="text-[11px] text-muted-foreground font-sans">
+                  Browser LocalStorage Bundle ({allComponentsCount} components):
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".json,application/json"
+                    onChange={handleImportWorkspaceJsonFile}
+                    className="hidden"
+                  />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    type="button"
+                    onClick={handleExportWorkspaceJson}
+                    className="rounded-none h-6 px-2 text-[11px] font-sans gap-1"
+                  >
+                    <Download className="size-3 text-primary" />
+                    <span>Export All ({allComponentsCount}) .json</span>
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="rounded-none h-6 px-2 text-[11px] font-sans gap-1"
+                  >
+                    <UploadCloud className="size-3 text-sky-500" />
+                    <span>Import Backup .json</span>
+                  </Button>
+                </div>
+              </div>
+              {bundleStatusMsg && (
+                <div className="text-[11px] text-emerald-500 font-sans pt-0.5">
+                  {bundleStatusMsg}
+                </div>
+              )}
             </div>
 
             {/* 3. Optional Collapsible: Direct GitHub API Push */}

@@ -369,6 +369,11 @@ export interface StudioState {
     commitUrl?: string;
     error?: string;
   }>;
+  importWorkspaceBundle: (rawJson: string) => {
+    success: boolean;
+    importedCount: number;
+    error?: string;
+  };
 }
 
 const initialTemplate = DEFAULT_TEMPLATES[0];
@@ -2436,8 +2441,31 @@ export const useStudioStore = create<StudioState>()(
 
         set({ repoSyncStatus: "syncing", lastRepoSyncError: null });
 
+        const parseSafeJson = async (res: Response) => {
+          if (typeof res.text === "function") {
+            const raw = await res.text();
+            try {
+              return JSON.parse(raw);
+            } catch {
+              const snippet = raw.replace(/<[^>]*>/g, " ").trim().slice(0, 140);
+              return {
+                success: false,
+                isPayloadTooLarge:
+                  res.status === 413 ||
+                  /Request Entity Too Large|Payload Too Large/i.test(raw),
+                error:
+                  res.status === 413 ||
+                  /Request Entity Too Large|Payload Too Large/i.test(raw)
+                    ? "Request payload exceeded server limit (HTTP 413)."
+                    : `Server returned non-JSON response (${res.status}): ${snippet || res.statusText}`,
+              };
+            }
+          }
+          return await res.json();
+        };
+
         try {
-          const res = await fetch("/api/repo-sync", {
+          let res = await fetch("/api/repo-sync", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -2452,8 +2480,9 @@ export const useStudioStore = create<StudioState>()(
             }),
           });
 
-          const data = (await res.json()) as {
+          let data = (await parseSafeJson(res)) as {
             success?: boolean;
+            isPayloadTooLarge?: boolean;
             error?: string;
             savedRecords?: Array<{
               id: string;
@@ -2471,6 +2500,31 @@ export const useStudioStore = create<StudioState>()(
               error?: string;
             } | null;
           };
+
+          // Automatic fallback if reverse proxy rejected large base64 previewImage / checkpoint history (HTTP 413)
+          if (!res.ok && (res.status === 413 || data.isPayloadTooLarge)) {
+            const slimComp: UserComponent = {
+              ...compToSave,
+              previewImage: compToSave.previewImage?.startsWith("data:image/png;base64,")
+                ? undefined
+                : compToSave.previewImage,
+            };
+            res = await fetch("/api/repo-sync", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                action: "save_component",
+                component: slimComp,
+                variants: [],
+                activeVariantId: state.activeVariantByTemplate?.[targetId],
+                commitMessage: options.commitMessage,
+                commitToGit: true,
+                pushToGithub: Boolean(options.pushToGithub),
+                githubConfig: state.githubRepoConfig,
+              }),
+            });
+            data = await parseSafeJson(res);
+          }
 
           if (!res.ok || !data.success) {
             const errMsg =
@@ -2546,78 +2600,205 @@ export const useStudioStore = create<StudioState>()(
           return { success: false, error: "No components available to sync." };
         }
 
-        const items = allComps.map((comp) => ({
-          component:
-            comp.id === state.currentTemplateId
-              ? {
-                  ...comp,
-                  files: {
-                    ...state.files,
-                    "default.tsx":
-                      state.files["default.tsx"] ?? state.files["demo.tsx"],
-                    "demo.tsx":
-                      state.files["demo.tsx"] ?? state.files["default.tsx"] ?? "",
-                  },
-                  dependencies: [...state.dependencies],
-                }
-              : comp,
-          variants: state.variantsByTemplate?.[comp.id] || [],
-          activeVariantId: state.activeVariantByTemplate?.[comp.id],
-        }));
+        const items = allComps.map((comp) => {
+          const rawVariants = state.variantsByTemplate?.[comp.id] || [];
+          // Trim heavy checkpoint history when syncing in bulk to keep payload compact
+          const compactVariants = rawVariants.map((v) => ({
+            ...v,
+            checkpoints: (v.checkpoints || []).slice(-3),
+          }));
+          return {
+            component:
+              comp.id === state.currentTemplateId
+                ? {
+                    ...comp,
+                    files: {
+                      ...state.files,
+                      "default.tsx":
+                        state.files["default.tsx"] ?? state.files["demo.tsx"],
+                      "demo.tsx":
+                        state.files["demo.tsx"] ??
+                        state.files["default.tsx"] ??
+                        "",
+                    },
+                    dependencies: [...state.dependencies],
+                  }
+                : comp,
+            variants: compactVariants,
+            activeVariantId: state.activeVariantByTemplate?.[comp.id],
+          };
+        });
 
         set({ repoSyncStatus: "syncing", lastRepoSyncError: null });
 
-        try {
-          const res = await fetch("/api/repo-sync", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              action: "sync_all",
-              items,
-              commitMessage: options.commitMessage,
-              commitToGit: true,
-              pushToGithub: Boolean(options.pushToGithub),
-              githubConfig: state.githubRepoConfig,
-            }),
-          });
+        const parseSafeJson = async (res: Response) => {
+          if (typeof res.text === "function") {
+            const raw = await res.text();
+            try {
+              return JSON.parse(raw);
+            } catch {
+              const snippet = raw.replace(/<[^>]*>/g, " ").trim().slice(0, 140);
+              return {
+                success: false,
+                isPayloadTooLarge:
+                  res.status === 413 ||
+                  /Request Entity Too Large|Payload Too Large/i.test(raw),
+                error:
+                  res.status === 413 ||
+                  /Request Entity Too Large|Payload Too Large/i.test(raw)
+                    ? "Request payload exceeded server limit (HTTP 413)."
+                    : `Server returned non-JSON response (${res.status}): ${snippet || res.statusText}`,
+              };
+            }
+          }
+          return await res.json();
+        };
 
-          const data = (await res.json()) as {
-            success?: boolean;
-            error?: string;
-            savedCount?: number;
-            savedRecords?: Array<{
-              id: string;
-              slug: string;
-              repoPath: string;
-              lastRepoSyncAt: number;
-            }>;
-            totalRepoComponents?: number;
-            commitSha?: string;
-            commitUrl?: string;
-            githubPush?: {
-              pushed: boolean;
+        // Partition items into safe chunks (~350 KB max per request) so reverse proxies (Nginx/Cloudflare/Vercel)
+        // never reject bulk syncs of 30+ components with "413 Request Entity Too Large".
+        const MAX_CHUNK_BYTES = 350_000;
+        const chunks: Array<typeof items> = [];
+        let currentChunk: typeof items = [];
+        let currentChunkBytes = 0;
+
+        for (const item of items) {
+          const estimatedBytes = JSON.stringify(item).length;
+          if (
+            currentChunk.length > 0 &&
+            currentChunkBytes + estimatedBytes > MAX_CHUNK_BYTES
+          ) {
+            chunks.push(currentChunk);
+            currentChunk = [item];
+            currentChunkBytes = estimatedBytes;
+          } else {
+            currentChunk.push(item);
+            currentChunkBytes += estimatedBytes;
+          }
+        }
+        if (currentChunk.length > 0) {
+          chunks.push(currentChunk);
+        }
+
+        try {
+          const allSavedRecords: Array<{
+            id: string;
+            slug: string;
+            repoPath: string;
+            lastRepoSyncAt: number;
+          }> = [];
+          let lastCommitSha: string | undefined;
+          let lastCommitUrl: string | undefined;
+          let latestTotalRepoComponents: number | undefined;
+
+          for (let i = 0; i < chunks.length; i++) {
+            const chunk = chunks[i];
+            const isFinalChunk = i === chunks.length - 1;
+            const chunkCommitMsg =
+              chunks.length === 1
+                ? options.commitMessage
+                : `${
+                    options.commitMessage ||
+                    `feat(registry): sync ${items.length} workspace components`
+                  } (batch ${i + 1}/${chunks.length})`;
+
+            let res = await fetch("/api/repo-sync", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                action: "sync_all",
+                items: chunk,
+                commitMessage: chunkCommitMsg,
+                commitToGit: isFinalChunk,
+                pushToGithub: Boolean(options.pushToGithub),
+                githubConfig: state.githubRepoConfig,
+              }),
+            });
+
+            let data = (await parseSafeJson(res)) as {
+              success?: boolean;
+              isPayloadTooLarge?: boolean;
+              error?: string;
+              savedCount?: number;
+              savedRecords?: Array<{
+                id: string;
+                slug: string;
+                repoPath: string;
+                lastRepoSyncAt: number;
+              }>;
+              totalRepoComponents?: number;
               commitSha?: string;
               commitUrl?: string;
-              error?: string;
-            } | null;
-          };
+              githubPush?: {
+                pushed: boolean;
+                commitSha?: string;
+                commitUrl?: string;
+                error?: string;
+              } | null;
+            };
 
-          if (!res.ok || !data.success) {
-            const errMsg =
-              data.error || "Failed to sync components to project repository.";
-            set({ repoSyncStatus: "error", lastRepoSyncError: errMsg });
-            return { success: false, error: errMsg };
-          }
+            // If this chunk still hit HTTP 413 (e.g. a single component had a huge >1MB base64 PNG),
+            // retry the chunk with heavy base64 PNGs stripped so component code is guaranteed to sync.
+            if (!res.ok && (res.status === 413 || data.isPayloadTooLarge)) {
+              const slimChunk = chunk.map((entry) => ({
+                ...entry,
+                component: {
+                  ...entry.component,
+                  previewImage: entry.component.previewImage?.startsWith(
+                    "data:image/png;base64,"
+                  )
+                    ? undefined
+                    : entry.component.previewImage,
+                },
+                variants: [],
+              }));
 
-          if (options.pushToGithub && data.githubPush && !data.githubPush.pushed) {
-            const ghErr =
-              data.githubPush.error || "Saved locally, but GitHub push failed.";
-            set({ repoSyncStatus: "error", lastRepoSyncError: ghErr });
-            return { success: false, error: ghErr };
+              res = await fetch("/api/repo-sync", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  action: "sync_all",
+                  items: slimChunk,
+                  commitMessage: chunkCommitMsg,
+                  commitToGit: isFinalChunk,
+                  pushToGithub: Boolean(options.pushToGithub),
+                  githubConfig: state.githubRepoConfig,
+                }),
+              });
+              data = await parseSafeJson(res);
+            }
+
+            if (!res.ok || !data.success) {
+              const errMsg =
+                data.error ||
+                `Failed to sync batch ${i + 1}/${chunks.length} to project repository.`;
+              set({ repoSyncStatus: "error", lastRepoSyncError: errMsg });
+              return { success: false, error: errMsg };
+            }
+
+            if (
+              options.pushToGithub &&
+              data.githubPush &&
+              !data.githubPush.pushed
+            ) {
+              const ghErr =
+                data.githubPush.error ||
+                "Saved locally, but GitHub push failed.";
+              set({ repoSyncStatus: "error", lastRepoSyncError: ghErr });
+              return { success: false, error: ghErr };
+            }
+
+            if (Array.isArray(data.savedRecords)) {
+              allSavedRecords.push(...data.savedRecords);
+            }
+            if (data.commitSha) lastCommitSha = data.commitSha;
+            if (data.commitUrl) lastCommitUrl = data.commitUrl;
+            if (typeof data.totalRepoComponents === "number") {
+              latestTotalRepoComponents = data.totalRepoComponents;
+            }
           }
 
           const recordMap = new Map(
-            (data.savedRecords || []).map((r) => [r.id, r])
+            allSavedRecords.map((r) => [r.id, r])
           );
 
           set((s) => {
@@ -2630,8 +2811,8 @@ export const useStudioStore = create<StudioState>()(
                   repoSlug: rec.slug,
                   savedInRepo: true,
                   lastRepoSyncAt: rec.lastRepoSyncAt,
-                  lastCommitSha: data.commitSha || comp.lastCommitSha,
-                  lastCommitUrl: data.commitUrl || comp.lastCommitUrl,
+                  lastCommitSha: lastCommitSha || comp.lastCommitSha,
+                  lastCommitUrl: lastCommitUrl || comp.lastCommitUrl,
                 };
               }
             }
@@ -2642,34 +2823,132 @@ export const useStudioStore = create<StudioState>()(
               repoGitInfo: s.repoGitInfo
                 ? {
                     ...s.repoGitInfo,
-                    lastCommitSha: data.commitSha || s.repoGitInfo.lastCommitSha,
+                    lastCommitSha:
+                      lastCommitSha || s.repoGitInfo.lastCommitSha,
                     totalComponents:
-                      data.totalRepoComponents ?? s.repoGitInfo.totalComponents,
+                      latestTotalRepoComponents ??
+                      s.repoGitInfo.totalComponents,
                   }
                 : {
-                    lastCommitSha: data.commitSha,
-                    totalComponents: data.totalRepoComponents,
+                    lastCommitSha,
+                    totalComponents: latestTotalRepoComponents,
                   },
             };
           });
 
           get().addTerminalLog({
             type: "system",
-            message: `[Repo Sync] Synced ${data.savedCount || items.length} components to registry/components/${
-              data.commitSha ? ` (commit ${data.commitSha})` : ""
+            message: `[Repo Sync] Synced ${allSavedRecords.length || items.length} components to registry/components/${
+              lastCommitSha ? ` (commit ${lastCommitSha})` : ""
             }.`,
           });
 
           return {
             success: true,
-            savedCount: data.savedCount || items.length,
-            commitSha: data.commitSha,
-            commitUrl: data.commitUrl,
+            savedCount: allSavedRecords.length || items.length,
+            commitSha: lastCommitSha,
+            commitUrl: lastCommitUrl,
           };
         } catch (err: unknown) {
           const msg = err instanceof Error ? err.message : String(err);
           set({ repoSyncStatus: "error", lastRepoSyncError: msg });
           return { success: false, error: msg };
+        }
+      },
+
+      importWorkspaceBundle: (rawJson) => {
+        try {
+          const parsed = JSON.parse(rawJson) as {
+            state?: {
+              userComponents?: Record<string, UserComponent>;
+              variantsByTemplate?: Record<string, ComponentVariant[]>;
+              activeVariantByTemplate?: Record<string, string>;
+            };
+            userComponents?: Record<string, UserComponent>;
+            variantsByTemplate?: Record<string, ComponentVariant[]>;
+            activeVariantByTemplate?: Record<string, string>;
+          };
+
+          const incomingComponents =
+            parsed?.state?.userComponents || parsed?.userComponents;
+          const incomingVariants =
+            parsed?.state?.variantsByTemplate || parsed?.variantsByTemplate || {};
+          const incomingActiveVariants =
+            parsed?.state?.activeVariantByTemplate ||
+            parsed?.activeVariantByTemplate ||
+            {};
+
+          if (
+            !incomingComponents ||
+            typeof incomingComponents !== "object" ||
+            Object.keys(incomingComponents).length === 0
+          ) {
+            return {
+              success: false,
+              importedCount: 0,
+              error:
+                "No valid userComponents found in JSON. Provide a Component Studio backup .json or localStorage '21st-component-studio-storage-v3' dump.",
+            };
+          }
+
+          let importedCount = 0;
+          set((state) => {
+            const nextUserComponents = { ...(state.userComponents || {}) };
+            const nextVariants = { ...(state.variantsByTemplate || {}) };
+            const nextActiveVariants = {
+              ...(state.activeVariantByTemplate || {}),
+            };
+
+            for (const [id, comp] of Object.entries(incomingComponents)) {
+              if (!comp || !comp.files || !comp.files["component.tsx"]) continue;
+              const normalizedFiles: StudioFiles = {
+                "component.tsx": comp.files["component.tsx"],
+                "default.tsx":
+                  comp.files["default.tsx"] ?? comp.files["demo.tsx"] ?? "",
+                "demo.tsx":
+                  comp.files["demo.tsx"] ?? comp.files["default.tsx"] ?? "",
+                "index.css":
+                  comp.files["index.css"] ||
+                  "@tailwind base;\n@tailwind components;\n@tailwind utilities;\n",
+              };
+              nextUserComponents[id] = {
+                ...comp,
+                id: comp.id || id,
+                files: normalizedFiles,
+                dependencies: Array.isArray(comp.dependencies)
+                  ? comp.dependencies
+                  : [],
+                savedInRepo: false,
+              };
+              if (Array.isArray(incomingVariants[id])) {
+                nextVariants[id] = incomingVariants[id];
+              }
+              if (incomingActiveVariants[id]) {
+                nextActiveVariants[id] = incomingActiveVariants[id];
+              }
+              importedCount++;
+            }
+
+            return {
+              userComponents: nextUserComponents,
+              variantsByTemplate: nextVariants,
+              activeVariantByTemplate: nextActiveVariants,
+              repoSyncStatus: "dirty",
+              lastRepoSyncError: null,
+            };
+          });
+
+          return {
+            success: true,
+            importedCount,
+          };
+        } catch (err: unknown) {
+          const msg = err instanceof Error ? err.message : String(err);
+          return {
+            success: false,
+            importedCount: 0,
+            error: `Invalid JSON bundle: ${msg}`,
+          };
         }
       },
     }),
