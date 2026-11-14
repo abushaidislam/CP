@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-14T17:54:21.133Z",
+  "updatedAt": "2026-11-14T17:54:24.328Z",
   "totalComponents": 18,
   "components": [
     {
@@ -70,7 +70,7 @@
       "category": "Custom",
       "isBuiltIn": false,
       "updatedAt": 1793525937887,
-      "lastRepoSyncAt": 1794678069781,
+      "lastRepoSyncAt": 1794678864275,
       "path": "registry/components/open-new-page",
       "files": [
         "component.tsx",
@@ -108,7 +108,7 @@
       "category": "Cards",
       "isBuiltIn": false,
       "updatedAt": 1793110115803,
-      "lastRepoSyncAt": 1794678861106,
+      "lastRepoSyncAt": 1794678069781,
       "path": "registry/components/framer-motion-morph",
       "files": [
         "component.tsx",
