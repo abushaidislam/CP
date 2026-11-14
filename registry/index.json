@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-14T17:54:06.454Z",
+  "updatedAt": "2026-11-14T17:54:09.718Z",
   "totalComponents": 18,
   "components": [
     {
@@ -30,7 +30,7 @@
       "category": "Custom",
       "isBuiltIn": false,
       "updatedAt": 1794666731864,
-      "lastRepoSyncAt": 1794678060313,
+      "lastRepoSyncAt": 1794678849696,
       "path": "registry/components/value",
       "files": [
         "component.tsx",
@@ -207,7 +207,7 @@
       "category": "Custom",
       "isBuiltIn": false,
       "updatedAt": 1792523167172,
-      "lastRepoSyncAt": 1794678846406,
+      "lastRepoSyncAt": 1794678057232,
       "path": "registry/components/career-hero",
       "files": [
         "component.tsx",
@@ -287,7 +287,7 @@
       "category": "Badges",
       "isBuiltIn": true,
       "updatedAt": 1700000000000,
-      "lastRepoSyncAt": 1794678846406,
+      "lastRepoSyncAt": 1794678057232,
       "path": "registry/components/live-ping-status-pill",
       "files": [
         "component.tsx",
@@ -327,7 +327,7 @@
       "category": "Buttons",
       "isBuiltIn": true,
       "updatedAt": 1700000000000,
-      "lastRepoSyncAt": 1794678846406,
+      "lastRepoSyncAt": 1794678057232,
       "path": "registry/components/neon-glow-button",
       "files": [
         "component.tsx",
