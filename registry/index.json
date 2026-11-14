@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-14T17:54:09.718Z",
+  "updatedAt": "2026-11-14T17:54:13.170Z",
   "totalComponents": 18,
   "components": [
     {
@@ -30,7 +30,7 @@
       "category": "Custom",
       "isBuiltIn": false,
       "updatedAt": 1794666731864,
-      "lastRepoSyncAt": 1794678849696,
+      "lastRepoSyncAt": 1794678060313,
       "path": "registry/components/value",
       "files": [
         "component.tsx",
@@ -188,7 +188,7 @@
       "category": "Badges",
       "isBuiltIn": false,
       "updatedAt": 1792678771756,
-      "lastRepoSyncAt": 1794678063729,
+      "lastRepoSyncAt": 1794678853148,
       "path": "registry/components/verified-vadge",
       "files": [
         "component.tsx",
