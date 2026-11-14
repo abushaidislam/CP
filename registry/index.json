@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-14T17:56:16.307Z",
+  "updatedAt": "2026-11-14T17:56:27.659Z",
   "totalComponents": 21,
   "components": [
     {
@@ -105,15 +105,15 @@
       ]
     },
     {
-      "id": "comp-1793543805011-tg93i",
-      "slug": "diff-slipt-icon",
-      "name": "Diff slipt icon",
+      "id": "comp-1794052524543-39225",
+      "slug": "interactive-logo-grid",
+      "name": "InteractiveLogoGrid",
       "description": "",
-      "category": "Custom",
+      "category": "Cards",
       "isBuiltIn": false,
-      "updatedAt": 1793545398910,
-      "lastRepoSyncAt": 1794678976257,
-      "path": "registry/components/diff-slipt-icon",
+      "updatedAt": 1794053952246,
+      "lastRepoSyncAt": 1794678987563,
+      "path": "registry/components/interactive-logo-grid",
       "files": [
         "component.tsx",
         "default.tsx",
