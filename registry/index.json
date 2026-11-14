@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-14T17:56:30.458Z",
+  "updatedAt": "2026-11-14T17:56:36.037Z",
   "totalComponents": 21,
   "components": [
     {
@@ -84,6 +84,27 @@
       "dependencies": []
     },
     {
+      "id": "comp-1794664896917-5l7qr",
+      "slug": "emotionwheel",
+      "name": "Emotionwheel",
+      "description": "",
+      "category": "Custom",
+      "isBuiltIn": false,
+      "updatedAt": 1794666556620,
+      "lastRepoSyncAt": 1794678996004,
+      "path": "registry/components/emotionwheel",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "index.css",
+        "manifest.json",
+        "preview.png"
+      ],
+      "dependencies": [
+        "framer-motion"
+      ]
+    },
+    {
       "id": "shimmer-button",
       "slug": "shimmer-button",
       "name": "Aurora Shimmer Button",
@@ -103,25 +124,6 @@
         "framer-motion",
         "lucide-react"
       ]
-    },
-    {
-      "id": "comp-1794303148718-az41d",
-      "slug": "multi-on-dock",
-      "name": "MultiOnDock",
-      "description": "",
-      "category": "Custom",
-      "isBuiltIn": false,
-      "updatedAt": 1794307285226,
-      "lastRepoSyncAt": 1794678990433,
-      "path": "registry/components/multi-on-dock",
-      "files": [
-        "component.tsx",
-        "default.tsx",
-        "index.css",
-        "manifest.json",
-        "preview.png"
-      ],
-      "dependencies": []
     },
     {
       "id": "comp-1793339550529-xn3n1",
