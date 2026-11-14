@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-14T17:56:04.030Z",
+  "updatedAt": "2026-11-14T17:56:07.932Z",
   "totalComponents": 20,
   "components": [
     {
@@ -82,15 +82,15 @@
       ]
     },
     {
-      "id": "comp-1794548767132-o1uzb",
-      "slug": "flex-fit-brand-showcase-bento-grid-layout",
-      "name": "FlexFit Brand Showcase Bento Grid layout",
+      "id": "comp-1794059967767-p8sj7",
+      "slug": "mega-menu",
+      "name": "Mega menu",
       "description": "",
       "category": "Custom",
       "isBuiltIn": false,
-      "updatedAt": 1794564626210,
-      "lastRepoSyncAt": 1794678963972,
-      "path": "registry/components/flex-fit-brand-showcase-bento-grid-layout",
+      "updatedAt": 1794064126760,
+      "lastRepoSyncAt": 1794678967909,
+      "path": "registry/components/mega-menu",
       "files": [
         "component.tsx",
         "default.tsx",
