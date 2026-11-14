@@ -7,7 +7,7 @@
   "isBuiltIn": false,
   "createdAt": 1792522646826,
   "updatedAt": 1792523167172,
-  "lastRepoSyncAt": 1794678057232,
+  "lastRepoSyncAt": 1794678846406,
   "dependencies": [
     "clsx",
     "tailwind-merge"
