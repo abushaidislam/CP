@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-14T17:55:52.180Z",
+  "updatedAt": "2026-11-14T17:55:56.449Z",
   "totalComponents": 19,
   "components": [
     {
@@ -42,25 +42,6 @@
       "dependencies": []
     },
     {
-      "id": "comp-1794626474629-cy0xn",
-      "slug": "swimmingpoolwidget",
-      "name": "Swimmingpoolwidget",
-      "description": "",
-      "category": "Cards",
-      "isBuiltIn": false,
-      "updatedAt": 1794630292381,
-      "lastRepoSyncAt": 1794678952161,
-      "path": "registry/components/swimmingpoolwidget",
-      "files": [
-        "component.tsx",
-        "default.tsx",
-        "index.css",
-        "manifest.json",
-        "preview.png"
-      ],
-      "dependencies": []
-    },
-    {
       "id": "shimmer-button",
       "slug": "shimmer-button",
       "name": "Aurora Shimmer Button",
@@ -80,6 +61,25 @@
         "framer-motion",
         "lucide-react"
       ]
+    },
+    {
+      "id": "comp-1793992621538-is3my",
+      "slug": "b-ento",
+      "name": "bENTO",
+      "description": "",
+      "category": "Custom",
+      "isBuiltIn": false,
+      "updatedAt": 1794568755188,
+      "lastRepoSyncAt": 1794678956430,
+      "path": "registry/components/b-ento",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "index.css",
+        "manifest.json",
+        "preview.png"
+      ],
+      "dependencies": []
     },
     {
       "id": "comp-1793339550529-xn3n1",
