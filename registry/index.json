@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-14T17:55:18.634Z",
+  "updatedAt": "2026-11-14T17:55:32.242Z",
   "totalComponents": 19,
   "components": [
     {
@@ -23,23 +23,27 @@
       "dependencies": []
     },
     {
-      "id": "comp-1794667946115-uzl1i",
-      "slug": "segmentedmodetoggle",
-      "name": "Segmentedmodetoggle",
+      "id": "comp-1794668174105-ojojo",
+      "slug": "schedulecalendar",
+      "name": "Schedulecalendar",
       "description": "",
-      "category": "Buttons",
+      "category": "Cards",
       "isBuiltIn": false,
-      "updatedAt": 1794668114655,
-      "lastRepoSyncAt": 1794678918558,
-      "path": "registry/components/segmentedmodetoggle",
+      "updatedAt": 1794668572435,
+      "lastRepoSyncAt": 1794678932190,
+      "path": "registry/components/schedulecalendar",
       "files": [
         "component.tsx",
         "default.tsx",
         "index.css",
-        "manifest.json",
-        "preview.png"
+        "manifest.json"
       ],
-      "dependencies": []
+      "dependencies": [
+        "framer-motion",
+        "lucide-react",
+        "clsx",
+        "tailwind-merge"
+      ]
     },
     {
       "id": "comp-1792523276168-z7cvi",
