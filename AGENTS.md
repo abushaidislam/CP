@@ -41,7 +41,7 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 - **Dialog Overlay & Positioning**:
   - All modals must be centered with `fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2`.
   - Max width and responsive sizing must respect `w-[calc(100vw-2rem)]` and `max-h-[90vh]`.
-  - Content must have `overflow-y-auto overflow-x-hidden` and use `flex flex-col` rather than unconstrained raw CSS grids that cause modal overflow or clipping.
+  - Content must have `overflow-y-auto overflow-x-hidden` and use `flex flex-col` rather than unconstrained raw CSS grids that cause modal overflow or clipping. 
 
 ## 4. Code Quality & Compilation
 
