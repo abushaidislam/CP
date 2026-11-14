@@ -434,8 +434,13 @@ export function StudioHeader() {
 
       {/* Right: Pure Icon-Only Studio Action Strip */}
       <div className="flex items-center gap-1 shrink-0">
-        {/* Capture Preview Button (Icon-Only) */}
-        <div className="hidden md:flex items-center">
+        {/* Capture Preview Button (Only shown in Editor-only mode when CanvasPreview toolbar is hidden) */}
+        <div
+          className={cn(
+            "items-center",
+            layoutMode === "editor" ? "hidden md:flex" : "hidden"
+          )}
+        >
           <Tooltip>
             <TooltipTrigger asChild>
               <Button

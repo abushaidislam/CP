@@ -7,7 +7,7 @@
   "isBuiltIn": true,
   "createdAt": 1700000000000,
   "updatedAt": 1700000000000,
-  "lastRepoSyncAt": 1794671210979,
+  "lastRepoSyncAt": 1794671986991,
   "dependencies": [
     "framer-motion",
     "lucide-react"

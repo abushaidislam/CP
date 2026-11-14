@@ -98,7 +98,9 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
   const [isCapturingSnapshot, setIsCapturingSnapshot] = useState(false);
   const [captureSuccess, setCaptureSuccess] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const pendingCaptureActionRef = useRef<"both" | "download" | "copy" | null>(null);
+  const pendingCaptureActionRef = useRef<
+    "thumbnail" | "both" | "download" | "copy" | null
+  >(null);
   const captureTimeoutRef = useRef<NodeJS.Timeout | number | null>(null);
   const toastTimeoutRef = useRef<NodeJS.Timeout | number | null>(null);
 
@@ -134,7 +136,9 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
     }
   };
 
-  const handleCaptureSnapshot = (action: "both" | "download" | "copy" = "both") => {
+  const handleCaptureSnapshot = (
+    action: "thumbnail" | "both" | "download" | "copy" = "thumbnail"
+  ) => {
     pendingCaptureActionRef.current = action;
     setIsCapturingSnapshot(true);
     setCaptureSuccess(false);
@@ -313,60 +317,60 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
               dataUrl
             );
 
-            const requestedAction = pendingCaptureActionRef.current;
+            const requestedAction = pendingCaptureActionRef.current || "thumbnail";
             pendingCaptureActionRef.current = null;
 
-            if (requestedAction) {
-              if (requestedAction === "both" || requestedAction === "download") {
-                try {
-                  const downloadAnchor = document.createElement("a");
-                  downloadAnchor.href = dataUrl;
-                  downloadAnchor.download = `${event.data.componentId || currentTemplateId || "component"}-preview.png`;
-                  document.body.appendChild(downloadAnchor);
-                  downloadAnchor.click();
-                  document.body.removeChild(downloadAnchor);
-                } catch {
-                  // Ignore download trigger errors in restricted contexts
-                }
+            if (requestedAction === "both" || requestedAction === "download") {
+              try {
+                const downloadAnchor = document.createElement("a");
+                downloadAnchor.href = dataUrl;
+                downloadAnchor.download = `${event.data.componentId || currentTemplateId || "component"}-preview.png`;
+                document.body.appendChild(downloadAnchor);
+                downloadAnchor.click();
+                document.body.removeChild(downloadAnchor);
+              } catch {
+                // Ignore download trigger errors in restricted contexts
               }
-
-              if (requestedAction === "both" || requestedAction === "copy") {
-                if (typeof window !== "undefined" && navigator.clipboard) {
-                  fetch(dataUrl)
-                    .then((res) => res.blob())
-                    .then((blob) => {
-                      if (window.ClipboardItem && navigator.clipboard.write) {
-                        const item = new ClipboardItem({ "image/png": blob });
-                        navigator.clipboard.write([item]).catch(() => {
-                          navigator.clipboard.writeText(dataUrl);
-                        });
-                      } else {
-                        navigator.clipboard.writeText(dataUrl);
-                      }
-                    })
-                    .catch(() => {
-                      navigator.clipboard.writeText(dataUrl);
-                    });
-                }
-              }
-
-              setCaptureSuccess(true);
-              const message =
-                requestedAction === "both"
-                  ? "Snapshot downloaded & copied"
-                  : requestedAction === "download"
-                  ? "Snapshot PNG downloaded"
-                  : "Snapshot copied to clipboard";
-              setToastMessage(message);
-
-              if (toastTimeoutRef.current) {
-                clearTimeout(toastTimeoutRef.current);
-              }
-              toastTimeoutRef.current = setTimeout(() => {
-                setCaptureSuccess(false);
-                setToastMessage(null);
-              }, 2600);
             }
+
+            if (requestedAction === "both" || requestedAction === "copy") {
+              if (typeof window !== "undefined" && navigator.clipboard) {
+                fetch(dataUrl)
+                  .then((res) => res.blob())
+                  .then((blob) => {
+                    if (window.ClipboardItem && navigator.clipboard.write) {
+                      const item = new ClipboardItem({ "image/png": blob });
+                      navigator.clipboard.write([item]).catch(() => {
+                        navigator.clipboard.writeText(dataUrl);
+                      });
+                    } else {
+                      navigator.clipboard.writeText(dataUrl);
+                    }
+                  })
+                  .catch(() => {
+                    navigator.clipboard.writeText(dataUrl);
+                  });
+              }
+            }
+
+            setCaptureSuccess(true);
+            const message =
+              requestedAction === "both"
+                ? "Snapshot downloaded & copied"
+                : requestedAction === "download"
+                ? "Snapshot PNG downloaded"
+                : requestedAction === "copy"
+                ? "Snapshot copied to clipboard"
+                : "Card & Repo thumbnail updated";
+            setToastMessage(message);
+
+            if (toastTimeoutRef.current) {
+              clearTimeout(toastTimeoutRef.current);
+            }
+            toastTimeoutRef.current = setTimeout(() => {
+              setCaptureSuccess(false);
+              setToastMessage(null);
+            }, 2600);
           }
 
           window.dispatchEvent(
@@ -722,39 +726,153 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
             </TooltipContent>
           </Tooltip>
 
-          {/* Instant Snapshot Capture Button */}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="outline"
-                size="icon-sm"
-                onClick={() => handleCaptureSnapshot("both")}
-                disabled={isCapturingSnapshot}
-                className={cn(
-                  "studio-icon-btn size-7 rounded-none border-border/80 bg-background/70 transition-colors",
-                  captureSuccess
-                    ? "text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border-emerald-500/40"
-                    : "text-muted-foreground hover:text-foreground"
-                )}
-              >
-                {isCapturingSnapshot ? (
-                  <Loader2 className="size-3.5 animate-spin text-primary" />
-                ) : captureSuccess ? (
-                  <Check className="size-3.5 text-emerald-500" />
-                ) : (
-                  <Camera className="size-3.5" />
-                )}
-                <span className="sr-only">Capture preview snapshot</span>
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom" className="font-sans text-xs">
-              {captureSuccess
-                ? "Snapshot downloaded & copied!"
-                : isCapturingSnapshot
-                ? "Capturing preview snapshot..."
-                : "Capture snapshot (download & copy)"}
-            </TooltipContent>
-          </Tooltip>
+          {/* Unified Snapshot & Card Thumbnail Studio Menu */}
+          <DropdownMenu>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="icon-sm"
+                    disabled={isCapturingSnapshot}
+                    aria-label="Capture preview snapshot"
+                    className={cn(
+                      "studio-icon-btn relative size-7 rounded-none border-border/80 bg-background/70 transition-colors",
+                      captureSuccess
+                        ? "text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border-emerald-500/40"
+                        : "text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    {isCapturingSnapshot ? (
+                      <Loader2 className="size-3.5 animate-spin text-primary" />
+                    ) : captureSuccess ? (
+                      <Check className="size-3.5 text-emerald-500" />
+                    ) : (
+                      <Camera className="size-3.5" />
+                    )}
+                    {userComponents?.[currentTemplateId]?.previewImage &&
+                      !captureSuccess &&
+                      !isCapturingSnapshot && (
+                        <span
+                          className="absolute top-1 right-1 size-1.5 rounded-full bg-emerald-500"
+                          aria-hidden="true"
+                        />
+                      )}
+                    <span className="sr-only">Capture preview snapshot</span>
+                  </Button>
+                </DropdownMenuTrigger>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="font-sans text-xs">
+                {captureSuccess
+                  ? toastMessage || "Snapshot captured!"
+                  : isCapturingSnapshot
+                  ? "Capturing preview snapshot..."
+                  : "Snapshot & Card Thumbnail Studio"}
+              </TooltipContent>
+            </Tooltip>
+
+            <DropdownMenuContent
+              align="end"
+              className="w-72 rounded-none p-0 font-sans border-border/80"
+            >
+              {/* Header + Live Thumbnail Preview Card */}
+              <div className="p-3 bg-muted/25 border-b border-border/60 space-y-2.5">
+                <div className="flex items-center justify-between gap-2">
+                  <div>
+                    <div className="text-xs font-semibold text-foreground font-sans">
+                      Snapshot & Card Thumbnail
+                    </div>
+                    <div className="text-[11px] text-muted-foreground font-sans">
+                      Syncs with Component Hub &{" "}
+                      <span className="font-mono text-[10px] text-foreground/80">
+                        preview.png
+                      </span>
+                    </div>
+                  </div>
+                  <Badge
+                    variant="outline"
+                    className={cn(
+                      "rounded-none text-[10px] px-1.5 py-0 h-5 font-sans",
+                      userComponents?.[currentTemplateId]?.previewImage
+                        ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                        : "border-border/70 text-muted-foreground"
+                    )}
+                  >
+                    {userComponents?.[currentTemplateId]?.previewImage
+                      ? "Saved"
+                      : "Auto"}
+                  </Badge>
+                </div>
+
+                {/* Mini Thumbnail Preview */}
+                <div className="relative h-24 w-full overflow-hidden border border-border/70 bg-background/90 flex items-center justify-center">
+                  {userComponents?.[currentTemplateId]?.previewImage ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={userComponents[currentTemplateId].previewImage}
+                      alt="Current component card thumbnail"
+                      className="h-full w-full object-cover object-center"
+                    />
+                  ) : (
+                    <div className="flex flex-col items-center justify-center gap-1 text-center px-3">
+                      <Camera className="size-4 text-muted-foreground/60" />
+                      <span className="text-[11px] text-muted-foreground font-sans">
+                        No custom thumbnail captured yet
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="p-1">
+                <DropdownMenuItem
+                  onClick={() => handleCaptureSnapshot("thumbnail")}
+                  disabled={isCapturingSnapshot}
+                  className="flex items-start gap-2.5 rounded-none py-2 px-2.5 text-xs cursor-pointer font-sans"
+                >
+                  <Camera className="size-3.5 mt-0.5 text-primary shrink-0" />
+                  <div className="flex flex-col gap-0.5">
+                    <span className="font-medium text-foreground">
+                      Update Card & Repo Thumbnail
+                    </span>
+                    <span className="text-[11px] text-muted-foreground">
+                      Save live view to Hub card &{" "}
+                      <span className="font-mono text-[10px]">preview.png</span>
+                    </span>
+                  </div>
+                </DropdownMenuItem>
+
+                <DropdownMenuSeparator />
+
+                <DropdownMenuItem
+                  onClick={() => handleCaptureSnapshot("copy")}
+                  disabled={isCapturingSnapshot}
+                  className="flex items-center gap-2.5 rounded-none py-1.5 px-2.5 text-xs cursor-pointer font-sans"
+                >
+                  <Copy className="size-3.5 text-muted-foreground shrink-0" />
+                  <span>Copy Snapshot PNG to Clipboard</span>
+                </DropdownMenuItem>
+
+                <DropdownMenuItem
+                  onClick={() => handleCaptureSnapshot("download")}
+                  disabled={isCapturingSnapshot}
+                  className="flex items-center gap-2.5 rounded-none py-1.5 px-2.5 text-xs cursor-pointer font-sans"
+                >
+                  <Download className="size-3.5 text-muted-foreground shrink-0" />
+                  <span>Download PNG File</span>
+                </DropdownMenuItem>
+
+                <DropdownMenuItem
+                  onClick={() => handleCaptureSnapshot("both")}
+                  disabled={isCapturingSnapshot}
+                  className="flex items-center gap-2.5 rounded-none py-1.5 px-2.5 text-xs cursor-pointer font-sans"
+                >
+                  <Check className="size-3.5 text-muted-foreground shrink-0" />
+                  <span>Capture, Copy & Download All</span>
+                </DropdownMenuItem>
+              </div>
+            </DropdownMenuContent>
+          </DropdownMenu>
 
           {/* Fullscreen Toggle */}
           <Tooltip>
@@ -818,12 +936,12 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
                 Snapshot & Export
               </DropdownMenuLabel>
               <DropdownMenuItem
-                onClick={() => handleCaptureSnapshot("both")}
+                onClick={() => handleCaptureSnapshot("thumbnail")}
                 disabled={isCapturingSnapshot}
                 className="flex items-center gap-2 rounded-none text-xs cursor-pointer font-sans"
               >
                 <Camera className="size-3.5" />
-                <span>Download & Copy Snapshot</span>
+                <span>Update Card & Repo Thumbnail</span>
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={() => handleCaptureSnapshot("download")}
