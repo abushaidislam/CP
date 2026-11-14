@@ -1,7 +1,7 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-14T17:55:44.950Z",
-  "totalComponents": 19,
+  "updatedAt": "2026-11-14T17:55:49.771Z",
+  "totalComponents": 20,
   "components": [
     {
       "id": "comp-1794673524638-yody2",
@@ -13,6 +13,25 @@
       "updatedAt": 1794674134550,
       "lastRepoSyncAt": 1794678641680,
       "path": "registry/components/floatingtoolbar",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "index.css",
+        "manifest.json",
+        "preview.png"
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "comp-1794667946115-uzl1i",
+      "slug": "segmentedmodetoggle",
+      "name": "Segmentedmodetoggle",
+      "description": "",
+      "category": "Buttons",
+      "isBuiltIn": false,
+      "updatedAt": 1794668114655,
+      "lastRepoSyncAt": 1794678918558,
+      "path": "registry/components/segmentedmodetoggle",
       "files": [
         "component.tsx",
         "default.tsx",
@@ -42,15 +61,15 @@
       "dependencies": []
     },
     {
-      "id": "comp-1794635799526-1ellv",
-      "slug": "retro-hardware-handheld-clock",
-      "name": "Retro Hardware Handheld Clock",
+      "id": "comp-1794633759466-efzax",
+      "slug": "fmradiotuner",
+      "name": "Fmradiotuner",
       "description": "",
       "category": "Cards",
       "isBuiltIn": false,
-      "updatedAt": 1794663782134,
-      "lastRepoSyncAt": 1794678944924,
-      "path": "registry/components/retro-hardware-handheld-clock",
+      "updatedAt": 1794634754434,
+      "lastRepoSyncAt": 1794678949691,
+      "path": "registry/components/fmradiotuner",
       "files": [
         "component.tsx",
         "default.tsx",
