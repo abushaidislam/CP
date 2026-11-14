@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-14T17:54:13.170Z",
+  "updatedAt": "2026-11-14T17:54:17.559Z",
   "totalComponents": 18,
   "components": [
     {
@@ -132,7 +132,7 @@
       "category": "Custom",
       "isBuiltIn": false,
       "updatedAt": 1793101738221,
-      "lastRepoSyncAt": 1794678066566,
+      "lastRepoSyncAt": 1794678857543,
       "path": "registry/components/div-switch",
       "files": [
         "component.tsx",
@@ -151,7 +151,7 @@
       "category": "Cards",
       "isBuiltIn": false,
       "updatedAt": 1792854754899,
-      "lastRepoSyncAt": 1794678066566,
+      "lastRepoSyncAt": 1794678857543,
       "path": "registry/components/binto-1-3",
       "files": [
         "component.tsx",
@@ -169,7 +169,7 @@
       "category": "Custom",
       "isBuiltIn": false,
       "updatedAt": 1792834847227,
-      "lastRepoSyncAt": 1794678063729,
+      "lastRepoSyncAt": 1794678857543,
       "path": "registry/components/card-swap",
       "files": [
         "component.tsx",
@@ -188,7 +188,7 @@
       "category": "Badges",
       "isBuiltIn": false,
       "updatedAt": 1792678771756,
-      "lastRepoSyncAt": 1794678853148,
+      "lastRepoSyncAt": 1794678063729,
       "path": "registry/components/verified-vadge",
       "files": [
         "component.tsx",
