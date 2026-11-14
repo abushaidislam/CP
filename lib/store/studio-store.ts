@@ -1991,7 +1991,8 @@ export const useStudioStore = create<StudioState>()(
         set({ isCompiling, compilerError: error }),
 
       setRecordingModalOpen: (open) => set({ isRecordingModalOpen: open }),
-      setPublishModalOpen: (open) => set({ isPublishModalOpen: open }),
+      setPublishModalOpen: (open) =>
+        set({ isPublishModalOpen: open, isRepoSyncModalOpen: open }),
       setDependencyModalOpen: (open) => set({ isDependencyModalOpen: open }),
       setSecurityModalOpen: (open) => set({ isSecurityModalOpen: open }),
       setOwnerAuthenticated: (authenticated) =>
@@ -2273,7 +2274,8 @@ export const useStudioStore = create<StudioState>()(
         }),
 
       // Project Repository & GitHub Persistence Actions
-      setRepoSyncModalOpen: (open) => set({ isRepoSyncModalOpen: open }),
+      setRepoSyncModalOpen: (open) =>
+        set({ isRepoSyncModalOpen: open, isPublishModalOpen: open }),
 
       setAutoSaveToRepo: (enabled) => set({ autoSaveToRepo: enabled }),
 

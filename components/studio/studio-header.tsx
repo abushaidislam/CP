@@ -24,7 +24,6 @@ import { useRouter } from "next/navigation";
 import {
   Layers,
   ChevronDown,
-  UploadCloud,
   Moon,
   Sun,
   ExternalLink,
@@ -58,7 +57,6 @@ export function StudioHeader() {
     userComponents,
     loadTemplate,
     loadComponent,
-    setPublishModalOpen,
     setRepoSyncModalOpen,
     repoSyncStatus,
     saveComponentToProjectRepo,
@@ -689,56 +687,41 @@ export function StudioHeader() {
           </Tooltip>
         </div>
 
-        {/* Project Repo & GitHub Sync Button */}
+        {/* Unified Project Repo Sync, Export & Publish Button */}
         <Tooltip>
           <TooltipTrigger asChild>
             <Button
-              variant="outline"
+              variant="default"
               size="icon"
               onClick={() => setRepoSyncModalOpen?.(true)}
-              aria-label="Sync component with project repository & GitHub"
-              className={cn(
-                "studio-icon-btn relative size-8 rounded-none shrink-0",
-                userComponents?.[currentTemplateId]?.savedInRepo &&
-                  repoSyncStatus !== "dirty"
-                  ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20"
-                  : repoSyncStatus === "dirty"
-                  ? "border-amber-500/40 bg-amber-500/10 text-amber-500 hover:bg-amber-500/20"
-                  : "border-border/80 bg-card/60 text-muted-foreground hover:text-foreground"
-              )}
+              aria-label="Project Repo Sync, Export & Publish (Ctrl+Shift+S)"
+              className="relative size-8 rounded-none shadow-none shrink-0"
             >
               {repoSyncStatus === "syncing" ? (
                 <Loader2 className="size-3.5 animate-spin" />
               ) : (
                 <FolderGit2 className="size-3.5" />
               )}
-              <span className="sr-only">Project Repo Sync</span>
+              <span
+                aria-hidden="true"
+                className={cn(
+                  "pointer-events-none absolute top-1 right-1 size-1.5 rounded-none",
+                  userComponents?.[currentTemplateId]?.savedInRepo &&
+                    repoSyncStatus !== "dirty"
+                    ? "bg-emerald-400"
+                    : repoSyncStatus === "dirty"
+                    ? "bg-amber-400"
+                    : "bg-primary-foreground/50"
+                )}
+              />
+              <span className="sr-only">Project Repo Sync &amp; Publish</span>
             </Button>
           </TooltipTrigger>
           <TooltipContent side="bottom" className="font-sans text-xs">
             {userComponents?.[currentTemplateId]?.savedInRepo &&
             repoSyncStatus !== "dirty"
-              ? "Saved in Project Repo (registry/components/) • Click for GitHub Sync"
-              : "Sync Component to Project Repo & GitHub (Ctrl+Shift+S)"}
-          </TooltipContent>
-        </Tooltip>
-
-        {/* 21st.dev Publish Button (Icon-Only High-Contrast Primary) */}
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="default"
-              size="icon"
-              onClick={() => setPublishModalOpen(true)}
-              aria-label="Publish component"
-              className="size-8 rounded-none shadow-none shrink-0"
-            >
-              <UploadCloud className="size-3.5" />
-              <span className="sr-only">Publish</span>
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent side="bottom" className="font-sans text-xs">
-            Publish Component & Generate AST Metadata
+              ? "Saved in Project Repo • Click to Export, Sync GitHub or Publish"
+              : "Project Repo Sync, Export & Publish (Ctrl+Shift+S)"}
           </TooltipContent>
         </Tooltip>
 

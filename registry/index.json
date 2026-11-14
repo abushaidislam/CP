@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-14T15:29:48.424Z",
+  "updatedAt": "2026-11-14T15:46:50.988Z",
   "totalComponents": 9,
   "components": [
     {
@@ -32,7 +32,7 @@
       "category": "Heroes",
       "isBuiltIn": true,
       "updatedAt": 1700000000000,
-      "lastRepoSyncAt": 1794670188412,
+      "lastRepoSyncAt": 1794671210979,
       "path": "registry/components/ink-orbit-hero",
       "files": [
         "component.tsx",
@@ -50,7 +50,7 @@
       "category": "Cards",
       "isBuiltIn": true,
       "updatedAt": 1700000000000,
-      "lastRepoSyncAt": 1794670188412,
+      "lastRepoSyncAt": 1794671210979,
       "path": "registry/components/spotlight-card",
       "files": [
         "component.tsx",
@@ -73,7 +73,7 @@
       "category": "Buttons",
       "isBuiltIn": true,
       "updatedAt": 1700000000000,
-      "lastRepoSyncAt": 1794670188412,
+      "lastRepoSyncAt": 1794671210979,
       "path": "registry/components/shimmer-button",
       "files": [
         "component.tsx",
@@ -94,7 +94,7 @@
       "category": "Badges",
       "isBuiltIn": true,
       "updatedAt": 1700000000000,
-      "lastRepoSyncAt": 1794670188412,
+      "lastRepoSyncAt": 1794671210979,
       "path": "registry/components/metric-badge",
       "files": [
         "component.tsx",
@@ -114,7 +114,7 @@
       "category": "Heroes",
       "isBuiltIn": true,
       "updatedAt": 1700000000000,
-      "lastRepoSyncAt": 1794670188412,
+      "lastRepoSyncAt": 1794671210979,
       "path": "registry/components/aurora-ambient-hero",
       "files": [
         "component.tsx",
@@ -134,7 +134,7 @@
       "category": "Cards",
       "isBuiltIn": true,
       "updatedAt": 1700000000000,
-      "lastRepoSyncAt": 1794670188412,
+      "lastRepoSyncAt": 1794671210979,
       "path": "registry/components/bento-metric-grid",
       "files": [
         "component.tsx",
@@ -154,7 +154,7 @@
       "category": "Buttons",
       "isBuiltIn": true,
       "updatedAt": 1700000000000,
-      "lastRepoSyncAt": 1794670188412,
+      "lastRepoSyncAt": 1794671210979,
       "path": "registry/components/neon-glow-button",
       "files": [
         "component.tsx",
@@ -174,7 +174,7 @@
       "category": "Badges",
       "isBuiltIn": true,
       "updatedAt": 1700000000000,
-      "lastRepoSyncAt": 1794670188412,
+      "lastRepoSyncAt": 1794671210979,
       "path": "registry/components/live-ping-status-pill",
       "files": [
         "component.tsx",

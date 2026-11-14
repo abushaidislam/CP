@@ -6,7 +6,6 @@ import { StudioHeader } from "./studio-header";
 import { EditorPanel } from "./editor-panel";
 import { CanvasPreview } from "./canvas-preview";
 import { AiAssistantPanel } from "./ai-assistant-panel";
-import { PublishModal } from "./publish-modal";
 import { DependencyModal } from "./dependency-modal";
 import { SaveCheckpointDialog } from "./save-checkpoint-dialog";
 import { CreateVariantDialog } from "./create-variant-dialog";
@@ -287,7 +286,6 @@ export function StudioContainer({ componentId: _componentId }: StudioContainerPr
       </main>
 
       {/* Modals & Dialogs */}
-      <PublishModal />
       <RepoSyncModal />
       <DependencyModal />
       <SaveCheckpointDialog />
