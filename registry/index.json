@@ -1,7 +1,7 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-14T17:56:07.932Z",
-  "totalComponents": 20,
+  "updatedAt": "2026-11-14T17:56:12.871Z",
+  "totalComponents": 19,
   "components": [
     {
       "id": "comp-1794673524638-yody2",
@@ -82,25 +82,6 @@
       ]
     },
     {
-      "id": "comp-1794059967767-p8sj7",
-      "slug": "mega-menu",
-      "name": "Mega menu",
-      "description": "",
-      "category": "Custom",
-      "isBuiltIn": false,
-      "updatedAt": 1794064126760,
-      "lastRepoSyncAt": 1794678967909,
-      "path": "registry/components/mega-menu",
-      "files": [
-        "component.tsx",
-        "default.tsx",
-        "index.css",
-        "manifest.json",
-        "preview.png"
-      ],
-      "dependencies": []
-    },
-    {
       "id": "comp-1793339550529-xn3n1",
       "slug": "open-new-page",
       "name": "Open New page",
@@ -108,7 +89,7 @@
       "category": "Custom",
       "isBuiltIn": false,
       "updatedAt": 1793525937887,
-      "lastRepoSyncAt": 1794678864275,
+      "lastRepoSyncAt": 1794678972818,
       "path": "registry/components/open-new-page",
       "files": [
         "component.tsx",
