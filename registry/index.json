@@ -1,7 +1,7 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-14T17:56:12.871Z",
-  "totalComponents": 19,
+  "updatedAt": "2026-11-14T17:56:16.307Z",
+  "totalComponents": 21,
   "components": [
     {
       "id": "comp-1794673524638-yody2",
@@ -21,6 +21,29 @@
         "preview.png"
       ],
       "dependencies": []
+    },
+    {
+      "id": "comp-1794668174105-ojojo",
+      "slug": "schedulecalendar",
+      "name": "Schedulecalendar",
+      "description": "",
+      "category": "Cards",
+      "isBuiltIn": false,
+      "updatedAt": 1794668572435,
+      "lastRepoSyncAt": 1794678932190,
+      "path": "registry/components/schedulecalendar",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "index.css",
+        "manifest.json"
+      ],
+      "dependencies": [
+        "framer-motion",
+        "lucide-react",
+        "clsx",
+        "tailwind-merge"
+      ]
     },
     {
       "id": "comp-1794667946115-uzl1i",
@@ -82,6 +105,25 @@
       ]
     },
     {
+      "id": "comp-1793543805011-tg93i",
+      "slug": "diff-slipt-icon",
+      "name": "Diff slipt icon",
+      "description": "",
+      "category": "Custom",
+      "isBuiltIn": false,
+      "updatedAt": 1793545398910,
+      "lastRepoSyncAt": 1794678976257,
+      "path": "registry/components/diff-slipt-icon",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "index.css",
+        "manifest.json",
+        "preview.png"
+      ],
+      "dependencies": []
+    },
+    {
       "id": "comp-1793339550529-xn3n1",
       "slug": "open-new-page",
       "name": "Open New page",
@@ -89,7 +131,7 @@
       "category": "Custom",
       "isBuiltIn": false,
       "updatedAt": 1793525937887,
-      "lastRepoSyncAt": 1794678972818,
+      "lastRepoSyncAt": 1794678864275,
       "path": "registry/components/open-new-page",
       "files": [
         "component.tsx",

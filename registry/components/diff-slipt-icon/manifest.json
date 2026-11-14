@@ -1,0 +1,13 @@
+{
+  "id": "comp-1793543805011-tg93i",
+  "slug": "diff-slipt-icon",
+  "name": "Diff slipt icon",
+  "description": "",
+  "category": "Custom",
+  "isBuiltIn": false,
+  "createdAt": 1793543805012,
+  "updatedAt": 1793545398910,
+  "lastRepoSyncAt": 1794678976257,
+  "dependencies": [],
+  "previewImage": "./preview.png"
+}
