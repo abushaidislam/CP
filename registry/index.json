@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-14T17:55:32.242Z",
+  "updatedAt": "2026-11-14T17:55:44.950Z",
   "totalComponents": 19,
   "components": [
     {
@@ -23,29 +23,6 @@
       "dependencies": []
     },
     {
-      "id": "comp-1794668174105-ojojo",
-      "slug": "schedulecalendar",
-      "name": "Schedulecalendar",
-      "description": "",
-      "category": "Cards",
-      "isBuiltIn": false,
-      "updatedAt": 1794668572435,
-      "lastRepoSyncAt": 1794678932190,
-      "path": "registry/components/schedulecalendar",
-      "files": [
-        "component.tsx",
-        "default.tsx",
-        "index.css",
-        "manifest.json"
-      ],
-      "dependencies": [
-        "framer-motion",
-        "lucide-react",
-        "clsx",
-        "tailwind-merge"
-      ]
-    },
-    {
       "id": "comp-1792523276168-z7cvi",
       "slug": "value",
       "name": "Value",
@@ -55,6 +32,25 @@
       "updatedAt": 1794666731864,
       "lastRepoSyncAt": 1794678849696,
       "path": "registry/components/value",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "index.css",
+        "manifest.json",
+        "preview.png"
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "comp-1794635799526-1ellv",
+      "slug": "retro-hardware-handheld-clock",
+      "name": "Retro Hardware Handheld Clock",
+      "description": "",
+      "category": "Cards",
+      "isBuiltIn": false,
+      "updatedAt": 1794663782134,
+      "lastRepoSyncAt": 1794678944924,
+      "path": "registry/components/retro-hardware-handheld-clock",
       "files": [
         "component.tsx",
         "default.tsx",
