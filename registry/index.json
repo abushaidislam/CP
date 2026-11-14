@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-14T17:56:00.858Z",
+  "updatedAt": "2026-11-14T17:56:04.030Z",
   "totalComponents": 20,
   "components": [
     {
@@ -61,25 +61,6 @@
       "dependencies": []
     },
     {
-      "id": "comp-1794546412282-yetcc",
-      "slug": "bento-gird",
-      "name": "Bento Gird",
-      "description": "",
-      "category": "Custom",
-      "isBuiltIn": false,
-      "updatedAt": 1794597450398,
-      "lastRepoSyncAt": 1794678960784,
-      "path": "registry/components/bento-gird",
-      "files": [
-        "component.tsx",
-        "default.tsx",
-        "index.css",
-        "manifest.json",
-        "preview.png"
-      ],
-      "dependencies": []
-    },
-    {
       "id": "shimmer-button",
       "slug": "shimmer-button",
       "name": "Aurora Shimmer Button",
@@ -99,6 +80,25 @@
         "framer-motion",
         "lucide-react"
       ]
+    },
+    {
+      "id": "comp-1794548767132-o1uzb",
+      "slug": "flex-fit-brand-showcase-bento-grid-layout",
+      "name": "FlexFit Brand Showcase Bento Grid layout",
+      "description": "",
+      "category": "Custom",
+      "isBuiltIn": false,
+      "updatedAt": 1794564626210,
+      "lastRepoSyncAt": 1794678963972,
+      "path": "registry/components/flex-fit-brand-showcase-bento-grid-layout",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "index.css",
+        "manifest.json",
+        "preview.png"
+      ],
+      "dependencies": []
     },
     {
       "id": "comp-1793339550529-xn3n1",
