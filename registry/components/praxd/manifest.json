@@ -1,0 +1,13 @@
+{
+  "id": "comp-1793435462316-79g3w",
+  "slug": "praxd",
+  "name": "praxd",
+  "description": "Llogo",
+  "category": "Custom",
+  "isBuiltIn": false,
+  "createdAt": 1793435462316,
+  "updatedAt": 1793456829841,
+  "lastRepoSyncAt": 1794678073147,
+  "dependencies": [],
+  "previewImage": "./preview.png"
+}

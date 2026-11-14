@@ -1,18 +1,18 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-14T17:41:09.785Z",
-  "totalComponents": 10,
+  "updatedAt": "2026-11-14T17:41:13.151Z",
+  "totalComponents": 9,
   "components": [
     {
-      "id": "comp-1793339550529-xn3n1",
-      "slug": "open-new-page",
-      "name": "Open New page",
-      "description": "",
+      "id": "comp-1793435462316-79g3w",
+      "slug": "praxd",
+      "name": "praxd",
+      "description": "Llogo",
       "category": "Custom",
       "isBuiltIn": false,
-      "updatedAt": 1793525937887,
-      "lastRepoSyncAt": 1794678069781,
-      "path": "registry/components/open-new-page",
+      "updatedAt": 1793456829841,
+      "lastRepoSyncAt": 1794678073147,
+      "path": "registry/components/praxd",
       "files": [
         "component.tsx",
         "default.tsx",
@@ -21,30 +21,6 @@
         "preview.png"
       ],
       "dependencies": []
-    },
-    {
-      "id": "comp-1793104962588-cmj9k",
-      "slug": "framer-motion-morph",
-      "name": "Framer Motion Morph",
-      "description": "",
-      "category": "Cards",
-      "isBuiltIn": false,
-      "updatedAt": 1793110115803,
-      "lastRepoSyncAt": 1794678069781,
-      "path": "registry/components/framer-motion-morph",
-      "files": [
-        "component.tsx",
-        "default.tsx",
-        "index.css",
-        "manifest.json",
-        "preview.png"
-      ],
-      "dependencies": [
-        "framer-motion",
-        "lucide-react",
-        "clsx",
-        "tailwind-merge"
-      ]
     },
     {
       "id": "aurora-ambient-hero",
