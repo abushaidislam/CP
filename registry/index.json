@@ -1,7 +1,7 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-14T17:54:29.099Z",
-  "totalComponents": 18,
+  "updatedAt": "2026-11-14T17:55:18.634Z",
+  "totalComponents": 19,
   "components": [
     {
       "id": "comp-1794673524638-yody2",
@@ -23,6 +23,25 @@
       "dependencies": []
     },
     {
+      "id": "comp-1794667946115-uzl1i",
+      "slug": "segmentedmodetoggle",
+      "name": "Segmentedmodetoggle",
+      "description": "",
+      "category": "Buttons",
+      "isBuiltIn": false,
+      "updatedAt": 1794668114655,
+      "lastRepoSyncAt": 1794678918558,
+      "path": "registry/components/segmentedmodetoggle",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "index.css",
+        "manifest.json",
+        "preview.png"
+      ],
+      "dependencies": []
+    },
+    {
       "id": "comp-1792523276168-z7cvi",
       "slug": "value",
       "name": "Value",
@@ -30,7 +49,7 @@
       "category": "Custom",
       "isBuiltIn": false,
       "updatedAt": 1794666731864,
-      "lastRepoSyncAt": 1794678822993,
+      "lastRepoSyncAt": 1794678849696,
       "path": "registry/components/value",
       "files": [
         "component.tsx",
@@ -49,7 +68,7 @@
       "category": "Buttons",
       "isBuiltIn": true,
       "updatedAt": 1794591242489,
-      "lastRepoSyncAt": 1794678054570,
+      "lastRepoSyncAt": 1794678843506,
       "path": "registry/components/shimmer-button",
       "files": [
         "component.tsx",
@@ -70,7 +89,7 @@
       "category": "Custom",
       "isBuiltIn": false,
       "updatedAt": 1793525937887,
-      "lastRepoSyncAt": 1794678069781,
+      "lastRepoSyncAt": 1794678864275,
       "path": "registry/components/open-new-page",
       "files": [
         "component.tsx",
@@ -108,7 +127,7 @@
       "category": "Cards",
       "isBuiltIn": false,
       "updatedAt": 1793110115803,
-      "lastRepoSyncAt": 1794678069781,
+      "lastRepoSyncAt": 1794678861106,
       "path": "registry/components/framer-motion-morph",
       "files": [
         "component.tsx",
@@ -132,7 +151,7 @@
       "category": "Custom",
       "isBuiltIn": false,
       "updatedAt": 1793101738221,
-      "lastRepoSyncAt": 1794678066566,
+      "lastRepoSyncAt": 1794678857543,
       "path": "registry/components/div-switch",
       "files": [
         "component.tsx",
@@ -151,7 +170,7 @@
       "category": "Cards",
       "isBuiltIn": false,
       "updatedAt": 1792854754899,
-      "lastRepoSyncAt": 1794678066566,
+      "lastRepoSyncAt": 1794678857543,
       "path": "registry/components/binto-1-3",
       "files": [
         "component.tsx",
@@ -169,7 +188,7 @@
       "category": "Custom",
       "isBuiltIn": false,
       "updatedAt": 1792834847227,
-      "lastRepoSyncAt": 1794678063729,
+      "lastRepoSyncAt": 1794678857543,
       "path": "registry/components/card-swap",
       "files": [
         "component.tsx",
@@ -188,7 +207,7 @@
       "category": "Badges",
       "isBuiltIn": false,
       "updatedAt": 1792678771756,
-      "lastRepoSyncAt": 1794678063729,
+      "lastRepoSyncAt": 1794678853148,
       "path": "registry/components/verified-vadge",
       "files": [
         "component.tsx",
@@ -207,7 +226,7 @@
       "category": "Custom",
       "isBuiltIn": false,
       "updatedAt": 1792523167172,
-      "lastRepoSyncAt": 1794678057232,
+      "lastRepoSyncAt": 1794678846406,
       "path": "registry/components/career-hero",
       "files": [
         "component.tsx",
@@ -229,7 +248,7 @@
       "category": "Heroes",
       "isBuiltIn": true,
       "updatedAt": 1700000000000,
-      "lastRepoSyncAt": 1794678054570,
+      "lastRepoSyncAt": 1794678843506,
       "path": "registry/components/aurora-ambient-hero",
       "files": [
         "component.tsx",
@@ -249,7 +268,7 @@
       "category": "Cards",
       "isBuiltIn": true,
       "updatedAt": 1700000000000,
-      "lastRepoSyncAt": 1794678054570,
+      "lastRepoSyncAt": 1794678843506,
       "path": "registry/components/bento-metric-grid",
       "files": [
         "component.tsx",
@@ -269,7 +288,7 @@
       "category": "Heroes",
       "isBuiltIn": true,
       "updatedAt": 1700000000000,
-      "lastRepoSyncAt": 1794678054570,
+      "lastRepoSyncAt": 1794678843506,
       "path": "registry/components/ink-orbit-hero",
       "files": [
         "component.tsx",
@@ -287,7 +306,7 @@
       "category": "Badges",
       "isBuiltIn": true,
       "updatedAt": 1700000000000,
-      "lastRepoSyncAt": 1794678057232,
+      "lastRepoSyncAt": 1794678846406,
       "path": "registry/components/live-ping-status-pill",
       "files": [
         "component.tsx",
@@ -307,7 +326,7 @@
       "category": "Badges",
       "isBuiltIn": true,
       "updatedAt": 1700000000000,
-      "lastRepoSyncAt": 1794678054570,
+      "lastRepoSyncAt": 1794678843506,
       "path": "registry/components/metric-badge",
       "files": [
         "component.tsx",
@@ -327,7 +346,7 @@
       "category": "Buttons",
       "isBuiltIn": true,
       "updatedAt": 1700000000000,
-      "lastRepoSyncAt": 1794678057232,
+      "lastRepoSyncAt": 1794678846406,
       "path": "registry/components/neon-glow-button",
       "files": [
         "component.tsx",
@@ -347,7 +366,7 @@
       "category": "Cards",
       "isBuiltIn": true,
       "updatedAt": 1700000000000,
-      "lastRepoSyncAt": 1794678054570,
+      "lastRepoSyncAt": 1794678843506,
       "path": "registry/components/spotlight-card",
       "files": [
         "component.tsx",
