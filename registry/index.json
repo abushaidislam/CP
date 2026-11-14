@@ -1,18 +1,37 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-14T17:41:00.317Z",
-  "totalComponents": 9,
+  "updatedAt": "2026-11-14T17:41:03.734Z",
+  "totalComponents": 10,
   "components": [
     {
-      "id": "comp-1792523276168-z7cvi",
-      "slug": "value",
-      "name": "Value",
+      "id": "comp-1792733253358-dfj51",
+      "slug": "card-swap",
+      "name": "Card Swap",
       "description": "",
       "category": "Custom",
       "isBuiltIn": false,
-      "updatedAt": 1794666731864,
-      "lastRepoSyncAt": 1794678060313,
-      "path": "registry/components/value",
+      "updatedAt": 1792834847227,
+      "lastRepoSyncAt": 1794678063729,
+      "path": "registry/components/card-swap",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "index.css",
+        "manifest.json",
+        "preview.png"
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "comp-1792566184875-b6d4f",
+      "slug": "verified-vadge",
+      "name": "Verified Vadge",
+      "description": "",
+      "category": "Badges",
+      "isBuiltIn": false,
+      "updatedAt": 1792678771756,
+      "lastRepoSyncAt": 1794678063729,
+      "path": "registry/components/verified-vadge",
       "files": [
         "component.tsx",
         "default.tsx",
