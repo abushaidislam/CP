@@ -1,0 +1,13 @@
+{
+  "id": "comp-1793339550529-xn3n1",
+  "slug": "open-new-page",
+  "name": "Open New page",
+  "description": "",
+  "category": "Custom",
+  "isBuiltIn": false,
+  "createdAt": 1793339550529,
+  "updatedAt": 1793525937887,
+  "lastRepoSyncAt": 1794678069781,
+  "dependencies": [],
+  "previewImage": "./preview.png"
+}
