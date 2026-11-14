@@ -46,6 +46,7 @@ import {
   Keyboard,
   ShieldCheck,
   Lock,
+  FolderGit2,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -58,6 +59,9 @@ export function StudioHeader() {
     loadTemplate,
     loadComponent,
     setPublishModalOpen,
+    setRepoSyncModalOpen,
+    repoSyncStatus,
+    saveComponentToProjectRepo,
     isTerminalOpen,
     toggleTerminal,
     terminalLogs,
@@ -140,6 +144,11 @@ export function StudioHeader() {
 
   React.useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key?.toLowerCase() === "s") {
+        e.preventDefault();
+        saveComponentToProjectRepo?.({ componentId: currentTemplateId });
+        return;
+      }
       if ((e.ctrlKey || e.metaKey) && e.key?.toLowerCase() === "s") {
         e.preventDefault();
         setSaveCheckpointDialogOpen(true);
@@ -147,7 +156,7 @@ export function StudioHeader() {
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [setSaveCheckpointDialogOpen]);
+  }, [setSaveCheckpointDialogOpen, saveComponentToProjectRepo, currentTemplateId]);
 
   React.useEffect(() => {
     const root = document.documentElement;
@@ -680,6 +689,40 @@ export function StudioHeader() {
           </Tooltip>
         </div>
 
+        {/* Project Repo & GitHub Sync Button */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => setRepoSyncModalOpen?.(true)}
+              aria-label="Sync component with project repository & GitHub"
+              className={cn(
+                "studio-icon-btn relative size-8 rounded-none shrink-0",
+                userComponents?.[currentTemplateId]?.savedInRepo &&
+                  repoSyncStatus !== "dirty"
+                  ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20"
+                  : repoSyncStatus === "dirty"
+                  ? "border-amber-500/40 bg-amber-500/10 text-amber-500 hover:bg-amber-500/20"
+                  : "border-border/80 bg-card/60 text-muted-foreground hover:text-foreground"
+              )}
+            >
+              {repoSyncStatus === "syncing" ? (
+                <Loader2 className="size-3.5 animate-spin" />
+              ) : (
+                <FolderGit2 className="size-3.5" />
+              )}
+              <span className="sr-only">Project Repo Sync</span>
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" className="font-sans text-xs">
+            {userComponents?.[currentTemplateId]?.savedInRepo &&
+            repoSyncStatus !== "dirty"
+              ? "Saved in Project Repo (registry/components/) • Click for GitHub Sync"
+              : "Sync Component to Project Repo & GitHub (Ctrl+Shift+S)"}
+          </TooltipContent>
+        </Tooltip>
+
         {/* 21st.dev Publish Button (Icon-Only High-Contrast Primary) */}
         <Tooltip>
           <TooltipTrigger asChild>
@@ -751,6 +794,30 @@ export function StudioHeader() {
                 Studio Actions
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
+
+              {/* Save to Project Repo */}
+              <DropdownMenuItem
+                onClick={() => setRepoSyncModalOpen?.(true)}
+                className="gap-2.5 cursor-pointer rounded-none font-sans text-xs"
+              >
+                <FolderGit2 className="size-3.5 text-primary" />
+                <span className="flex-1">Project Repo & GitHub</span>
+                <Badge
+                  variant="secondary"
+                  className={cn(
+                    "h-4 rounded-none px-1 text-[9px] font-sans",
+                    userComponents?.[currentTemplateId]?.savedInRepo &&
+                      repoSyncStatus !== "dirty"
+                      ? "bg-emerald-500/15 text-emerald-500"
+                      : "bg-amber-500/15 text-amber-500"
+                  )}
+                >
+                  {userComponents?.[currentTemplateId]?.savedInRepo &&
+                  repoSyncStatus !== "dirty"
+                    ? "In Repo"
+                    : "Sync"}
+                </Badge>
+              </DropdownMenuItem>
 
               {/* Security Shield */}
               <DropdownMenuItem

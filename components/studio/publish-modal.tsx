@@ -33,7 +33,18 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 
 export function PublishModal() {
-  const { files, isPublishModalOpen, setPublishModalOpen } = useStudioStore();
+  const {
+    files,
+    isPublishModalOpen,
+    setPublishModalOpen,
+    setRepoSyncModalOpen,
+    saveComponentToProjectRepo,
+    repoSyncStatus,
+    currentTemplateId,
+    userComponents,
+  } = useStudioStore();
+  const activeComponent = userComponents?.[currentTemplateId];
+  const [savedToRepoJustNow, setSavedToRepoJustNow] = useState(false);
 
   const [cliFormat, setCliFormat] = useState<"oneline" | "powershell" | "bash">("oneline");
   const [pathStyle, setPathStyle] = useState<"folder" | "project">("folder");
@@ -162,6 +173,21 @@ export function PublishModal() {
     });
   };
 
+  const handleQuickSaveToRepo = async () => {
+    const res = await saveComponentToProjectRepo({
+      componentId: currentTemplateId,
+    });
+    if (res.success) {
+      setSavedToRepoJustNow(true);
+      setTimeout(() => setSavedToRepoJustNow(false), 2500);
+      confetti({
+        particleCount: 55,
+        spread: 60,
+        origin: { y: 0.6 },
+      });
+    }
+  };
+
   return (
     <Dialog open={isPublishModalOpen} onOpenChange={setPublishModalOpen}>
       <DialogContent className="max-w-3xl w-[calc(100vw-2rem)] max-h-[90vh] flex flex-col border border-border bg-card p-0 gap-0 rounded-none overflow-y-auto overflow-x-hidden font-sans">
@@ -178,10 +204,10 @@ export function PublishModal() {
             </div>
             <div>
               <DialogTitle className="flex items-center gap-2 text-base sm:text-lg font-semibold tracking-tight text-foreground font-sans">
-                <span>Publish to 21st.dev</span>
+                <span>Save to Project Repo & Publish</span>
               </DialogTitle>
               <DialogDescription className="text-xs text-muted-foreground mt-0.5 font-sans">
-                Export your tested component and publish directly to the 21st.dev creator community.
+                Save your component directly into this project&apos;s repository (<span className="font-mono text-foreground">registry/components/</span>) or publish to 21st.dev.
               </DialogDescription>
             </div>
           </div>
@@ -189,6 +215,64 @@ export function PublishModal() {
 
         {/* Scrollable Workflow Body */}
         <div className="flex-1 px-6 py-5 space-y-4">
+          {/* Direct Project Repository & GitHub Save Strip */}
+          <div className="rounded-none border border-emerald-500/35 bg-emerald-500/[0.04] p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <Badge
+                  variant="outline"
+                  className="rounded-none text-[9px] py-0 px-1.5 font-mono uppercase text-emerald-500 border-emerald-500/40 bg-emerald-500/10"
+                >
+                  PROJECT REPO
+                </Badge>
+                <span className="text-xs font-semibold text-foreground font-sans">
+                  Save Directly Inside This Project&apos;s Repository
+                </span>
+              </div>
+              <p className="text-[11px] text-muted-foreground font-sans">
+                Writes{" "}
+                <span className="font-mono text-foreground">
+                  registry/components/{derivedSlug}/component.tsx
+                </span>{" "}
+                and commits to this repo so it syncs with GitHub automatically.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setPublishModalOpen(false);
+                  setRepoSyncModalOpen(true);
+                }}
+                className="rounded-none h-8 px-3 text-xs font-sans"
+              >
+                Repo & GitHub Settings
+              </Button>
+              <Button
+                variant="default"
+                size="sm"
+                disabled={repoSyncStatus === "syncing"}
+                onClick={handleQuickSaveToRepo}
+                className="rounded-none h-8 px-3.5 text-xs font-medium font-sans gap-1.5"
+              >
+                {savedToRepoJustNow ||
+                (activeComponent?.savedInRepo && repoSyncStatus === "synced") ? (
+                  <>
+                    <Check className="size-3.5 text-emerald-400" />
+                    <span>Saved in Repo</span>
+                  </>
+                ) : (
+                  <>
+                    <UploadCloud className="size-3.5" />
+                    <span>Save to Project Repo</span>
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+
           {/* Component Identification Strip */}
           <div className="rounded-none border border-border bg-background p-4 space-y-3 font-sans">
             <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">

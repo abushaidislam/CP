@@ -132,6 +132,24 @@ export interface UserComponent {
   files: StudioFiles;
   dependencies: string[];
   previewImage?: string;
+  repoSlug?: string;
+  savedInRepo?: boolean;
+  lastRepoSyncAt?: number;
+  lastCommitSha?: string;
+  lastCommitUrl?: string;
+}
+
+export type RepoSyncStatus = "idle" | "syncing" | "synced" | "dirty" | "error";
+
+export interface RepoGitInfo {
+  isGitRepo?: boolean;
+  branch?: string;
+  lastCommitSha?: string;
+  remoteOrigin?: string;
+  envGithubRepo?: string;
+  envGithubBranch?: string;
+  hasGithubToken?: boolean;
+  totalComponents?: number;
 }
 
 export interface StudioState {
@@ -209,6 +227,18 @@ export interface StudioState {
   preserveDesignSkill: boolean;
   aiChatMessages: AiChatMessage[];
   isAiThinking: boolean;
+
+  // Project Repository & GitHub Persistence
+  isRepoSyncModalOpen: boolean;
+  repoSyncStatus: RepoSyncStatus;
+  autoSaveToRepo: boolean;
+  lastRepoSyncError: string | null;
+  repoGitInfo: RepoGitInfo | null;
+  githubRepoConfig: {
+    repo: string;
+    branch: string;
+    token: string;
+  };
 
   // Actions
   updateFile: (name: StudioFileName, content: string) => void;
@@ -310,6 +340,35 @@ export interface StudioState {
     "demo.tsx": string;
     "index.css": string;
   }>) => void;
+
+  // Project Repository & GitHub Actions
+  setRepoSyncModalOpen: (open: boolean) => void;
+  setAutoSaveToRepo: (enabled: boolean) => void;
+  setGithubRepoConfig: (
+    config: Partial<{ repo: string; branch: string; token: string }>
+  ) => void;
+  hydrateFromProjectRepo: () => Promise<void>;
+  saveComponentToProjectRepo: (options?: {
+    componentId?: string;
+    commitMessage?: string;
+    pushToGithub?: boolean;
+  }) => Promise<{
+    success: boolean;
+    repoPath?: string;
+    commitSha?: string;
+    commitUrl?: string;
+    error?: string;
+  }>;
+  syncAllComponentsToProjectRepo: (options?: {
+    commitMessage?: string;
+    pushToGithub?: boolean;
+  }) => Promise<{
+    success: boolean;
+    savedCount?: number;
+    commitSha?: string;
+    commitUrl?: string;
+    error?: string;
+  }>;
 }
 
 const initialTemplate = DEFAULT_TEMPLATES[0];
@@ -979,6 +1038,17 @@ export const useStudioStore = create<StudioState>()(
       aiChatMessages: [],
       isAiThinking: false,
 
+      isRepoSyncModalOpen: false,
+      repoSyncStatus: "idle",
+      autoSaveToRepo: true,
+      lastRepoSyncError: null,
+      repoGitInfo: null,
+      githubRepoConfig: {
+        repo: "",
+        branch: "main",
+        token: "",
+      },
+
       updateFile: (name, content) =>
         set((state) => {
           const nextFiles: StudioFiles = {
@@ -1012,6 +1082,7 @@ export const useStudioStore = create<StudioState>()(
           return {
             files: nextFiles,
             userComponents: updatedUserComponents,
+            repoSyncStatus: "dirty",
             ...sync,
           };
         }),
@@ -1737,12 +1808,21 @@ export const useStudioStore = create<StudioState>()(
         return id;
       },
 
-      deleteUserComponent: (id) =>
-        set((state) => {
-          if (state.userComponents?.[id]?.isBuiltIn || DEFAULT_TEMPLATES.some((t) => t.id === id)) {
-            return state;
-          }
+      deleteUserComponent: (id) => {
+        const compToDelete = get().userComponents?.[id];
+        if (compToDelete?.isBuiltIn || DEFAULT_TEMPLATES.some((t) => t.id === id)) {
+          return;
+        }
 
+        if (typeof window !== "undefined" && typeof fetch === "function") {
+          const slug = compToDelete?.repoSlug || "";
+          fetch(
+            `/api/repo-sync?id=${encodeURIComponent(id)}&slug=${encodeURIComponent(slug)}`,
+            { method: "DELETE" }
+          ).catch(() => {});
+        }
+
+        set((state) => {
           const nextUserComponents = { ...state.userComponents };
           delete nextUserComponents[id];
 
@@ -1790,7 +1870,8 @@ export const useStudioStore = create<StudioState>()(
             quickPreviewComponentId:
               state.quickPreviewComponentId === id ? null : state.quickPreviewComponentId,
           };
-        }),
+        });
+      },
 
       duplicateUserComponent: (id, newName) => {
         const state = get();
@@ -1849,6 +1930,7 @@ export const useStudioStore = create<StudioState>()(
           const comp = state.userComponents?.[id];
           if (!comp) return state;
           return {
+            repoSyncStatus: "dirty",
             userComponents: {
               ...state.userComponents,
               [id]: {
@@ -2185,9 +2267,409 @@ export const useStudioStore = create<StudioState>()(
           return {
             files: nextFiles,
             userComponents: updatedUserComponents,
+            repoSyncStatus: "dirty",
             ...sync,
           };
         }),
+
+      // Project Repository & GitHub Persistence Actions
+      setRepoSyncModalOpen: (open) => set({ isRepoSyncModalOpen: open }),
+
+      setAutoSaveToRepo: (enabled) => set({ autoSaveToRepo: enabled }),
+
+      setGithubRepoConfig: (config) =>
+        set((state) => ({
+          githubRepoConfig: {
+            ...state.githubRepoConfig,
+            ...config,
+          },
+        })),
+
+      hydrateFromProjectRepo: async () => {
+        if (typeof window === "undefined") return;
+        try {
+          const res = await fetch("/api/repo-sync", {
+            method: "GET",
+            headers: { Accept: "application/json" },
+          });
+          if (!res.ok) return;
+          const data = (await res.json()) as {
+            success?: boolean;
+            totalComponents?: number;
+            components?: Array<{
+              manifest: {
+                id: string;
+                slug: string;
+                name: string;
+                description: string;
+                category: string;
+                isBuiltIn?: boolean;
+                createdAt: number;
+                updatedAt: number;
+                lastRepoSyncAt: number;
+                lastCommitSha?: string;
+                lastCommitUrl?: string;
+                dependencies: string[];
+                previewImage?: string;
+                variants?: ComponentVariant[];
+                activeVariantId?: string;
+              };
+              files: StudioFiles;
+            }>;
+            gitInfo?: RepoGitInfo;
+          };
+
+          if (!data.success) return;
+
+          set((state) => {
+            const nextUserComponents = { ...(state.userComponents || {}) };
+            const nextVariants = { ...(state.variantsByTemplate || {}) };
+            const nextActiveVariants = { ...(state.activeVariantByTemplate || {}) };
+
+            for (const entry of data.components || []) {
+              const m = entry.manifest;
+              const existing = nextUserComponents[m.id];
+              const isRepoNewer =
+                !existing ||
+                !existing.updatedAt ||
+                (m.updatedAt || 0) >= (existing.updatedAt || 0);
+
+              if (isRepoNewer) {
+                nextUserComponents[m.id] = {
+                  id: m.id,
+                  name: m.name,
+                  description: m.description,
+                  category: m.category,
+                  isBuiltIn: m.isBuiltIn ?? existing?.isBuiltIn,
+                  createdAt: m.createdAt || existing?.createdAt || Date.now(),
+                  updatedAt: m.updatedAt || Date.now(),
+                  files: entry.files,
+                  dependencies: m.dependencies || [],
+                  previewImage:
+                    m.previewImage ||
+                    existing?.previewImage ||
+                    DEFAULT_TEMPLATE_PREVIEWS[m.id] ||
+                    DEFAULT_TEMPLATE_PREVIEWS["blank"],
+                  repoSlug: m.slug,
+                  savedInRepo: true,
+                  lastRepoSyncAt: m.lastRepoSyncAt,
+                  lastCommitSha: m.lastCommitSha,
+                  lastCommitUrl: m.lastCommitUrl,
+                };
+                if (Array.isArray(m.variants) && m.variants.length > 0) {
+                  nextVariants[m.id] = m.variants;
+                  if (m.activeVariantId) {
+                    nextActiveVariants[m.id] = m.activeVariantId;
+                  }
+                }
+              } else if (existing) {
+                nextUserComponents[m.id] = {
+                  ...existing,
+                  repoSlug: m.slug,
+                  savedInRepo: true,
+                  lastRepoSyncAt: m.lastRepoSyncAt,
+                  lastCommitSha: m.lastCommitSha || existing.lastCommitSha,
+                  lastCommitUrl: m.lastCommitUrl || existing.lastCommitUrl,
+                };
+              }
+            }
+
+            const activeComp = nextUserComponents[state.currentTemplateId];
+            const shouldRefreshActiveFiles =
+              activeComp &&
+              activeComp.savedInRepo &&
+              state.repoSyncStatus !== "dirty";
+
+            return {
+              userComponents: nextUserComponents,
+              variantsByTemplate: nextVariants,
+              activeVariantByTemplate: nextActiveVariants,
+              files: shouldRefreshActiveFiles ? activeComp.files : state.files,
+              dependencies: shouldRefreshActiveFiles
+                ? activeComp.dependencies
+                : state.dependencies,
+              repoGitInfo: data.gitInfo
+                ? {
+                    ...data.gitInfo,
+                    totalComponents: data.totalComponents,
+                  }
+                : state.repoGitInfo,
+              repoSyncStatus:
+                activeComp?.savedInRepo && state.repoSyncStatus === "idle"
+                  ? "synced"
+                  : state.repoSyncStatus,
+            };
+          });
+        } catch {
+          // Ignore network errors during initial background hydration
+        }
+      },
+
+      saveComponentToProjectRepo: async (options = {}) => {
+        const state = get();
+        const targetId = options.componentId || state.currentTemplateId;
+        const targetComp = state.userComponents?.[targetId];
+        if (!targetComp) {
+          return {
+            success: false,
+            error: "Active component not found in workspace.",
+          };
+        }
+
+        // Ensure latest editor files are synced if saving the active component
+        const compToSave: UserComponent =
+          targetId === state.currentTemplateId
+            ? {
+                ...targetComp,
+                files: {
+                  ...state.files,
+                  "default.tsx":
+                    state.files["default.tsx"] ?? state.files["demo.tsx"],
+                  "demo.tsx":
+                    state.files["demo.tsx"] ?? state.files["default.tsx"] ?? "",
+                },
+                dependencies: [...state.dependencies],
+              }
+            : targetComp;
+
+        set({ repoSyncStatus: "syncing", lastRepoSyncError: null });
+
+        try {
+          const res = await fetch("/api/repo-sync", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              action: "save_component",
+              component: compToSave,
+              variants: state.variantsByTemplate?.[targetId] || [],
+              activeVariantId: state.activeVariantByTemplate?.[targetId],
+              commitMessage: options.commitMessage,
+              commitToGit: true,
+              pushToGithub: Boolean(options.pushToGithub),
+              githubConfig: state.githubRepoConfig,
+            }),
+          });
+
+          const data = (await res.json()) as {
+            success?: boolean;
+            error?: string;
+            savedRecords?: Array<{
+              id: string;
+              slug: string;
+              repoPath: string;
+              lastRepoSyncAt: number;
+            }>;
+            totalRepoComponents?: number;
+            commitSha?: string;
+            commitUrl?: string;
+            githubPush?: {
+              pushed: boolean;
+              commitSha?: string;
+              commitUrl?: string;
+              error?: string;
+            } | null;
+          };
+
+          if (!res.ok || !data.success) {
+            const errMsg =
+              data.error || "Failed to save component to project repository.";
+            set({ repoSyncStatus: "error", lastRepoSyncError: errMsg });
+            return { success: false, error: errMsg };
+          }
+
+          if (options.pushToGithub && data.githubPush && !data.githubPush.pushed) {
+            const ghErr =
+              data.githubPush.error || "Saved locally, but GitHub push failed.";
+            set({ repoSyncStatus: "error", lastRepoSyncError: ghErr });
+            return { success: false, error: ghErr };
+          }
+
+          const record = data.savedRecords?.[0];
+          const syncedAt = record?.lastRepoSyncAt || Date.now();
+
+          set((s) => {
+            const existing = s.userComponents?.[targetId] || compToSave;
+            return {
+              repoSyncStatus: "synced",
+              lastRepoSyncError: null,
+              repoGitInfo: s.repoGitInfo
+                ? {
+                    ...s.repoGitInfo,
+                    lastCommitSha: data.commitSha || s.repoGitInfo.lastCommitSha,
+                    totalComponents:
+                      data.totalRepoComponents ?? s.repoGitInfo.totalComponents,
+                  }
+                : {
+                    lastCommitSha: data.commitSha,
+                    totalComponents: data.totalRepoComponents,
+                  },
+              userComponents: {
+                ...s.userComponents,
+                [targetId]: {
+                  ...existing,
+                  repoSlug: record?.slug || existing.repoSlug,
+                  savedInRepo: true,
+                  lastRepoSyncAt: syncedAt,
+                  lastCommitSha: data.commitSha || existing.lastCommitSha,
+                  lastCommitUrl: data.commitUrl || existing.lastCommitUrl,
+                },
+              },
+            };
+          });
+
+          get().addTerminalLog({
+            type: "system",
+            message: `[Repo Sync] Saved ${compToSave.name} to ${
+              record?.repoPath || "registry/components"
+            }${data.commitSha ? ` (commit ${data.commitSha})` : ""}.`,
+          });
+
+          return {
+            success: true,
+            repoPath: record?.repoPath,
+            commitSha: data.commitSha,
+            commitUrl: data.commitUrl,
+          };
+        } catch (err: unknown) {
+          const msg = err instanceof Error ? err.message : String(err);
+          set({ repoSyncStatus: "error", lastRepoSyncError: msg });
+          return { success: false, error: msg };
+        }
+      },
+
+      syncAllComponentsToProjectRepo: async (options = {}) => {
+        const state = get();
+        const allComps = Object.values(state.userComponents || {});
+        if (allComps.length === 0) {
+          return { success: false, error: "No components available to sync." };
+        }
+
+        const items = allComps.map((comp) => ({
+          component:
+            comp.id === state.currentTemplateId
+              ? {
+                  ...comp,
+                  files: {
+                    ...state.files,
+                    "default.tsx":
+                      state.files["default.tsx"] ?? state.files["demo.tsx"],
+                    "demo.tsx":
+                      state.files["demo.tsx"] ?? state.files["default.tsx"] ?? "",
+                  },
+                  dependencies: [...state.dependencies],
+                }
+              : comp,
+          variants: state.variantsByTemplate?.[comp.id] || [],
+          activeVariantId: state.activeVariantByTemplate?.[comp.id],
+        }));
+
+        set({ repoSyncStatus: "syncing", lastRepoSyncError: null });
+
+        try {
+          const res = await fetch("/api/repo-sync", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              action: "sync_all",
+              items,
+              commitMessage: options.commitMessage,
+              commitToGit: true,
+              pushToGithub: Boolean(options.pushToGithub),
+              githubConfig: state.githubRepoConfig,
+            }),
+          });
+
+          const data = (await res.json()) as {
+            success?: boolean;
+            error?: string;
+            savedCount?: number;
+            savedRecords?: Array<{
+              id: string;
+              slug: string;
+              repoPath: string;
+              lastRepoSyncAt: number;
+            }>;
+            totalRepoComponents?: number;
+            commitSha?: string;
+            commitUrl?: string;
+            githubPush?: {
+              pushed: boolean;
+              commitSha?: string;
+              commitUrl?: string;
+              error?: string;
+            } | null;
+          };
+
+          if (!res.ok || !data.success) {
+            const errMsg =
+              data.error || "Failed to sync components to project repository.";
+            set({ repoSyncStatus: "error", lastRepoSyncError: errMsg });
+            return { success: false, error: errMsg };
+          }
+
+          if (options.pushToGithub && data.githubPush && !data.githubPush.pushed) {
+            const ghErr =
+              data.githubPush.error || "Saved locally, but GitHub push failed.";
+            set({ repoSyncStatus: "error", lastRepoSyncError: ghErr });
+            return { success: false, error: ghErr };
+          }
+
+          const recordMap = new Map(
+            (data.savedRecords || []).map((r) => [r.id, r])
+          );
+
+          set((s) => {
+            const nextUserComponents = { ...s.userComponents };
+            for (const [id, comp] of Object.entries(nextUserComponents)) {
+              const rec = recordMap.get(id);
+              if (rec) {
+                nextUserComponents[id] = {
+                  ...comp,
+                  repoSlug: rec.slug,
+                  savedInRepo: true,
+                  lastRepoSyncAt: rec.lastRepoSyncAt,
+                  lastCommitSha: data.commitSha || comp.lastCommitSha,
+                  lastCommitUrl: data.commitUrl || comp.lastCommitUrl,
+                };
+              }
+            }
+            return {
+              userComponents: nextUserComponents,
+              repoSyncStatus: "synced",
+              lastRepoSyncError: null,
+              repoGitInfo: s.repoGitInfo
+                ? {
+                    ...s.repoGitInfo,
+                    lastCommitSha: data.commitSha || s.repoGitInfo.lastCommitSha,
+                    totalComponents:
+                      data.totalRepoComponents ?? s.repoGitInfo.totalComponents,
+                  }
+                : {
+                    lastCommitSha: data.commitSha,
+                    totalComponents: data.totalRepoComponents,
+                  },
+            };
+          });
+
+          get().addTerminalLog({
+            type: "system",
+            message: `[Repo Sync] Synced ${data.savedCount || items.length} components to registry/components/${
+              data.commitSha ? ` (commit ${data.commitSha})` : ""
+            }.`,
+          });
+
+          return {
+            success: true,
+            savedCount: data.savedCount || items.length,
+            commitSha: data.commitSha,
+            commitUrl: data.commitUrl,
+          };
+        } catch (err: unknown) {
+          const msg = err instanceof Error ? err.message : String(err);
+          set({ repoSyncStatus: "error", lastRepoSyncError: msg });
+          return { success: false, error: msg };
+        }
+      },
     }),
     {
       name: "21st-component-studio-storage-v3",
@@ -2214,6 +2696,8 @@ export const useStudioStore = create<StudioState>()(
         activeVariantByTemplate: state.activeVariantByTemplate,
         userComponents: state.userComponents,
         recentComponentIds: state.recentComponentIds,
+        autoSaveToRepo: state.autoSaveToRepo,
+        githubRepoConfig: state.githubRepoConfig,
       }),
       merge: studioPersistMerge,
     }

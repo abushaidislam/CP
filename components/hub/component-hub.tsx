@@ -28,9 +28,11 @@ import {
   Keyboard,
   ShieldCheck,
   Lock,
+  FolderGit2,
 } from "lucide-react";
 import { KeyboardShortcutsDialog } from "@/components/studio/keyboard-shortcuts-dialog";
 import { SecurityShieldModal } from "@/components/studio/security-shield-modal";
+import { RepoSyncModal } from "@/components/studio/repo-sync-modal";
 
 export interface ComponentHubProps {
   onNavigateStudio?: (componentId: string) => void;
@@ -68,6 +70,8 @@ export function ComponentHub({
     loadComponent,
     isOwnerAuthenticated,
     setSecurityModalOpen,
+    setRepoSyncModalOpen,
+    hydrateFromProjectRepo,
   } = useStudioStore();
 
   const [searchQuery, setSearchQuery] = useState(initialSearchQuery);
@@ -75,11 +79,12 @@ export function ComponentHub({
   const [isDark, setIsDark] = useState(true);
   const [isShortcutsOpen, setIsShortcutsOpen] = useState(false);
 
-  // Sync theme with document element
+  // Sync theme with document element & hydrate saved repo components
   useEffect(() => {
     const root = document.documentElement;
     setIsDark(root.classList.contains("dark"));
-  }, []);
+    hydrateFromProjectRepo?.();
+  }, [hydrateFromProjectRepo]);
 
   const toggleTheme = () => {
     const root = document.documentElement;
@@ -403,6 +408,23 @@ export function ComponentHub({
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setRepoSyncModalOpen?.(true)}
+                  className="studio-icon-btn size-8 rounded-none border-border/80 bg-card/70 text-muted-foreground hover:text-foreground"
+                  aria-label="Sync components to project repository & GitHub"
+                >
+                  <FolderGit2 className="size-4 text-primary" aria-hidden="true" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="font-sans text-xs">
+                Save & Sync Components to Project Repo (registry/components/)
+              </TooltipContent>
+            </Tooltip>
+
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
                   variant="default"
                   size="icon"
                   onClick={() => setCreateComponentDialogOpen(true)}
@@ -657,6 +679,7 @@ export function ComponentHub({
         <QuickPreviewModal onOpenStudio={handleOpenStudio} />
         <KeyboardShortcutsDialog open={isShortcutsOpen} onOpenChange={setIsShortcutsOpen} />
         <SecurityShieldModal />
+        <RepoSyncModal />
       </div>
     </TooltipProvider>
   );

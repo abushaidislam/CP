@@ -170,7 +170,7 @@ export default function Demo() {
   return (
     <div className="min-h-full w-full flex flex-col items-center justify-center p-4 sm:p-8 md:p-12 font-sans">
       <div className="w-full flex items-center justify-center">
-        <SpotlightCard
+        <Component
           title="Dynamic Radial Spotlight"
           description="Move your cursor across this surface. Notice the subtle glass highlights and dynamic luminosity response."
           badge="Interactive Preview"

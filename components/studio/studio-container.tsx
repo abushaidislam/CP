@@ -14,6 +14,7 @@ import { VersionHistorySheet } from "./version-history-sheet";
 import { TerminalPanel } from "./terminal-panel";
 import { KeyboardShortcutsDialog } from "./keyboard-shortcuts-dialog";
 import { SecurityShieldModal } from "./security-shield-modal";
+import { RepoSyncModal } from "./repo-sync-modal";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Code, Eye, Sparkles } from "lucide-react";
 import { useStudioStore } from "@/lib/store/studio-store";
@@ -31,7 +32,25 @@ export function StudioContainer({ componentId: _componentId }: StudioContainerPr
     isTerminalOpen,
     isHistorySheetOpen,
     isSaveCheckpointDialogOpen,
+    autoSaveToRepo,
+    repoSyncStatus,
+    currentTemplateId,
+    hydrateFromProjectRepo,
+    saveComponentToProjectRepo,
   } = useStudioStore();
+
+  useEffect(() => {
+    hydrateFromProjectRepo?.();
+  }, [hydrateFromProjectRepo]);
+
+  // Debounced auto-save to project repository when edits are made and autoSaveToRepo is on
+  useEffect(() => {
+    if (!autoSaveToRepo || repoSyncStatus !== "dirty") return;
+    const timer = setTimeout(() => {
+      saveComponentToProjectRepo?.({ componentId: currentTemplateId });
+    }, 1800);
+    return () => clearTimeout(timer);
+  }, [autoSaveToRepo, repoSyncStatus, currentTemplateId, saveComponentToProjectRepo]);
 
 
 
@@ -269,6 +288,7 @@ export function StudioContainer({ componentId: _componentId }: StudioContainerPr
 
       {/* Modals & Dialogs */}
       <PublishModal />
+      <RepoSyncModal />
       <DependencyModal />
       <SaveCheckpointDialog />
       <CreateVariantDialog />

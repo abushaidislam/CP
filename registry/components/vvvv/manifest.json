@@ -1,0 +1,15 @@
+{
+  "id": "comp-1792652246129-jdy93",
+  "slug": "vvvv",
+  "name": "vvvv",
+  "description": "",
+  "category": "Custom",
+  "isBuiltIn": false,
+  "createdAt": 1792652246129,
+  "updatedAt": 1794596904346,
+  "lastRepoSyncAt": 1794670188313,
+  "dependencies": [
+    "lucide-react"
+  ],
+  "previewImage": "./preview.png"
+}

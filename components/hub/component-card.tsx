@@ -32,6 +32,8 @@ import {
   MousePointerClick,
   ShieldCheck,
   AlertTriangle,
+  FolderGit2,
+  Check,
 } from "lucide-react";
 
 export interface ComponentCardProps {
@@ -225,14 +227,23 @@ export function ComponentCard({
             </div>
           )}
 
-          {/* Top-Left Category Tag on Stage */}
-          <div className="pointer-events-none absolute top-2.5 left-2.5 z-20">
+          {/* Top-Left Category Tag & Repo Sync Status on Stage */}
+          <div className="pointer-events-none absolute top-2.5 left-2.5 z-20 flex items-center gap-1.5">
             <Badge
               variant="secondary"
               className="rounded-none bg-zinc-900/90 text-zinc-300 border border-zinc-800 px-2 py-0.5 text-[10px] font-sans font-medium uppercase tracking-wider backdrop-blur-xs"
             >
               {component.category || "Custom"}
             </Badge>
+            {component.savedInRepo && (
+              <Badge
+                variant="outline"
+                className="rounded-none bg-emerald-950/90 text-emerald-400 border border-emerald-500/40 px-1.5 py-0.5 text-[9px] font-sans font-medium uppercase tracking-wider backdrop-blur-xs gap-1"
+              >
+                <Check className="size-2.5" />
+                <span>In Repo</span>
+              </Badge>
+            )}
           </div>
 
           {/* Top-Right Hover & Focus Menu Action */}
@@ -251,7 +262,18 @@ export function ComponentCard({
                   <MoreVertical className="size-3.5" aria-hidden="true" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-44 rounded-none font-sans">
+              <DropdownMenuContent align="end" className="w-48 rounded-none font-sans">
+                <DropdownMenuItem
+                  onClick={() => {
+                    useStudioStore
+                      .getState()
+                      .saveComponentToProjectRepo?.({ componentId: component.id });
+                  }}
+                  className="gap-2 cursor-pointer rounded-none font-sans text-xs"
+                >
+                  <FolderGit2 className="size-3.5 text-primary" />
+                  <span>Save to Project Repo</span>
+                </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={handleDuplicate}
                   className="gap-2 cursor-pointer rounded-none font-sans text-xs"
