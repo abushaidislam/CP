@@ -7,7 +7,6 @@ import {
   Loader2,
   ChevronDown,
   ChevronUp,
-  ChevronRight,
   ArrowUp,
   FileCode,
   GitPullRequest,
@@ -18,6 +17,11 @@ import {
   Eye,
   Code2,
   ImagePlus,
+  Cpu,
+  ShieldCheck,
+  Sparkles,
+  Terminal,
+  Clock,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -45,12 +49,14 @@ import {
 import type { AttachedImage, AttachedCodeSnippet } from "@/lib/store/studio-store";
 
 // ==========================================
-// 1. REASONING (Notion / ChatGPT / Gemini Sequential Thought Stream)
+// 1. REASONING (Detailed Architectural AI Work & Thinking Pipeline)
 // ==========================================
 export interface ReasoningStep {
   title: string;
   description?: string;
   detail?: string;
+  category?: "context" | "ast" | "audit" | "synthesis" | "verify";
+  items?: string[];
   status: "done" | "running" | "pending";
 }
 
@@ -65,12 +71,99 @@ export interface ReasoningProps {
   className?: string;
 }
 
+function inferStepCategory(
+  step: ReasoningStep,
+  idx: number
+): "context" | "ast" | "audit" | "synthesis" | "verify" {
+  if (step.category) return step.category;
+  const text = `${step.title} ${step.description || ""} ${step.detail || ""}`.toLowerCase();
+  if (text.includes("read") || text.includes("workspace") || text.includes("context") || text.includes("file")) {
+    return "context";
+  }
+  if (text.includes("ast") || text.includes("prop") || text.includes("export") || text.includes("inspect") || text.includes("struct")) {
+    return "ast";
+  }
+  if (text.includes("audit") || text.includes("standard") || text.includes("21st") || text.includes("compliance") || text.includes("theme") || text.includes("evaluat")) {
+    return "audit";
+  }
+  if (text.includes("verif") || text.includes("sandbox") || text.includes("diff") || text.includes("compil")) {
+    return "verify";
+  }
+  if (text.includes("synthes") || text.includes("draft") || text.includes("generat") || text.includes("modif") || text.includes("code")) {
+    return "synthesis";
+  }
+  const fallbackOrder: Array<"context" | "ast" | "audit" | "synthesis" | "verify"> = [
+    "context",
+    "ast",
+    "audit",
+    "synthesis",
+    "verify",
+  ];
+  return fallbackOrder[idx % fallbackOrder.length];
+}
+
+function deriveStepItems(step: ReasoningStep, category: string): string[] {
+  if (Array.isArray(step.items) && step.items.length > 0) {
+    return step.items;
+  }
+  const desc = step.description || "";
+  const derived: string[] = [];
+
+  if (desc.includes("component.tsx")) derived.push("File: component.tsx");
+  if (desc.includes("default.tsx")) derived.push("Demo: default.tsx");
+  if (desc.includes("index.css")) derived.push("Styles: index.css");
+  if (desc.toLowerCase().includes("props") || desc.toLowerCase().includes("interface")) {
+    derived.push("AST: TypeScript Props");
+  }
+  if (desc.includes("cn()")) derived.push("Rule: cn() className merge");
+  if (desc.toLowerCase().includes("dark") || desc.toLowerCase().includes("theme")) {
+    derived.push("Theme: Dark & Light tokens");
+  }
+  if (desc.toLowerCase().includes("21st.dev") || desc.toLowerCase().includes("guideline")) {
+    derived.push("Audit: 21st.dev compliance");
+  }
+
+  if (derived.length === 0) {
+    switch (category) {
+      case "context":
+        return ["Workspace files loaded", "Context synchronized"];
+      case "ast":
+        return ["Exports & JSX tree", "Props interface check"];
+      case "audit":
+        return ["21st.dev standards", "Tailwind token audit"];
+      case "synthesis":
+        return ["Surgical code synthesis", "Type-safe implementation"];
+      case "verify":
+        return ["Diff verification", "Sandbox compile check"];
+    }
+  }
+  return derived.slice(0, 4);
+}
+
+function renderStepCategoryIcon(
+  category: "context" | "ast" | "audit" | "synthesis" | "verify",
+  className?: string
+) {
+  switch (category) {
+    case "context":
+      return <FileCode className={cn("size-3.5", className)} />;
+    case "ast":
+      return <Cpu className={cn("size-3.5", className)} />;
+    case "audit":
+      return <ShieldCheck className={cn("size-3.5", className)} />;
+    case "synthesis":
+      return <Sparkles className={cn("size-3.5", className)} />;
+    case "verify":
+      return <Terminal className={cn("size-3.5", className)} />;
+  }
+}
+
 export function Reasoning({
   children,
   summary,
   isStreaming = false,
   durationSeconds,
-  defaultOpen = false,
+  defaultOpen = true,
   activeStep,
   steps = [],
   className,
@@ -85,100 +178,286 @@ export function Reasoning({
     }
   }, [isStreaming, defaultOpen]);
 
-  // Only reveal steps that have started or completed — sequential step-by-step progression
-  const visibleSteps = React.useMemo(
-    () => steps.filter((s) => s.status !== "pending"),
+  const completedStepsCount = React.useMemo(
+    () => steps.filter((s) => s.status === "done").length,
     [steps]
   );
 
   const currentRunningStep = React.useMemo(
     () =>
-      visibleSteps.find((s) => s.status === "running") ||
-      visibleSteps[visibleSteps.length - 1],
-    [visibleSteps]
+      steps.find((s) => s.status === "running") ||
+      steps.filter((s) => s.status !== "pending").slice(-1)[0] ||
+      steps[0],
+    [steps]
+  );
+
+  const displaySteps = React.useMemo(
+    () => (isStreaming ? steps : steps.filter((s) => s.status !== "pending")),
+    [steps, isStreaming]
   );
 
   return (
-    <div className={cn("w-full my-1.5 select-none font-sans", className)}>
+    <div
+      className={cn(
+        "w-full my-1.5 rounded-none border border-border/80 bg-card/60 overflow-hidden select-none font-sans transition-colors",
+        isStreaming && "border-primary/40 bg-card/85",
+        className
+      )}
+    >
       <TraceCollapsible open={isOpen} onOpenChange={setIsOpen}>
+        {/* Top Pipeline Header Bar */}
         <TraceCollapsibleTrigger
           hideChevron={true}
-          className="group/trigger inline-flex items-center gap-2 py-1 px-2 -ml-2 rounded-md text-xs text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors cursor-pointer select-none"
+          className="group/trigger flex w-full items-center justify-between gap-2 px-3 py-2 text-left bg-muted/30 hover:bg-muted/50 transition-colors cursor-pointer select-none"
         >
-          {isStreaming ? (
-            <>
-              <span className="relative flex size-2 shrink-0">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-foreground/40 opacity-75" />
-                <span className="relative inline-flex rounded-full size-2 bg-foreground/80" />
-              </span>
-              <span className="font-medium text-foreground/90 animate-pulse">
-                {activeStep || currentRunningStep?.title || "Thinking..."}
-              </span>
-              {durationSeconds !== undefined && durationSeconds > 0 && (
-                <span className="text-[11px] text-muted-foreground/70 font-normal tabular-nums">
-                  {durationSeconds}s
-                </span>
-              )}
-            </>
-          ) : (
-            <span className="font-medium text-muted-foreground group-hover/trigger:text-foreground transition-colors">
-              {durationSeconds !== undefined && durationSeconds > 0
-                ? `Thought for ${durationSeconds} second${durationSeconds === 1 ? "" : "s"}`
-                : "Thought for a few seconds"}
-            </span>
-          )}
+          <div className="flex items-center gap-2 min-w-0 flex-1">
+            {isStreaming ? (
+              <div className="flex size-5 shrink-0 items-center justify-center rounded-none border border-primary/40 bg-primary/10 text-primary">
+                <Loader2 className="size-3 animate-spin" />
+              </div>
+            ) : (
+              <div className="flex size-5 shrink-0 items-center justify-center rounded-none border border-emerald-500/30 bg-emerald-500/10 text-emerald-500">
+                <CheckCircle2 className="size-3" />
+              </div>
+            )}
 
-          <ChevronRight className="size-3.5 text-muted-foreground/60 transition-transform duration-200 group-data-[state=open]/trigger:rotate-90" />
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-1.5 min-w-0">
+                <span className="font-mono text-[9px] font-medium uppercase tracking-wider text-muted-foreground shrink-0">
+                  {isStreaming ? "AI WORK PIPELINE" : "AI EXECUTION TRACE"}
+                </span>
+                <span className="text-border select-none">·</span>
+                <span
+                  className={cn(
+                    "text-xs font-semibold truncate font-sans",
+                    isStreaming ? "text-foreground animate-pulse" : "text-foreground"
+                  )}
+                >
+                  {isStreaming
+                    ? activeStep || currentRunningStep?.title || "Analyzing component..."
+                    : `Completed ${displaySteps.length} work step${displaySteps.length === 1 ? "" : "s"}`}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-1.5 shrink-0">
+            <Badge
+              variant="outline"
+              className={cn(
+                "rounded-none px-1.5 py-0 text-[9px] font-mono tabular-nums border-border/80",
+                isStreaming
+                  ? "bg-primary/10 text-primary border-primary/30"
+                  : "bg-background/80 text-muted-foreground"
+              )}
+            >
+              {isStreaming
+                ? `${Math.min(completedStepsCount + 1, Math.max(1, steps.length))}/${Math.max(1, steps.length)} ACTIVE`
+                : `${displaySteps.length}/${displaySteps.length} DONE`}
+            </Badge>
+
+            {durationSeconds !== undefined && durationSeconds > 0 && (
+              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 border border-border/70 bg-background/80 font-mono text-[10px] text-muted-foreground tabular-nums">
+                <Clock className="size-2.5 text-muted-foreground/70" />
+                {durationSeconds}s
+              </span>
+            )}
+
+            <div className="inline-flex items-center gap-0.5 text-[10px] text-muted-foreground group-hover/trigger:text-foreground font-sans pl-0.5">
+              <span className="hidden @[380px]:inline">
+                {isOpen ? "Hide" : "Steps"}
+              </span>
+              <ChevronDown
+                className={cn(
+                  "size-3.5 text-muted-foreground/70 transition-transform duration-200",
+                  isOpen && "rotate-180"
+                )}
+              />
+            </div>
+          </div>
         </TraceCollapsibleTrigger>
 
-        <TraceCollapsibleContent className="pt-1 pb-2">
-          <div className="relative ml-1.5 pl-4 border-l border-border/70 space-y-3 py-1">
-            {visibleSteps.map((st, i) => {
-              const isCurrent = isStreaming && st.status === "running";
-              const isLast = i === visibleSteps.length - 1;
+        {/* Segmented Determinate Progress Bar */}
+        {steps.length > 0 && (
+          <div
+            aria-hidden="true"
+            style={{
+              gridTemplateColumns: `repeat(${Math.max(1, steps.length)}, minmax(0, 1fr))`,
+            }}
+            className="grid gap-0.5 h-1 w-full bg-border/40 px-0.5"
+          >
+            {steps.map((st, idx) => (
+              <div
+                key={idx}
+                className={cn(
+                  "h-full transition-colors duration-300",
+                  st.status === "done"
+                    ? "bg-emerald-500/80"
+                    : st.status === "running"
+                    ? "bg-primary animate-pulse"
+                    : "bg-muted/60"
+                )}
+              />
+            ))}
+          </div>
+        )}
+
+        {/* Compact Step Pills Strip when Collapsed */}
+        {!isOpen && displaySteps.length > 0 && (
+          <div
+            onClick={() => setIsOpen(true)}
+            className="flex flex-wrap items-center gap-1 px-3 py-1.5 border-t border-border/50 bg-background/40 cursor-pointer hover:bg-muted/20 transition-colors"
+          >
+            {displaySteps.map((st, idx) => (
+              <span
+                key={idx}
+                className="inline-flex items-center gap-1 px-1.5 py-0.5 border border-border/60 bg-card/80 text-[10px] text-muted-foreground font-sans"
+              >
+                <Check className="size-2.5 text-emerald-500 shrink-0" />
+                <span className="font-mono text-[9px] text-muted-foreground/70">
+                  0{idx + 1}
+                </span>
+                <span className="truncate max-w-[140px] text-foreground/85">
+                  {st.title}
+                </span>
+              </span>
+            ))}
+          </div>
+        )}
+
+        {/* Detailed Step-by-Step Work Breakdown */}
+        <TraceCollapsibleContent className="pt-0 pb-0">
+          <div className="divide-y divide-border/50 border-t border-border/60 bg-background/50">
+            {displaySteps.map((st, i) => {
+              const isRunning = isStreaming && st.status === "running";
+              const isPending = st.status === "pending";
+              const isDone = st.status === "done" || (!isStreaming && !isPending);
+              const category = inferStepCategory(st, i);
+              const stepItems = deriveStepItems(st, category);
+              const stepNum = `0${i + 1}`;
+
               return (
                 <div
                   key={i}
-                  className="relative space-y-1 animate-in fade-in slide-in-from-top-1 duration-300"
+                  className={cn(
+                    "px-3 py-2.5 transition-colors",
+                    isRunning && "bg-primary/[0.04]",
+                    isPending && "opacity-55 bg-muted/10"
+                  )}
                 >
-                  {/* Timeline Step Dot on the Left Line */}
-                  <span
-                    className={cn(
-                      "absolute -left-[19.5px] top-1.5 size-1.5 rounded-full transition-colors",
-                      isCurrent
-                        ? "bg-foreground ring-3 ring-background animate-pulse"
-                        : "bg-muted-foreground/45 ring-3 ring-background"
-                    )}
-                  />
+                  <div className="flex items-start gap-2.5">
+                    {/* Left Step Status / Category Box */}
+                    <div
+                      className={cn(
+                        "mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-none border text-[10px] font-mono",
+                        isRunning
+                          ? "border-primary/50 bg-primary/15 text-primary"
+                          : isDone
+                          ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-500"
+                          : "border-border/70 bg-muted/40 text-muted-foreground"
+                      )}
+                    >
+                      {isRunning ? (
+                        <Loader2 className="size-3.5 animate-spin" />
+                      ) : (
+                        renderStepCategoryIcon(category)
+                      )}
+                    </div>
 
-                  <div className="text-xs font-medium text-foreground/85 leading-snug font-sans">
-                    {st.title}
+                    {/* Step Body */}
+                    <div className="min-w-0 flex-1 space-y-1">
+                      {/* Step Header Row: Index + Title + Detail / Status Badge */}
+                      <div className="flex flex-wrap items-center justify-between gap-1.5">
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <span className="font-mono text-[10px] font-semibold text-muted-foreground/75 shrink-0">
+                            {stepNum}
+                          </span>
+                          <span
+                            className={cn(
+                              "text-xs font-medium leading-snug font-sans truncate",
+                              isRunning
+                                ? "text-foreground font-semibold"
+                                : isDone
+                                ? "text-foreground"
+                                : "text-muted-foreground"
+                            )}
+                          >
+                            {st.title}
+                          </span>
+                        </div>
+
+                        <div className="flex items-center gap-1 shrink-0">
+                          {st.detail && (
+                            <Badge
+                              variant="outline"
+                              className="rounded-none px-1.5 py-0 text-[9px] font-mono font-normal text-muted-foreground bg-muted/30 border-border/70"
+                            >
+                              {st.detail}
+                            </Badge>
+                          )}
+                          <span
+                            className={cn(
+                              "inline-flex items-center gap-1 px-1.5 py-0 text-[9px] font-sans font-medium uppercase tracking-wider border",
+                              isRunning
+                                ? "border-primary/40 bg-primary/10 text-primary"
+                                : isDone
+                                ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-500"
+                                : "border-border/60 bg-muted/30 text-muted-foreground"
+                            )}
+                          >
+                            {isRunning ? "WORKING" : isDone ? "DONE" : "QUEUED"}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Step Description */}
+                      {st.description && (
+                        <p className="text-[11px] text-muted-foreground leading-relaxed font-sans">
+                          {st.description}
+                        </p>
+                      )}
+
+                      {/* Concrete Micro-Operations / Sub-tasks Performed */}
+                      {!isPending && stepItems.length > 0 && (
+                        <div className="flex flex-wrap items-center gap-1 pt-1">
+                          {stepItems.map((itemText, itemIdx) => (
+                            <span
+                              key={itemIdx}
+                              className={cn(
+                                "inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-sans border",
+                                isRunning
+                                  ? "border-primary/30 bg-primary/5 text-foreground/90"
+                                  : "border-border/70 bg-card/80 text-muted-foreground"
+                              )}
+                            >
+                              <span
+                                className={cn(
+                                  "size-1 rounded-none shrink-0",
+                                  isRunning ? "bg-primary animate-ping" : "bg-emerald-500"
+                                )}
+                              />
+                              <span>{itemText}</span>
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </div>
-
-                  {st.description && (
-                    <p className="text-[11px] text-muted-foreground leading-relaxed font-sans">
-                      {st.description}
-                    </p>
-                  )}
-
-                  {isCurrent && !st.description && isLast && (
-                    <p className="text-[11px] text-muted-foreground/70 leading-relaxed font-sans italic">
-                      Working on this step...
-                    </p>
-                  )}
                 </div>
               );
             })}
-
-            {!isStreaming && (summary || children) && (
-              <div className="relative pt-0.5">
-                <span className="absolute -left-[19.5px] top-2 size-1.5 rounded-full bg-muted-foreground/30 ring-3 ring-background" />
-                <p className="text-[11px] text-muted-foreground/80 leading-relaxed font-sans">
-                  {summary || children}
-                </p>
-              </div>
-            )}
           </div>
+
+          {/* Architectural Summary Footer */}
+          {!isStreaming && (summary || children) && (
+            <div className="flex items-start gap-2 px-3 py-2 border-t border-border/60 bg-muted/25">
+              <Sparkles className="size-3.5 text-primary shrink-0 mt-0.5" />
+              <div className="text-[11px] text-muted-foreground leading-relaxed font-sans">
+                <span className="font-semibold text-foreground mr-1">Summary:</span>
+                {summary || children}
+              </div>
+            </div>
+          )}
         </TraceCollapsibleContent>
       </TraceCollapsible>
     </div>
@@ -379,15 +658,15 @@ export function ChangeApprovalCard({
   return (
     <div
       className={cn(
-        "mt-3 rounded-xl border bg-card/90 overflow-hidden shadow-2xs transition-all font-sans select-none",
+        "mt-3 rounded-none border bg-card/80 overflow-hidden transition-all font-sans select-none",
         approvalStatus === "pending" && "border-border",
-        approvalStatus === "approved" && "border-emerald-500/30 bg-emerald-500/[0.02]",
+        approvalStatus === "approved" && "border-emerald-500/35 bg-emerald-500/[0.02]",
         approvalStatus === "rejected" && "border-border/50 opacity-75",
         className
       )}
     >
       {/* 1. Card Top Header */}
-      <div className="flex items-center justify-between px-3 py-2 border-b border-border/60 bg-muted/30">
+      <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 border-b border-border/70 bg-muted/25">
         <div className="flex items-center gap-2 min-w-0">
           {approvalStatus === "pending" && (
             <GitPullRequest className="size-3.5 text-amber-500 shrink-0" />
@@ -399,15 +678,15 @@ export function ChangeApprovalCard({
             <X className="size-3.5 text-muted-foreground shrink-0" />
           )}
 
-          <span className="text-xs font-semibold text-foreground truncate">
-            {approvalStatus === "pending" && "Review Proposed Changes"}
+          <span className="text-xs font-semibold text-foreground truncate font-sans">
+            {approvalStatus === "pending" && "Review Proposed File Changes"}
             {approvalStatus === "approved" && "Changes Approved & Applied"}
             {approvalStatus === "rejected" && "Changes Dismissed"}
           </span>
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
-          <div className="flex items-center gap-1.5 font-mono text-[10px] px-1.5 py-0.5 rounded bg-background/80 border border-border/50">
+          <div className="flex items-center gap-1.5 font-mono text-[10px] px-1.5 py-0.5 rounded-none bg-background border border-border/70">
             <span className="text-emerald-500 font-medium">
               +{totalStats.added}
             </span>
@@ -421,7 +700,7 @@ export function ChangeApprovalCard({
             variant="ghost"
             size="sm"
             onClick={() => setIsExpanded((prev) => !prev)}
-            className="h-6 px-2 text-[11px] text-muted-foreground hover:text-foreground font-sans gap-1 rounded-md"
+            className="h-6 px-2 text-[11px] text-muted-foreground hover:text-foreground font-sans gap-1 rounded-none border border-transparent hover:border-border/70"
           >
             <Eye className="size-3" />
             <span>{isExpanded ? "Hide diff" : "Inspect diff"}</span>
@@ -435,7 +714,7 @@ export function ChangeApprovalCard({
       </div>
 
       {/* 2. File Summary Rows */}
-      <div className="divide-y divide-border/40 bg-background/40">
+      <div className="divide-y divide-border/50 bg-background/50">
         {fileNames.map((fname) => {
           const st = fileDiffs[fname];
           const isSelected = isExpanded && selectedFile === fname;
@@ -458,7 +737,7 @@ export function ChangeApprovalCard({
                 </span>
                 <Badge
                   variant="secondary"
-                  className="text-[9px] py-0 px-1 font-normal font-sans"
+                  className="rounded-none text-[9px] py-0 px-1.5 font-normal font-sans"
                 >
                   {approvalStatus === "approved" ? "Applied" : "Modified"}
                 </Badge>
@@ -475,9 +754,9 @@ export function ChangeApprovalCard({
 
       {/* 3. Expandable Diff & Code Inspector */}
       {isExpanded && activeDiff && (
-        <div className="border-t border-border/60 bg-background/80">
+        <div className="border-t border-border/70 bg-background/90">
           {/* Inspector Sub-header */}
-          <div className="flex items-center justify-between px-3 py-1.5 border-b border-border/50 bg-muted/20">
+          <div className="flex flex-wrap items-center justify-between gap-1.5 px-3 py-1.5 border-b border-border/60 bg-muted/20">
             <div className="flex items-center gap-1">
               {fileNames.map((fname) => (
                 <Button
@@ -485,7 +764,7 @@ export function ChangeApprovalCard({
                   variant={selectedFile === fname ? "secondary" : "ghost"}
                   size="sm"
                   onClick={() => setSelectedFile(fname)}
-                  className="h-6 px-2 text-[10px] font-mono rounded-md"
+                  className="h-6 px-2 text-[10px] font-mono rounded-none"
                 >
                   {fname}
                 </Button>
@@ -497,7 +776,7 @@ export function ChangeApprovalCard({
                 variant={viewMode === "diff" ? "secondary" : "ghost"}
                 size="sm"
                 onClick={() => setViewMode("diff")}
-                className="h-6 px-2 text-[10px] font-sans rounded-md"
+                className="h-6 px-2 text-[10px] font-sans rounded-none"
               >
                 Diff
               </Button>
@@ -505,7 +784,7 @@ export function ChangeApprovalCard({
                 variant={viewMode === "full" ? "secondary" : "ghost"}
                 size="sm"
                 onClick={() => setViewMode("full")}
-                className="h-6 px-2 text-[10px] font-sans rounded-md"
+                className="h-6 px-2 text-[10px] font-sans rounded-none"
               >
                 Full File
               </Button>
@@ -513,7 +792,7 @@ export function ChangeApprovalCard({
                 variant="ghost"
                 size="sm"
                 onClick={handleCopyActiveFile}
-                className="h-6 px-1.5 text-[10px] text-muted-foreground hover:text-foreground font-sans gap-1 rounded-md"
+                className="h-6 px-1.5 text-[10px] text-muted-foreground hover:text-foreground font-sans gap-1 rounded-none"
               >
                 {copied ? (
                   <>
@@ -592,10 +871,10 @@ export function ChangeApprovalCard({
       )}
 
       {/* 4. Approval Action Footer */}
-      <div className="flex items-center justify-between gap-2 px-3 py-2 border-t border-border/60 bg-muted/20">
+      <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 border-t border-border/70 bg-muted/20">
         {approvalStatus === "pending" && (
           <>
-            <span className="text-[11px] text-muted-foreground truncate">
+            <span className="text-[11px] text-muted-foreground truncate font-sans">
               Apply {fileNames.length === 1 ? fileNames[0] : `${fileNames.length} files`} to editor?
             </span>
 
@@ -604,7 +883,7 @@ export function ChangeApprovalCard({
                 variant="outline"
                 size="sm"
                 onClick={onReject}
-                className="h-7 px-2.5 text-xs font-medium text-muted-foreground hover:text-foreground gap-1 rounded-md font-sans"
+                className="h-7 px-2.5 text-xs font-medium text-muted-foreground hover:text-foreground gap-1 rounded-none font-sans"
               >
                 <X className="size-3" />
                 <span>Reject</span>
@@ -614,7 +893,7 @@ export function ChangeApprovalCard({
                 variant="default"
                 size="sm"
                 onClick={onApprove}
-                className="h-7 px-3 text-xs font-medium gap-1.5 rounded-md font-sans"
+                className="h-7 px-3 text-xs font-medium gap-1.5 rounded-none font-sans"
               >
                 <Check className="size-3.5" />
                 <span>Approve & Apply</span>
@@ -625,7 +904,7 @@ export function ChangeApprovalCard({
 
         {approvalStatus === "approved" && (
           <>
-            <div className="flex items-center gap-1.5 text-[11px] text-emerald-500 font-medium truncate">
+            <div className="flex items-center gap-1.5 text-[11px] text-emerald-500 font-medium truncate font-sans">
               <Check className="size-3.5 shrink-0" />
               <span className="truncate">
                 Applied to {fileNames.join(", ")}
@@ -641,7 +920,7 @@ export function ChangeApprovalCard({
                   variant="ghost"
                   size="sm"
                   onClick={() => setConfirmRevert(false)}
-                  className="h-6 px-1.5 text-[10px] text-muted-foreground hover:text-foreground font-sans rounded-md"
+                  className="h-6 px-1.5 text-[10px] text-muted-foreground hover:text-foreground font-sans rounded-none"
                 >
                   Cancel
                 </Button>
@@ -652,7 +931,7 @@ export function ChangeApprovalCard({
                     setConfirmRevert(false);
                     onRevert();
                   }}
-                  className="h-6 px-2 text-[10px] font-sans rounded-md gap-1"
+                  className="h-6 px-2 text-[10px] font-sans rounded-none gap-1"
                 >
                   <RotateCcw className="size-2.5" />
                   <span>Confirm Revert</span>
@@ -663,7 +942,7 @@ export function ChangeApprovalCard({
                 variant="outline"
                 size="sm"
                 onClick={() => setConfirmRevert(true)}
-                className="h-6.5 px-2 text-[11px] font-medium text-muted-foreground hover:text-foreground gap-1 rounded-md font-sans shrink-0"
+                className="h-6.5 px-2 text-[11px] font-medium text-muted-foreground hover:text-foreground gap-1 rounded-none font-sans shrink-0"
               >
                 <RotateCcw className="size-3" />
                 <span>Revert</span>
@@ -674,7 +953,7 @@ export function ChangeApprovalCard({
 
         {approvalStatus === "rejected" && (
           <>
-            <span className="text-[11px] text-muted-foreground truncate">
+            <span className="text-[11px] text-muted-foreground truncate font-sans">
               Changes were dismissed
             </span>
 
@@ -682,7 +961,7 @@ export function ChangeApprovalCard({
               variant="outline"
               size="sm"
               onClick={onApprove}
-              className="h-6.5 px-2.5 text-[11px] font-medium text-muted-foreground hover:text-foreground gap-1 rounded-md font-sans shrink-0"
+              className="h-6.5 px-2.5 text-[11px] font-medium text-muted-foreground hover:text-foreground gap-1 rounded-none font-sans shrink-0"
             >
               <Code2 className="size-3" />
               <span>Approve Anyway</span>

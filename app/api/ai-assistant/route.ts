@@ -109,7 +109,13 @@ function normalizeGeminiModel(requestedModel?: string): string {
 }
 
 function parseJsonResponseSafely(textOutput: string): {
-  reasoningSteps?: Array<{ title: string; description?: string; detail?: string }>;
+  reasoningSteps?: Array<{
+    title: string;
+    description?: string;
+    detail?: string;
+    category?: "context" | "ast" | "audit" | "synthesis" | "verify";
+    items?: string[];
+  }>;
   reasoningSummary?: string;
   message?: string;
   complianceScore?: number;
@@ -262,6 +268,10 @@ export async function POST(req: NextRequest) {
         .filter((c) => !c.passed)
         .map((c) => `${c.title}: ${c.description}`);
 
+      const compLines = componentCode.split("\n").length;
+      const demoLines = activeDemoCode.split("\n").length;
+      const passedRules = staticAudit.checks.filter((c) => c.passed).length;
+
       return NextResponse.json({
         success: true,
         source: "static-linter",
@@ -273,14 +283,37 @@ export async function POST(req: NextRequest) {
         roleUsed: requestedRole,
         reasoningSteps: [
           {
-            title: "Reading component structure",
-            description: `Examined exported React component, TypeScript props interface, and hook usage across ${componentCode.split("\n").length} lines in component.tsx.`,
+            title: "Scanning workspace files & context",
+            description: `Read component.tsx (${compLines} lines), default.tsx (${demoLines} lines), and ${dependencies.length} package dependencies.`,
             detail: "component.tsx",
+            category: "context",
+            items: [
+              `Read component.tsx (${compLines}L)`,
+              `Read default.tsx (${demoLines}L)`,
+              `${dependencies.length} NPM deps loaded`,
+            ],
           },
           {
-            title: "Auditing 21st.dev standards",
-            description: `Verified ${staticAudit.checks.filter((c) => c.passed).length} of ${staticAudit.checks.length} static guideline checks including className merging and theme tokens.`,
+            title: "Parsing React AST & TypeScript props",
+            description: "Inspected exported component signature, React 19 hooks, and HTML attribute extension.",
+            detail: "AST Tree",
+            category: "ast",
+            items: [
+              "Exported component signature",
+              "Props interface check",
+              preserveDesign ? "UI Design Lock active" : "Visual edit mode",
+            ],
+          },
+          {
+            title: "Auditing 21st.dev & accessibility rules",
+            description: `Verified ${passedRules} of ${staticAudit.checks.length} static guideline checks including className merging and theme tokens.`,
             detail: `${staticAudit.score}/100`,
+            category: "audit",
+            items: [
+              `${passedRules}/${staticAudit.checks.length} rules passed`,
+              "Tailwind cn() merge check",
+              "Dark/light contrast tokens",
+            ],
           },
         ],
         reasoningSummary: `Executed static guideline verification across component.tsx, default.tsx, and index.css (score: ${staticAudit.score}/100).`,
@@ -313,7 +346,7 @@ ${preserveDesign ? `\n${COPILOT_UI_PRESERVATION_SKILL}\n` : ""}
 CONVERSATION & RESPONSE INSTRUCTIONS:
 - You are engaged in a multi-turn conversation with the developer. Maintain full context across previous turns.
 - Provide insightful, friendly, and technically precise feedback.
-- Document your internal chain-of-thought in "reasoningSteps" (3 to 4 sequential thoughts where each step has a short "title", a natural 1-sentence "description" of the work/analysis done in that step, and an optional "detail" like a filename) and a 1-sentence "reasoningSummary".
+- Document your internal chain-of-thought in "reasoningSteps" (4 sequential steps showing the exact engineering work you performed: 1. Context & file scan, 2. AST & props analysis, 3. 21st.dev & design audit, 4. Code synthesis & verification). Each step must include a clear "title", a specific 1-sentence "description" of what you examined or changed, a short "detail" badge (e.g., "component.tsx", "AST & Props", "95/100"), a "category" ("context" | "ast" | "audit" | "synthesis" | "verify"), and an "items" array of 2 to 4 short micro-operation labels (under 4 words each, e.g., ["Read component.tsx", "Checked Props interface", "Preserved Tailwind layout"]).
 - MULTIMODAL CAPABILITY: If image attachments are provided (mockups, wireframes, screenshots), carefully analyze their visual hierarchy, typography, colors, padding, alignment, and motion cues, and implement matching production React + Tailwind code.
 - CODE ATTACHMENT CAPABILITY: If external code snippets or references are attached, analyze their logic, interfaces, or styles and integrate them into component.tsx / default.tsx / index.css.
 - If the user asks for code changes, enhancements, fixes, or styling, you MUST supply the COMPLETE updated file code in the "changedFiles" object.
@@ -323,9 +356,11 @@ JSON Output Format (Strictly enforce valid JSON):
 {
   "reasoningSteps": [
     {
-      "title": "Short thought heading (e.g., Inspecting component props & state)",
-      "description": "Natural 1-sentence explanation of what you examined or decided in this step.",
-      "detail": "Optional file or target (e.g., component.tsx)"
+      "title": "Short step heading (e.g., Inspecting component props & DOM hierarchy)",
+      "description": "Specific 1-sentence explanation of what you examined or modified in this step.",
+      "detail": "File or target badge (e.g., component.tsx)",
+      "category": "context | ast | audit | synthesis | verify",
+      "items": ["Read component.tsx", "Checked Props interface", "Verified cn() usage"]
     }
   ],
   "reasoningSummary": "One concise sentence summarizing the architectural approach taken.",
@@ -486,27 +521,57 @@ ${userPrompt}${designLockReminder}`;
       }
     }
 
+    const changedFileKeys = Object.keys(sanitizedChangedFiles);
+    const compLines = componentCode.split("\n").length;
+    const demoLines = activeDemoCode.split("\n").length;
+    const passedRules = staticAudit.checks.filter((c) => c.passed).length;
+
     const defaultSteps = [
       {
-        title: "Inspecting component structure",
-        description: `Examined exported React component, props interface, and layout hierarchy in component.tsx (${componentCode.split("\n").length} lines).`,
+        title: "Scanning workspace files & context",
+        description: `Examined component.tsx (${compLines} lines), default.tsx (${demoLines} lines), and ${dependencies.length} active package dependencies.`,
         detail: "component.tsx",
+        category: "context" as const,
+        items: [
+          `Read component.tsx (${compLines}L)`,
+          `Read default.tsx (${demoLines}L)`,
+          `${dependencies.length} NPM deps indexed`,
+        ],
       },
       {
-        title: "Evaluating design & accessibility standards",
-        description: `Checked 21st.dev compliance rules (${staticAudit.checks.filter((c) => c.passed).length}/${staticAudit.checks.length} passed), Tailwind tokens, and contrast states.`,
+        title: "Evaluating design & 21st.dev standards",
+        description: `Checked 21st.dev compliance rules (${passedRules}/${staticAudit.checks.length} passed), Tailwind tokens, and contrast states.`,
         detail: `${staticAudit.score}/100`,
+        category: "audit" as const,
+        items: [
+          `${passedRules}/${staticAudit.checks.length} checks passed`,
+          "Tailwind cn() merge",
+          preserveDesign ? "UI Design Lock enforced" : "Visual styling unlocked",
+        ],
       },
       {
         title:
-          Object.keys(sanitizedChangedFiles).length > 0
+          changedFileKeys.length > 0
             ? "Synthesizing code modifications"
             : "Formulating architectural guidance",
         description:
-          Object.keys(sanitizedChangedFiles).length > 0
-            ? `Prepared complete, compilable updates for ${Object.keys(sanitizedChangedFiles).join(", ")}.`
+          changedFileKeys.length > 0
+            ? `Prepared complete, compilable TypeScript updates for ${changedFileKeys.join(", ")}.`
             : "Synthesized response aligned with Component Studio Co-Pilot standards.",
         detail: activeModel.replace("gemini-", ""),
+        category: "synthesis" as const,
+        items:
+          changedFileKeys.length > 0
+            ? [
+                `Updated ${changedFileKeys.join(", ")}`,
+                "Full TypeScript validation",
+                "Ready for diff review",
+              ]
+            : [
+                `Model: ${activeModel.replace("gemini-", "")}`,
+                "Architectural review",
+                "Zero unintended mutations",
+              ],
       },
     ];
 

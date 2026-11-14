@@ -37,6 +37,8 @@ export interface AiReasoningStepItem {
   title: string;
   description?: string;
   detail?: string;
+  category?: "context" | "ast" | "audit" | "synthesis" | "verify";
+  items?: string[];
   status: "done" | "running" | "pending";
 }
 

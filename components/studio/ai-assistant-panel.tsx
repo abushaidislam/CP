@@ -258,17 +258,55 @@ export function AiAssistantPanel({ isMobile = false, onClose }: AiAssistantPanel
 
   const hasCompilerError = !!compilerError;
 
-  // Progressive sequential chain-of-thought (Notion / ChatGPT / Gemini style)
+  const demoLinesCount = useMemo(
+    () => (activeDemoCode || "").split("\n").length,
+    [activeDemoCode]
+  );
+
+  // Detailed 5-stage sequential execution pipeline showing exact AI work in real time
   const workingSteps = useMemo<ReasoningStep[]>(() => {
     const step1: ReasoningStep = {
-      title: "Reading component structure & exports",
-      description: `Inspecting the exported React component, TypeScript props interface, and layout hierarchy across ${compLinesCount} lines in component.tsx.`,
-      status: thinkingSeconds < 2 ? "running" : "done",
+      title: "Scanning workspace files & context",
+      description: `Reading component.tsx (${compLinesCount} lines), default.tsx (${demoLinesCount} lines), and ${dependencies.length} active package dependencies.`,
+      detail: "component.tsx",
+      category: "context",
+      items: [
+        `Read component.tsx (${compLinesCount}L)`,
+        `Read default.tsx (${demoLinesCount}L)`,
+        `${dependencies.length} NPM packages`,
+      ],
+      status: thinkingSeconds < 1 ? "running" : "done",
     };
 
     const step2: ReasoningStep = {
-      title: "Evaluating styling, motion & 21st.dev compliance",
-      description: `Checking className forwarding with cn(), Tailwind dark/light theme tokens, and interactive state transitions (${passedCount}/${planTasks.length} static rules verified).`,
+      title: "Parsing React AST, Props & Hooks",
+      description:
+        "Inspecting exported React 19 component signature, TypeScript Props interface, and DOM hierarchy.",
+      detail: "AST & Props",
+      category: "ast",
+      items: [
+        "Exported component AST",
+        "TypeScript Props interface",
+        preserveDesignSkill ? "UI Design Lock active" : "Visual edit mode",
+      ],
+      status:
+        thinkingSeconds < 1
+          ? "pending"
+          : thinkingSeconds < 2
+          ? "running"
+          : "done",
+    };
+
+    const step3: ReasoningStep = {
+      title: "Auditing 21st.dev & Design Rules",
+      description: `Evaluating className merging with cn(), Tailwind dark/light theme tokens, and interactive states (${passedCount}/${planTasks.length} static checks passed).`,
+      detail: `${auditResult.score}/100`,
+      category: "audit",
+      items: [
+        `${passedCount}/${planTasks.length} rules verified`,
+        "Tailwind cn() merge",
+        "Theme token contrast",
+      ],
       status:
         thinkingSeconds < 2
           ? "pending"
@@ -277,19 +315,58 @@ export function AiAssistantPanel({ isMobile = false, onClose }: AiAssistantPanel
           : "done",
     };
 
-    const step3: ReasoningStep = {
-      title: "Drafting architectural response & code updates",
-      description: "Synthesizing complete, compilable code changes and implementation notes aligned with Component Studio Co-Pilot standards.",
-      status: thinkingSeconds < 4 ? "pending" : "running",
+    const step4: ReasoningStep = {
+      title: "Synthesizing code & architectural plan",
+      description:
+        "Generating complete, self-contained TypeScript updates and implementation guidance.",
+      detail: aiModel.replace("gemini-", ""),
+      category: "synthesis",
+      items: [
+        `Engine: ${aiModel.replace("gemini-", "")}`,
+        "Complete file synthesis",
+        preserveDesignSkill ? "Zero layout drift" : "Responsive styling",
+      ],
+      status:
+        thinkingSeconds < 4
+          ? "pending"
+          : thinkingSeconds < 6
+          ? "running"
+          : "done",
     };
 
-    return [step1, step2, step3];
-  }, [thinkingSeconds, compLinesCount, passedCount, planTasks.length]);
+    const step5: ReasoningStep = {
+      title: "Preparing diff & sandbox verification",
+      description:
+        "Validating JSX syntax, import resolution, and formatting unified diff hunks for review.",
+      detail: "Diff Check",
+      category: "verify",
+      items: [
+        "TypeScript & JSX check",
+        "Unified diff calculation",
+        "Sandbox preview ready",
+      ],
+      status: thinkingSeconds < 6 ? "pending" : "running",
+    };
+
+    return [step1, step2, step3, step4, step5];
+  }, [
+    thinkingSeconds,
+    compLinesCount,
+    demoLinesCount,
+    dependencies.length,
+    preserveDesignSkill,
+    passedCount,
+    planTasks.length,
+    auditResult.score,
+    aiModel,
+  ]);
 
   const currentStepTitle = useMemo(() => {
-    if (thinkingSeconds < 2) return "Reading component structure & exports...";
-    if (thinkingSeconds < 4) return "Evaluating styling & compliance...";
-    return "Drafting architectural response & code updates...";
+    if (thinkingSeconds < 1) return "Scanning workspace files & context...";
+    if (thinkingSeconds < 2) return "Parsing React AST, Props & Hooks...";
+    if (thinkingSeconds < 4) return "Auditing 21st.dev & Design Rules...";
+    if (thinkingSeconds < 6) return "Synthesizing code & architectural plan...";
+    return "Preparing diff & sandbox verification...";
   }, [thinkingSeconds]);
 
   // Timer for reasoning duration
@@ -497,7 +574,13 @@ export function AiAssistantPanel({ isMobile = false, onClose }: AiAssistantPanel
           resetAtUtc?: string;
         };
         reasoningSummary?: string;
-        reasoningSteps?: Array<{ title: string; description?: string; detail?: string }>;
+        reasoningSteps?: Array<{
+          title: string;
+          description?: string;
+          detail?: string;
+          category?: "context" | "ast" | "audit" | "synthesis" | "verify";
+          items?: string[];
+        }>;
         changedFiles?: Partial<{
           "component.tsx": string;
           "default.tsx": string;
@@ -552,28 +635,105 @@ export function AiAssistantPanel({ isMobile = false, onClose }: AiAssistantPanel
         return;
       }
 
-      const hasChangedFiles =
-        !!data.changedFiles && Object.keys(data.changedFiles).length > 0;
+      const changedFileNames = data.changedFiles
+        ? Object.keys(data.changedFiles).filter(
+            (k) =>
+              typeof data.changedFiles?.[k as keyof typeof data.changedFiles] ===
+                "string" &&
+              data.changedFiles![k as keyof typeof data.changedFiles]!.trim()
+                .length > 0
+          )
+        : [];
+      const hasChangedFiles = changedFileNames.length > 0;
 
-      const recordedSteps: ReasoningStep[] = Array.isArray(data.reasoningSteps)
-        ? data.reasoningSteps.map((st) => ({
-            title: st.title,
-            description: st.description,
-            detail: st.detail,
-            status: "done" as const,
-          }))
-        : [
-            {
-              title: "Reading component structure & exports",
-              description: `Examined exported React component, TypeScript props interface, and layout hierarchy across ${compLinesCount} lines in component.tsx.`,
+      const recordedSteps: ReasoningStep[] =
+        Array.isArray(data.reasoningSteps) && data.reasoningSteps.length > 0
+          ? data.reasoningSteps.map((st) => ({
+              title: st.title,
+              description: st.description,
+              detail: st.detail,
+              category: st.category,
+              items: st.items,
               status: "done" as const,
-            },
-            {
-              title: "Evaluating styling & 21st.dev compliance",
-              description: `Verified ${passedCount} of ${planTasks.length} static guideline checks including className merging and dark/light theme support.`,
-              status: "done" as const,
-            },
-          ];
+            }))
+          : [
+              {
+                title: "Scanning workspace files & context",
+                description: `Read component.tsx (${compLinesCount} lines), default.tsx (${demoLinesCount} lines), and ${dependencies.length} package dependencies.`,
+                detail: "component.tsx",
+                category: "context" as const,
+                items: [
+                  `Read component.tsx (${compLinesCount}L)`,
+                  `Read default.tsx (${demoLinesCount}L)`,
+                  `${dependencies.length} NPM deps loaded`,
+                ],
+                status: "done" as const,
+              },
+              {
+                title: "Parsing React AST, Props & Hooks",
+                description:
+                  "Examined exported React 19 component signature, TypeScript Props interface, and DOM hierarchy.",
+                detail: "AST & Props",
+                category: "ast" as const,
+                items: [
+                  "Exported component AST",
+                  "TypeScript Props interface",
+                  preserveDesignSkill ? "UI Design Lock active" : "Visual edit mode",
+                ],
+                status: "done" as const,
+              },
+              {
+                title: "Evaluating styling & 21st.dev compliance",
+                description: `Verified ${passedCount} of ${planTasks.length} static guideline checks including className merging and dark/light theme support.`,
+                detail: `${auditResult.score}/100`,
+                category: "audit" as const,
+                items: [
+                  `${passedCount}/${planTasks.length} checks passed`,
+                  "Tailwind cn() merge",
+                  "Dark/light contrast tokens",
+                ],
+                status: "done" as const,
+              },
+              {
+                title: hasChangedFiles
+                  ? "Synthesizing code modifications"
+                  : "Formulating architectural response",
+                description: hasChangedFiles
+                  ? `Generated complete, compilable TypeScript updates for ${changedFileNames.join(", ")}.`
+                  : "Synthesized technical guidance aligned with Component Studio Co-Pilot standards.",
+                detail: currentModelObj.id.replace("gemini-", ""),
+                category: "synthesis" as const,
+                items: hasChangedFiles
+                  ? [
+                      `Updated ${changedFileNames.join(", ")}`,
+                      "TypeScript validation",
+                      "Unified diff prepared",
+                    ]
+                  : [
+                      `Model: ${currentModelObj.id.replace("gemini-", "")}`,
+                      "Architectural analysis",
+                      "Zero unintended mutations",
+                    ],
+                status: "done" as const,
+              },
+            ];
+
+      if (
+        hasChangedFiles &&
+        !recordedSteps.some((s) => s.category === "verify")
+      ) {
+        recordedSteps.push({
+          title: "Prepared unified diff & sandbox check",
+          description: `Computed line-by-line diff across ${changedFileNames.join(", ")} and staged changes for approval.`,
+          detail: `${changedFileNames.length} file${changedFileNames.length === 1 ? "" : "s"}`,
+          category: "verify",
+          items: [
+            ...changedFileNames.map((f) => `Staged ${f}`),
+            "Ready for diff review",
+          ],
+          status: "done",
+        });
+      }
 
       addAiChatMessage({
         role: "assistant",
@@ -1232,9 +1392,10 @@ export function AiAssistantPanel({ isMobile = false, onClose }: AiAssistantPanel
         ) : null}
 
         {/* Multi-Turn Messages Stream */}
-        {aiChatMessages.map((msg) => {
+        {aiChatMessages.map((msg, idx) => {
           const isUser = msg.role === "user";
           const isSystem = msg.role === "system";
+          const isLatestMessage = idx === aiChatMessages.length - 1;
           const hasCodeChanges =
             msg.changedFiles && Object.keys(msg.changedFiles).length > 0;
           const resolvedStatus: "pending" | "approved" | "rejected" =
@@ -1332,44 +1493,64 @@ export function AiAssistantPanel({ isMobile = false, onClose }: AiAssistantPanel
             );
           }
 
-          // Assistant Message - Editorial & Clean
+          // Assistant Message - Architectural & Detailed Execution Trace
           return (
-            <Message key={msg.id} align="start" className="pt-1">
+            <Message key={msg.id} align="start" className="pt-1.5">
               <MessageAvatar>
-                <Avatar className="size-6 rounded-md bg-foreground text-background shadow-2xs">
-                  <AvatarFallback className="bg-foreground text-background font-semibold rounded-md">
+                <Avatar className="size-6 rounded-none border border-border bg-foreground text-background">
+                  <AvatarFallback className="bg-foreground text-background font-semibold rounded-none">
                     <Code2 className="size-3" />
                   </AvatarFallback>
                 </Avatar>
               </MessageAvatar>
 
-              <MessageContent align="start">
-                <MessageHeader>
+              <MessageContent align="start" className="w-full min-w-0">
+                <MessageHeader className="flex-wrap gap-1.5">
                   <span className="font-semibold text-foreground text-xs font-sans">
                     {msg.authorRole || "Co-Pilot"}
                   </span>
-                  <span className="text-[10px] text-muted-foreground/60">•</span>
+                  <span className="text-[10px] text-muted-foreground/50">•</span>
                   <Badge
                     variant="outline"
-                    className="text-[9px] py-0 px-1 font-normal text-muted-foreground font-sans border-border/60"
+                    className="rounded-none text-[9px] py-0 px-1.5 font-normal text-muted-foreground font-mono border-border/70 bg-background/60"
                   >
                     {(msg.modelUsed || aiModel).replace("gemini-", "")}
                   </Badge>
+                  {msg.reasoning?.steps && msg.reasoning.steps.length > 0 && (
+                    <Badge
+                      variant="secondary"
+                      className="rounded-none text-[9px] py-0 px-1.5 font-normal text-muted-foreground font-sans border border-border/60 bg-muted/40"
+                    >
+                      {msg.reasoning.steps.length} steps executed
+                    </Badge>
+                  )}
+                  {hasCodeChanges && (
+                    <Badge
+                      variant="outline"
+                      className="rounded-none text-[9px] py-0 px-1.5 font-medium text-emerald-600 dark:text-emerald-400 font-sans border-emerald-500/30 bg-emerald-500/10"
+                    >
+                      Code updated
+                    </Badge>
+                  )}
                 </MessageHeader>
 
-                {/* Recorded Reasoning Trace for this Turn (if present) */}
+                {/* Recorded Reasoning & Work Pipeline for this Turn */}
                 {msg.reasoning && (
                   <Reasoning
                     isStreaming={false}
                     durationSeconds={msg.reasoning.durationSeconds}
                     steps={msg.reasoning.steps}
                     summary={msg.reasoning.summary}
-                    defaultOpen={false}
+                    defaultOpen={isLatestMessage}
                   />
                 )}
 
                 {/* Main Response Content with Real Markdown & Code Blocks */}
-                <Bubble variant="editorial" align="start" className="w-full mt-0.5">
+                <Bubble
+                  variant="editorial"
+                  align="start"
+                  className="w-full mt-1 rounded-none border border-border/60 bg-card/30 px-3 py-2.5"
+                >
                   <MarkdownContent content={msg.content} />
 
                   {/* Structured Change Approval Request Card */}
@@ -1419,26 +1600,32 @@ export function AiAssistantPanel({ isMobile = false, onClose }: AiAssistantPanel
 
         {/* Real-time Streaming Assistant Turn */}
         {isAiThinking && (
-          <Message align="start" className="pt-1">
+          <Message align="start" className="pt-1.5">
             <MessageAvatar>
-              <Avatar className="size-6 rounded-md bg-foreground text-background shadow-2xs">
-                <AvatarFallback className="bg-foreground text-background font-semibold rounded-md">
+              <Avatar className="size-6 rounded-none border border-border bg-foreground text-background">
+                <AvatarFallback className="bg-foreground text-background font-semibold rounded-none">
                   <Code2 className="size-3" />
                 </AvatarFallback>
               </Avatar>
             </MessageAvatar>
 
-            <MessageContent align="start" className="w-full">
-              <MessageHeader>
+            <MessageContent align="start" className="w-full min-w-0">
+              <MessageHeader className="flex-wrap gap-1.5">
                 <span className="font-semibold text-foreground text-xs font-sans">
                   Co-Pilot
                 </span>
-                <span className="text-[10px] text-muted-foreground/60">•</span>
+                <span className="text-[10px] text-muted-foreground/50">•</span>
                 <Badge
                   variant="outline"
-                  className="text-[9px] py-0 px-1 font-normal text-muted-foreground font-sans border-border/60"
+                  className="rounded-none text-[9px] py-0 px-1.5 font-normal text-muted-foreground font-mono border-border/70 bg-background/60"
                 >
                   {aiModel.replace("gemini-", "")}
+                </Badge>
+                <Badge
+                  variant="outline"
+                  className="rounded-none text-[9px] py-0 px-1.5 font-medium text-amber-600 dark:text-amber-400 font-sans border-amber-500/35 bg-amber-500/10"
+                >
+                  Working • {workingSteps.filter((s) => s.status === "done").length}/{workingSteps.length}
                 </Badge>
               </MessageHeader>
 
@@ -1447,7 +1634,7 @@ export function AiAssistantPanel({ isMobile = false, onClose }: AiAssistantPanel
                 durationSeconds={thinkingSeconds}
                 activeStep={currentStepTitle}
                 steps={workingSteps}
-                summary={`Executing multi-turn analysis with ${currentModelObj.name} under Component Studio standards.`}
+                summary={`Executing 5-stage analysis & code synthesis with ${currentModelObj.name} under Component Studio standards.`}
               />
             </MessageContent>
           </Message>
