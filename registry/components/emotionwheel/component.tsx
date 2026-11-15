@@ -91,29 +91,45 @@ function createRoundedSectorPath(
     cy + r * Math.sin(angle),
   ];
 
-  let effectiveCrOut = Math.min(crOut, (safeROut - rIn) * 0.45, safeROut * span * 0.38);
-  let effectiveCrIn = Math.min(crIn, (safeROut - rIn) * 0.45, rIn * span * 0.35);
+  let effectiveCrOut = Math.min(
+    crOut,
+    (safeROut - rIn) * 0.45,
+    safeROut * span * 0.38
+  );
+  let effectiveCrIn = Math.min(
+    crIn,
+    (safeROut - rIn) * 0.45,
+    rIn * span * 0.35
+  );
 
   let rCo = safeROut - effectiveCrOut;
-  let offCo = Math.asin(Math.min(0.99, (halfGap + effectiveCrOut) / Math.max(rCo, 1e-3)));
+  let offCo = Math.asin(
+    Math.min(0.99, (halfGap + effectiveCrOut) / Math.max(rCo, 1e-3))
+  );
   if (offCo * 2 >= span) {
     effectiveCrOut = Math.max(
       0.5,
       (safeROut * Math.sin(span / 2) - halfGap) / (1 + Math.sin(span / 2))
     );
     rCo = safeROut - effectiveCrOut;
-    offCo = Math.asin(Math.min(0.99, (halfGap + effectiveCrOut) / Math.max(rCo, 1e-3)));
+    offCo = Math.asin(
+      Math.min(0.99, (halfGap + effectiveCrOut) / Math.max(rCo, 1e-3))
+    );
   }
 
   let rCi = rIn + effectiveCrIn;
-  let offCi = Math.asin(Math.min(0.99, (halfGap + effectiveCrIn) / Math.max(rCi, 1e-3)));
+  let offCi = Math.asin(
+    Math.min(0.99, (halfGap + effectiveCrIn) / Math.max(rCi, 1e-3))
+  );
   if (offCi * 2 >= span) {
     effectiveCrIn = Math.max(
       0.5,
       (rIn * Math.sin(span / 2) - halfGap) / (1 - Math.sin(span / 2))
     );
     rCi = rIn + effectiveCrIn;
-    offCi = Math.asin(Math.min(0.99, (halfGap + effectiveCrIn) / Math.max(rCi, 1e-3)));
+    offCi = Math.asin(
+      Math.min(0.99, (halfGap + effectiveCrIn) / Math.max(rCi, 1e-3))
+    );
   }
 
   const angCo1 = a1 + offCo;
@@ -182,8 +198,9 @@ export const EmotionWheel: React.FC<EmotionWheelProps> = ({
   ...props
 }) => {
   const uid = useId().replace(/:/g, "");
-  const gradientId = `emotion-wheel-grad-${uid}`;
+  const trackGradId = `emotion-wheel-track-${uid}`;
   const blurFilterId = `emotion-wheel-blur-${uid}`;
+  const rimBlurFilterId = `emotion-wheel-rim-blur-${uid}`;
 
   const prefersReducedMotion = useReducedMotion();
   const useMotion = enableMorphMotion && !prefersReducedMotion;
@@ -206,6 +223,7 @@ export const EmotionWheel: React.FC<EmotionWheelProps> = ({
       const startDeg = index * stepDeg;
       const endDeg = (index + 1) * stepDeg;
       const midRad = ((startDeg + stepDeg / 2 - 90) * Math.PI) / 180;
+      const asymRad = ((startDeg + stepDeg * 0.64 - 90) * Math.PI) / 180;
 
       const segmentMax = segment.maxValue ?? maxValue;
       const ratio =
@@ -264,9 +282,23 @@ export const EmotionWheel: React.FC<EmotionWheelProps> = ({
         12
       );
 
-      const labelRadius = isFocused && useMotion ? LABEL_RADIUS + 3 : LABEL_RADIUS;
+      const labelRadius =
+        isFocused && useMotion ? LABEL_RADIUS + 3 : LABEL_RADIUS;
       const labelX = CENTER + labelRadius * Math.cos(midRad);
       const labelY = CENTER + labelRadius * Math.sin(midRad);
+
+      // Directional vector points along this wedge from inner corner to outer arc
+      const gradStartX = CENTER + INNER_RADIUS * Math.cos(midRad);
+      const gradStartY = CENTER + INNER_RADIUS * Math.sin(midRad);
+      const gradEndX = CENTER + targetFillRadius * Math.cos(midRad);
+      const gradEndY = CENTER + targetFillRadius * Math.sin(midRad);
+
+      // Asymmetrical outer-rim bloom focal point
+      const glowCenterX = CENTER + targetFillRadius * 0.94 * Math.cos(asymRad);
+      const glowCenterY = CENTER + targetFillRadius * 0.94 * Math.sin(asymRad);
+      const glowRadius = Math.max(36, (targetFillRadius - INNER_RADIUS) * 0.85);
+
+      const safeSegId = `${uid}-${index}`;
 
       return {
         index,
@@ -276,12 +308,24 @@ export const EmotionWheel: React.FC<EmotionWheelProps> = ({
         fillPath,
         labelX,
         labelY,
+        gradStartX,
+        gradStartY,
+        gradEndX,
+        gradEndY,
+        glowCenterX,
+        glowCenterY,
+        glowRadius,
+        clipId: `wedge-clip-${safeSegId}`,
+        baseGradId: `wedge-base-${safeSegId}`,
+        bloomGradId: `wedge-bloom-${safeSegId}`,
+        rimGradId: `wedge-rim-${safeSegId}`,
+        crispRimGradId: `wedge-crisp-${safeSegId}`,
         isFocused,
         isDimmed,
         hasVisibleFill: ratio > 0.02,
       };
     });
-  }, [segments, maxValue, focusedId, useMotion]);
+  }, [segments, maxValue, focusedId, useMotion, uid]);
 
   const focusedSegment = useMemo(
     () => segments.find((s) => s.id === focusedId) ?? null,
@@ -310,14 +354,10 @@ export const EmotionWheel: React.FC<EmotionWheelProps> = ({
         "relative inline-flex w-full max-w-[360px] aspect-square items-center justify-center bg-transparent select-none",
         className
       )}
-      style={
-        size || style
-          ? {
-              ...(size ? { width: size, height: size, maxWidth: size } : {}),
-              ...style,
-            }
-          : undefined
-      }
+      style={{
+        ...(size ? { width: size, height: size, maxWidth: size } : {}),
+        ...style,
+      }}
     >
       <svg
         viewBox={`0 0 ${VIEWBOX_SIZE} ${VIEWBOX_SIZE}`}
@@ -326,28 +366,137 @@ export const EmotionWheel: React.FC<EmotionWheelProps> = ({
         aria-label="Interactive emotion wheel radial chart"
       >
         <defs>
-          <linearGradient
-            id={gradientId}
+          {/* Deep obsidian recessed track gradient shared across all outer tracks */}
+          <radialGradient
+            id={trackGradId}
             gradientUnits="userSpaceOnUse"
-            x1="48"
-            y1="48"
-            x2="312"
-            y2="312"
+            cx={CENTER}
+            cy={CENTER}
+            r={OUTER_RADIUS}
           >
-            <stop offset="0%" stopColor="#e8e2d5" />
-            <stop offset="50%" stopColor="#dfd9e2" />
-            <stop offset="100%" stopColor="#d5cfe6" />
-          </linearGradient>
+            <stop offset="0%" stopColor="#020612" />
+            <stop offset="58%" stopColor="#03091a" />
+            <stop offset="86%" stopColor="#071436" />
+            <stop offset="100%" stopColor="#0d245c" />
+          </radialGradient>
 
           <filter
             id={blurFilterId}
-            x="-30%"
-            y="-30%"
-            width="160%"
-            height="160%"
+            x="-35%"
+            y="-35%"
+            width="170%"
+            height="170%"
           >
-            <feGaussianBlur stdDeviation="7" result="blur" />
+            <feGaussianBlur stdDeviation="8" result="blur" />
           </filter>
+
+          <filter
+            id={rimBlurFilterId}
+            x="-25%"
+            y="-25%"
+            width="150%"
+            height="150%"
+          >
+            <feGaussianBlur stdDeviation="3.5" />
+          </filter>
+
+          {computedSegments.map(
+            ({
+              segment,
+              initialFillPath,
+              fillPath,
+              gradStartX,
+              gradStartY,
+              gradEndX,
+              gradEndY,
+              glowCenterX,
+              glowCenterY,
+              glowRadius,
+              clipId,
+              baseGradId,
+              bloomGradId,
+              rimGradId,
+              crispRimGradId,
+              index,
+            }) => (
+              <React.Fragment key={segment.id}>
+                <clipPath id={clipId}>
+                  <motion.path
+                    d={fillPath}
+                    initial={useMotion ? { d: initialFillPath } : false}
+                    animate={{ d: fillPath }}
+                    transition={{
+                      ...transition,
+                      d: {
+                        ...SPRING_TRANSITION,
+                        delay: useMotion && !focusedId ? index * 0.03 : 0,
+                      },
+                    }}
+                  />
+                </clipPath>
+
+                {/* Primary radial base (#020612 near core -> #2667ff -> #467dff at outer arc) */}
+                <linearGradient
+                  id={baseGradId}
+                  gradientUnits="userSpaceOnUse"
+                  x1={gradStartX}
+                  y1={gradStartY}
+                  x2={gradEndX}
+                  y2={gradEndY}
+                >
+                  <stop offset="0%" stopColor="#020612" />
+                  <stop offset="38%" stopColor="#040c22" />
+                  <stop offset="68%" stopColor="#0d276b" />
+                  <stop offset="88%" stopColor="#2667ff" />
+                  <stop offset="100%" stopColor="#467dff" />
+                </linearGradient>
+
+                {/* Asymmetrical ambient blue radial bloom inside each wedge */}
+                <radialGradient
+                  id={bloomGradId}
+                  gradientUnits="userSpaceOnUse"
+                  cx={glowCenterX}
+                  cy={glowCenterY}
+                  r={glowRadius}
+                >
+                  <stop offset="0%" stopColor="#c2ffff" stopOpacity="0.34" />
+                  <stop offset="36%" stopColor="#467dff" stopOpacity="0.42" />
+                  <stop offset="70%" stopColor="#2667ff" stopOpacity="0.18" />
+                  <stop offset="100%" stopColor="#020612" stopOpacity="0" />
+                </radialGradient>
+
+                {/* Soft inset rim glow gradient intensifying toward the outer arc */}
+                <linearGradient
+                  id={rimGradId}
+                  gradientUnits="userSpaceOnUse"
+                  x1={gradStartX}
+                  y1={gradStartY}
+                  x2={gradEndX}
+                  y2={gradEndY}
+                >
+                  <stop offset="0%" stopColor="#2667ff" stopOpacity="0.12" />
+                  <stop offset="55%" stopColor="#2667ff" stopOpacity="0.48" />
+                  <stop offset="88%" stopColor="#467dff" stopOpacity="0.9" />
+                  <stop offset="100%" stopColor="#c2ffff" stopOpacity="0.95" />
+                </linearGradient>
+
+                {/* Crisp thin #c2ffff outer-edge highlight stroke */}
+                <linearGradient
+                  id={crispRimGradId}
+                  gradientUnits="userSpaceOnUse"
+                  x1={gradStartX}
+                  y1={gradStartY}
+                  x2={gradEndX}
+                  y2={gradEndY}
+                >
+                  <stop offset="0%" stopColor="#467dff" stopOpacity="0.08" />
+                  <stop offset="62%" stopColor="#467dff" stopOpacity="0.32" />
+                  <stop offset="90%" stopColor="#c2ffff" stopOpacity="0.78" />
+                  <stop offset="100%" stopColor="#c2ffff" stopOpacity="1" />
+                </linearGradient>
+              </React.Fragment>
+            )
+          )}
         </defs>
 
         {computedSegments.map(
@@ -359,6 +508,11 @@ export const EmotionWheel: React.FC<EmotionWheelProps> = ({
             fillPath,
             labelX,
             labelY,
+            clipId,
+            baseGradId,
+            bloomGradId,
+            rimGradId,
+            crispRimGradId,
             isFocused,
             isDimmed,
             hasVisibleFill,
@@ -366,6 +520,14 @@ export const EmotionWheel: React.FC<EmotionWheelProps> = ({
             const blurFilter =
               enableBlurShade && isDimmed ? "blur(1.6px)" : "blur(0px)";
             const groupOpacity = enableBlurShade && isDimmed ? 0.42 : 1;
+
+            const wedgeMorphTransition = {
+              ...transition,
+              d: {
+                ...SPRING_TRANSITION,
+                delay: useMotion && !focusedId ? index * 0.03 : 0,
+              },
+            };
 
             return (
               <motion.g
@@ -385,7 +547,7 @@ export const EmotionWheel: React.FC<EmotionWheelProps> = ({
                 role="button"
                 aria-pressed={selectedId === segment.id}
                 aria-label={`${segment.label}: ${segment.value}`}
-                className="group cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-900/40 dark:focus-visible:ring-zinc-100/40"
+                className="group cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#467dff]/60"
                 initial={useMotion ? { opacity: 0, scale: 0.94 } : false}
                 animate={{
                   opacity: groupOpacity,
@@ -408,16 +570,16 @@ export const EmotionWheel: React.FC<EmotionWheelProps> = ({
               >
                 <title>{`${segment.label}: ${segment.value}`}</title>
 
-                {/* Soft ambient blur-shade halo on hovered/selected wedge */}
+                {/* Soft ambient blue halo on hovered/selected wedge */}
                 <AnimatePresence>
                   {enableBlurShade && isFocused && (
                     <motion.path
                       key={`${segment.id}-shade`}
                       d={fillPath}
-                      fill={segment.color ?? `url(#${gradientId})`}
+                      fill={segment.color ?? "#2667ff"}
                       filter={`url(#${blurFilterId})`}
                       initial={{ opacity: 0 }}
-                      animate={{ opacity: 0.4 }}
+                      animate={{ opacity: 0.5 }}
                       exit={{ opacity: 0 }}
                       transition={transition}
                       style={{ pointerEvents: "none" }}
@@ -425,38 +587,74 @@ export const EmotionWheel: React.FC<EmotionWheelProps> = ({
                   )}
                 </AnimatePresence>
 
-                {/* Theme-aware outer track wedge (clean zinc in light mode, charcoal in dark mode) */}
+                {/* Recessed #020612 outer track wedge with subtle blue rim */}
                 <motion.path
                   d={outerPath}
-                  className="fill-zinc-200 dark:fill-[#555354] stroke-transparent group-focus-visible:stroke-zinc-900/70 dark:group-focus-visible:stroke-zinc-100/70 transition-colors duration-200"
-                  strokeWidth={1.5}
+                  fill={`url(#${trackGradId})`}
+                  stroke={
+                    isFocused
+                      ? "rgba(194, 255, 255, 0.45)"
+                      : "rgba(70, 125, 255, 0.24)"
+                  }
+                  strokeWidth={isFocused ? 1.25 : 0.9}
                   initial={false}
                   animate={{
                     d: outerPath,
-                    opacity: isFocused ? 0.96 : 1,
+                    opacity: isFocused ? 1 : 0.96,
                   }}
                   transition={transition}
                 />
 
-                {/* Inner active value wedge with staggered entrance + spring morphing */}
-                <motion.path
-                  d={fillPath}
-                  fill={segment.color ?? `url(#${gradientId})`}
-                  className="stroke-zinc-300/70 dark:stroke-transparent"
-                  strokeWidth={1}
-                  initial={useMotion ? { d: initialFillPath, opacity: 0 } : false}
-                  animate={{
-                    d: fillPath,
-                    opacity: hasVisibleFill ? 1 : 0,
-                  }}
-                  transition={{
-                    ...transition,
-                    d: {
-                      ...SPRING_TRANSITION,
-                      delay: useMotion && !focusedId ? index * 0.03 : 0,
-                    },
-                  }}
-                />
+                {/* Clipped inner active wedge with recessed rim-lit blue gradient */}
+                <motion.g
+                  clipPath={`url(#${clipId})`}
+                  initial={useMotion ? { opacity: 0 } : false}
+                  animate={{ opacity: hasVisibleFill ? 1 : 0 }}
+                  transition={transition}
+                >
+                  {/* Base near-black to #2667ff/#467dff radial gradient */}
+                  <motion.path
+                    d={fillPath}
+                    fill={segment.color ?? `url(#${baseGradId})`}
+                    initial={useMotion ? { d: initialFillPath } : false}
+                    animate={{ d: fillPath }}
+                    transition={wedgeMorphTransition}
+                  />
+
+                  {/* Asymmetrical radial blue glow overlay */}
+                  {!segment.color && (
+                    <motion.path
+                      d={fillPath}
+                      fill={`url(#${bloomGradId})`}
+                      initial={useMotion ? { d: initialFillPath } : false}
+                      animate={{ d: fillPath }}
+                      transition={wedgeMorphTransition}
+                    />
+                  )}
+
+                  {/* Soft multi-layered inset blue rim glow */}
+                  <motion.path
+                    d={fillPath}
+                    fill="none"
+                    stroke={`url(#${rimGradId})`}
+                    strokeWidth={11}
+                    filter={`url(#${rimBlurFilterId})`}
+                    initial={useMotion ? { d: initialFillPath } : false}
+                    animate={{ d: fillPath }}
+                    transition={wedgeMorphTransition}
+                  />
+
+                  {/* Crisp thin #c2ffff inner edge rim highlight */}
+                  <motion.path
+                    d={fillPath}
+                    fill="none"
+                    stroke={`url(#${crispRimGradId})`}
+                    strokeWidth={2}
+                    initial={useMotion ? { d: initialFillPath } : false}
+                    animate={{ d: fillPath }}
+                    transition={wedgeMorphTransition}
+                  />
+                </motion.g>
 
                 {/* Upright value + label */}
                 <motion.g
@@ -473,13 +671,15 @@ export const EmotionWheel: React.FC<EmotionWheelProps> = ({
                     x="0"
                     y="-3"
                     textAnchor="middle"
-                    className="fill-zinc-900 tabular-nums"
+                    fill="#f4f8ff"
+                    className="tabular-nums"
                     style={{
                       fontFamily:
                         'Geist, Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
                       fontSize: "14.5px",
                       fontWeight: isFocused ? 500 : 400,
                       lineHeight: 1,
+                      textShadow: "0 1px 4px rgba(2, 6, 18, 0.8)",
                     }}
                   >
                     {segment.value}
@@ -488,13 +688,14 @@ export const EmotionWheel: React.FC<EmotionWheelProps> = ({
                     x="0"
                     y="10.5"
                     textAnchor="middle"
-                    className="fill-zinc-800"
+                    fill="#c4d8ff"
                     style={{
                       fontFamily:
                         'Geist, Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
                       fontSize: "9.5px",
                       fontWeight: 400,
                       lineHeight: 1,
+                      textShadow: "0 1px 4px rgba(2, 6, 18, 0.85)",
                     }}
                   >
                     {segment.label}
@@ -523,9 +724,15 @@ export const EmotionWheel: React.FC<EmotionWheelProps> = ({
                 : { opacity: 0 }
             }
             transition={{ type: "spring", stiffness: 380, damping: 28 }}
-            className="pointer-events-none absolute inset-0 flex items-center justify-center"
+            className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center"
           >
-            <div className="flex h-10 w-10 items-center justify-center rounded-full border border-zinc-300/80 bg-white/90 text-zinc-900 shadow-sm backdrop-blur-md dark:border-white/15 dark:bg-zinc-900/90 dark:text-zinc-100">
+            <div
+              className="flex h-10 w-10 items-center justify-center rounded-full bg-[#020612]/95 text-[#f4f8ff] backdrop-blur-md"
+              style={{
+                boxShadow:
+                  "inset 0 -1px 2px rgba(194, 255, 255, 0.8), inset 0 -4px 10px rgba(70, 125, 255, 0.55), inset 0 0 0 1px rgba(70, 125, 255, 0.38), 0 4px 16px rgba(38, 103, 255, 0.35)",
+              }}
+            >
               <span className="text-[11px] font-medium tabular-nums leading-none">
                 {focusedSegment.value}
               </span>

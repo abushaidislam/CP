@@ -1,8 +1,29 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-15T06:33:15.658Z",
+  "updatedAt": "2026-11-15T06:48:12.840Z",
   "totalComponents": 32,
   "components": [
+    {
+      "id": "comp-1794664896917-5l7qr",
+      "slug": "emotionwheel",
+      "name": "Emotionwheel",
+      "description": "",
+      "category": "Custom",
+      "isBuiltIn": false,
+      "updatedAt": 1794725172405,
+      "lastRepoSyncAt": 1794725292800,
+      "path": "registry/components/emotionwheel",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "index.css",
+        "manifest.json",
+        "preview.png"
+      ],
+      "dependencies": [
+        "framer-motion"
+      ]
+    },
     {
       "id": "comp-1794724237735-0pr8y",
       "slug": "peak-chart",
@@ -100,27 +121,6 @@
         "preview.png"
       ],
       "dependencies": []
-    },
-    {
-      "id": "comp-1794664896917-5l7qr",
-      "slug": "emotionwheel",
-      "name": "Emotionwheel",
-      "description": "",
-      "category": "Custom",
-      "isBuiltIn": false,
-      "updatedAt": 1794666556620,
-      "lastRepoSyncAt": 1794678996004,
-      "path": "registry/components/emotionwheel",
-      "files": [
-        "component.tsx",
-        "default.tsx",
-        "index.css",
-        "manifest.json",
-        "preview.png"
-      ],
-      "dependencies": [
-        "framer-motion"
-      ]
     },
     {
       "id": "comp-1794635799526-1ellv",
