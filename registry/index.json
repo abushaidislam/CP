@@ -1,8 +1,27 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-15T06:48:12.840Z",
-  "totalComponents": 32,
+  "updatedAt": "2026-11-15T07:24:20.853Z",
+  "totalComponents": 33,
   "components": [
+    {
+      "id": "comp-1794725302138-x0bba",
+      "slug": "bookacallbutton",
+      "name": "Bookacallbutton",
+      "description": "",
+      "category": "Custom",
+      "isBuiltIn": false,
+      "updatedAt": 1794727448637,
+      "lastRepoSyncAt": 1794727460825,
+      "path": "registry/components/bookacallbutton",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "index.css",
+        "manifest.json",
+        "preview.png"
+      ],
+      "dependencies": []
+    },
     {
       "id": "comp-1794664896917-5l7qr",
       "slug": "emotionwheel",
