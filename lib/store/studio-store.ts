@@ -1,6 +1,74 @@
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
+import { persist, createJSONStorage, type StateStorage } from "zustand/middleware";
 import { DEFAULT_TEMPLATES } from "@/lib/sandbox/default-templates";
+
+const memoryStorageFallback = new Map<string, string>();
+
+const resilientStudioStorage: StateStorage = {
+  getItem: (name: string): string | null => {
+    try {
+      if (typeof window !== "undefined" && window.localStorage) {
+        return window.localStorage.getItem(name);
+      }
+    } catch {
+      // Fallback to in-memory storage
+    }
+    return memoryStorageFallback.get(name) ?? null;
+  },
+  setItem: (name: string, value: string): void => {
+    memoryStorageFallback.set(name, value);
+    if (typeof window === "undefined" || !window.localStorage) return;
+    try {
+      window.localStorage.setItem(name, value);
+    } catch {
+      // Recover from QuotaExceededError (5MB browser localStorage limit with 30+ components & base64 PNGs)
+      try {
+        const parsed = JSON.parse(value);
+        if (parsed?.state) {
+          // Step 1: Trim checkpoint histories to latest 3 per variant
+          if (parsed.state.variantsByTemplate) {
+            for (const tid of Object.keys(parsed.state.variantsByTemplate)) {
+              const list = parsed.state.variantsByTemplate[tid];
+              if (Array.isArray(list)) {
+                parsed.state.variantsByTemplate[tid] = list.map((v: ComponentVariant) => ({
+                  ...v,
+                  checkpoints: Array.isArray(v.checkpoints) ? v.checkpoints.slice(0, 3) : [],
+                }));
+              }
+            }
+          }
+          // Step 2: Strip oversized base64 PNG strings (>80KB) that exceed localStorage quota
+          if (parsed.state.userComponents) {
+            for (const cid of Object.keys(parsed.state.userComponents)) {
+              const c = parsed.state.userComponents[cid];
+              if (
+                c?.previewImage &&
+                c.previewImage.startsWith("data:image/png;base64,") &&
+                c.previewImage.length > 80_000
+              ) {
+                c.previewImage =
+                  DEFAULT_TEMPLATE_PREVIEWS[cid] || DEFAULT_TEMPLATE_PREVIEWS["blank"];
+              }
+            }
+          }
+          window.localStorage.setItem(name, JSON.stringify(parsed));
+        }
+      } catch {
+        // Ignore if storage remains locked
+      }
+    }
+  },
+  removeItem: (name: string): void => {
+    memoryStorageFallback.delete(name);
+    try {
+      if (typeof window !== "undefined" && window.localStorage) {
+        window.localStorage.removeItem(name);
+      }
+    } catch {
+      // Ignore
+    }
+  },
+};
 
 export type StudioFileName = "component.tsx" | "default.tsx" | "demo.tsx" | "index.css";
 
@@ -909,6 +977,20 @@ function syncVariantWithWorking(
   };
 }
 
+export function normalizeStudioFiles(
+  files?: Partial<StudioFiles> | null
+): StudioFiles {
+  const demoCode = files?.["default.tsx"] ?? files?.["demo.tsx"] ?? "";
+  return {
+    "component.tsx": files?.["component.tsx"] ?? "",
+    "default.tsx": demoCode,
+    "demo.tsx": files?.["demo.tsx"] ?? files?.["default.tsx"] ?? "",
+    "index.css":
+      files?.["index.css"] ??
+      "@tailwind base;\n@tailwind components;\n@tailwind utilities;\n",
+  };
+}
+
 export function studioPersistMerge(
   persistedState: unknown,
   currentState: StudioState
@@ -943,6 +1025,33 @@ export function studioPersistMerge(
       "",
   };
 
+  // Normalize all persisted userComponents so legacy components (with only "demo.tsx")
+  // always have both "default.tsx" and "demo.tsx" populated.
+  const normalizedPersistedComponents: Record<string, UserComponent> = {};
+  for (const [id, comp] of Object.entries(persisted.userComponents || {})) {
+    if (!comp) continue;
+    normalizedPersistedComponents[id] = {
+      ...comp,
+      files: normalizeStudioFiles(comp.files),
+    };
+  }
+
+  // Normalize all persisted variants and checkpoints as well
+  const normalizedPersistedVariants: Record<string, ComponentVariant[]> = {};
+  for (const [tid, varList] of Object.entries(persisted.variantsByTemplate || {})) {
+    if (!Array.isArray(varList)) continue;
+    normalizedPersistedVariants[tid] = varList.map((v) => ({
+      ...v,
+      files: normalizeStudioFiles(v.files),
+      checkpoints: Array.isArray(v.checkpoints)
+        ? v.checkpoints.map((cp) => ({
+            ...cp,
+            files: normalizeStudioFiles(cp.files),
+          }))
+        : [],
+    }));
+  }
+
   return {
     ...currentState,
     ...persisted,
@@ -950,11 +1059,11 @@ export function studioPersistMerge(
     files: mergedFiles,
     userComponents: {
       ...initialComponents,
-      ...(persisted.userComponents || {}),
+      ...normalizedPersistedComponents,
     },
     variantsByTemplate: {
       ...currentState.variantsByTemplate,
-      ...(persisted.variantsByTemplate || {}),
+      ...normalizedPersistedVariants,
     },
     activeVariantByTemplate: {
       ...currentState.activeVariantByTemplate,
@@ -1045,7 +1154,7 @@ export const useStudioStore = create<StudioState>()(
 
       isRepoSyncModalOpen: false,
       repoSyncStatus: "idle",
-      autoSaveToRepo: true,
+      autoSaveToRepo: false,
       lastRepoSyncError: null,
       repoGitInfo: null,
       githubRepoConfig: {
@@ -1363,25 +1472,34 @@ export const useStudioStore = create<StudioState>()(
           }
 
           const trimmedName = name.trim() || "Untitled Variant";
+          const normalizedVariantFiles = normalizeStudioFiles(sourceFiles);
           const newVariant: ComponentVariant = {
             id: `var-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
             name: trimmedName,
             createdAt: Date.now(),
             updatedAt: Date.now(),
-            files: {
-              "component.tsx": sourceFiles["component.tsx"],
-              "demo.tsx": sourceFiles["demo.tsx"],
-              "index.css": sourceFiles["index.css"],
-            },
+            files: normalizedVariantFiles,
             dependencies: [...sourceDeps],
             checkpoints: [],
           };
 
           const updatedVariants = [...currentVariants, newVariant];
+          const existingComp = state.userComponents?.[templateId];
 
           return {
             files: { ...newVariant.files },
             dependencies: [...newVariant.dependencies],
+            userComponents: existingComp
+              ? {
+                  ...state.userComponents,
+                  [templateId]: {
+                    ...existingComp,
+                    files: { ...newVariant.files },
+                    dependencies: [...newVariant.dependencies],
+                    updatedAt: Date.now(),
+                  },
+                }
+              : state.userComponents,
             variantsByTemplate: {
               ...(state.variantsByTemplate || {}),
               [templateId]: updatedVariants,
@@ -1401,10 +1519,24 @@ export const useStudioStore = create<StudioState>()(
           const targetVariant = variants.find((v) => v.id === variantId);
           if (!targetVariant) return state;
 
+          const normalizedFiles = normalizeStudioFiles(targetVariant.files);
+          const existingComp = state.userComponents?.[templateId];
+
           return {
-            files: { ...targetVariant.files },
+            files: normalizedFiles,
             dependencies: [...targetVariant.dependencies],
             compilerError: null,
+            userComponents: existingComp
+              ? {
+                  ...state.userComponents,
+                  [templateId]: {
+                    ...existingComp,
+                    files: normalizedFiles,
+                    dependencies: [...targetVariant.dependencies],
+                    updatedAt: Date.now(),
+                  },
+                }
+              : state.userComponents,
             activeVariantByTemplate: {
               ...(state.activeVariantByTemplate || {}),
               [templateId]: targetVariant.id,
@@ -1429,13 +1561,26 @@ export const useStudioStore = create<StudioState>()(
           if (activeId === variantId) {
             const fallback = updatedVariants[0];
             activeId = fallback.id;
-            nextFiles = { ...fallback.files };
+            nextFiles = normalizeStudioFiles(fallback.files);
             nextDeps = [...fallback.dependencies];
           }
+
+          const existingComp = state.userComponents?.[templateId];
 
           return {
             files: nextFiles,
             dependencies: nextDeps,
+            userComponents: existingComp
+              ? {
+                  ...state.userComponents,
+                  [templateId]: {
+                    ...existingComp,
+                    files: nextFiles,
+                    dependencies: nextDeps,
+                    updatedAt: Date.now(),
+                  },
+                }
+              : state.userComponents,
             variantsByTemplate: {
               ...(state.variantsByTemplate || {}),
               [templateId]: updatedVariants,
@@ -1495,11 +1640,7 @@ export const useStudioStore = create<StudioState>()(
               second: "2-digit",
             }),
             createdAt: Date.now(),
-            files: {
-              "component.tsx": state.files["component.tsx"],
-              "demo.tsx": state.files["demo.tsx"],
-              "index.css": state.files["index.css"],
-            },
+            files: normalizeStudioFiles(state.files),
             dependencies: [...state.dependencies],
           };
 
@@ -1508,7 +1649,7 @@ export const useStudioStore = create<StudioState>()(
               const updatedCheckpoints = [newCheckpoint, ...(v.checkpoints || [])].slice(0, 50);
               return {
                 ...v,
-                files: { ...state.files },
+                files: normalizeStudioFiles(state.files),
                 dependencies: [...state.dependencies],
                 updatedAt: Date.now(),
                 checkpoints: updatedCheckpoints,
@@ -1540,11 +1681,7 @@ export const useStudioStore = create<StudioState>()(
           const targetCheckpoint = (activeVar.checkpoints || []).find((cp) => cp.id === checkpointId);
           if (!targetCheckpoint) return state;
 
-          const restoredFiles = {
-            "component.tsx": targetCheckpoint.files["component.tsx"],
-            "demo.tsx": targetCheckpoint.files["demo.tsx"],
-            "index.css": targetCheckpoint.files["index.css"],
-          };
+          const restoredFiles = normalizeStudioFiles(targetCheckpoint.files);
           const restoredDeps = [...targetCheckpoint.dependencies];
 
           const updatedVariants = variants.map((v) =>
@@ -1558,10 +1695,23 @@ export const useStudioStore = create<StudioState>()(
               : v
           );
 
+          const existingComp = state.userComponents?.[templateId];
+
           return {
             files: restoredFiles,
             dependencies: restoredDeps,
             compilerError: null,
+            userComponents: existingComp
+              ? {
+                  ...state.userComponents,
+                  [templateId]: {
+                    ...existingComp,
+                    files: restoredFiles,
+                    dependencies: restoredDeps,
+                    updatedAt: Date.now(),
+                  },
+                }
+              : state.userComponents,
             variantsByTemplate: {
               ...(state.variantsByTemplate || {}),
               [templateId]: updatedVariants,
@@ -1590,26 +1740,35 @@ export const useStudioStore = create<StudioState>()(
           if (!targetCheckpoint) return state;
 
           const trimmedName = newVariantName.trim() || `Fork of ${targetCheckpoint.name}`;
+          const forkedFiles = normalizeStudioFiles(targetCheckpoint.files);
           const newVariant: ComponentVariant = {
             id: `var-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
             name: trimmedName,
             createdAt: Date.now(),
             updatedAt: Date.now(),
-            files: {
-              "component.tsx": targetCheckpoint.files["component.tsx"],
-              "demo.tsx": targetCheckpoint.files["demo.tsx"],
-              "index.css": targetCheckpoint.files["index.css"],
-            },
+            files: forkedFiles,
             dependencies: [...targetCheckpoint.dependencies],
             checkpoints: [],
           };
 
           const updatedVariants = [...variants, newVariant];
+          const existingComp = state.userComponents?.[templateId];
 
           return {
             files: { ...newVariant.files },
             dependencies: [...newVariant.dependencies],
             compilerError: null,
+            userComponents: existingComp
+              ? {
+                  ...state.userComponents,
+                  [templateId]: {
+                    ...existingComp,
+                    files: { ...newVariant.files },
+                    dependencies: [...newVariant.dependencies],
+                    updatedAt: Date.now(),
+                  },
+                }
+              : state.userComponents,
             variantsByTemplate: {
               ...(state.variantsByTemplate || {}),
               [templateId]: updatedVariants,
@@ -1685,18 +1844,24 @@ export const useStudioStore = create<StudioState>()(
           const defaultVar = createDefaultVariant(target.id, target.files, target.dependencies);
           nextVariants = [defaultVar];
           activeVariantId = defaultVar.id;
-          filesToLoad = { ...defaultVar.files };
+          filesToLoad = normalizeStudioFiles(defaultVar.files);
           depsToLoad = [...defaultVar.dependencies];
         } else {
           const activeVar = existingVariants.find((v) => v.id === activeVariantId) || existingVariants[0];
           activeVariantId = activeVar.id;
-          filesToLoad = { ...activeVar.files };
+          filesToLoad = normalizeStudioFiles(activeVar.files);
           depsToLoad = [...activeVar.dependencies];
         }
 
         const isBuiltIn = DEFAULT_TEMPLATES.some((t) => t.id === target.id);
         const nextUserComponents = state.userComponents?.[target.id]
-          ? state.userComponents
+          ? {
+              ...state.userComponents,
+              [target.id]: {
+                ...state.userComponents[target.id],
+                files: normalizeStudioFiles(state.userComponents[target.id].files),
+              },
+            }
           : {
               ...(state.userComponents || {}),
               [target.id]: {
@@ -1707,7 +1872,7 @@ export const useStudioStore = create<StudioState>()(
                 isBuiltIn,
                 createdAt: 1700000000000,
                 updatedAt: 1700000000000,
-                files: { ...target.files },
+                files: normalizeStudioFiles(target.files),
                 dependencies: [...target.dependencies],
                 previewImage:
                   target.previewImage ||
@@ -1756,17 +1921,13 @@ export const useStudioStore = create<StudioState>()(
           DEFAULT_TEMPLATE_PREVIEWS["blank"];
 
         if (starter) {
-          initialFiles = {
-            "component.tsx": starter.files["component.tsx"],
-            "demo.tsx": starter.files["demo.tsx"],
-            "index.css": starter.files["index.css"],
-          };
+          initialFiles = normalizeStudioFiles(starter.files);
           initialDeps = [...starter.dependencies];
         } else {
           initialFiles = {
             "component.tsx": `"use client"\n\nimport React from "react"\n\nexport function Component() {\n  return (\n    <div className="flex items-center justify-center p-8 text-foreground">\n      <h2 className="text-xl font-semibold">${name}</h2>\n    </div>\n  )\n}\n\nexport default Component\n`,
             "default.tsx": `"use client";\n\nimport React from "react";\nimport Component from "../components/ui/component";\n\nexport default function Demo() {\n  return (\n    <div className="flex min-h-[300px] w-full items-center justify-center p-6">\n      <Component />\n    </div>\n  );\n}\n`,
-              "demo.tsx": `"use client";\n\nimport React from "react";\nimport Component from "../components/ui/component";\n\nexport default function Demo() {\n  return (\n    <div className="flex min-h-[300px] w-full items-center justify-center p-6">\n      <Component />\n    </div>\n  );\n}\n`,
+            "demo.tsx": `"use client";\n\nimport React from "react";\nimport Component from "../components/ui/component";\n\nexport default function Demo() {\n  return (\n    <div className="flex min-h-[300px] w-full items-center justify-center p-6">\n      <Component />\n    </div>\n  );\n}\n`,
             "index.css": `@tailwind base;\n@tailwind components;\n@tailwind utilities;\n`,
           };
           initialDeps = [];
@@ -1898,11 +2059,7 @@ export const useStudioStore = create<StudioState>()(
           isBuiltIn: false,
           createdAt: Date.now(),
           updatedAt: Date.now(),
-          files: {
-            "component.tsx": source.files["component.tsx"],
-            "demo.tsx": source.files["demo.tsx"],
-            "index.css": source.files["index.css"],
-          },
+          files: normalizeStudioFiles(source.files),
           dependencies: [...source.dependencies],
           previewImage:
             source.previewImage ||
@@ -2333,15 +2490,25 @@ export const useStudioStore = create<StudioState>()(
             const nextVariants = { ...(state.variantsByTemplate || {}) };
             const nextActiveVariants = { ...(state.activeVariantByTemplate || {}) };
 
+            let currentComponentReplacedFromRepo = false;
+
             for (const entry of data.components || []) {
               const m = entry.manifest;
               const existing = nextUserComponents[m.id];
-              const isRepoNewer =
-                !existing ||
-                !existing.updatedAt ||
-                (m.updatedAt || 0) >= (existing.updatedAt || 0);
+              const normalizedRepoFiles = normalizeStudioFiles(entry.files);
 
-              if (isRepoNewer) {
+              // Only overwrite an existing local component if:
+              // 1) It doesn't exist locally yet, OR
+              // 2) It is an unmodified factory starter template (updatedAt === 1700000000000), OR
+              // 3) It was already synced with the repo and the repo version is at least as new.
+              const isUnmodifiedStarter = existing?.updatedAt === 1700000000000;
+              const shouldAcceptRepoCode =
+                !existing ||
+                isUnmodifiedStarter ||
+                (existing.savedInRepo !== false &&
+                  (m.updatedAt || 0) >= (existing.updatedAt || 0));
+
+              if (shouldAcceptRepoCode) {
                 nextUserComponents[m.id] = {
                   id: m.id,
                   name: m.name,
@@ -2350,7 +2517,7 @@ export const useStudioStore = create<StudioState>()(
                   isBuiltIn: m.isBuiltIn ?? existing?.isBuiltIn,
                   createdAt: m.createdAt || existing?.createdAt || Date.now(),
                   updatedAt: m.updatedAt || Date.now(),
-                  files: entry.files,
+                  files: normalizedRepoFiles,
                   dependencies: m.dependencies || [],
                   previewImage:
                     m.previewImage ||
@@ -2364,14 +2531,21 @@ export const useStudioStore = create<StudioState>()(
                   lastCommitUrl: m.lastCommitUrl,
                 };
                 if (Array.isArray(m.variants) && m.variants.length > 0) {
-                  nextVariants[m.id] = m.variants;
+                  nextVariants[m.id] = m.variants.map((v) => ({
+                    ...v,
+                    files: normalizeStudioFiles(v.files),
+                  }));
                   if (m.activeVariantId) {
                     nextActiveVariants[m.id] = m.activeVariantId;
                   }
                 }
+                if (m.id === state.currentTemplateId) {
+                  currentComponentReplacedFromRepo = true;
+                }
               } else if (existing) {
                 nextUserComponents[m.id] = {
                   ...existing,
+                  files: normalizeStudioFiles(existing.files),
                   repoSlug: m.slug,
                   savedInRepo: true,
                   lastRepoSyncAt: m.lastRepoSyncAt,
@@ -2383,8 +2557,8 @@ export const useStudioStore = create<StudioState>()(
 
             const activeComp = nextUserComponents[state.currentTemplateId];
             const shouldRefreshActiveFiles =
+              currentComponentReplacedFromRepo &&
               activeComp &&
-              activeComp.savedInRepo &&
               state.repoSyncStatus !== "dirty";
 
             return {
@@ -2605,25 +2779,32 @@ export const useStudioStore = create<StudioState>()(
           // Trim heavy checkpoint history when syncing in bulk to keep payload compact
           const compactVariants = rawVariants.map((v) => ({
             ...v,
-            checkpoints: (v.checkpoints || []).slice(-3),
+            files: normalizeStudioFiles(v.files),
+            checkpoints: (v.checkpoints || []).slice(-2),
           }));
+          const rawComp =
+            comp.id === state.currentTemplateId
+              ? {
+                  ...comp,
+                  files: normalizeStudioFiles(state.files),
+                  dependencies: [...state.dependencies],
+                }
+              : {
+                  ...comp,
+                  files: normalizeStudioFiles(comp.files),
+                };
+
+          // When syncing many components at once (>4), strip oversized base64 PNG strings (>80KB)
+          // so all 36 components fit in a single fast request and single atomic GitHub commit.
+          const isOversizedPng =
+            allComps.length > 4 &&
+            rawComp.previewImage?.startsWith("data:image/png;base64,") &&
+            rawComp.previewImage.length > 80_000;
+
           return {
-            component:
-              comp.id === state.currentTemplateId
-                ? {
-                    ...comp,
-                    files: {
-                      ...state.files,
-                      "default.tsx":
-                        state.files["default.tsx"] ?? state.files["demo.tsx"],
-                      "demo.tsx":
-                        state.files["demo.tsx"] ??
-                        state.files["default.tsx"] ??
-                        "",
-                    },
-                    dependencies: [...state.dependencies],
-                  }
-                : comp,
+            component: isOversizedPng
+              ? { ...rawComp, previewImage: undefined }
+              : rawComp,
             variants: compactVariants,
             activeVariantId: state.activeVariantByTemplate?.[comp.id],
           };
@@ -2954,6 +3135,7 @@ export const useStudioStore = create<StudioState>()(
     }),
     {
       name: "21st-component-studio-storage-v3",
+      storage: createJSONStorage(() => resilientStudioStorage),
       partialize: (state) => ({
         files: state.files,
         activeTab: state.activeTab,

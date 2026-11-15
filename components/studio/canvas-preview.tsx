@@ -163,7 +163,6 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
     }
   };
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   const { html, error, detectedDependencies } = useMemo(() => {
     return compileSandboxHtml(
       debouncedFiles["component.tsx"],
@@ -173,7 +172,7 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
       canvasBg,
       previewTheme
     );
-  }, [debouncedFiles, dependencies, canvasBg, previewTheme, reloadKey]);
+  }, [debouncedFiles, dependencies, canvasBg, previewTheme]);
 
   const activeVariantId =
     activeVariantByTemplate?.[currentTemplateId] || "default";

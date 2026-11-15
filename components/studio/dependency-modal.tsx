@@ -65,7 +65,9 @@ export function DependencyModal() {
 
   const codeImports = useMemo(() => {
     const compImports = extractCodeImports(files["component.tsx"] || "");
-    const demoImports = extractCodeImports(files["demo.tsx"] || "");
+    const demoImports = extractCodeImports(
+      files["default.tsx"] || files["demo.tsx"] || ""
+    );
     return Array.from(new Set([...compImports, ...demoImports]));
   }, [files]);
 

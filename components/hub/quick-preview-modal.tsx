@@ -109,9 +109,19 @@ export function QuickPreviewModal({
     return false;
   };
 
+  const resolveComponentFile = (fileKey: StudioFileName): string => {
+    if (!component?.files) return "";
+    if (fileKey === "default.tsx" || fileKey === "demo.tsx") {
+      return (
+        component.files["default.tsx"] ?? component.files["demo.tsx"] ?? ""
+      );
+    }
+    return component.files[fileKey] || "";
+  };
+
   const handleCopyCode = async () => {
     if (!component) return;
-    const code = component.files?.[selectedCodeFile] || "";
+    const code = resolveComponentFile(selectedCodeFile);
     await copyText(code);
     setCopiedCode(true);
     if (copyTimerRef.current) clearTimeout(copyTimerRef.current);
@@ -133,7 +143,7 @@ export function QuickPreviewModal({
     try {
       const res = compileSandboxHtml(
         component.files["component.tsx"] || "",
-        component.files["demo.tsx"] || "",
+        component.files["default.tsx"] || component.files["demo.tsx"] || "",
         component.files["index.css"] || "",
         component.dependencies || [],
         previewTheme === "dark" ? "dark" : "light",
@@ -148,7 +158,7 @@ export function QuickPreviewModal({
     }
   }, [component, previewTheme, reloadKey]);
 
-  const activeCodeContent = component?.files?.[selectedCodeFile] || "";
+  const activeCodeContent = resolveComponentFile(selectedCodeFile);
   const codeLines = useMemo(() => {
     return activeCodeContent.split("\n");
   }, [activeCodeContent]);

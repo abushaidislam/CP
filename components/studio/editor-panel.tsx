@@ -91,8 +91,15 @@ export function EditorPanel() {
   const [copied, setCopied] = useState(false);
   const effectiveTab = (activeTab === "demo.tsx" ? "default.tsx" : activeTab) as StudioFileName;
 
+  const resolveFileContent = (tab: StudioFileName): string => {
+    if (tab === "default.tsx" || tab === "demo.tsx") {
+      return files["default.tsx"] ?? files["demo.tsx"] ?? "";
+    }
+    return files[tab] ?? "";
+  };
+
   const handleCopyFor21st = () => {
-    const content = files[effectiveTab] || files[activeTab] || "";
+    const content = resolveFileContent(effectiveTab);
     if (content) {
       navigator.clipboard.writeText(content);
       setCopied(true);
@@ -107,7 +114,7 @@ export function EditorPanel() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          code: files[activeTab],
+          code: resolveFileContent(activeTab),
           filename: activeTab,
         }),
       });
@@ -125,7 +132,7 @@ export function EditorPanel() {
     }
   };
 
-  const currentFileContent = files[effectiveTab] || files[activeTab] || "";
+  const currentFileContent = resolveFileContent(effectiveTab);
   const lineCount = currentFileContent.split("\n").length;
 
   return (
@@ -443,7 +450,7 @@ export function EditorPanel() {
       <div className="flex-1 relative overflow-hidden bg-background min-h-0">
         <CodeEditor
           filename={activeTab}
-          value={files[activeTab] || files[effectiveTab] || ""}
+          value={currentFileContent}
           onChange={(newVal) => updateFile(activeTab, newVal)}
           onFormat={handleFormat}
         />

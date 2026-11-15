@@ -114,7 +114,7 @@ export function ComponentCard({
     try {
       const res = compileSandboxHtml(
         component.files["component.tsx"] || "",
-        component.files["demo.tsx"] || "",
+        component.files["default.tsx"] || component.files["demo.tsx"] || "",
         component.files["index.css"] || "",
         component.dependencies || [],
         "dark",
