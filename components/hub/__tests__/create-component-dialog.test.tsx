@@ -150,10 +150,6 @@ describe("CreateComponentDialog", () => {
     // Starter Template cards
     expect(html).toContain("Starter Template");
     expect(html).toContain("Blank Clean Slate");
-    expect(html).toContain("Ink Orbit 3D Hero");
-    expect(html).toContain("Interactive Spotlight Card");
-    expect(html).toContain("Aurora Shimmer Button");
-    expect(html).toContain("Live Status Radar Badge");
 
     // Action buttons
     expect(html).toContain("Cancel");
@@ -215,7 +211,7 @@ describe("CreateComponentDialog", () => {
     expect(state.isCreateComponentDialogOpen).toBe(false);
   });
 
-  it("should create a component cloned from selected starter template", () => {
+  it("should create a component with selected clean template", () => {
     useStudioStore.setState({ isCreateComponentDialogOpen: true });
     let createdComponentId: string | null = null;
     const onCreated = (id: string) => {
@@ -224,10 +220,10 @@ describe("CreateComponentDialog", () => {
 
     renderToString(<CreateComponentDialog onCreated={onCreated} />);
 
-    // Select "Interactive Spotlight Card" starter template
-    const spotlightCardBtn = buttonClickMap.get("Interactive Spotlight Card");
-    expect(spotlightCardBtn).toBeDefined();
-    spotlightCardBtn!();
+    // Select "Blank Clean Slate" starter template
+    const blankBtn = buttonClickMap.get("Blank Clean Slate");
+    expect(blankBtn).toBeDefined();
+    blankBtn!();
 
     // Enter name
     lastInputOnChange!({ target: { value: "Feature Showcase Card" } });
@@ -241,8 +237,7 @@ describe("CreateComponentDialog", () => {
     const createdComp = state.userComponents[createdComponentId!];
     expect(createdComp).toBeDefined();
     expect(createdComp.name).toBe("Feature Showcase Card");
-    expect(createdComp.category).toBe("Cards");
-    expect(createdComp.files["component.tsx"]).toContain("Spotlight");
+    expect(createdComp.files["component.tsx"]).toContain("Feature Showcase Card");
   });
 
   it("should allow selecting custom category and optional description", () => {

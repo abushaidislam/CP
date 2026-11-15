@@ -1,6 +1,6 @@
 import { describe, it, expect } from "bun:test";
 import { NextRequest } from "next/server";
-import { GET, POST, toComponentSlug } from "@/app/api/repo-sync/route";
+import { GET, POST, DELETE, toComponentSlug } from "@/app/api/repo-sync/route";
 import { DEFAULT_TEMPLATES } from "@/lib/sandbox/default-templates";
 import { DEFAULT_TEMPLATE_PREVIEWS } from "@/lib/store/studio-store";
 
@@ -12,27 +12,30 @@ describe("Project Repository & GitHub Component Persistence (/api/repo-sync)", (
     expect(toComponentSlug("InkOrbitHero")).toBe("ink-orbit-hero");
   });
 
-  it("saves all default workspace components into registry/components/ and reads them back via GET", async () => {
-    const items = DEFAULT_TEMPLATES.map((t) => ({
-      component: {
-        id: t.id,
-        name: t.name,
-        description: t.description,
-        category: t.category,
-        isBuiltIn: true,
-        createdAt: 1700000000000,
-        updatedAt: 1700000000000,
-        files: {
-          "component.tsx": t.files["component.tsx"],
-          "default.tsx": t.files["demo.tsx"],
-          "demo.tsx": t.files["demo.tsx"],
-          "index.css": t.files["index.css"],
+  it("saves workspace components into registry/components/ and reads them back via GET", async () => {
+    const testSlug = "temp-sync-test-button";
+    const items = [
+      {
+        component: {
+          id: testSlug,
+          name: "Temp Sync Test Button",
+          description: "Temporary test button",
+          category: "Buttons",
+          isBuiltIn: false,
+          createdAt: 1700000000000,
+          updatedAt: 1700000000000,
+          files: {
+            "component.tsx": `"use client";\nimport React from "react";\nexport default function TestBtn() { return <button>Test</button>; }`,
+            "default.tsx": `"use client";\nimport React from "react";\nexport default function Demo() { return <div>Demo</div>; }`,
+            "demo.tsx": `"use client";\nimport React from "react";\nexport default function Demo() { return <div>Demo</div>; }`,
+            "index.css": `@tailwind base;`,
+          },
+          dependencies: [],
+          previewImage: DEFAULT_TEMPLATE_PREVIEWS["blank"],
         },
-        dependencies: t.dependencies,
-        previewImage: DEFAULT_TEMPLATE_PREVIEWS[t.id],
+        variants: [],
       },
-      variants: [],
-    }));
+    ];
 
     const postReq = new NextRequest("http://localhost:3000/api/repo-sync", {
       method: "POST",
@@ -40,7 +43,7 @@ describe("Project Repository & GitHub Component Persistence (/api/repo-sync)", (
       body: JSON.stringify({
         action: "sync_all",
         items,
-        commitMessage: "feat(registry): seed starter components in project repo",
+        commitMessage: "feat(registry): test save temp component",
         commitToGit: false,
         pushToGithub: false,
       }),
@@ -55,10 +58,8 @@ describe("Project Repository & GitHub Component Persistence (/api/repo-sync)", (
 
     expect(postRes.status).toBe(200);
     expect(postJson.success).toBe(true);
-    expect(postJson.savedCount).toBe(DEFAULT_TEMPLATES.length);
-    expect(postJson.totalRepoComponents).toBeGreaterThanOrEqual(
-      DEFAULT_TEMPLATES.length
-    );
+    expect(postJson.savedCount).toBe(1);
+    expect(postJson.totalRepoComponents).toBeGreaterThanOrEqual(1);
 
     const getRes = await GET();
     const getJson = (await getRes.json()) as {
@@ -72,13 +73,18 @@ describe("Project Repository & GitHub Component Persistence (/api/repo-sync)", (
 
     expect(getRes.status).toBe(200);
     expect(getJson.success).toBe(true);
-    expect(getJson.totalComponents).toBeGreaterThanOrEqual(
-      DEFAULT_TEMPLATES.length
+    expect(getJson.totalComponents).toBeGreaterThanOrEqual(1);
+    const testComp = getJson.components.find(
+      (c) => c.manifest.slug === testSlug || c.manifest.id === testSlug
     );
-    const inkOrbit = getJson.components.find(
-      (c) => c.manifest.id === "ink-orbit-hero"
-    );
-    expect(inkOrbit).toBeDefined();
-    expect(inkOrbit?.files["component.tsx"].length).toBeGreaterThan(50);
+    expect(testComp).toBeDefined();
+    expect(testComp?.files["component.tsx"].length).toBeGreaterThan(10);
+
+    // Clean up temporary test component
+    const deleteReq = new NextRequest(`http://localhost:3000/api/repo-sync?slug=${testSlug}`, {
+      method: "DELETE",
+    });
+    const deleteRes = await DELETE(deleteReq);
+    expect(deleteRes.status).toBe(200);
   });
 });

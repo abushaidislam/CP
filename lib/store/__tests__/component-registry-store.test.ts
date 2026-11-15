@@ -114,29 +114,51 @@ describe("Component Registry & Work History Store Slice", () => {
     expect(state.userComponents[id].files["component.tsx"]).toBe("// modified in editor");
   });
 
-  it("should revert built-in templates back to factory code on resetCurrentTemplate", () => {
+  it("should reset current template to component files on resetCurrentTemplate", () => {
     const store = useStudioStore.getState();
-    store.loadComponent("spotlight-card");
+    const id = store.createComponent({ name: "Reset Target" });
     const originalCode = useStudioStore.getState().files["component.tsx"];
 
-    store.updateFile("component.tsx", "// broken user edit on built-in");
-    expect(useStudioStore.getState().files["component.tsx"]).toBe("// broken user edit on built-in");
+    useStudioStore.setState((s) => ({
+      files: { ...s.files, "component.tsx": "// transient broken edit" },
+    }));
+    expect(useStudioStore.getState().files["component.tsx"]).toBe("// transient broken edit");
 
     store.resetCurrentTemplate();
     const state = useStudioStore.getState();
     expect(state.files["component.tsx"]).toBe(originalCode);
-    expect(state.userComponents["spotlight-card"].files["component.tsx"]).toBe(originalCode);
   });
 
   it("should prevent deleting built-in components", () => {
-    const store = useStudioStore.getState();
-    store.loadComponent("spotlight-card");
-    expect(useStudioStore.getState().userComponents["spotlight-card"]).toBeDefined();
+    useStudioStore.setState((state) => ({
+      userComponents: {
+        ...state.userComponents,
+        "test-builtin": {
+          id: "test-builtin",
+          name: "BuiltIn Comp",
+          description: "Built-in",
+          category: "Custom",
+          isBuiltIn: true,
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+          files: {
+            "component.tsx": "// builtin",
+            "demo.tsx": "// demo",
+            "index.css": "",
+          },
+          dependencies: [],
+        },
+      },
+      currentTemplateId: "test-builtin",
+    }));
 
-    store.deleteUserComponent("spotlight-card");
+    const store = useStudioStore.getState();
+    expect(useStudioStore.getState().userComponents["test-builtin"]).toBeDefined();
+
+    store.deleteUserComponent("test-builtin");
     const state = useStudioStore.getState();
-    expect(state.userComponents["spotlight-card"]).toBeDefined();
-    expect(state.currentTemplateId).toBe("spotlight-card");
+    expect(state.userComponents["test-builtin"]).toBeDefined();
+    expect(state.currentTemplateId).toBe("test-builtin");
   });
 
   it("should reset selectedCheckpointId and compilerError when deleting active custom component", () => {
@@ -207,71 +229,21 @@ describe("Component Registry & Work History Store Slice", () => {
     expect(useStudioStore.getState().userComponents["non-existent-id"]).toBeUndefined();
   });
 
-  it("should seed exactly 8 default templates with vibrant preview images and balanced categories", () => {
+  it("should initialize with clean slate and allow creating and duplicating custom components with previews", () => {
     const initialComponents = createInitialUserComponents();
-    const componentList = Object.values(initialComponents);
+    expect(Object.keys(initialComponents).length).toBe(0);
 
-    // Exactly 8 templates seeded
-    expect(componentList.length).toBe(8);
-
-    const expectedIds = [
-      "ink-orbit-hero",
-      "aurora-ambient-hero",
-      "spotlight-card",
-      "bento-metric-grid",
-      "shimmer-button",
-      "neon-glow-button",
-      "metric-badge",
-      "live-ping-status-pill",
-    ];
-
-    for (const id of expectedIds) {
-      const comp = initialComponents[id];
-      expect(comp).toBeDefined();
-      expect(comp.id).toBe(id);
-      expect(comp.previewImage).toBeDefined();
-      expect(comp.previewImage?.startsWith("data:image/svg+xml")).toBe(true);
-      expect(comp.previewImage?.length).toBeGreaterThan(100);
-      expect(comp.files["component.tsx"]).toBeDefined();
-      expect(comp.files["demo.tsx"]).toBeDefined();
-      expect(comp.files["index.css"]).toBeDefined();
-    }
-
-    // Categories test: all 4 categories must have at least 2 templates each
-    const categories = ["Heroes", "Cards", "Buttons", "Badges"];
-    for (const cat of categories) {
-      const inCat = componentList.filter((c) => c.category === cat);
-      expect(inCat.length).toBeGreaterThanOrEqual(2);
-    }
-
-    // Creating a blank component should also assign a default preview SVG
     const store = useStudioStore.getState();
     const blankId = store.createComponent({ name: "Blank Slate" });
     const blankComp = useStudioStore.getState().userComponents[blankId];
     expect(blankComp.previewImage).toBeDefined();
     expect(blankComp.previewImage?.startsWith("data:image/svg+xml")).toBe(true);
 
-    // Creating from new starter template should copy starter template previewImage
-    const clonedHeroId = store.createComponent({
-      name: "Cloned Aurora Hero",
-      starterTemplateId: "aurora-ambient-hero",
-    });
-    const clonedHeroComp = useStudioStore.getState().userComponents[clonedHeroId];
-    expect(clonedHeroComp.previewImage).toBe(initialComponents["aurora-ambient-hero"].previewImage);
-
-    const clonedNeonId = store.createComponent({
-      name: "Cloned Neon Button",
-      starterTemplateId: "neon-glow-button",
-    });
-    const clonedNeonComp = useStudioStore.getState().userComponents[clonedNeonId];
-    expect(clonedNeonComp.previewImage).toBe(initialComponents["neon-glow-button"].previewImage);
-
-    // Duplicating should copy previewImage
-    const dupId = store.duplicateUserComponent(clonedNeonId);
-    expect(useStudioStore.getState().userComponents[dupId].previewImage).toBe(clonedNeonComp.previewImage);
+    const dupId = store.duplicateUserComponent(blankId);
+    expect(useStudioStore.getState().userComponents[dupId].previewImage).toBe(blankComp.previewImage);
   });
 
-  it("should merge initial starter templates with older persisted state", () => {
+  it("should merge older persisted state and sanitize removed default IDs", () => {
     const olderPersistedState = {
       userComponents: {
         "custom-old": {
@@ -288,16 +260,26 @@ describe("Component Registry & Work History Store Slice", () => {
           },
           dependencies: [],
         },
+        "ink-orbit-hero": {
+          id: "ink-orbit-hero",
+          name: "Ink Orbit 3D Hero",
+          description: "Removed default template",
+          category: "Heroes",
+          createdAt: 1690000000000,
+          updatedAt: 1690000000000,
+          files: { "component.tsx": "", "demo.tsx": "", "index.css": "" },
+          dependencies: [],
+        },
       },
     };
 
     const merged = studioPersistMerge(olderPersistedState, useStudioStore.getState());
     expect(merged.userComponents["custom-old"]).toBeDefined();
-    expect(merged.userComponents["aurora-ambient-hero"]).toBeDefined();
-    expect(merged.userComponents["bento-metric-grid"]).toBeDefined();
-    expect(merged.userComponents["neon-glow-button"]).toBeDefined();
-    expect(merged.userComponents["live-ping-status-pill"]).toBeDefined();
-    expect(merged.userComponents["ink-orbit-hero"]).toBeDefined();
+    expect(merged.userComponents["ink-orbit-hero"]).toBeUndefined();
+    expect(merged.userComponents["aurora-ambient-hero"]).toBeUndefined();
+    expect(merged.userComponents["bento-metric-grid"]).toBeUndefined();
+    expect(merged.userComponents["neon-glow-button"]).toBeUndefined();
+    expect(merged.userComponents["live-ping-status-pill"]).toBeUndefined();
   });
 });
 

@@ -152,21 +152,76 @@ describe("ComponentCard & ComponentHub", () => {
     lastInputOnChange = null;
     lastInputValue = undefined;
 
-    // Reset store state with initial components
-    const initialComponents = actualStore.createInitialUserComponents();
+    // Reset store state with mock components
+    const sampleFiles = {
+      "component.tsx": `export default function Comp() { return <div>Test</div>; }`,
+      "demo.tsx": `export default function Demo() { return <div>Demo</div>; }`,
+      "index.css": `@tailwind base;`,
+    };
+    const initialComponents: Record<string, UserComponent> = {
+      "sample-hero": {
+        id: "sample-hero",
+        name: "Sample Hero",
+        description: "Sample hero component",
+        category: "Heroes",
+        isBuiltIn: false,
+        createdAt: 1700000000000,
+        updatedAt: 1700000000000,
+        files: sampleFiles,
+        dependencies: [],
+        previewImage: "data:image/svg+xml;utf8,<svg></svg>",
+      },
+      "sample-card": {
+        id: "sample-card",
+        name: "Sample Card",
+        description: "Sample card component",
+        category: "Cards",
+        isBuiltIn: false,
+        createdAt: 1700000001000,
+        updatedAt: 1700000001000,
+        files: sampleFiles,
+        dependencies: [],
+        previewImage: "data:image/svg+xml;utf8,<svg></svg>",
+      },
+      "sample-button": {
+        id: "sample-button",
+        name: "Sample Button",
+        description: "Sample button component",
+        category: "Buttons",
+        isBuiltIn: false,
+        createdAt: 1700000002000,
+        updatedAt: 1700000002000,
+        files: sampleFiles,
+        dependencies: [],
+        previewImage: "data:image/svg+xml;utf8,<svg></svg>",
+      },
+      "sample-badge": {
+        id: "sample-badge",
+        name: "Sample Badge",
+        description: "Sample badge component",
+        category: "Badges",
+        isBuiltIn: false,
+        createdAt: 1700000003000,
+        updatedAt: 1700000003000,
+        files: sampleFiles,
+        dependencies: [],
+        previewImage: "data:image/svg+xml;utf8,<svg></svg>",
+      },
+    };
+
     useStudioStore.setState({
       userComponents: initialComponents,
-      recentComponentIds: ["ink-orbit-hero", "spotlight-card"],
+      recentComponentIds: ["sample-hero", "sample-card"],
       quickPreviewComponentId: null,
       isCreateComponentDialogOpen: false,
       variantsByTemplate: {
-        "ink-orbit-hero": [
+        "sample-hero": [
           {
-            id: "var-default-ink-orbit-hero",
+            id: "var-default-sample-hero",
             name: "Default",
             createdAt: 1700000000000,
             updatedAt: 1700000000000,
-            files: initialComponents["ink-orbit-hero"].files,
+            files: initialComponents["sample-hero"].files,
             dependencies: [],
             checkpoints: [
               {
@@ -174,28 +229,28 @@ describe("ComponentCard & ComponentHub", () => {
                 name: "Init checkpoint",
                 createdAt: 1700000000000,
                 timestamp: "2024-01-01",
-                files: initialComponents["ink-orbit-hero"].files,
+                files: initialComponents["sample-hero"].files,
                 dependencies: [],
               },
             ],
           },
         ],
-        "spotlight-card": [
+        "sample-card": [
           {
-            id: "var-default-spotlight-card",
+            id: "var-default-sample-card",
             name: "Default",
             createdAt: 1700000000000,
             updatedAt: 1700000000000,
-            files: initialComponents["spotlight-card"].files,
+            files: initialComponents["sample-card"].files,
             dependencies: [],
             checkpoints: [],
           },
           {
-            id: "var-v2-spotlight-card",
+            id: "var-v2-sample-card",
             name: "Variant 2",
             createdAt: 1700000001000,
             updatedAt: 1700000001000,
-            files: initialComponents["spotlight-card"].files,
+            files: initialComponents["sample-card"].files,
             dependencies: [],
             checkpoints: [
               {
@@ -203,7 +258,7 @@ describe("ComponentCard & ComponentHub", () => {
                 name: "V2 Snapshot",
                 createdAt: 1700000001000,
                 timestamp: "2024-01-02",
-                files: initialComponents["spotlight-card"].files,
+                files: initialComponents["sample-card"].files,
                 dependencies: [],
               },
             ],
@@ -424,22 +479,18 @@ describe("ComponentCard & ComponentHub", () => {
       expect(html).toContain("Custom");
     });
 
-    it("should render connected 4-column border grid with all 8 starter templates", () => {
+    it("should render connected 4-column border grid with seeded components", () => {
       const html = renderToString(<ComponentHub />);
 
       // Verify connected border grid container and 4-column grid layout with zero radius
       expect(html).toContain("rounded-none border border-border overflow-hidden bg-border");
       expect(html).toContain("grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-px bg-border");
 
-      // Verify all 8 starter templates are rendered in the hub
-      expect(html).toContain("Ink Orbit 3D Hero");
-      expect(html).toContain("Interactive Spotlight Card");
-      expect(html).toContain("Aurora Shimmer Button");
-      expect(html).toContain("Live Status Radar Badge");
-      expect(html).toContain("Aurora Ambient Mesh Hero");
-      expect(html).toContain("Bento Metric Showcase Card");
-      expect(html).toContain("Neon Glow Interactive Button");
-      expect(html).toContain("Live Telemetry Health Pill");
+      // Verify seeded components are rendered in the hub
+      expect(html).toContain("Sample Hero");
+      expect(html).toContain("Sample Card");
+      expect(html).toContain("Sample Button");
+      expect(html).toContain("Sample Badge");
     });
 
     it("should render CreateComponentDialog and QuickPreviewModal modals", () => {
@@ -449,7 +500,7 @@ describe("ComponentCard & ComponentHub", () => {
 
       useStudioStore.setState({
         isCreateComponentDialogOpen: false,
-        quickPreviewComponentId: "ink-orbit-hero",
+        quickPreviewComponentId: "sample-hero",
       });
       const htmlWithPreview = renderToString(<ComponentHub />);
       expect(htmlWithPreview).toContain("21ST QUICK PREVIEW");
@@ -473,19 +524,19 @@ describe("ComponentCard & ComponentHub", () => {
     });
 
     it("should filter components by search query", () => {
-      const htmlFiltered = renderToString(<ComponentHub initialSearchQuery="spotlight" />);
-      expect(htmlFiltered).toContain("Interactive Spotlight Card");
-      expect(htmlFiltered).not.toContain("Ink Orbit 3D Hero");
+      const htmlFiltered = renderToString(<ComponentHub initialSearchQuery="card" />);
+      expect(htmlFiltered).toContain("Sample Card");
+      expect(htmlFiltered).not.toContain("Sample Hero");
     });
 
     it("should filter components by category", () => {
       const htmlHeroes = renderToString(<ComponentHub initialCategory="Heroes" />);
-      expect(htmlHeroes).toContain("Ink Orbit 3D Hero");
-      expect(htmlHeroes).not.toContain("Interactive Spotlight Card");
+      expect(htmlHeroes).toContain("Sample Hero");
+      expect(htmlHeroes).not.toContain("Sample Card");
 
       const htmlCards = renderToString(<ComponentHub initialCategory="Cards" />);
-      expect(htmlCards).toContain("Interactive Spotlight Card");
-      expect(htmlCards).not.toContain("Ink Orbit 3D Hero");
+      expect(htmlCards).toContain("Sample Card");
+      expect(htmlCards).not.toContain("Sample Hero");
     });
 
     it("should render empty state and allow resetting filters when no items match search", () => {
@@ -500,16 +551,16 @@ describe("ComponentCard & ComponentHub", () => {
     });
 
     it("should fallback to store actions in ComponentCard when callbacks are not provided", () => {
-      const cardComp = useStudioStore.getState().userComponents["ink-orbit-hero"];
+      const cardComp = useStudioStore.getState().userComponents["sample-hero"];
       renderToString(<ComponentCard component={cardComp} />);
 
       const previewBtn = buttonClickMap.get("Preview");
       previewBtn?.();
-      expect(useStudioStore.getState().quickPreviewComponentId).toBe("ink-orbit-hero");
+      expect(useStudioStore.getState().quickPreviewComponentId).toBe("sample-hero");
 
       const studioBtn = buttonClickMap.get("Studio");
       studioBtn?.();
-      expect(useStudioStore.getState().currentTemplateId).toBe("ink-orbit-hero");
+      expect(useStudioStore.getState().currentTemplateId).toBe("sample-hero");
     });
   });
 });

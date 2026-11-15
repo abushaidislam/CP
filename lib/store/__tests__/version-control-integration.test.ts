@@ -3,12 +3,31 @@ import { useStudioStore } from "../studio-store";
 import { DEFAULT_TEMPLATES } from "@/lib/sandbox/default-templates";
 
 describe("Version Control Integration & Lifecycle Test Suite", () => {
-  const templateId = "ink-orbit-hero";
-  const baseTemplate = DEFAULT_TEMPLATES.find((t) => t.id === templateId) || DEFAULT_TEMPLATES[0];
+  const templateId = "test-comp";
+  const baseTemplate = {
+    id: "test-comp",
+    name: "Test Component",
+    description: "Test",
+    category: "Custom",
+    dependencies: [] as string[],
+    files: {
+      "component.tsx": `export default function Comp() { return <div>Test</div>; }`,
+      "demo.tsx": `export default function Demo() { return <div>Demo</div>; }`,
+      "index.css": `@tailwind base;`,
+    },
+  };
 
   beforeEach(() => {
     // Reset store state cleanly before each integration test
     useStudioStore.setState({
+      userComponents: {
+        [templateId]: {
+          ...baseTemplate,
+          isBuiltIn: false,
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+        },
+      },
       files: {
         "component.tsx": baseTemplate.files["component.tsx"],
         "demo.tsx": baseTemplate.files["demo.tsx"],

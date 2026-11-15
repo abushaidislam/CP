@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { DEFAULT_TEMPLATES } from "@/lib/sandbox/default-templates";
+import { DEFAULT_TEMPLATES, ComponentTemplate } from "@/lib/sandbox/default-templates";
 
 export type StudioFileName = "component.tsx" | "default.tsx" | "demo.tsx" | "index.css";
 
@@ -376,7 +376,21 @@ export interface StudioState {
   };
 }
 
-const initialTemplate = DEFAULT_TEMPLATES[0];
+export const FALLBACK_BLANK_TEMPLATE: ComponentTemplate = {
+  id: "blank",
+  name: "Blank Slate",
+  description: "Minimal clean slate template",
+  category: "Custom",
+  dependencies: [],
+  files: {
+    "component.tsx": `"use client"\n\nimport React from "react"\n\nexport function Component() {\n  return (\n    <div className="flex items-center justify-center p-8 text-foreground">\n      <h2 className="text-xl font-semibold">Blank Component</h2>\n    </div>\n  )\n}\n\nexport default Component\n`,
+    "default.tsx": `"use client";\n\nimport React from "react";\nimport Component from "../components/ui/component";\n\nexport default function Demo() {\n  return (\n    <div className="flex min-h-[300px] w-full items-center justify-center p-6">\n      <Component />\n    </div>\n  );\n}\n`,
+    "demo.tsx": `"use client";\n\nimport React from "react";\nimport Component from "../components/ui/component";\n\nexport default function Demo() {\n  return (\n    <div className="flex min-h-[300px] w-full items-center justify-center p-6">\n      <Component />\n    </div>\n  );\n}\n`,
+    "index.css": `@tailwind base;\n@tailwind components;\n@tailwind utilities;\n`,
+  },
+};
+
+const initialTemplate = DEFAULT_TEMPLATES[0] || FALLBACK_BLANK_TEMPLATE;
 
 export function createSvgDataUri(svg: string): string {
   return `data:image/svg+xml;utf8,${encodeURIComponent(svg.trim())}`;
@@ -943,14 +957,49 @@ export function studioPersistMerge(
       "",
   };
 
+  const REMOVED_DEFAULT_IDS = new Set([
+    "ink-orbit-hero",
+    "spotlight-card",
+    "shimmer-button",
+    "metric-badge",
+    "aurora-ambient-hero",
+    "bento-metric-grid",
+    "neon-glow-button",
+    "live-ping-status-pill",
+  ]);
+
+  const sanitizedPersistedUserComponents: Record<string, UserComponent> = {};
+  if (persisted.userComponents) {
+    for (const [key, val] of Object.entries(persisted.userComponents)) {
+      if (!REMOVED_DEFAULT_IDS.has(key)) {
+        sanitizedPersistedUserComponents[key] = val;
+      }
+    }
+  }
+
+  const sanitizedRecentIds = (persisted.recentComponentIds || []).filter(
+    (id) => !REMOVED_DEFAULT_IDS.has(id)
+  );
+
+  let nextCurrentTemplateId = persisted.currentTemplateId;
+  if (!nextCurrentTemplateId || REMOVED_DEFAULT_IDS.has(nextCurrentTemplateId)) {
+    const remainingKeys = Object.keys(sanitizedPersistedUserComponents);
+    nextCurrentTemplateId =
+      remainingKeys.length > 0
+        ? remainingKeys[0]
+        : (DEFAULT_TEMPLATES[0]?.id || FALLBACK_BLANK_TEMPLATE.id);
+  }
+
   return {
     ...currentState,
     ...persisted,
+    currentTemplateId: nextCurrentTemplateId,
+    recentComponentIds: sanitizedRecentIds,
     aiModel: persistedModel,
     files: mergedFiles,
     userComponents: {
       ...initialComponents,
-      ...(persisted.userComponents || {}),
+      ...sanitizedPersistedUserComponents,
     },
     variantsByTemplate: {
       ...currentState.variantsByTemplate,
@@ -989,11 +1038,11 @@ export const useStudioStore = create<StudioState>()(
       isCreateComponentDialogOpen: false,
 
       // Version Control
-      variantsByTemplate: DEFAULT_TEMPLATES.reduce<Record<string, ComponentVariant[]>>((acc, tmpl) => {
+      variantsByTemplate: (DEFAULT_TEMPLATES.length > 0 ? DEFAULT_TEMPLATES : [FALLBACK_BLANK_TEMPLATE]).reduce<Record<string, ComponentVariant[]>>((acc, tmpl) => {
         acc[tmpl.id] = [createDefaultVariant(tmpl.id, tmpl.files, tmpl.dependencies)];
         return acc;
       }, {}),
-      activeVariantByTemplate: DEFAULT_TEMPLATES.reduce<Record<string, string>>((acc, tmpl) => {
+      activeVariantByTemplate: (DEFAULT_TEMPLATES.length > 0 ? DEFAULT_TEMPLATES : [FALLBACK_BLANK_TEMPLATE]).reduce<Record<string, string>>((acc, tmpl) => {
         acc[tmpl.id] = `var-default-${tmpl.id}`;
         return acc;
       }, {}),
@@ -1357,7 +1406,8 @@ export const useStudioStore = create<StudioState>()(
             const tmpl =
               DEFAULT_TEMPLATES.find((t) => t.id === templateId) ||
               state.userComponents?.[templateId] ||
-              DEFAULT_TEMPLATES[0];
+              DEFAULT_TEMPLATES[0] ||
+              FALLBACK_BLANK_TEMPLATE;
             sourceFiles = { ...tmpl.files };
             sourceDeps = [...tmpl.dependencies];
           }
@@ -1673,7 +1723,9 @@ export const useStudioStore = create<StudioState>()(
         const target =
           state.userComponents?.[id] ||
           DEFAULT_TEMPLATES.find((t) => t.id === id) ||
-          DEFAULT_TEMPLATES[0];
+          Object.values(state.userComponents || {})[0] ||
+          DEFAULT_TEMPLATES[0] ||
+          FALLBACK_BLANK_TEMPLATE;
 
         const existingVariants = state.variantsByTemplate?.[target.id] || [];
         let activeVariantId = state.activeVariantByTemplate?.[target.id];
@@ -1846,7 +1898,7 @@ export const useStudioStore = create<StudioState>()(
             const fallbackComp =
               remainingIds.length > 0
                 ? nextUserComponents[remainingIds[0]]
-                : DEFAULT_TEMPLATES[0];
+                : (DEFAULT_TEMPLATES[0] || FALLBACK_BLANK_TEMPLATE);
             nextCurrentTemplateId = fallbackComp.id;
 
             const fallbackVariants = nextVariants[fallbackComp.id] || [];
@@ -1959,7 +2011,7 @@ export const useStudioStore = create<StudioState>()(
       resetCurrentTemplate: () => {
         const { currentTemplateId, variantsByTemplate, activeVariantByTemplate, userComponents } = get();
         const builtin = DEFAULT_TEMPLATES.find((t) => t.id === currentTemplateId);
-        const template = builtin || userComponents?.[currentTemplateId] || DEFAULT_TEMPLATES[0];
+        const template = builtin || userComponents?.[currentTemplateId] || DEFAULT_TEMPLATES[0] || FALLBACK_BLANK_TEMPLATE;
 
         const nextFiles = { ...template.files };
         const nextDeps = [...template.dependencies];
@@ -2381,13 +2433,21 @@ export const useStudioStore = create<StudioState>()(
               }
             }
 
-            const activeComp = nextUserComponents[state.currentTemplateId];
+            let nextCurrentTemplateId = state.currentTemplateId;
+            let activeComp = nextUserComponents[state.currentTemplateId];
+            if (!activeComp && Object.keys(nextUserComponents).length > 0) {
+              const firstComp = Object.values(nextUserComponents)[0];
+              nextCurrentTemplateId = firstComp.id;
+              activeComp = firstComp;
+            }
+
             const shouldRefreshActiveFiles =
               activeComp &&
-              activeComp.savedInRepo &&
+              (activeComp.savedInRepo || nextCurrentTemplateId !== state.currentTemplateId) &&
               state.repoSyncStatus !== "dirty";
 
             return {
+              currentTemplateId: nextCurrentTemplateId,
               userComponents: nextUserComponents,
               variantsByTemplate: nextVariants,
               activeVariantByTemplate: nextActiveVariants,
