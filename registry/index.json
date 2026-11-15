@@ -1,8 +1,26 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-14T17:56:36.037Z",
-  "totalComponents": 21,
+  "updatedAt": "2026-11-15T06:33:15.658Z",
+  "totalComponents": 32,
   "components": [
+    {
+      "id": "comp-1794724237735-0pr8y",
+      "slug": "peak-chart",
+      "name": "PeakChart",
+      "description": "",
+      "category": "Cards",
+      "isBuiltIn": false,
+      "updatedAt": 1794724244304,
+      "lastRepoSyncAt": 1794724395624,
+      "path": "registry/components/peak-chart",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "index.css",
+        "manifest.json"
+      ],
+      "dependencies": []
+    },
     {
       "id": "comp-1794673524638-yody2",
       "slug": "floatingtoolbar",
@@ -105,6 +123,82 @@
       ]
     },
     {
+      "id": "comp-1794635799526-1ellv",
+      "slug": "retro-hardware-handheld-clock",
+      "name": "Retro Hardware Handheld Clock",
+      "description": "",
+      "category": "Cards",
+      "isBuiltIn": false,
+      "updatedAt": 1794663782134,
+      "lastRepoSyncAt": 1794678944924,
+      "path": "registry/components/retro-hardware-handheld-clock",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "index.css",
+        "manifest.json",
+        "preview.png"
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "comp-1794633759466-efzax",
+      "slug": "fmradiotuner",
+      "name": "Fmradiotuner",
+      "description": "",
+      "category": "Cards",
+      "isBuiltIn": false,
+      "updatedAt": 1794634754434,
+      "lastRepoSyncAt": 1794678949691,
+      "path": "registry/components/fmradiotuner",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "index.css",
+        "manifest.json",
+        "preview.png"
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "comp-1794626474629-cy0xn",
+      "slug": "swimmingpoolwidget",
+      "name": "Swimmingpoolwidget",
+      "description": "",
+      "category": "Cards",
+      "isBuiltIn": false,
+      "updatedAt": 1794630292381,
+      "lastRepoSyncAt": 1794678952161,
+      "path": "registry/components/swimmingpoolwidget",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "index.css",
+        "manifest.json",
+        "preview.png"
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "comp-1794546412282-yetcc",
+      "slug": "bento-gird",
+      "name": "Bento Gird",
+      "description": "",
+      "category": "Custom",
+      "isBuiltIn": false,
+      "updatedAt": 1794597450398,
+      "lastRepoSyncAt": 1794678960784,
+      "path": "registry/components/bento-gird",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "index.css",
+        "manifest.json",
+        "preview.png"
+      ],
+      "dependencies": []
+    },
+    {
       "id": "shimmer-button",
       "slug": "shimmer-button",
       "name": "Aurora Shimmer Button",
@@ -126,6 +220,120 @@
       ]
     },
     {
+      "id": "comp-1793992621538-is3my",
+      "slug": "b-ento",
+      "name": "bENTO",
+      "description": "",
+      "category": "Custom",
+      "isBuiltIn": false,
+      "updatedAt": 1794568755188,
+      "lastRepoSyncAt": 1794678956430,
+      "path": "registry/components/b-ento",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "index.css",
+        "manifest.json",
+        "preview.png"
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "comp-1794548767132-o1uzb",
+      "slug": "flex-fit-brand-showcase-bento-grid-layout",
+      "name": "FlexFit Brand Showcase Bento Grid layout",
+      "description": "",
+      "category": "Custom",
+      "isBuiltIn": false,
+      "updatedAt": 1794564626210,
+      "lastRepoSyncAt": 1794678963972,
+      "path": "registry/components/flex-fit-brand-showcase-bento-grid-layout",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "index.css",
+        "manifest.json",
+        "preview.png"
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "comp-1794303148718-az41d",
+      "slug": "multi-on-dock",
+      "name": "MultiOnDock",
+      "description": "",
+      "category": "Custom",
+      "isBuiltIn": false,
+      "updatedAt": 1794307285226,
+      "lastRepoSyncAt": 1794678990433,
+      "path": "registry/components/multi-on-dock",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "index.css",
+        "manifest.json",
+        "preview.png"
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "comp-1794059967767-p8sj7",
+      "slug": "mega-menu",
+      "name": "Mega menu",
+      "description": "",
+      "category": "Custom",
+      "isBuiltIn": false,
+      "updatedAt": 1794064126760,
+      "lastRepoSyncAt": 1794678967909,
+      "path": "registry/components/mega-menu",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "index.css",
+        "manifest.json",
+        "preview.png"
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "comp-1794052524543-39225",
+      "slug": "interactive-logo-grid",
+      "name": "InteractiveLogoGrid",
+      "description": "",
+      "category": "Cards",
+      "isBuiltIn": false,
+      "updatedAt": 1794053952246,
+      "lastRepoSyncAt": 1794678987563,
+      "path": "registry/components/interactive-logo-grid",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "index.css",
+        "manifest.json",
+        "preview.png"
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "comp-1793543805011-tg93i",
+      "slug": "diff-slipt-icon",
+      "name": "Diff slipt icon",
+      "description": "",
+      "category": "Custom",
+      "isBuiltIn": false,
+      "updatedAt": 1793545398910,
+      "lastRepoSyncAt": 1794678976257,
+      "path": "registry/components/diff-slipt-icon",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "index.css",
+        "manifest.json",
+        "preview.png"
+      ],
+      "dependencies": []
+    },
+    {
       "id": "comp-1793339550529-xn3n1",
       "slug": "open-new-page",
       "name": "Open New page",
@@ -133,7 +341,7 @@
       "category": "Custom",
       "isBuiltIn": false,
       "updatedAt": 1793525937887,
-      "lastRepoSyncAt": 1794678864275,
+      "lastRepoSyncAt": 1794678972818,
       "path": "registry/components/open-new-page",
       "files": [
         "component.tsx",
