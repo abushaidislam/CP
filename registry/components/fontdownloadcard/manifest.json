@@ -1,0 +1,13 @@
+{
+  "id": "comp-1794745474910-4muv7",
+  "slug": "fontdownloadcard",
+  "name": "Fontdownloadcard",
+  "description": "",
+  "category": "Custom",
+  "isBuiltIn": false,
+  "createdAt": 1794745474911,
+  "updatedAt": 1794752922464,
+  "lastRepoSyncAt": 1794752954368,
+  "dependencies": [],
+  "previewImage": "./preview.png"
+}
