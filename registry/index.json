@@ -1,8 +1,27 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-15T14:29:14.402Z",
-  "totalComponents": 34,
+  "updatedAt": "2026-11-16T08:45:48.723Z",
+  "totalComponents": 35,
   "components": [
+    {
+      "id": "comp-1794818189282-2mauz",
+      "slug": "unlimiteddesignhero",
+      "name": "Unlimiteddesignhero",
+      "description": "",
+      "category": "Custom",
+      "isBuiltIn": false,
+      "updatedAt": 1794818725007,
+      "lastRepoSyncAt": 1794818748637,
+      "path": "registry/components/unlimiteddesignhero",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "index.css",
+        "manifest.json",
+        "preview.png"
+      ],
+      "dependencies": []
+    },
     {
       "id": "comp-1794745474910-4muv7",
       "slug": "fontdownloadcard",
