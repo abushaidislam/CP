@@ -8,12 +8,6 @@ import React, {
   useId,
   useCallback,
 } from "react";
-import {
-  motion,
-  AnimatePresence,
-  useReducedMotion,
-  type Variants,
-} from "framer-motion";
 import { cn } from "@/lib/utils";
 
 // ============================================================================
@@ -93,6 +87,33 @@ export interface UnlimitedDesignHeroProps extends Omit<
   /** Callback when user clicks the primary CTA or selects a plan */
   onCtaClick?: () => void;
   onSelectPlan?: (plan: PricingPlanOption) => void;
+}
+
+// ============================================================================
+// REDUCED MOTION HOOK (ZERO EXTERNAL DEPENDENCIES)
+// ============================================================================
+
+function usePrefersReducedMotion(): boolean {
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.matchMedia) return;
+    const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+    setPrefersReducedMotion(mediaQuery.matches);
+
+    const handleChange = (event: MediaQueryListEvent) => {
+      setPrefersReducedMotion(event.matches);
+    };
+
+    if (typeof mediaQuery.addEventListener === "function") {
+      mediaQuery.addEventListener("change", handleChange);
+      return () => mediaQuery.removeEventListener("change", handleChange);
+    }
+    mediaQuery.addListener(handleChange);
+    return () => mediaQuery.removeListener(handleChange);
+  }, []);
+
+  return prefersReducedMotion;
 }
 
 // ============================================================================
@@ -598,44 +619,170 @@ const WavesShaderBackground: React.FC<WavesShaderBackgroundProps> = ({
 };
 
 // ============================================================================
-// CRITICALLY-DAMPED FRAMER MOTION VARIANTS (ZERO LAYOUT SHIFT)
+// CRITICALLY-DAMPED MOTION CONSTANTS & KEYFRAMES (ZERO LAYOUT SHIFT)
 // ============================================================================
 
-const EASE_OUT_EXPO: [number, number, number, number] = [0.22, 1, 0.36, 1];
+const EASE_OUT_EXPO_CSS = "cubic-bezier(0.22, 1, 0.36, 1)";
 
-const charVariants: Variants = {
-  hidden: {
-    opacity: 0,
-    y: "0.24em",
-    filter: "blur(8px)",
-  },
-  visible: {
-    opacity: 1,
-    y: "0em",
-    filter: "blur(0px)",
-    transition: {
-      duration: 0.42,
-      ease: EASE_OUT_EXPO,
-    },
-  },
-};
+const HERO_KEYFRAMES_CSS = `
+@keyframes udh-badge-in {
+  0% {
+    opacity: 0;
+    transform: translateY(-14px) scale(0.92);
+    filter: blur(6px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0px) scale(1);
+    filter: blur(0px);
+  }
+}
 
-const wordTypingVariants: Variants = {
-  hidden: {
-    opacity: 0,
-    y: 8,
-    filter: "blur(4px)",
-  },
-  visible: {
-    opacity: 1,
-    y: 0,
-    filter: "blur(0px)",
-    transition: {
-      duration: 0.36,
-      ease: EASE_OUT_EXPO,
-    },
-  },
-};
+@keyframes udh-char-in {
+  0% {
+    opacity: 0;
+    transform: translateY(0.24em);
+    filter: blur(8px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0em);
+    filter: blur(0px);
+  }
+}
+
+@keyframes udh-word-in {
+  0% {
+    opacity: 0;
+    transform: translateY(8px);
+    filter: blur(4px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0px);
+    filter: blur(0px);
+  }
+}
+
+@keyframes udh-pill1-in {
+  0% {
+    opacity: 0;
+    transform: translateY(14px) rotate(-9deg) skewX(3.5deg) scale(0.72);
+    filter: blur(8px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0px) rotate(-0.8deg) skewX(3.5deg) scale(1);
+    filter: blur(0px);
+  }
+}
+
+@keyframes udh-pill2-in {
+  0% {
+    opacity: 0;
+    transform: translateY(14px) rotate(8deg) skewX(3.5deg) scale(0.72);
+    filter: blur(8px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0px) rotate(-0.6deg) skewX(3.5deg) scale(1);
+    filter: blur(0px);
+  }
+}
+
+@keyframes udh-cta-in {
+  0% {
+    opacity: 0;
+    transform: translateY(16px) scale(0.94);
+    filter: blur(6px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0px) scale(1);
+    filter: blur(0px);
+  }
+}
+
+@keyframes udh-avatar-in {
+  0% {
+    opacity: 0;
+    transform: translateX(-10px) scale(0.78);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0px) scale(1);
+  }
+}
+
+@keyframes udh-marquee {
+  0% {
+    transform: translateX(0%);
+  }
+  100% {
+    transform: translateX(-33.333%);
+  }
+}
+
+@keyframes udh-cursor-blink {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
+}
+
+@keyframes udh-backdrop-in {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+@keyframes udh-backdrop-out {
+  0% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+@keyframes udh-modal-in {
+  0% {
+    opacity: 0;
+    transform: translateY(16px) scale(0.97);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0px) scale(1);
+  }
+}
+
+@keyframes udh-modal-out {
+  0% {
+    opacity: 1;
+    transform: translateY(0px) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+  }
+}
+
+.udh-pill-1-interactive {
+  transform: rotate(-0.8deg) skewX(3.5deg);
+  transition: transform 0.25s ${EASE_OUT_EXPO_CSS};
+}
+.udh-pill-1-interactive:hover {
+  transform: translateY(-2px) rotate(-1.6deg) skewX(3.5deg) scale(1.035);
+}
+.udh-pill-1-interactive:active {
+  transform: rotate(-0.8deg) skewX(3.5deg) scale(0.975);
+}
+
+.udh-pill-2-interactive {
+  transform: rotate(-0.6deg) skewX(3.5deg);
+  transition: transform 0.25s ${EASE_OUT_EXPO_CSS};
+}
+.udh-pill-2-interactive:hover {
+  transform: translateY(-2px) rotate(0.5deg) skewX(3.5deg) scale(1.03);
+}
+`;
 
 // ============================================================================
 // SUBCOMPONENTS: TYPED HEADLINE & TYPEWRITER BADGE/SUBTITLE
@@ -667,32 +814,23 @@ const TypedHeadlineSegment: React.FC<TypedHeadlineSegmentProps> = ({
   const chars = Array.from(text);
 
   return (
-    <motion.span
+    <span
       aria-label={text}
       className={cn("inline-flex whitespace-pre", className)}
-      initial="hidden"
-      animate="visible"
-      variants={{
-        hidden: {},
-        visible: {
-          transition: {
-            delayChildren: delay,
-            staggerChildren: stagger,
-          },
-        },
-      }}
     >
       {chars.map((char, index) => (
-        <motion.span
+        <span
           key={`${char}-${index}`}
           aria-hidden="true"
-          variants={charVariants}
           className="inline-block will-change-[transform,opacity,filter]"
+          style={{
+            animation: `udh-char-in 0.42s ${EASE_OUT_EXPO_CSS} ${delay + index * stagger}s both`,
+          }}
         >
           {char === " " ? "\u00A0" : char}
-        </motion.span>
+        </span>
       ))}
-    </motion.span>
+    </span>
   );
 };
 
@@ -758,11 +896,10 @@ const TypewriterStreamText: React.FC<TypewriterStreamTextProps> = ({
     <span className={cn("relative inline-block", className)} aria-label={text}>
       <span aria-hidden="true">{typedSlice}</span>
       {showCursorWhileTyping && !isTypingDone && (
-        <motion.span
+        <span
           aria-hidden="true"
-          animate={{ opacity: [1, 0, 1] }}
-          transition={{ duration: 0.55, repeat: Infinity, ease: "linear" }}
           className="ml-[1px] inline-block h-[0.88em] w-[1.5px] translate-y-[1.5px] bg-[#EF471C] align-baseline"
+          style={{ animation: "udh-cursor-blink 0.55s linear infinite" }}
         />
       )}
       {/* Invisible reserve text prevents width reflow while typing */}
@@ -773,6 +910,42 @@ const TypewriterStreamText: React.FC<TypewriterStreamTextProps> = ({
         {untypedSlice}
       </span>
     </span>
+  );
+};
+
+interface AnimatedLeaderAvatarProps {
+  avatar: LeaderAvatar;
+  index: number;
+  reduceMotion: boolean;
+}
+
+const AnimatedLeaderAvatar: React.FC<AnimatedLeaderAvatarProps> = ({
+  avatar,
+  index,
+  reduceMotion,
+}) => {
+  const [entered, setEntered] = useState(reduceMotion);
+
+  return (
+    <div
+      title={`${avatar.name} — ${avatar.role}`}
+      onAnimationEnd={() => setEntered(true)}
+      className="relative h-[30px] w-[30px] shrink-0 overflow-hidden rounded-full ring-[1.5px] ring-[#E2E2E2] transition-transform duration-200 hover:z-20 hover:-translate-y-0.5 dark:ring-[#2A2A30]"
+      style={{
+        zIndex: index + 1,
+        animation:
+          reduceMotion || entered
+            ? undefined
+            : `udh-avatar-in 0.4s ${EASE_OUT_EXPO_CSS} ${1.32 + index * 0.055}s both`,
+      }}
+    >
+      <img
+        src={avatar.src}
+        alt={avatar.name}
+        className="h-full w-full object-cover"
+        draggable={false}
+      />
+    </div>
   );
 };
 
@@ -1026,12 +1199,16 @@ export const UnlimitedDesignHero = forwardRef<
     ref
   ) => {
     const instanceId = useId();
-    const shouldReduceMotion = Boolean(useReducedMotion());
+    const shouldReduceMotion = usePrefersReducedMotion();
 
     // Uncontrolled / Controlled state for Pill 1 vertical carousel
     const [internalSlide, setInternalSlide] = useState(0);
     const [isPill1Hovered, setIsPill1Hovered] = useState(false);
+    const [pill1Entered, setPill1Entered] = useState(false);
+    const [pill2Entered, setPill2Entered] = useState(false);
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isModalRendered, setIsModalRendered] = useState(false);
+    const [isModalClosing, setIsModalClosing] = useState(false);
     const [selectedPlanId, setSelectedPlanId] = useState<string>(
       plans[1]?.id || plans[0]?.id || "growth-scale"
     );
@@ -1039,6 +1216,13 @@ export const UnlimitedDesignHero = forwardRef<
       useState<PricingPlanOption | null>(null);
     // Replay key so user can re-trigger the frame-in & typing sequence anytime
     const [animCycleKey, setAnimCycleKey] = useState(0);
+
+    const modalCloseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
+      null
+    );
+    const confirmCloseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
+      null
+    );
 
     const currentSlide =
       controlledSlideIndex !== undefined ? controlledSlideIndex : internalSlide;
@@ -1056,6 +1240,56 @@ export const UnlimitedDesignHero = forwardRef<
       controlledSlideIndex,
       onSlideChange,
     ]);
+
+    const openModal = useCallback(() => {
+      if (modalCloseTimerRef.current) {
+        clearTimeout(modalCloseTimerRef.current);
+        modalCloseTimerRef.current = null;
+      }
+      setIsModalClosing(false);
+      setIsModalOpen(true);
+      setIsModalRendered(true);
+    }, []);
+
+    const closeModal = useCallback(() => {
+      setIsModalOpen(false);
+      if (shouldReduceMotion) {
+        setIsModalRendered(false);
+        setIsModalClosing(false);
+        return;
+      }
+      setIsModalClosing(true);
+      if (modalCloseTimerRef.current) {
+        clearTimeout(modalCloseTimerRef.current);
+      }
+      modalCloseTimerRef.current = setTimeout(() => {
+        setIsModalRendered(false);
+        setIsModalClosing(false);
+        modalCloseTimerRef.current = null;
+      }, 220);
+    }, [shouldReduceMotion]);
+
+    useEffect(() => {
+      return () => {
+        if (modalCloseTimerRef.current) {
+          clearTimeout(modalCloseTimerRef.current);
+        }
+        if (confirmCloseTimerRef.current) {
+          clearTimeout(confirmCloseTimerRef.current);
+        }
+      };
+    }, []);
+
+    useEffect(() => {
+      if (!isModalOpen) return;
+      const handleKeyDown = (event: KeyboardEvent) => {
+        if (event.key === "Escape") {
+          closeModal();
+        }
+      };
+      window.addEventListener("keydown", handleKeyDown);
+      return () => window.removeEventListener("keydown", handleKeyDown);
+    }, [isModalOpen, closeModal]);
 
     useEffect(() => {
       if (
@@ -1083,16 +1317,25 @@ export const UnlimitedDesignHero = forwardRef<
       if (onCtaClick) {
         onCtaClick();
       } else {
-        setIsModalOpen(true);
+        openModal();
       }
     };
 
     const handleConfirmPlan = (plan: PricingPlanOption) => {
       setConfirmedPlan(plan);
       onSelectPlan?.(plan);
-      setTimeout(() => {
-        setIsModalOpen(false);
+      if (confirmCloseTimerRef.current) {
+        clearTimeout(confirmCloseTimerRef.current);
+      }
+      confirmCloseTimerRef.current = setTimeout(() => {
+        closeModal();
       }, 900);
+    };
+
+    const handleReplayEntrance = () => {
+      setPill1Entered(false);
+      setPill2Entered(false);
+      setAnimCycleKey((k) => k + 1);
     };
 
     const resolvedStatusLabel =
@@ -1120,6 +1363,8 @@ export const UnlimitedDesignHero = forwardRef<
         }}
         {...rest}
       >
+        <style>{HERO_KEYFRAMES_CSS}</style>
+
         {/* Animated WebGL1 "Waves" Shader Background */}
         <WavesShaderBackground reduceMotion={shouldReduceMotion} />
 
@@ -1135,22 +1380,19 @@ export const UnlimitedDesignHero = forwardRef<
           className="relative z-10 mx-auto flex w-full max-w-[1040px] flex-col items-center"
         >
           {/* 1. Top Availability Status Badge — Frame-In + Typewriter Stream */}
-          <motion.button
+          <button
             type="button"
-            onClick={() => setAnimCycleKey((k) => k + 1)}
+            onClick={handleReplayEntrance}
             title="Click to replay entrance & typing animation"
             role="status"
             aria-live="polite"
-            initial={
+            style={
               shouldReduceMotion
-                ? false
-                : { opacity: 0, y: -14, scale: 0.92, filter: "blur(6px)" }
+                ? undefined
+                : {
+                    animation: `udh-badge-in 0.52s ${EASE_OUT_EXPO_CSS} both`,
+                  }
             }
-            animate={{ opacity: 1, y: 0, scale: 1, filter: "blur(0px)" }}
-            transition={{
-              duration: 0.52,
-              ease: EASE_OUT_EXPO,
-            }}
             className="mb-[44px] inline-flex h-[43px] cursor-pointer items-center gap-[10px] rounded-full bg-white px-[19px] shadow-[0_2px_10px_rgba(0,0,0,0.03)] ring-1 ring-black/[0.02] transition-shadow hover:shadow-[0_4px_14px_rgba(0,0,0,0.06)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#EF471C] dark:bg-[#18181B]/90 dark:ring-white/15 dark:backdrop-blur-md dark:shadow-[0_4px_16px_rgba(0,0,0,0.45)] dark:hover:bg-[#222226] dark:hover:shadow-[0_6px_20px_rgba(0,0,0,0.55)]"
           >
             <span className="relative flex h-[6px] w-[6px] shrink-0">
@@ -1175,7 +1417,7 @@ export const UnlimitedDesignHero = forwardRef<
               reduceMotion={shouldReduceMotion}
               className="text-[14.5px] font-medium leading-none tracking-[-0.018em] text-[#141414] tabular-nums dark:text-[#F4F4F5]"
             />
-          </motion.button>
+          </button>
 
           {/* 2. Hero Display Headline with Character-Typed Segments & Spring-Framed Pills */}
           <h1
@@ -1194,64 +1436,39 @@ export const UnlimitedDesignHero = forwardRef<
               />
 
               {/* PILL 1: Vertical Portfolio Showcase Carousel — Frame-In Spring Pop */}
-              <motion.button
+              <button
                 type="button"
                 onClick={advanceSlide}
                 onMouseEnter={() => setIsPill1Hovered(true)}
                 onMouseLeave={() => setIsPill1Hovered(false)}
+                onAnimationEnd={() => setPill1Entered(true)}
                 aria-label={`Featured design work showcase (${
                   showcaseSlides[currentSlide]?.title || "Slide"
                 }). Click to switch slide.`}
-                initial={
-                  shouldReduceMotion
-                    ? false
-                    : {
-                        opacity: 0,
-                        scale: 0.72,
-                        rotate: -9,
-                        skewX: 3.5,
-                        y: 14,
-                        filter: "blur(8px)",
-                      }
-                }
-                animate={{
-                  opacity: 1,
-                  scale: 1,
-                  rotate: -0.8,
-                  skewX: 3.5,
-                  y: 0,
-                  filter: "blur(0px)",
-                }}
-                whileHover={
-                  shouldReduceMotion
-                    ? undefined
-                    : { scale: 1.035, rotate: -1.6, y: -2 }
-                }
-                whileTap={shouldReduceMotion ? undefined : { scale: 0.975 }}
-                transition={{
-                  duration: 0.62,
-                  delay: 0.34,
-                  ease: EASE_OUT_EXPO,
-                }}
-                className="group relative inline-flex h-[84px] w-[112px] shrink-0 cursor-pointer overflow-hidden rounded-[30px] border-[2.5px] border-[#141414] bg-[#4338CA] p-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#EF471C] focus-visible:ring-offset-2 dark:border-white/20 dark:focus-visible:ring-offset-[#0E0E0E] sm:h-[98px] sm:w-[130px] sm:rounded-[34px] md:h-[111px] md:w-[146px] md:rounded-[38px]"
+                className={cn(
+                  "group relative inline-flex h-[84px] w-[112px] shrink-0 cursor-pointer overflow-hidden rounded-[30px] border-[2.5px] border-[#141414] bg-[#4338CA] p-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#EF471C] focus-visible:ring-offset-2 dark:border-white/20 dark:focus-visible:ring-offset-[#0E0E0E] sm:h-[98px] sm:w-[130px] sm:rounded-[34px] md:h-[111px] md:w-[146px] md:rounded-[38px]",
+                  !shouldReduceMotion && pill1Entered && "udh-pill-1-interactive"
+                )}
                 style={{
                   boxShadow:
                     "6px 9px 16px rgba(0, 0, 0, 0.28), 2px 3px 5px rgba(0, 0, 0, 0.22), 1.5px 1.5px 0px #0A0A0A",
+                  ...(shouldReduceMotion
+                    ? { transform: "rotate(-0.8deg) skewX(3.5deg)" }
+                    : !pill1Entered
+                      ? {
+                          animation: `udh-pill1-in 0.62s ${EASE_OUT_EXPO_CSS} 0.34s both`,
+                        }
+                      : undefined),
                 }}
               >
-                <motion.div
+                <div
                   className="flex h-full w-full flex-col"
-                  animate={{
-                    y: `-${currentSlide * 100}%`,
+                  style={{
+                    transform: `translateY(-${currentSlide * 100}%)`,
+                    transition: shouldReduceMotion
+                      ? "none"
+                      : `transform 0.56s ${EASE_OUT_EXPO_CSS}`,
                   }}
-                  transition={
-                    shouldReduceMotion
-                      ? { duration: 0 }
-                      : {
-                          duration: 0.56,
-                          ease: EASE_OUT_EXPO,
-                        }
-                  }
                 >
                   {showcaseSlides.map((slide) => (
                     <div
@@ -1266,14 +1483,14 @@ export const UnlimitedDesignHero = forwardRef<
                       />
                     </div>
                   ))}
-                </motion.div>
+                </div>
 
                 {/* Subtle top specular rim highlight */}
                 <span
                   aria-hidden="true"
                   className="pointer-events-none absolute inset-0 rounded-[inherit] ring-1 ring-inset ring-white/20"
                 />
-              </motion.button>
+              </button>
 
               {/* "Design" — Staggered Character Typing Reveal */}
               <TypedHeadlineSegment
@@ -1297,58 +1514,34 @@ export const UnlimitedDesignHero = forwardRef<
               />
 
               {/* PILL 2: Dark Infinite Startup Logo Marquee — Frame-In Spring Pop */}
-              <motion.div
+              <div
                 role="region"
                 aria-label="Partner startup logos"
-                initial={
-                  shouldReduceMotion
-                    ? false
-                    : {
-                        opacity: 0,
-                        scale: 0.72,
-                        rotate: 8,
-                        skewX: 3.5,
-                        y: 14,
-                        filter: "blur(8px)",
-                      }
-                }
-                animate={{
-                  opacity: 1,
-                  scale: 1,
-                  rotate: -0.6,
-                  skewX: 3.5,
-                  y: 0,
-                  filter: "blur(0px)",
-                }}
-                whileHover={
-                  shouldReduceMotion
-                    ? undefined
-                    : { scale: 1.03, rotate: 0.5, y: -2 }
-                }
-                transition={{
-                  duration: 0.62,
-                  delay: 0.64,
-                  ease: EASE_OUT_EXPO,
-                }}
-                className="relative inline-flex h-[84px] w-[112px] shrink-0 items-center overflow-hidden rounded-[30px] border-[2.5px] border-[#121212] bg-[#262626] dark:border-white/20 dark:bg-[#18181B] sm:h-[98px] sm:w-[130px] sm:rounded-[34px] md:h-[111px] md:w-[146px] md:rounded-[38px]"
+                onAnimationEnd={() => setPill2Entered(true)}
+                className={cn(
+                  "relative inline-flex h-[84px] w-[112px] shrink-0 items-center overflow-hidden rounded-[30px] border-[2.5px] border-[#121212] bg-[#262626] dark:border-white/20 dark:bg-[#18181B] sm:h-[98px] sm:w-[130px] sm:rounded-[34px] md:h-[111px] md:w-[146px] md:rounded-[38px]",
+                  !shouldReduceMotion && pill2Entered && "udh-pill-2-interactive"
+                )}
                 style={{
                   boxShadow:
                     "6px 9px 16px rgba(0, 0, 0, 0.28), 2px 3px 5px rgba(0, 0, 0, 0.22), 1.5px 1.5px 0px #0A0A0A",
+                  ...(shouldReduceMotion
+                    ? { transform: "rotate(-0.6deg) skewX(3.5deg)" }
+                    : !pill2Entered
+                      ? {
+                          animation: `udh-pill2-in 0.62s ${EASE_OUT_EXPO_CSS} 0.64s both`,
+                        }
+                      : undefined),
                 }}
               >
                 {/* Continuous Right-to-Left Marquee Track */}
-                <motion.div
+                <div
                   className="flex items-center gap-[26px] pr-[26px] text-[#707070] dark:text-[#A1A1AA]"
-                  animate={
-                    shouldReduceMotion ? { x: "0%" } : { x: ["0%", "-33.333%"] }
-                  }
-                  transition={
+                  style={
                     shouldReduceMotion
-                      ? { duration: 0 }
+                      ? undefined
                       : {
-                          duration: marqueeDurationSec,
-                          ease: "linear",
-                          repeat: Infinity,
+                          animation: `udh-marquee ${marqueeDurationSec}s linear infinite`,
                         }
                   }
                 >
@@ -1361,7 +1554,7 @@ export const UnlimitedDesignHero = forwardRef<
                       {logo.svg}
                     </span>
                   ))}
-                </motion.div>
+                </div>
 
                 {/* Soft Edge Vignette & Inner Specular Rim */}
                 <span
@@ -1373,7 +1566,7 @@ export const UnlimitedDesignHero = forwardRef<
                     boxShadow: "inset 0 1px 1px rgba(255,255,255,0.12)",
                   }}
                 />
-              </motion.div>
+              </div>
 
               {/* "Solid Startups" — Staggered Character Typing Reveal */}
               <TypedHeadlineSegment
@@ -1387,29 +1580,22 @@ export const UnlimitedDesignHero = forwardRef<
           </h1>
 
           {/* 3. Supporting Subtitle — Staggered Word Typing Stream */}
-          <motion.p
-            initial="hidden"
-            animate="visible"
-            variants={{
-              hidden: {},
-              visible: {
-                transition: {
-                  delayChildren: 1.02,
-                  staggerChildren: 0.036,
-                },
-              },
-            }}
-            className="mt-[46px] max-w-[340px] text-center text-[15.5px] font-normal leading-[1.52] tracking-[-0.015em] text-[#727272] dark:text-[#B4B4BC]"
-          >
+          <p className="mt-[46px] max-w-[340px] text-center text-[15.5px] font-normal leading-[1.52] tracking-[-0.015em] text-[#727272] dark:text-[#B4B4BC]">
             <span className="inline">
               {subtitleWordsLine1.map((word, idx) => (
                 <React.Fragment key={`l1-${idx}`}>
-                  <motion.span
-                    variants={wordTypingVariants}
+                  <span
                     className="inline-block"
+                    style={
+                      shouldReduceMotion
+                        ? undefined
+                        : {
+                            animation: `udh-word-in 0.36s ${EASE_OUT_EXPO_CSS} ${1.02 + idx * 0.036}s both`,
+                          }
+                    }
                   >
                     {word}
-                  </motion.span>
+                  </span>
                   {idx < subtitleWordsLine1.length - 1 ? " " : ""}
                 </React.Fragment>
               ))}
@@ -1418,33 +1604,35 @@ export const UnlimitedDesignHero = forwardRef<
             <span className="inline">
               {subtitleWordsLine2.map((word, idx) => (
                 <React.Fragment key={`l2-${idx}`}>
-                  <motion.span
-                    variants={wordTypingVariants}
+                  <span
                     className="inline-block"
+                    style={
+                      shouldReduceMotion
+                        ? undefined
+                        : {
+                            animation: `udh-word-in 0.36s ${EASE_OUT_EXPO_CSS} ${1.02 + (subtitleWordsLine1.length + idx) * 0.036}s both`,
+                          }
+                    }
                   >
                     {word}
-                  </motion.span>
+                  </span>
                   {idx < subtitleWordsLine2.length - 1 ? " " : ""}
                 </React.Fragment>
               ))}
             </span>
-          </motion.p>
+          </p>
 
           {/* 4. Bottom Action Bar: Dual-Layer Skeuomorphic CTA + Staggered Leader Avatars */}
           <div className="mt-[52px] flex flex-wrap items-center justify-center gap-[24px]">
             {/* Outer Recessed Pill Bezel (210x64px) — Frame-In Entrance */}
-            <motion.div
-              initial={
+            <div
+              style={
                 shouldReduceMotion
-                  ? false
-                  : { opacity: 0, y: 16, scale: 0.94, filter: "blur(6px)" }
+                  ? undefined
+                  : {
+                      animation: `udh-cta-in 0.56s ${EASE_OUT_EXPO_CSS} 1.24s both`,
+                    }
               }
-              animate={{ opacity: 1, y: 0, scale: 1, filter: "blur(0px)" }}
-              transition={{
-                duration: 0.56,
-                delay: 1.24,
-                ease: EASE_OUT_EXPO,
-              }}
               className="rounded-full bg-[linear-gradient(180deg,#F4F4F4_0%,#E7E7E7_100%)] p-[7px] shadow-[0_10px_22px_rgba(0,0,0,0.08),0_2px_6px_rgba(0,0,0,0.04),inset_0_1px_1px_rgba(255,255,255,0.95)] dark:bg-[linear-gradient(180deg,#2A2A2E_0%,#16161A_100%)] dark:ring-1 dark:ring-white/10 dark:shadow-[0_10px_24px_rgba(0,0,0,0.55),0_2px_6px_rgba(0,0,0,0.35),inset_0_1px_1px_rgba(255,255,255,0.12)]"
             >
               {/* Inner Black Pill CTA Button (196x50px) with Video-Verified Hover Metallic Sheen */}
@@ -1480,54 +1668,24 @@ export const UnlimitedDesignHero = forwardRef<
                   {confirmedPlan ? `Selected: ${confirmedPlan.name}` : ctaText}
                 </span>
               </button>
-            </motion.div>
+            </div>
 
             {/* Social Proof Stack: 5 Overlapping Leader Avatars + Typed "Trusted by Leaders" */}
             <div className="flex flex-col items-start justify-center">
-              <motion.div
+              <div
                 className="flex items-center -space-x-[5px]"
                 role="group"
                 aria-label="Startup leaders who trust our design studio"
-                initial="hidden"
-                animate="visible"
-                variants={{
-                  hidden: {},
-                  visible: {
-                    transition: {
-                      delayChildren: 1.32,
-                      staggerChildren: 0.055,
-                    },
-                  },
-                }}
               >
                 {avatars.map((avatar, i) => (
-                  <motion.div
+                  <AnimatedLeaderAvatar
                     key={avatar.id}
-                    title={`${avatar.name} — ${avatar.role}`}
-                    variants={{
-                      hidden: { opacity: 0, x: -10, scale: 0.78 },
-                      visible: {
-                        opacity: 1,
-                        x: 0,
-                        scale: 1,
-                        transition: {
-                          duration: 0.4,
-                          ease: EASE_OUT_EXPO,
-                        },
-                      },
-                    }}
-                    className="relative h-[30px] w-[30px] shrink-0 overflow-hidden rounded-full ring-[1.5px] ring-[#E2E2E2] transition-transform duration-200 hover:z-20 hover:-translate-y-0.5 dark:ring-[#2A2A30]"
-                    style={{ zIndex: i + 1 }}
-                  >
-                    <img
-                      src={avatar.src}
-                      alt={avatar.name}
-                      className="h-full w-full object-cover"
-                      draggable={false}
-                    />
-                  </motion.div>
+                    avatar={avatar}
+                    index={i}
+                    reduceMotion={shouldReduceMotion}
+                  />
                 ))}
-              </motion.div>
+              </div>
               <TypewriterStreamText
                 text={trustedText}
                 startDelayMs={1480}
@@ -1543,142 +1701,138 @@ export const UnlimitedDesignHero = forwardRef<
         {/* ================================================================= */}
         {/* CONTEXT-AWARE UX: INTERACTIVE PLAN SELECTION MODAL                */}
         {/* ================================================================= */}
-        <AnimatePresence>
-          {isModalOpen && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs dark:bg-black/75"
-              role="dialog"
-              aria-modal="true"
-              aria-labelledby={`${instanceId}-modal-title`}
-              onClick={(e) => {
-                if (e.target === e.currentTarget) setIsModalOpen(false);
-              }}
+        {isModalRendered && (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs dark:bg-black/75"
+            style={
+              shouldReduceMotion
+                ? undefined
+                : {
+                    animation: `${isModalClosing ? "udh-backdrop-out" : "udh-backdrop-in"} 0.2s ease both`,
+                  }
+            }
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby={`${instanceId}-modal-title`}
+            onClick={(e) => {
+              if (e.target === e.currentTarget) closeModal();
+            }}
+          >
+            <div
+              style={
+                shouldReduceMotion
+                  ? undefined
+                  : {
+                      animation: `${isModalClosing ? "udh-modal-out" : "udh-modal-in"} 0.24s ${EASE_OUT_EXPO_CSS} both`,
+                    }
+              }
+              className="relative w-full max-w-[640px] overflow-hidden rounded-[28px] border border-black/10 bg-[#F7F7F7] p-6 text-[#0A0A0A] shadow-2xl dark:border-white/15 dark:bg-[#141417] dark:text-[#F5F5F5] sm:p-8"
             >
-              <motion.div
-                initial={
-                  shouldReduceMotion
-                    ? { opacity: 1 }
-                    : { opacity: 0, y: 16, scale: 0.97 }
-                }
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={
-                  shouldReduceMotion
-                    ? { opacity: 0 }
-                    : { opacity: 0, y: 10, scale: 0.98 }
-                }
-                transition={{ duration: 0.24, ease: EASE_OUT_EXPO }}
-                className="relative w-full max-w-[640px] overflow-hidden rounded-[28px] border border-black/10 bg-[#F7F7F7] p-6 text-[#0A0A0A] shadow-2xl dark:border-white/15 dark:bg-[#141417] dark:text-[#F5F5F5] sm:p-8"
-              >
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <div className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1 text-xs font-medium text-[#141414] shadow-2xs tabular-nums dark:bg-[#242424] dark:text-[#EAEAEA]">
-                      <span className="h-1.5 w-1.5 rounded-full bg-[#0CB300]" />
-                      {spotsLeft} Booking Spots Available This Month
-                    </div>
-                    <h2
-                      id={`${instanceId}-modal-title`}
-                      className="mt-3 text-2xl font-semibold tracking-tight text-[#050505] dark:text-[#FAFAFA]"
-                    >
-                      Choose your unlimited design plan
-                    </h2>
-                    <p className="mt-1 text-sm text-[#666666] dark:text-[#A1A1A1]">
-                      Transparent monthly subscription. Pause or cancel anytime.
-                    </p>
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <div className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1 text-xs font-medium text-[#141414] shadow-2xs tabular-nums dark:bg-[#242424] dark:text-[#EAEAEA]">
+                    <span className="h-1.5 w-1.5 rounded-full bg-[#0CB300]" />
+                    {spotsLeft} Booking Spots Available This Month
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => setIsModalOpen(false)}
-                    aria-label="Close plan selector"
-                    className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full bg-white text-[#444] shadow-2xs transition hover:bg-neutral-200 dark:bg-[#242424] dark:text-[#D4D4D4] dark:hover:bg-[#333333]"
+                  <h2
+                    id={`${instanceId}-modal-title`}
+                    className="mt-3 text-2xl font-semibold tracking-tight text-[#050505] dark:text-[#FAFAFA]"
                   >
-                    ✕
-                  </button>
+                    Choose your unlimited design plan
+                  </h2>
+                  <p className="mt-1 text-sm text-[#666666] dark:text-[#A1A1A1]">
+                    Transparent monthly subscription. Pause or cancel anytime.
+                  </p>
                 </div>
+                <button
+                  type="button"
+                  onClick={closeModal}
+                  aria-label="Close plan selector"
+                  className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full bg-white text-[#444] shadow-2xs transition hover:bg-neutral-200 dark:bg-[#242424] dark:text-[#D4D4D4] dark:hover:bg-[#333333]"
+                >
+                  ✕
+                </button>
+              </div>
 
-                <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  {plans.map((plan) => {
-                    const isSelected = selectedPlanId === plan.id;
-                    return (
-                      <div
-                        key={plan.id}
-                        onClick={() => setSelectedPlanId(plan.id)}
-                        role="radio"
-                        aria-checked={isSelected}
-                        tabIndex={0}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter" || e.key === " ") {
-                            e.preventDefault();
-                            setSelectedPlanId(plan.id);
-                          }
+              <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                {plans.map((plan) => {
+                  const isSelected = selectedPlanId === plan.id;
+                  return (
+                    <div
+                      key={plan.id}
+                      onClick={() => setSelectedPlanId(plan.id)}
+                      role="radio"
+                      aria-checked={isSelected}
+                      tabIndex={0}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          setSelectedPlanId(plan.id);
+                        }
+                      }}
+                      className={cn(
+                        "flex cursor-pointer flex-col justify-between rounded-[20px] border p-5 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#EF471C]",
+                        isSelected
+                          ? "border-[#050505] bg-white shadow-md ring-1 ring-[#050505] dark:border-white dark:bg-[#1F1F23] dark:ring-white"
+                          : "border-black/10 bg-white/70 hover:bg-white dark:border-white/10 dark:bg-[#1B1B1F]/80 dark:hover:bg-[#222227]"
+                      )}
+                    >
+                      <div>
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-base font-semibold text-[#050505] dark:text-[#FAFAFA]">
+                            {plan.name}
+                          </span>
+                          {plan.badge && (
+                            <span className="rounded-full bg-[#EF471C]/10 px-2.5 py-0.5 text-[11px] font-semibold text-[#EF471C]">
+                              {plan.badge}
+                            </span>
+                          )}
+                        </div>
+                        <div className="mt-2 flex items-baseline gap-1">
+                          <span className="text-3xl font-semibold tracking-tight text-[#050505] tabular-nums dark:text-[#FAFAFA]">
+                            {plan.price}
+                          </span>
+                          <span className="text-xs text-[#666666] dark:text-[#A1A1A1]">
+                            {plan.cadence}
+                          </span>
+                        </div>
+                        <p className="mt-2 text-xs leading-relaxed text-[#666666] dark:text-[#A1A1A1]">
+                          {plan.description}
+                        </p>
+                        <ul className="mt-4 space-y-2 border-t border-black/5 pt-3 text-xs text-[#222222] dark:border-white/10 dark:text-[#E0E0E0]">
+                          {plan.features.map((feat, i) => (
+                            <li key={i} className="flex items-start gap-2">
+                              <span className="text-[#0CB300]">✓</span>
+                              <span>{feat}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleConfirmPlan(plan);
                         }}
                         className={cn(
-                          "flex cursor-pointer flex-col justify-between rounded-[20px] border p-5 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#EF471C]",
+                          "mt-5 w-full cursor-pointer rounded-full py-2.5 text-xs font-medium transition",
                           isSelected
-                            ? "border-[#050505] bg-white shadow-md ring-1 ring-[#050505] dark:border-white dark:bg-[#1F1F23] dark:ring-white"
-                            : "border-black/10 bg-white/70 hover:bg-white dark:border-white/10 dark:bg-[#1B1B1F]/80 dark:hover:bg-[#222227]"
+                            ? "bg-[#050505] text-white hover:bg-[#242424] dark:bg-white dark:text-[#050505] dark:hover:bg-neutral-200"
+                            : "bg-neutral-200 text-[#141414] hover:bg-neutral-300 dark:bg-[#2A2A2A] dark:text-[#F0F0F0] dark:hover:bg-[#363636]"
                         )}
                       >
-                        <div>
-                          <div className="flex items-center justify-between gap-2">
-                            <span className="text-base font-semibold text-[#050505] dark:text-[#FAFAFA]">
-                              {plan.name}
-                            </span>
-                            {plan.badge && (
-                              <span className="rounded-full bg-[#EF471C]/10 px-2.5 py-0.5 text-[11px] font-semibold text-[#EF471C]">
-                                {plan.badge}
-                              </span>
-                            )}
-                          </div>
-                          <div className="mt-2 flex items-baseline gap-1">
-                            <span className="text-3xl font-semibold tracking-tight text-[#050505] tabular-nums dark:text-[#FAFAFA]">
-                              {plan.price}
-                            </span>
-                            <span className="text-xs text-[#666666] dark:text-[#A1A1A1]">
-                              {plan.cadence}
-                            </span>
-                          </div>
-                          <p className="mt-2 text-xs leading-relaxed text-[#666666] dark:text-[#A1A1A1]">
-                            {plan.description}
-                          </p>
-                          <ul className="mt-4 space-y-2 border-t border-black/5 pt-3 text-xs text-[#222222] dark:border-white/10 dark:text-[#E0E0E0]">
-                            {plan.features.map((feat, i) => (
-                              <li key={i} className="flex items-start gap-2">
-                                <span className="text-[#0CB300]">✓</span>
-                                <span>{feat}</span>
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleConfirmPlan(plan);
-                          }}
-                          className={cn(
-                            "mt-5 w-full cursor-pointer rounded-full py-2.5 text-xs font-medium transition",
-                            isSelected
-                              ? "bg-[#050505] text-white hover:bg-[#242424] dark:bg-white dark:text-[#050505] dark:hover:bg-neutral-200"
-                              : "bg-neutral-200 text-[#141414] hover:bg-neutral-300 dark:bg-[#2A2A2A] dark:text-[#F0F0F0] dark:hover:bg-[#363636]"
-                          )}
-                        >
-                          {confirmedPlan?.id === plan.id
-                            ? "Spot Reserved ✓"
-                            : `Reserve ${plan.name}`}
-                        </button>
-                      </div>
-                    );
-                  })}
-                </div>
-              </motion.div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+                        {confirmedPlan?.id === plan.id
+                          ? "Spot Reserved ✓"
+                          : `Reserve ${plan.name}`}
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
       </section>
     );
   }

@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-16T13:02:00.656Z",
+  "updatedAt": "2026-11-16T13:14:23.318Z",
   "totalComponents": 35,
   "components": [
     {
@@ -10,8 +10,8 @@
       "description": "",
       "category": "Custom",
       "isBuiltIn": false,
-      "updatedAt": 1794834109027,
-      "lastRepoSyncAt": 1794834120426,
+      "updatedAt": 1794834850194,
+      "lastRepoSyncAt": 1794834863194,
       "path": "registry/components/unlimiteddesignhero",
       "files": [
         "component.tsx",
