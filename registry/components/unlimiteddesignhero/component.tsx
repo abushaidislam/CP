@@ -4,7 +4,6 @@ import React, {
   forwardRef,
   useState,
   useEffect,
-  useRef,
   useId,
   useCallback,
 } from "react";
@@ -14,7 +13,6 @@ import {
   useReducedMotion,
   type Variants,
 } from "framer-motion";
-import { cn } from "@/lib/utils";
 
 // ============================================================================
 // TYPES & INTERFACES
@@ -96,508 +94,6 @@ export interface UnlimitedDesignHeroProps extends Omit<
 }
 
 // ============================================================================
-// WEBGL1 "WAVES" SHADER BACKGROUND
-// ============================================================================
-
-const WAVES_VERTEX_SHADER = `
-attribute vec2 a_position;
-void main() {
-  gl_Position = vec4(a_position, 0.0, 1.0);
-}
-`;
-
-const WAVES_FRAGMENT_SHADER = `
-// "Waves" — made with the 21st.dev Shader Builder
-// Packed WebGL1 uniforms (the shader exposes readable u_* aliases as macros):
-//   u_colors[8] (first 4 used)
-//   vec3(0.102, 0.078, 0.137)
-//   vec3(0.718, 0.365, 0.412)
-//   vec3(0.918, 0.804, 0.761)
-//   vec3(1.000, 0.961, 0.922)
-//   u_scene = vec4(canvas width, canvas height, seconds * -0.67, 4.0)
-//   u_shape = vec4(1.32, 0.49, 0.84, 0.01)
-//   u_surface = vec4(1.73, 1.08, 0.07, 2.00)
-//   u_finish = vec4(2.27, 0.00, 0.040, 0.35)
-//   u_transform = vec4(4984.0, 3.37, 0.40, 1.0)
-//   u_space = vec4(-0.13, 0.05, pointer x, pointer y)
-//   u_cursor = vec4(presence, 3.0, 0.54, 0.56)
-
-#ifdef GL_FRAGMENT_PRECISION_HIGH
-precision highp float;
-#else
-precision mediump float;
-#endif
-
-uniform vec3 u_colors[8];
-// Seven packed vectors + eight colour vectors = 15 fragment uniform vectors,
-// one below WebGL1's guaranteed minimum. Macros preserve the public u_* API.
-uniform vec4 u_scene;      // resolution.xy, time, colour count
-uniform vec4 u_shape;      // scale, intensity, paramA, warp
-uniform vec4 u_surface;    // detail, contrast, brightness, saturation
-uniform vec4 u_finish;     // hue, vignette, blur, grain
-uniform vec4 u_transform;  // seed, rotation, drift, OKLab toggle
-uniform vec4 u_space;      // offset.xy, pointer.xy
-uniform vec4 u_cursor;
-
-#define u_resolution u_scene.xy
-#define u_time u_scene.z
-#define u_colorCount u_scene.w
-#define u_scale u_shape.x
-#define u_intensity u_shape.y
-#define u_paramA u_shape.z
-#define u_warp u_shape.w
-#define u_detail u_surface.x
-#define u_contrast u_surface.y
-#define u_brightness u_surface.z
-#define u_saturation u_surface.w
-#define u_hue u_finish.x
-#define u_vignette u_finish.y
-#define u_blur u_finish.z
-#define u_grain u_finish.w
-#ifdef GL_FRAGMENT_PRECISION_HIGH
-#define u_seed u_transform.x
-#else
-// Keep hash inputs inside mediump's guaranteed +-2^14 range.
-#define u_seed mod(u_transform.x, 31.0)
-#endif
-#define u_rotate u_transform.y
-#define u_drift u_transform.z
-#define u_oklab u_transform.w
-#define u_offset u_space.xy
-#define u_mouse u_space.zw
-#define u_cursorPresence u_cursor.x
-#define u_cursorEffect u_cursor.y
-#define u_cursorStrength u_cursor.z
-#define u_cursorRadius u_cursor.w
-
-float hash21(vec2 p) {
-#ifndef GL_FRAGMENT_PRECISION_HIGH
-  p = mod(p, 31.0);
-#endif
-  p = fract(p * vec2(234.34, 435.345));
-  p += dot(p, p + 34.23);
-  return fract(p.x * p.y);
-}
-
-// Even, un-structured white noise for film grain (Dave Hoskins hash12). The
-// multiply hash above is fine for value noise but shows a faint axis-aligned
-// mesh at integer fragment coords, which reads as a net over flat areas.
-float grainHash(vec2 p) {
-  vec3 p3 = fract(vec3(p.xyx) * 0.1031);
-  p3 += dot(p3, p3.yzx + 33.33);
-  return fract((p3.x + p3.y) * p3.z);
-}
-
-vec2 hash22(vec2 p) {
-#ifndef GL_FRAGMENT_PRECISION_HIGH
-  p = mod(p, 31.0);
-#endif
-  float n = sin(dot(p, vec2(41.0, 289.0)));
-  return fract(vec2(15731.743, 7892.321) * n);
-}
-
-float noise(vec2 p) {
-  vec2 i = floor(p);
-  vec2 f = fract(p);
-  vec2 u = f * f * (3.0 - 2.0 * f);
-  return mix(
-    mix(hash21(i), hash21(i + vec2(1.0, 0.0)), u.x),
-    mix(hash21(i + vec2(0.0, 1.0)), hash21(i + vec2(1.0, 1.0)), u.x),
-    u.y);
-}
-
-float fbm(vec2 p) {
-  float v = 0.0;
-  float a = 0.5;
-  for (int i = 0; i < 5; i++) {
-    v += a * noise(p);
-    p = p * 2.03 + vec2(17.0, 9.2);
-    a *= 0.5;
-  }
-  return v;
-}
-
-// --- OKLab colour mixing (perceptual), gated by u_oklab -----------------------
-vec3 srgbToLinear(vec3 c) {
-  return mix(c / 12.92, pow((c + 0.055) / 1.055, vec3(2.4)),
-    step(0.04045, c));
-}
-vec3 linearToSrgb(vec3 c) {
-  // max() guards the sRGB branch: out-of-gamut OKLab interpolations can send a
-  // channel negative, and pow(negative, ...) is NaN which mix()/step() would
-  // then propagate. The linear branch clips such channels to 0 downstream.
-  return mix(c * 12.92, 1.055 * pow(max(c, vec3(0.0)), vec3(1.0 / 2.4)) - 0.055,
-    step(0.0031308, c));
-}
-vec3 linToOklab(vec3 c) {
-  float l = 0.4122214708 * c.r + 0.5363325363 * c.g + 0.0514459929 * c.b;
-  float m = 0.2119034982 * c.r + 0.6806995451 * c.g + 0.1073969566 * c.b;
-  float s = 0.0883024619 * c.r + 0.2817188376 * c.g + 0.6299787005 * c.b;
-  l = pow(max(l, 0.0), 1.0 / 3.0);
-  m = pow(max(m, 0.0), 1.0 / 3.0);
-  s = pow(max(s, 0.0), 1.0 / 3.0);
-  return vec3(
-    0.2104542553 * l + 0.7936177850 * m - 0.0040720468 * s,
-    1.9779984951 * l - 2.4285922050 * m + 0.4505937099 * s,
-    0.0259040371 * l + 0.7827717662 * m - 0.8086757660 * s);
-}
-vec3 oklabToLin(vec3 c) {
-  float l = c.x + 0.3963377774 * c.y + 0.2158037573 * c.z;
-  float m = c.x - 0.1055613458 * c.y - 0.0638541728 * c.z;
-  float s = c.x - 0.0894841775 * c.y - 1.2914855480 * c.z;
-  l = l * l * l; m = m * m * m; s = s * s * s;
-  return vec3(
-    4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s,
-    -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s,
-    -0.0041960863 * l - 0.7034186147 * m + 1.7076147010 * s);
-}
-vec3 mixColour(vec3 a, vec3 b, float t) {
-  if (u_oklab > 0.5) {
-    vec3 la = linToOklab(srgbToLinear(a));
-    vec3 lb = linToOklab(srgbToLinear(b));
-    return clamp(linearToSrgb(oklabToLin(mix(la, lb, t))), 0.0, 1.0);
-  }
-  return mix(a, b, t);
-}
-
-// Mix through the recipe colours; x is clamped to 0..1. WebGL1 forbids
-// dynamic uniform indexing in fragment shaders, hence the constant loop.
-vec3 palette(float x) {
-  float n = max(u_colorCount - 1.0, 1.0);
-  float f = clamp(x, 0.0, 1.0) * n;
-  vec3 col = u_colors[0];
-  for (int i = 0; i < 7; i++) {
-    if (float(i) < n)
-      col = mixColour(col, u_colors[i + 1],
-        smoothstep(0.0, 1.0, clamp(f - float(i), 0.0, 1.0)));
-  }
-  return col;
-}
-
-vec3 hueRotate(vec3 col, float a) {
-  const mat3 toYIQ = mat3(0.299, 0.596, 0.211,
-                          0.587, -0.274, -0.523,
-                          0.114, -0.322, 0.312);
-  const mat3 toRGB = mat3(1.0, 1.0, 1.0,
-                          0.956, -0.272, -1.106,
-                          0.621, -0.647, 1.703);
-  vec3 yiq = toYIQ * col;
-  float ca = cos(a), sa = sin(a);
-  yiq = vec3(yiq.x, yiq.y * ca - yiq.z * sa, yiq.y * sa + yiq.z * ca);
-  return toRGB * yiq;
-}
-
-vec3 shade(vec2 uv, vec2 p, float t) {
-  float y = uv.y
-    + sin(uv.x * (3.0 + u_intensity * 9.0) + t * 0.8) * 0.08
-    + (fbm(p * 2.0 + t * 0.1) - 0.5) * u_intensity * 0.6;
-  return palette(y);
-}
-
-void main() {
-  vec2 uv = gl_FragCoord.xy / u_resolution.xy;
-  vec2 screenUv = uv;
-  vec2 p = (gl_FragCoord.xy - 0.5 * u_resolution.xy)
-    / min(u_resolution.x, u_resolution.y);
-  float cursorMask = 0.0;
-
-  // Cursor modes 1-3 are local distortions. Push shifts the same screen-space
-  // coordinates before field transforms, so Zoom/Rotate don't change its feel.
-  if (u_cursorPresence > 0.001) {
-    // u_mouse is normalized to -1..1 in canvas space. Convert it to the same
-    // aspect-corrected screen space as p so effects stay under the cursor.
-    vec2 cursor = (0.5 * u_mouse * u_resolution.xy)
-      / min(u_resolution.x, u_resolution.y);
-    vec2 cursorDelta = p - cursor;
-    if (u_cursorEffect < 0.5) {
-      p += cursor * u_cursorPresence * u_cursorStrength * 0.55;
-    } else {
-      float cursorDistance = length(cursorDelta);
-      vec2 cursorDirection = cursorDelta / max(cursorDistance, 0.0001);
-      cursorMask = u_cursorPresence
-        * (1.0 - smoothstep(0.0, u_cursorRadius, cursorDistance));
-      if (u_cursorEffect < 1.5) {
-        p -= cursorDirection * cursorMask * u_cursorStrength * 0.24;
-      } else if (u_cursorEffect < 2.5) {
-        float cursorAngle = cursorMask * u_cursorStrength * 2.2;
-        float cc = cos(cursorAngle), cs = sin(cursorAngle);
-        p = cursor + mat2(cc, -cs, cs, cc) * cursorDelta;
-      } else if (u_cursorEffect < 3.5) {
-        float ripple = sin(
-          cursorDistance / max(u_cursorRadius, 0.001) * 18.0 - u_time * 5.0);
-        p -= cursorDirection * ripple * cursorMask * u_cursorStrength * 0.07;
-      }
-    }
-  }
-
-  // Keep presets that read uv (rather than p) in the same warped space.
-  uv = p * min(u_resolution.x, u_resolution.y) / u_resolution.xy + 0.5;
-  p *= u_scale;
-  // Field transform: rotate, pan, pointer push, slow drift.
-  if (abs(u_rotate) > 0.0001) {
-    float cr = cos(u_rotate), sr = sin(u_rotate);
-    p = mat2(cr, -sr, sr, cr) * p;
-  }
-  p += u_offset;
-  if (u_drift > 0.0001)
-    p += u_drift * vec2(sin(u_time * 0.31), cos(u_time * 0.23));
-  // Organic domain warp.
-  if (u_warp > 0.0) {
-    p += u_warp * (vec2(
-      fbm(p * u_detail + u_seed),
-      fbm(p * u_detail + vec2(5.2, 1.3))) - 0.5);
-  }
-  // Shade, with an optional soft 5-tap blur.
-  vec3 col;
-  if (u_blur > 0.0) {
-    float e = u_blur;
-    float pe = e * u_scale;
-    vec2 uvE = vec2(e) * min(u_resolution.x, u_resolution.y) / u_resolution.xy;
-    col  = shade(uv, p, u_time) * 0.36;
-    col += shade(uv + vec2(uvE.x, 0.0), p + vec2(pe, 0.0), u_time) * 0.16;
-    col += shade(uv - vec2(uvE.x, 0.0), p - vec2(pe, 0.0), u_time) * 0.16;
-    col += shade(uv + vec2(0.0, uvE.y), p + vec2(0.0, pe), u_time) * 0.16;
-    col += shade(uv - vec2(0.0, uvE.y), p - vec2(0.0, pe), u_time) * 0.16;
-  } else {
-    col = shade(uv, p, u_time);
-  }
-  // Post: contrast, saturation, hue, brightness, vignette, grain.
-  if (abs(u_contrast - 1.0) > 0.0001)
-    col = (col - 0.5) * u_contrast + 0.5;
-  if (abs(u_saturation - 1.0) > 0.0001) {
-    float luma = dot(col, vec3(0.299, 0.587, 0.114));
-    col = mix(vec3(luma), col, u_saturation);
-  }
-  if (abs(u_hue) > 0.0001)
-    col = hueRotate(col, u_hue);
-  if (abs(u_brightness) > 0.0001)
-    col += u_brightness;
-  if (u_vignette > 0.0001) {
-    float vd = length(screenUv - 0.5) * 1.41421356;
-    col *= 1.0 - u_vignette * smoothstep(0.35, 1.0, vd);
-  }
-  if (u_cursorPresence > 0.001 && u_cursorEffect > 3.5)
-    col += (vec3(0.18) + col * 0.12) * cursorMask * u_cursorStrength;
-  if (u_grain > 0.0001)
-    col += (grainHash(
-      gl_FragCoord.xy + vec2(u_seed * 17.0, u_seed * 31.0)) - 0.5) * u_grain;
-  gl_FragColor = vec4(clamp(col, 0.0, 1.0), 1.0);
-}
-`;
-
-const WAVES_COLORS = new Float32Array([
-  0.102, 0.078, 0.137, 0.718, 0.365, 0.412, 0.918, 0.804, 0.761, 1.0, 0.961,
-  0.922, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-]);
-
-interface WavesShaderBackgroundProps {
-  reduceMotion?: boolean;
-}
-
-const WavesShaderBackground: React.FC<WavesShaderBackgroundProps> = ({
-  reduceMotion = false,
-}) => {
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const gl =
-      (canvas.getContext("webgl", {
-        alpha: false,
-        antialias: false,
-        depth: false,
-        stencil: false,
-        preserveDrawingBuffer: false,
-      }) as WebGLRenderingContext | null) ||
-      (canvas.getContext("experimental-webgl", {
-        alpha: false,
-        antialias: false,
-        depth: false,
-        stencil: false,
-        preserveDrawingBuffer: false,
-      }) as WebGLRenderingContext | null);
-
-    if (!gl) return;
-
-    const compileShader = (
-      type: number,
-      source: string
-    ): WebGLShader | null => {
-      const shader = gl.createShader(type);
-      if (!shader) return null;
-      gl.shaderSource(shader, source);
-      gl.compileShader(shader);
-      if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-        gl.deleteShader(shader);
-        return null;
-      }
-      return shader;
-    };
-
-    const vs = compileShader(gl.VERTEX_SHADER, WAVES_VERTEX_SHADER);
-    const fs = compileShader(gl.FRAGMENT_SHADER, WAVES_FRAGMENT_SHADER);
-    if (!vs || !fs) {
-      if (vs) gl.deleteShader(vs);
-      if (fs) gl.deleteShader(fs);
-      return;
-    }
-
-    const program = gl.createProgram();
-    if (!program) {
-      gl.deleteShader(vs);
-      gl.deleteShader(fs);
-      return;
-    }
-
-    gl.attachShader(program, vs);
-    gl.attachShader(program, fs);
-    gl.linkProgram(program);
-
-    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
-      gl.deleteProgram(program);
-      gl.deleteShader(vs);
-      gl.deleteShader(fs);
-      return;
-    }
-
-    gl.useProgram(program);
-
-    const buffer = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
-    gl.bufferData(
-      gl.ARRAY_BUFFER,
-      new Float32Array([-1, -1, 3, -1, -1, 3]),
-      gl.STATIC_DRAW
-    );
-
-    const positionLocation = gl.getAttribLocation(program, "a_position");
-    if (positionLocation >= 0) {
-      gl.enableVertexAttribArray(positionLocation);
-      gl.vertexAttribPointer(positionLocation, 2, gl.FLOAT, false, 0, 0);
-    }
-
-    const uColorsLoc = gl.getUniformLocation(program, "u_colors");
-    const uSceneLoc = gl.getUniformLocation(program, "u_scene");
-    const uShapeLoc = gl.getUniformLocation(program, "u_shape");
-    const uSurfaceLoc = gl.getUniformLocation(program, "u_surface");
-    const uFinishLoc = gl.getUniformLocation(program, "u_finish");
-    const uTransformLoc = gl.getUniformLocation(program, "u_transform");
-    const uSpaceLoc = gl.getUniformLocation(program, "u_space");
-    const uCursorLoc = gl.getUniformLocation(program, "u_cursor");
-
-    if (uColorsLoc) gl.uniform3fv(uColorsLoc, WAVES_COLORS);
-    if (uShapeLoc) gl.uniform4f(uShapeLoc, 1.32, 0.49, 0.84, 0.01);
-    if (uSurfaceLoc) gl.uniform4f(uSurfaceLoc, 1.73, 1.08, 0.07, 2.0);
-    if (uFinishLoc) gl.uniform4f(uFinishLoc, 2.27, 0.0, 0.04, 0.35);
-    if (uTransformLoc) gl.uniform4f(uTransformLoc, 4984.0, 3.37, 0.4, 1.0);
-    if (uSpaceLoc) gl.uniform4f(uSpaceLoc, -0.13, 0.05, 0.0, 0.0);
-    if (uCursorLoc) gl.uniform4f(uCursorLoc, 0.0, 3.0, 0.54, 0.56);
-
-    const updateSize = () => {
-      const dpr = Math.min(window.devicePixelRatio || 1, 2);
-      const width = Math.max(1, Math.round(canvas.clientWidth * dpr));
-      const height = Math.max(1, Math.round(canvas.clientHeight * dpr));
-      if (canvas.width !== width || canvas.height !== height) {
-        canvas.width = width;
-        canvas.height = height;
-        gl.viewport(0, 0, width, height);
-      }
-    };
-
-    updateSize();
-
-    let rafId: number | null = null;
-    let elapsedMs = 0;
-    let lastTimestamp: number | null = null;
-
-    const drawFrame = (seconds: number) => {
-      if (uSceneLoc) {
-        gl.uniform4f(
-          uSceneLoc,
-          canvas.width,
-          canvas.height,
-          seconds * -0.67,
-          4.0
-        );
-      }
-      gl.drawArrays(gl.TRIANGLES, 0, 3);
-    };
-
-    const tick = (now: number) => {
-      if (document.hidden) {
-        rafId = null;
-        lastTimestamp = null;
-        return;
-      }
-      if (lastTimestamp !== null) {
-        elapsedMs += now - lastTimestamp;
-      }
-      lastTimestamp = now;
-      drawFrame(elapsedMs * 0.001);
-      rafId = requestAnimationFrame(tick);
-    };
-
-    const startLoop = () => {
-      if (reduceMotion) {
-        drawFrame(0);
-        return;
-      }
-      if (!document.hidden && rafId === null) {
-        lastTimestamp = null;
-        rafId = requestAnimationFrame(tick);
-      }
-    };
-
-    const stopLoop = () => {
-      if (rafId !== null) {
-        cancelAnimationFrame(rafId);
-        rafId = null;
-      }
-      lastTimestamp = null;
-    };
-
-    const handleVisibilityChange = () => {
-      if (document.hidden) {
-        stopLoop();
-      } else {
-        startLoop();
-      }
-    };
-
-    const resizeObserver = new ResizeObserver(() => {
-      updateSize();
-      if (reduceMotion || document.hidden) {
-        drawFrame(elapsedMs * 0.001);
-      }
-    });
-    resizeObserver.observe(canvas);
-
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-    startLoop();
-
-    return () => {
-      stopLoop();
-      resizeObserver.disconnect();
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
-      if (buffer) gl.deleteBuffer(buffer);
-      gl.deleteProgram(program);
-      gl.deleteShader(vs);
-      gl.deleteShader(fs);
-    };
-  }, [reduceMotion]);
-
-  return (
-    <canvas
-      ref={canvasRef}
-      aria-hidden="true"
-      className="pointer-events-none absolute inset-0 h-full w-full"
-    />
-  );
-};
-
-// ============================================================================
 // CRITICALLY-DAMPED FRAMER MOTION VARIANTS (ZERO LAYOUT SHIFT)
 // ============================================================================
 
@@ -669,7 +165,7 @@ const TypedHeadlineSegment: React.FC<TypedHeadlineSegmentProps> = ({
   return (
     <motion.span
       aria-label={text}
-      className={cn("inline-flex whitespace-pre", className)}
+      className={`inline-flex whitespace-pre ${className}`}
       initial="hidden"
       animate="visible"
       variants={{
@@ -755,7 +251,7 @@ const TypewriterStreamText: React.FC<TypewriterStreamTextProps> = ({
   const untypedSlice = text.slice(visibleCount);
 
   return (
-    <span className={cn("relative inline-block", className)} aria-label={text}>
+    <span className={`relative inline-block ${className}`} aria-label={text}>
       <span aria-hidden="true">{typedSlice}</span>
       {showCursorWhileTyping && !isTypingDone && (
         <motion.span
@@ -1019,8 +515,7 @@ export const UnlimitedDesignHero = forwardRef<
       plans = DEFAULT_PLANS,
       onCtaClick,
       onSelectPlan,
-      className,
-      style,
+      className = "",
       ...rest
     },
     ref
@@ -1109,19 +604,34 @@ export const UnlimitedDesignHero = forwardRef<
       <section
         ref={ref}
         aria-labelledby={`${instanceId}-hero-heading`}
-        className={cn(
-          "relative flex min-h-[685px] w-full flex-col items-center justify-center overflow-hidden bg-[#DFDFDF] px-4 py-12 text-[#050505] antialiased selection:bg-[#EF471C] selection:text-[#050505] dark:bg-[#0E0E0E] dark:text-[#F5F5F5] dark:selection:text-white",
-          className
-        )}
+        className={`relative flex min-h-[685px] w-full flex-col items-center justify-center overflow-hidden bg-[#DFDFDF] px-4 py-12 text-[#050505] antialiased selection:bg-[#EF471C] selection:text-[#050505] ${className}`}
         style={{
           fontFamily:
             "'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Plus Jakarta Sans', sans-serif",
-          ...style,
+          backgroundImage: `
+            linear-gradient(125deg,
+              rgba(255, 255, 255, 0.92) 0%,
+              rgba(252, 252, 252, 0.72) 8%,
+              rgba(222, 222, 222, 0.12) 16%,
+              rgba(250, 250, 250, 0.62) 23%,
+              rgba(218, 218, 218, 0.08) 31%,
+              rgba(246, 246, 246, 0.46) 39%,
+              rgba(216, 216, 216, 0.06) 49%,
+              rgba(222, 222, 222, 0.35) 100%
+            ),
+            radial-gradient(circle at 8% 6%, rgba(255, 255, 255, 0.75) 0%, transparent 50%)
+          `,
         }}
         {...rest}
       >
-        {/* Animated WebGL1 "Waves" Shader Background */}
-        <WavesShaderBackground reduceMotion={shouldReduceMotion} />
+        {/* Subtle Studio Plaster Noise Overlay */}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 opacity-[0.028] mix-blend-multiply"
+          style={{
+            backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")`,
+          }}
+        />
 
         {/* Main Choreographed Container */}
         <div
@@ -1145,17 +655,16 @@ export const UnlimitedDesignHero = forwardRef<
               duration: 0.52,
               ease: EASE_OUT_EXPO,
             }}
-            className="mb-[44px] inline-flex h-[43px] cursor-pointer items-center gap-[10px] rounded-full bg-white px-[19px] shadow-[0_2px_10px_rgba(0,0,0,0.03)] ring-1 ring-black/[0.02] transition-shadow hover:shadow-[0_4px_14px_rgba(0,0,0,0.06)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#EF471C] dark:bg-[#1B1B1B] dark:ring-white/10 dark:shadow-[0_2px_12px_rgba(0,0,0,0.35)]"
+            className="mb-[44px] inline-flex h-[43px] cursor-pointer items-center gap-[10px] rounded-full bg-white px-[19px] shadow-[0_2px_10px_rgba(0,0,0,0.03)] ring-1 ring-black/[0.02] transition-shadow hover:shadow-[0_4px_14px_rgba(0,0,0,0.06)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#EF471C]"
           >
             <span className="relative flex h-[6px] w-[6px] shrink-0">
               {isBookingOpen && !shouldReduceMotion && (
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#0CB300] opacity-60" />
               )}
               <span
-                className={cn(
-                  "relative inline-flex h-[6px] w-[6px] rounded-full",
+                className={`relative inline-flex h-[6px] w-[6px] rounded-full ${
                   isBookingOpen ? "bg-[#0CB300]" : "bg-amber-500"
-                )}
+                }`}
               />
             </span>
             <TypewriterStreamText
@@ -1167,7 +676,7 @@ export const UnlimitedDesignHero = forwardRef<
               startDelayMs={110}
               charSpeedMs={22}
               reduceMotion={shouldReduceMotion}
-              className="text-[14.5px] font-medium leading-none tracking-[-0.018em] text-[#141414] tabular-nums dark:text-[#F0F0F0]"
+              className="text-[14.5px] font-medium leading-none tracking-[-0.018em] text-[#141414]"
             />
           </motion.button>
 
@@ -1184,7 +693,7 @@ export const UnlimitedDesignHero = forwardRef<
                 delay={0.14}
                 stagger={0.028}
                 reduceMotion={shouldReduceMotion}
-                className="text-[54px] leading-[1.05] text-[#050505] dark:text-[#FAFAFA] sm:text-[82px] md:text-[100px]"
+                className="text-[54px] leading-[1.05] text-[#050505] sm:text-[82px] md:text-[100px]"
               />
 
               {/* PILL 1: Vertical Portfolio Showcase Carousel — Frame-In Spring Pop */}
@@ -1227,7 +736,7 @@ export const UnlimitedDesignHero = forwardRef<
                   delay: 0.34,
                   ease: EASE_OUT_EXPO,
                 }}
-                className="group relative inline-flex h-[84px] w-[112px] shrink-0 cursor-pointer overflow-hidden rounded-[30px] border-[2.5px] border-[#141414] bg-[#4338CA] p-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#EF471C] focus-visible:ring-offset-2 dark:border-[#2C2C2C] sm:h-[98px] sm:w-[130px] sm:rounded-[34px] md:h-[111px] md:w-[146px] md:rounded-[38px]"
+                className="group relative inline-flex h-[84px] w-[112px] shrink-0 cursor-pointer overflow-hidden rounded-[30px] border-[2.5px] border-[#141414] bg-[#4338CA] p-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#EF471C] focus-visible:ring-offset-2 sm:h-[98px] sm:w-[130px] sm:rounded-[34px] md:h-[111px] md:w-[146px] md:rounded-[38px]"
                 style={{
                   boxShadow:
                     "6px 9px 16px rgba(0, 0, 0, 0.28), 2px 3px 5px rgba(0, 0, 0, 0.22), 1.5px 1.5px 0px #0A0A0A",
@@ -1275,7 +784,7 @@ export const UnlimitedDesignHero = forwardRef<
                 delay={0.44}
                 stagger={0.03}
                 reduceMotion={shouldReduceMotion}
-                className="text-[54px] leading-[1.05] text-[#707070] dark:text-[#8E8E8E] sm:text-[82px] md:text-[100px]"
+                className="text-[54px] leading-[1.05] text-[#707070] sm:text-[82px] md:text-[100px]"
               />
             </span>
 
@@ -1287,7 +796,7 @@ export const UnlimitedDesignHero = forwardRef<
                 delay={0.56}
                 stagger={0.032}
                 reduceMotion={shouldReduceMotion}
-                className="text-[54px] leading-[1.05] text-[#747474] dark:text-[#8E8E8E] sm:text-[82px] md:text-[100px]"
+                className="text-[54px] leading-[1.05] text-[#747474] sm:text-[82px] md:text-[100px]"
               />
 
               {/* PILL 2: Dark Infinite Startup Logo Marquee — Frame-In Spring Pop */}
@@ -1324,7 +833,7 @@ export const UnlimitedDesignHero = forwardRef<
                   delay: 0.64,
                   ease: EASE_OUT_EXPO,
                 }}
-                className="relative inline-flex h-[84px] w-[112px] shrink-0 items-center overflow-hidden rounded-[30px] border-[2.5px] border-[#121212] bg-[#262626] dark:border-[#2C2C2C] sm:h-[98px] sm:w-[130px] sm:rounded-[34px] md:h-[111px] md:w-[146px] md:rounded-[38px]"
+                className="relative inline-flex h-[84px] w-[112px] shrink-0 items-center overflow-hidden rounded-[30px] border-[2.5px] border-[#121212] bg-[#262626] sm:h-[98px] sm:w-[130px] sm:rounded-[34px] md:h-[111px] md:w-[146px] md:rounded-[38px]"
                 style={{
                   boxShadow:
                     "6px 9px 16px rgba(0, 0, 0, 0.28), 2px 3px 5px rgba(0, 0, 0, 0.22), 1.5px 1.5px 0px #0A0A0A",
@@ -1332,7 +841,7 @@ export const UnlimitedDesignHero = forwardRef<
               >
                 {/* Continuous Right-to-Left Marquee Track */}
                 <motion.div
-                  className="flex items-center gap-[26px] pr-[26px] text-[#707070] dark:text-[#909090]"
+                  className="flex items-center gap-[26px] pr-[26px] text-[#707070]"
                   animate={
                     shouldReduceMotion ? { x: "0%" } : { x: ["0%", "-33.333%"] }
                   }
@@ -1375,7 +884,7 @@ export const UnlimitedDesignHero = forwardRef<
                 delay={0.72}
                 stagger={0.024}
                 reduceMotion={shouldReduceMotion}
-                className="text-[54px] leading-[1.05] text-[#050505] dark:text-[#FAFAFA] sm:text-[82px] md:text-[100px]"
+                className="text-[54px] leading-[1.05] text-[#050505] sm:text-[82px] md:text-[100px]"
               />
             </span>
           </h1>
@@ -1393,7 +902,7 @@ export const UnlimitedDesignHero = forwardRef<
                 },
               },
             }}
-            className="mt-[46px] max-w-[340px] text-center text-[15.5px] font-normal leading-[1.52] tracking-[-0.015em] text-[#727272] dark:text-[#9A9A9A]"
+            className="mt-[46px] max-w-[340px] text-center text-[15.5px] font-normal leading-[1.52] tracking-[-0.015em] text-[#727272]"
           >
             <span className="inline">
               {subtitleWordsLine1.map((word, idx) => (
@@ -1439,13 +948,18 @@ export const UnlimitedDesignHero = forwardRef<
                 delay: 1.24,
                 ease: EASE_OUT_EXPO,
               }}
-              className="rounded-full bg-[linear-gradient(180deg,#F4F4F4_0%,#E7E7E7_100%)] p-[7px] shadow-[0_10px_22px_rgba(0,0,0,0.08),0_2px_6px_rgba(0,0,0,0.04),inset_0_1px_1px_rgba(255,255,255,0.95)] dark:bg-[linear-gradient(180deg,#262626_0%,#1A1A1A_100%)] dark:shadow-[0_10px_22px_rgba(0,0,0,0.45),0_2px_6px_rgba(0,0,0,0.25),inset_0_1px_1px_rgba(255,255,255,0.08)]"
+              className="rounded-full p-[7px]"
+              style={{
+                background: "linear-gradient(180deg, #F4F4F4 0%, #E7E7E7 100%)",
+                boxShadow:
+                  "0 10px 22px rgba(0, 0, 0, 0.08), 0 2px 6px rgba(0, 0, 0, 0.04), inset 0 1px 1px rgba(255, 255, 255, 0.95)",
+              }}
             >
               {/* Inner Black Pill CTA Button (196x50px) with Video-Verified Hover Metallic Sheen */}
               <button
                 type="button"
                 onClick={handleCtaAction}
-                className="group relative flex h-[50px] w-[196px] cursor-pointer items-center justify-start overflow-hidden rounded-full bg-[#050505] pl-[25px] pr-[20px] text-left text-[15.5px] font-medium tracking-[-0.015em] text-white shadow-[0_2px_5px_rgba(0,0,0,0.35)] transition-transform duration-200 active:scale-[0.985] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#EF471C] dark:bg-[#141414] dark:text-[#FAFAFA]"
+                className="group relative flex h-[50px] w-[196px] cursor-pointer items-center justify-start overflow-hidden rounded-full bg-[#050505] pl-[25px] pr-[20px] text-left text-[15.5px] font-medium tracking-[-0.015em] text-white shadow-[0_2px_5px_rgba(0,0,0,0.35)] transition-transform duration-200 active:scale-[0.985] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#EF471C]"
               >
                 {/* Hover Metallic Graphite Gradient Overlay */}
                 <span
@@ -1501,7 +1015,7 @@ export const UnlimitedDesignHero = forwardRef<
                         },
                       },
                     }}
-                    className="relative h-[30px] w-[30px] shrink-0 overflow-hidden rounded-full ring-[1.5px] ring-[#E2E2E2] transition-transform duration-200 hover:z-20 hover:-translate-y-0.5 dark:ring-[#1E1E1E]"
+                    className="relative h-[30px] w-[30px] shrink-0 overflow-hidden rounded-full ring-[1.5px] ring-[#E2E2E2] transition-transform duration-200 hover:z-20 hover:-translate-y-0.5"
                     style={{ zIndex: i + 1 }}
                   >
                     <img
@@ -1519,7 +1033,7 @@ export const UnlimitedDesignHero = forwardRef<
                 charSpeedMs={26}
                 showCursorWhileTyping={false}
                 reduceMotion={shouldReduceMotion}
-                className="mt-[5px] pl-[2px] text-[12.5px] font-normal leading-none tracking-[-0.01em] text-[#767676] dark:text-[#9A9A9A]"
+                className="mt-[5px] pl-[2px] text-[12.5px] font-normal leading-none tracking-[-0.01em] text-[#767676]"
               />
             </div>
           </div>
@@ -1535,7 +1049,7 @@ export const UnlimitedDesignHero = forwardRef<
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.2 }}
-              className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs dark:bg-black/70"
+              className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs"
               role="dialog"
               aria-modal="true"
               aria-labelledby={`${instanceId}-modal-title`}
@@ -1556,21 +1070,21 @@ export const UnlimitedDesignHero = forwardRef<
                     : { opacity: 0, y: 10, scale: 0.98 }
                 }
                 transition={{ duration: 0.24, ease: EASE_OUT_EXPO }}
-                className="relative w-full max-w-[640px] overflow-hidden rounded-[28px] border border-black/10 bg-[#F7F7F7] p-6 text-[#0A0A0A] shadow-2xl dark:border-white/10 dark:bg-[#161616] dark:text-[#F5F5F5] sm:p-8"
+                className="relative w-full max-w-[640px] overflow-hidden rounded-[28px] border border-black/10 bg-[#F7F7F7] p-6 text-[#0A0A0A] shadow-2xl sm:p-8"
               >
                 <div className="flex items-start justify-between gap-4">
                   <div>
-                    <div className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1 text-xs font-medium text-[#141414] shadow-2xs tabular-nums dark:bg-[#242424] dark:text-[#EAEAEA]">
+                    <div className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1 text-xs font-medium text-[#141414] shadow-2xs">
                       <span className="h-1.5 w-1.5 rounded-full bg-[#0CB300]" />
                       {spotsLeft} Booking Spots Available This Month
                     </div>
                     <h2
                       id={`${instanceId}-modal-title`}
-                      className="mt-3 text-2xl font-semibold tracking-tight text-[#050505] dark:text-[#FAFAFA]"
+                      className="mt-3 text-2xl font-semibold tracking-tight text-[#050505]"
                     >
                       Choose your unlimited design plan
                     </h2>
-                    <p className="mt-1 text-sm text-[#666666] dark:text-[#A1A1A1]">
+                    <p className="mt-1 text-sm text-[#666666]">
                       Transparent monthly subscription. Pause or cancel anytime.
                     </p>
                   </div>
@@ -1578,7 +1092,7 @@ export const UnlimitedDesignHero = forwardRef<
                     type="button"
                     onClick={() => setIsModalOpen(false)}
                     aria-label="Close plan selector"
-                    className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full bg-white text-[#444] shadow-2xs transition hover:bg-neutral-200 dark:bg-[#242424] dark:text-[#D4D4D4] dark:hover:bg-[#333333]"
+                    className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full bg-white text-[#444] shadow-2xs transition hover:bg-neutral-200"
                   >
                     ✕
                   </button>
@@ -1600,16 +1114,15 @@ export const UnlimitedDesignHero = forwardRef<
                             setSelectedPlanId(plan.id);
                           }
                         }}
-                        className={cn(
-                          "flex cursor-pointer flex-col justify-between rounded-[20px] border p-5 transition",
+                        className={`flex cursor-pointer flex-col justify-between rounded-[20px] border p-5 transition ${
                           isSelected
-                            ? "border-[#050505] bg-white shadow-md ring-1 ring-[#050505] dark:border-white dark:bg-[#1F1F1F] dark:ring-white"
-                            : "border-black/10 bg-white/70 hover:bg-white dark:border-white/10 dark:bg-[#1B1B1B]/80 dark:hover:bg-[#222222]"
-                        )}
+                            ? "border-[#050505] bg-white shadow-md ring-1 ring-[#050505]"
+                            : "border-black/10 bg-white/70 hover:bg-white"
+                        }`}
                       >
                         <div>
                           <div className="flex items-center justify-between gap-2">
-                            <span className="text-base font-semibold text-[#050505] dark:text-[#FAFAFA]">
+                            <span className="text-base font-semibold text-[#050505]">
                               {plan.name}
                             </span>
                             {plan.badge && (
@@ -1619,17 +1132,17 @@ export const UnlimitedDesignHero = forwardRef<
                             )}
                           </div>
                           <div className="mt-2 flex items-baseline gap-1">
-                            <span className="text-3xl font-semibold tracking-tight text-[#050505] tabular-nums dark:text-[#FAFAFA]">
+                            <span className="text-3xl font-semibold tracking-tight text-[#050505]">
                               {plan.price}
                             </span>
-                            <span className="text-xs text-[#666666] dark:text-[#A1A1A1]">
+                            <span className="text-xs text-[#666666]">
                               {plan.cadence}
                             </span>
                           </div>
-                          <p className="mt-2 text-xs leading-relaxed text-[#666666] dark:text-[#A1A1A1]">
+                          <p className="mt-2 text-xs leading-relaxed text-[#666666]">
                             {plan.description}
                           </p>
-                          <ul className="mt-4 space-y-2 border-t border-black/5 pt-3 text-xs text-[#222222] dark:border-white/10 dark:text-[#E0E0E0]">
+                          <ul className="mt-4 space-y-2 border-t border-black/5 pt-3 text-xs text-[#222222]">
                             {plan.features.map((feat, i) => (
                               <li key={i} className="flex items-start gap-2">
                                 <span className="text-[#0CB300]">✓</span>
@@ -1645,12 +1158,11 @@ export const UnlimitedDesignHero = forwardRef<
                             e.stopPropagation();
                             handleConfirmPlan(plan);
                           }}
-                          className={cn(
-                            "mt-5 w-full cursor-pointer rounded-full py-2.5 text-xs font-medium transition",
+                          className={`mt-5 w-full cursor-pointer rounded-full py-2.5 text-xs font-medium transition ${
                             isSelected
-                              ? "bg-[#050505] text-white hover:bg-[#242424] dark:bg-white dark:text-[#050505] dark:hover:bg-neutral-200"
-                              : "bg-neutral-200 text-[#141414] hover:bg-neutral-300 dark:bg-[#2A2A2A] dark:text-[#F0F0F0] dark:hover:bg-[#363636]"
-                          )}
+                              ? "bg-[#050505] text-white hover:bg-[#242424]"
+                              : "bg-neutral-200 text-[#141414] hover:bg-neutral-300"
+                          }`}
                         >
                           {confirmedPlan?.id === plan.id
                             ? "Spot Reserved ✓"
@@ -1671,4 +1183,6 @@ export const UnlimitedDesignHero = forwardRef<
 
 UnlimitedDesignHero.displayName = "UnlimitedDesignHero";
 
-export default UnlimitedDesignHero;
+export default function DefaultUnlimitedDesignHeroDemo() {
+  return <UnlimitedDesignHero />;
+}
