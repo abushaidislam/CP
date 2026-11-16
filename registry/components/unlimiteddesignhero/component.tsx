@@ -1123,6 +1123,12 @@ export const UnlimitedDesignHero = forwardRef<
         {/* Animated WebGL1 "Waves" Shader Background */}
         <WavesShaderBackground reduceMotion={shouldReduceMotion} />
 
+        {/* Dark-theme atmospheric scrim for deeper contrast over the WebGL shader */}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 hidden bg-[radial-gradient(circle_at_50%_40%,rgba(14,12,20,0.48)_0%,rgba(9,8,13,0.78)_100%)] dark:block"
+        />
+
         {/* Main Choreographed Container */}
         <div
           key={animCycleKey}
@@ -1145,7 +1151,7 @@ export const UnlimitedDesignHero = forwardRef<
               duration: 0.52,
               ease: EASE_OUT_EXPO,
             }}
-            className="mb-[44px] inline-flex h-[43px] cursor-pointer items-center gap-[10px] rounded-full bg-white px-[19px] shadow-[0_2px_10px_rgba(0,0,0,0.03)] ring-1 ring-black/[0.02] transition-shadow hover:shadow-[0_4px_14px_rgba(0,0,0,0.06)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#EF471C] dark:bg-[#1B1B1B] dark:ring-white/10 dark:shadow-[0_2px_12px_rgba(0,0,0,0.35)]"
+            className="mb-[44px] inline-flex h-[43px] cursor-pointer items-center gap-[10px] rounded-full bg-white px-[19px] shadow-[0_2px_10px_rgba(0,0,0,0.03)] ring-1 ring-black/[0.02] transition-shadow hover:shadow-[0_4px_14px_rgba(0,0,0,0.06)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#EF471C] dark:bg-[#18181B]/90 dark:ring-white/15 dark:backdrop-blur-md dark:shadow-[0_4px_16px_rgba(0,0,0,0.45)] dark:hover:bg-[#222226] dark:hover:shadow-[0_6px_20px_rgba(0,0,0,0.55)]"
           >
             <span className="relative flex h-[6px] w-[6px] shrink-0">
               {isBookingOpen && !shouldReduceMotion && (
@@ -1167,7 +1173,7 @@ export const UnlimitedDesignHero = forwardRef<
               startDelayMs={110}
               charSpeedMs={22}
               reduceMotion={shouldReduceMotion}
-              className="text-[14.5px] font-medium leading-none tracking-[-0.018em] text-[#141414] tabular-nums dark:text-[#F0F0F0]"
+              className="text-[14.5px] font-medium leading-none tracking-[-0.018em] text-[#141414] tabular-nums dark:text-[#F4F4F5]"
             />
           </motion.button>
 
@@ -1227,7 +1233,7 @@ export const UnlimitedDesignHero = forwardRef<
                   delay: 0.34,
                   ease: EASE_OUT_EXPO,
                 }}
-                className="group relative inline-flex h-[84px] w-[112px] shrink-0 cursor-pointer overflow-hidden rounded-[30px] border-[2.5px] border-[#141414] bg-[#4338CA] p-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#EF471C] focus-visible:ring-offset-2 dark:border-[#2C2C2C] sm:h-[98px] sm:w-[130px] sm:rounded-[34px] md:h-[111px] md:w-[146px] md:rounded-[38px]"
+                className="group relative inline-flex h-[84px] w-[112px] shrink-0 cursor-pointer overflow-hidden rounded-[30px] border-[2.5px] border-[#141414] bg-[#4338CA] p-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#EF471C] focus-visible:ring-offset-2 dark:border-white/20 dark:focus-visible:ring-offset-[#0E0E0E] sm:h-[98px] sm:w-[130px] sm:rounded-[34px] md:h-[111px] md:w-[146px] md:rounded-[38px]"
                 style={{
                   boxShadow:
                     "6px 9px 16px rgba(0, 0, 0, 0.28), 2px 3px 5px rgba(0, 0, 0, 0.22), 1.5px 1.5px 0px #0A0A0A",
@@ -1275,7 +1281,7 @@ export const UnlimitedDesignHero = forwardRef<
                 delay={0.44}
                 stagger={0.03}
                 reduceMotion={shouldReduceMotion}
-                className="text-[54px] leading-[1.05] text-[#707070] dark:text-[#8E8E8E] sm:text-[82px] md:text-[100px]"
+                className="text-[54px] leading-[1.05] text-[#707070] dark:text-[#A6A6AE] sm:text-[82px] md:text-[100px]"
               />
             </span>
 
@@ -1287,7 +1293,7 @@ export const UnlimitedDesignHero = forwardRef<
                 delay={0.56}
                 stagger={0.032}
                 reduceMotion={shouldReduceMotion}
-                className="text-[54px] leading-[1.05] text-[#747474] dark:text-[#8E8E8E] sm:text-[82px] md:text-[100px]"
+                className="text-[54px] leading-[1.05] text-[#747474] dark:text-[#A6A6AE] sm:text-[82px] md:text-[100px]"
               />
 
               {/* PILL 2: Dark Infinite Startup Logo Marquee — Frame-In Spring Pop */}
@@ -1324,7 +1330,7 @@ export const UnlimitedDesignHero = forwardRef<
                   delay: 0.64,
                   ease: EASE_OUT_EXPO,
                 }}
-                className="relative inline-flex h-[84px] w-[112px] shrink-0 items-center overflow-hidden rounded-[30px] border-[2.5px] border-[#121212] bg-[#262626] dark:border-[#2C2C2C] sm:h-[98px] sm:w-[130px] sm:rounded-[34px] md:h-[111px] md:w-[146px] md:rounded-[38px]"
+                className="relative inline-flex h-[84px] w-[112px] shrink-0 items-center overflow-hidden rounded-[30px] border-[2.5px] border-[#121212] bg-[#262626] dark:border-white/20 dark:bg-[#18181B] sm:h-[98px] sm:w-[130px] sm:rounded-[34px] md:h-[111px] md:w-[146px] md:rounded-[38px]"
                 style={{
                   boxShadow:
                     "6px 9px 16px rgba(0, 0, 0, 0.28), 2px 3px 5px rgba(0, 0, 0, 0.22), 1.5px 1.5px 0px #0A0A0A",
@@ -1332,7 +1338,7 @@ export const UnlimitedDesignHero = forwardRef<
               >
                 {/* Continuous Right-to-Left Marquee Track */}
                 <motion.div
-                  className="flex items-center gap-[26px] pr-[26px] text-[#707070] dark:text-[#909090]"
+                  className="flex items-center gap-[26px] pr-[26px] text-[#707070] dark:text-[#A1A1AA]"
                   animate={
                     shouldReduceMotion ? { x: "0%" } : { x: ["0%", "-33.333%"] }
                   }
@@ -1393,7 +1399,7 @@ export const UnlimitedDesignHero = forwardRef<
                 },
               },
             }}
-            className="mt-[46px] max-w-[340px] text-center text-[15.5px] font-normal leading-[1.52] tracking-[-0.015em] text-[#727272] dark:text-[#9A9A9A]"
+            className="mt-[46px] max-w-[340px] text-center text-[15.5px] font-normal leading-[1.52] tracking-[-0.015em] text-[#727272] dark:text-[#B4B4BC]"
           >
             <span className="inline">
               {subtitleWordsLine1.map((word, idx) => (
@@ -1439,27 +1445,36 @@ export const UnlimitedDesignHero = forwardRef<
                 delay: 1.24,
                 ease: EASE_OUT_EXPO,
               }}
-              className="rounded-full bg-[linear-gradient(180deg,#F4F4F4_0%,#E7E7E7_100%)] p-[7px] shadow-[0_10px_22px_rgba(0,0,0,0.08),0_2px_6px_rgba(0,0,0,0.04),inset_0_1px_1px_rgba(255,255,255,0.95)] dark:bg-[linear-gradient(180deg,#262626_0%,#1A1A1A_100%)] dark:shadow-[0_10px_22px_rgba(0,0,0,0.45),0_2px_6px_rgba(0,0,0,0.25),inset_0_1px_1px_rgba(255,255,255,0.08)]"
+              className="rounded-full bg-[linear-gradient(180deg,#F4F4F4_0%,#E7E7E7_100%)] p-[7px] shadow-[0_10px_22px_rgba(0,0,0,0.08),0_2px_6px_rgba(0,0,0,0.04),inset_0_1px_1px_rgba(255,255,255,0.95)] dark:bg-[linear-gradient(180deg,#2A2A2E_0%,#16161A_100%)] dark:ring-1 dark:ring-white/10 dark:shadow-[0_10px_24px_rgba(0,0,0,0.55),0_2px_6px_rgba(0,0,0,0.35),inset_0_1px_1px_rgba(255,255,255,0.12)]"
             >
               {/* Inner Black Pill CTA Button (196x50px) with Video-Verified Hover Metallic Sheen */}
               <button
                 type="button"
                 onClick={handleCtaAction}
-                className="group relative flex h-[50px] w-[196px] cursor-pointer items-center justify-start overflow-hidden rounded-full bg-[#050505] pl-[25px] pr-[20px] text-left text-[15.5px] font-medium tracking-[-0.015em] text-white shadow-[0_2px_5px_rgba(0,0,0,0.35)] transition-transform duration-200 active:scale-[0.985] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#EF471C] dark:bg-[#141414] dark:text-[#FAFAFA]"
+                className="group relative flex h-[50px] w-[196px] cursor-pointer items-center justify-start overflow-hidden rounded-full bg-[#050505] pl-[25px] pr-[20px] text-left text-[15.5px] font-medium tracking-[-0.015em] text-white shadow-[0_2px_5px_rgba(0,0,0,0.35)] transition-transform duration-200 active:scale-[0.985] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#EF471C] dark:bg-[#FAFAFA] dark:text-[#09090B] dark:shadow-[0_2px_10px_rgba(255,255,255,0.12)]"
               >
-                {/* Hover Metallic Graphite Gradient Overlay */}
+                {/* Hover Metallic Graphite Gradient Overlay (Light Mode) */}
                 <span
                   aria-hidden="true"
-                  className="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-300 ease-out group-hover:opacity-100"
+                  className="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-300 ease-out group-hover:opacity-100 dark:hidden"
                   style={{
                     background:
                       "linear-gradient(90deg, #474747 0%, #242424 46%, #525252 100%)",
                   }}
                 />
+                {/* Hover Metallic Pearl Gradient Overlay (Dark Mode) */}
+                <span
+                  aria-hidden="true"
+                  className="pointer-events-none absolute inset-0 hidden opacity-0 transition-opacity duration-300 ease-out group-hover:opacity-100 dark:block"
+                  style={{
+                    background:
+                      "linear-gradient(90deg, #FFFFFF 0%, #E4E4E7 48%, #FFFFFF 100%)",
+                  }}
+                />
                 {/* Top subtle inner specular line */}
                 <span
                   aria-hidden="true"
-                  className="pointer-events-none absolute inset-0 rounded-full ring-1 ring-inset ring-white/10 group-hover:ring-white/20"
+                  className="pointer-events-none absolute inset-0 rounded-full ring-1 ring-inset ring-white/10 group-hover:ring-white/20 dark:ring-black/10 dark:group-hover:ring-black/20"
                 />
                 <span className="relative z-10">
                   {confirmedPlan ? `Selected: ${confirmedPlan.name}` : ctaText}
@@ -1501,7 +1516,7 @@ export const UnlimitedDesignHero = forwardRef<
                         },
                       },
                     }}
-                    className="relative h-[30px] w-[30px] shrink-0 overflow-hidden rounded-full ring-[1.5px] ring-[#E2E2E2] transition-transform duration-200 hover:z-20 hover:-translate-y-0.5 dark:ring-[#1E1E1E]"
+                    className="relative h-[30px] w-[30px] shrink-0 overflow-hidden rounded-full ring-[1.5px] ring-[#E2E2E2] transition-transform duration-200 hover:z-20 hover:-translate-y-0.5 dark:ring-[#2A2A30]"
                     style={{ zIndex: i + 1 }}
                   >
                     <img
@@ -1519,7 +1534,7 @@ export const UnlimitedDesignHero = forwardRef<
                 charSpeedMs={26}
                 showCursorWhileTyping={false}
                 reduceMotion={shouldReduceMotion}
-                className="mt-[5px] pl-[2px] text-[12.5px] font-normal leading-none tracking-[-0.01em] text-[#767676] dark:text-[#9A9A9A]"
+                className="mt-[5px] pl-[2px] text-[12.5px] font-normal leading-none tracking-[-0.01em] text-[#767676] dark:text-[#B4B4BC]"
               />
             </div>
           </div>
@@ -1535,7 +1550,7 @@ export const UnlimitedDesignHero = forwardRef<
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.2 }}
-              className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs dark:bg-black/70"
+              className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs dark:bg-black/75"
               role="dialog"
               aria-modal="true"
               aria-labelledby={`${instanceId}-modal-title`}
@@ -1556,7 +1571,7 @@ export const UnlimitedDesignHero = forwardRef<
                     : { opacity: 0, y: 10, scale: 0.98 }
                 }
                 transition={{ duration: 0.24, ease: EASE_OUT_EXPO }}
-                className="relative w-full max-w-[640px] overflow-hidden rounded-[28px] border border-black/10 bg-[#F7F7F7] p-6 text-[#0A0A0A] shadow-2xl dark:border-white/10 dark:bg-[#161616] dark:text-[#F5F5F5] sm:p-8"
+                className="relative w-full max-w-[640px] overflow-hidden rounded-[28px] border border-black/10 bg-[#F7F7F7] p-6 text-[#0A0A0A] shadow-2xl dark:border-white/15 dark:bg-[#141417] dark:text-[#F5F5F5] sm:p-8"
               >
                 <div className="flex items-start justify-between gap-4">
                   <div>
@@ -1601,10 +1616,10 @@ export const UnlimitedDesignHero = forwardRef<
                           }
                         }}
                         className={cn(
-                          "flex cursor-pointer flex-col justify-between rounded-[20px] border p-5 transition",
+                          "flex cursor-pointer flex-col justify-between rounded-[20px] border p-5 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#EF471C]",
                           isSelected
-                            ? "border-[#050505] bg-white shadow-md ring-1 ring-[#050505] dark:border-white dark:bg-[#1F1F1F] dark:ring-white"
-                            : "border-black/10 bg-white/70 hover:bg-white dark:border-white/10 dark:bg-[#1B1B1B]/80 dark:hover:bg-[#222222]"
+                            ? "border-[#050505] bg-white shadow-md ring-1 ring-[#050505] dark:border-white dark:bg-[#1F1F23] dark:ring-white"
+                            : "border-black/10 bg-white/70 hover:bg-white dark:border-white/10 dark:bg-[#1B1B1F]/80 dark:hover:bg-[#222227]"
                         )}
                       >
                         <div>
