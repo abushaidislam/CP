@@ -8,7 +8,6 @@ const settings = {
   autoPlay: true,
   interval: 2400,
   pauseOnHover: true,
-  showControls: true,
 };
 
 type ThemeMode = "light" | "dark";
@@ -18,8 +17,7 @@ export default function SpatialCardCarouselDemo(
 ) {
   const config = { ...settings, ...props };
 
-  const theme: ThemeMode =
-    config.theme === "dark" ? "dark" : "light";
+  const theme: ThemeMode = config.theme === "dark" ? "dark" : "light";
 
   const interval =
     typeof config.interval === "number" &&
@@ -40,7 +38,6 @@ export default function SpatialCardCarouselDemo(
           autoPlay={Boolean(config.autoPlay)}
           interval={interval}
           pauseOnHover={Boolean(config.pauseOnHover)}
-          showControls={Boolean(config.showControls)}
         />
       </div>
     </div>
