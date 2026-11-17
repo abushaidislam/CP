@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-17T17:06:48.229Z",
+  "updatedAt": "2026-11-17T17:07:02.069Z",
   "totalComponents": 44,
   "components": [
     {
@@ -10,8 +10,8 @@
       "description": "Interactive isometric 4-tier AI visibility cube stack with cumulative layer shading, floating prompt/answer cards, and spring-tracked step callouts.",
       "category": "Custom",
       "isBuiltIn": false,
-      "updatedAt": 1794935200643,
-      "lastRepoSyncAt": 1794935208111,
+      "updatedAt": 1794935213275,
+      "lastRepoSyncAt": 1794935221937,
       "path": "registry/components/isometric-ranking-stack",
       "files": [
         "component.tsx",
