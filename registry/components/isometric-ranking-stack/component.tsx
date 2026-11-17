@@ -73,21 +73,22 @@ const EASE_OUT_QUINT: [number, number, number, number] = [0.16, 1, 0.3, 1];
 
 const CONNECTOR_SPRING = {
   type: "spring" as const,
-  stiffness: 320,
-  damping: 32,
+  stiffness: 340,
+  damping: 34,
   mass: 0.75,
 };
 
-// Isometric cube geometry in SVG coordinate space (540 x 440)
-const CX = 315;
-const TOP_Y = 92;
-const DX = 118;
-const DY = 68;
-const LAYER_H = 38;
+// Isometric cube geometry in SVG coordinate space (580 x 430)
+const SVG_W = 580;
+const SVG_H = 430;
+const CX = 352;
+const TOP_Y = 84;
+const DX = 114;
+const DY = 66;
+const LAYER_H = 36;
 const NUM_LAYERS = 4;
 
 function getPlanePoints(planeIndex: number) {
-  // planeIndex 0 = very top plane, 4 = very bottom plane
   const y0 = TOP_Y + planeIndex * LAYER_H;
   return {
     top: { x: CX, y: y0 },
@@ -141,7 +142,9 @@ export const IsometricRankingStack = React.forwardRef<
     const shouldReduceMotion = Boolean(useReducedMotion());
 
     const normalizedInitial =
-      Number.isInteger(initialStep) && initialStep >= 0 && initialStep < NUM_LAYERS
+      Number.isInteger(initialStep) &&
+      initialStep >= 0 &&
+      initialStep < NUM_LAYERS
         ? initialStep
         : null;
 
@@ -171,10 +174,10 @@ export const IsometricRankingStack = React.forwardRef<
         : "text-[#52525B] dark:text-[#8E8E93]";
 
     const cardClasses = isForcedDark
-      ? "bg-[#151517]/95 border-white/[0.09] text-[#A1A1AA] shadow-[0_12px_32px_rgba(0,0,0,0.45)]"
+      ? "bg-[#151517]/95 border-white/[0.08] text-[#A1A1AA] shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_16px_40px_rgba(0,0,0,0.5)]"
       : isForcedLight
-        ? "bg-white/95 border-black/[0.08] text-[#52525B] shadow-[0_10px_28px_rgba(0,0,0,0.07)]"
-        : "bg-white/95 border-black/[0.08] text-[#52525B] shadow-[0_10px_28px_rgba(0,0,0,0.07)] dark:bg-[#151517]/95 dark:border-white/[0.09] dark:text-[#A1A1AA] dark:shadow-[0_12px_32px_rgba(0,0,0,0.45)]";
+        ? "bg-white/95 border-black/[0.08] text-[#52525B] shadow-[inset_0_1px_0_rgba(255,255,255,0.8),0_12px_30px_rgba(0,0,0,0.07)]"
+        : "bg-white/95 border-black/[0.08] text-[#52525B] shadow-[inset_0_1px_0_rgba(255,255,255,0.8),0_12px_30px_rgba(0,0,0,0.07)] dark:bg-[#151517]/95 dark:border-white/[0.08] dark:text-[#A1A1AA] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_16px_40px_rgba(0,0,0,0.5)]";
 
     const cardStrongText = isForcedDark
       ? "text-[#F5F5F7]"
@@ -188,7 +191,6 @@ export const IsometricRankingStack = React.forwardRef<
         ? "bg-white text-[#18181B] border border-black/[0.12] shadow-[0_1px_2px_rgba(0,0,0,0.04)] hover:bg-[#F4F4F5] focus-visible:ring-offset-[#FAFAFA]"
         : "bg-white text-[#18181B] border border-black/[0.12] shadow-[0_1px_2px_rgba(0,0,0,0.04)] hover:bg-[#F4F4F5] focus-visible:ring-offset-[#FAFAFA] dark:bg-[#151517] dark:text-[#E5E5EA] dark:border-white/10 dark:shadow-none dark:hover:bg-[#1C1C20] dark:hover:border-white/[0.16] dark:focus-visible:ring-offset-[#0A0A0A]";
 
-    // Plane index for the top face of the currently active step (step 3 -> plane 0, step 0 -> plane 3)
     const activePlaneIndex =
       activeStep !== null ? NUM_LAYERS - 1 - activeStep : null;
     const activeConnectorY =
@@ -196,28 +198,34 @@ export const IsometricRankingStack = React.forwardRef<
         ? TOP_Y + activePlaneIndex * LAYER_H + DY
         : TOP_Y + DY;
 
-    // Precompute isometric floor grid lines around the bottom plane
+    // Cube-locked isometric floor grid centered at bottom diamond center
+    const bottomCenterX = CX;
+    const bottomCenterY = TOP_Y + NUM_LAYERS * LAYER_H + DY;
+    const stepX = DX / 4;
+    const stepY = DY / 4;
+    const gridExtent = 8;
     const gridLines: Array<{ x1: number; y1: number; x2: number; y2: number }> =
       [];
-    const floorOriginY = TOP_Y + NUM_LAYERS * LAYER_H + DY * 2;
-    const stepSize = 28;
-    const gridCount = 8;
-    for (let i = -gridCount; i <= gridCount; i++) {
-      // Lines parallel to right-up axis
-      const sx1 = CX + i * stepSize;
-      const sy1 = floorOriginY - Math.abs(i) * 0;
+
+    for (let i = -gridExtent; i <= gridExtent; i++) {
+      // Lines along +u = (+stepX, +stepY)
+      const ox1 = bottomCenterX + i * stepX;
+      const oy1 = bottomCenterY - i * stepY;
       gridLines.push({
-        x1: sx1 - gridCount * stepSize,
-        y1: sy1 - (gridCount * stepSize * DY) / DX + (i * stepSize * DY) / DX,
-        x2: sx1 + gridCount * stepSize,
-        y2: sy1 + (gridCount * stepSize * DY) / DX + (i * stepSize * DY) / DX,
+        x1: ox1 - gridExtent * stepX,
+        y1: oy1 - gridExtent * stepY,
+        x2: ox1 + gridExtent * stepX,
+        y2: oy1 + gridExtent * stepY,
       });
-      // Lines parallel to left-up axis
+
+      // Lines along +v = (-stepX, +stepY)
+      const ox2 = bottomCenterX + i * stepX;
+      const oy2 = bottomCenterY + i * stepY;
       gridLines.push({
-        x1: sx1 - gridCount * stepSize,
-        y1: sy1 + (gridCount * stepSize * DY) / DX - (i * stepSize * DY) / DX,
-        x2: sx1 + gridCount * stepSize,
-        y2: sy1 - (gridCount * stepSize * DY) / DX - (i * stepSize * DY) / DX,
+        x1: ox2 + gridExtent * stepX,
+        y1: oy2 - gridExtent * stepY,
+        x2: ox2 - gridExtent * stepX,
+        y2: oy2 + gridExtent * stepY,
       });
     }
 
@@ -242,12 +250,12 @@ export const IsometricRankingStack = React.forwardRef<
           }}
           {...rest}
         >
-          <div className="mx-auto grid w-full max-w-[1160px] grid-cols-1 items-center gap-10 lg:grid-cols-12 lg:gap-8">
+          <div className="mx-auto grid w-full max-w-[1180px] grid-cols-1 items-center gap-10 lg:grid-cols-12 lg:gap-6">
             {/* Left Copy & CTAs */}
             <div className="flex flex-col items-start text-left lg:col-span-5">
               <h2
                 id={`${uid}-heading`}
-                className="max-w-[440px] font-medium tracking-[-0.03em] leading-[1.1] text-[2.15rem] sm:text-[2.75rem] lg:text-[3.05rem]"
+                className="max-w-[440px] font-medium tracking-[-0.032em] leading-[1.09] text-[2.2rem] sm:text-[2.75rem] lg:text-[3.1rem]"
               >
                 {headline}
               </h2>
@@ -280,7 +288,7 @@ export const IsometricRankingStack = React.forwardRef<
                     background:
                       "radial-gradient(120% 100% at 50% 0%, #3E6EFF 0%, #1C3A8A 48%, #101218 100%)",
                     boxShadow:
-                      "inset 0 1px 0 rgba(255,255,255,0.3), 0 0 0 1px rgba(255,255,255,0.12), 0 4px 12px rgba(16,18,24,0.18)",
+                      "inset 0 1px 0 rgba(255,255,255,0.32), 0 0 0 1px rgba(255,255,255,0.12), 0 4px 12px rgba(16,18,24,0.18)",
                   }}
                 >
                   <span className="relative z-10">{primaryCtaText}</span>
@@ -305,20 +313,20 @@ export const IsometricRankingStack = React.forwardRef<
             {/* Right Interactive Isometric Stack */}
             <div className="relative flex w-full items-center justify-center lg:col-span-7">
               <div
-                className="relative w-full max-w-[620px] select-none"
+                className="relative w-full max-w-[650px] select-none"
                 onMouseLeave={() => setHoveredStep(null)}
               >
                 {/* Top-Right Prompt Card */}
                 <div
                   className={cn(
-                    "relative z-10 ml-auto mb-2 w-fit max-w-[260px] rounded-xl border px-3.5 py-2.5 text-left text-[0.78rem] leading-[1.45] backdrop-blur-md sm:absolute sm:right-2 sm:top-0 sm:mb-0",
+                    "relative z-10 ml-auto mb-2 w-fit max-w-[250px] rounded-xl border px-3.5 py-2.5 text-left text-[0.76rem] leading-[1.45] backdrop-blur-md sm:absolute sm:right-2 sm:top-0 sm:mb-0",
                     cardClasses
                   )}
                 >
                   <div className="flex items-start gap-2.5">
                     <span
                       aria-hidden="true"
-                      className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#D97757] to-[#7C3AED] text-[10px] font-semibold text-white"
+                      className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#D97757] to-[#7C3AED] text-[10px] font-semibold text-white ring-1 ring-white/15"
                     >
                       {promptAuthor.slice(0, 1).toUpperCase()}
                     </span>
@@ -334,7 +342,7 @@ export const IsometricRankingStack = React.forwardRef<
                 {/* Top-Left AI Answer Card */}
                 <div
                   className={cn(
-                    "relative z-10 mb-3 w-fit max-w-[270px] rounded-xl border px-3.5 py-2.5 text-left text-[0.78rem] leading-[1.45] backdrop-blur-md sm:absolute sm:left-4 sm:top-16 sm:mb-0",
+                    "relative z-10 mb-3 w-fit max-w-[265px] rounded-xl border px-3.5 py-2.5 text-left text-[0.76rem] leading-[1.45] backdrop-blur-md sm:absolute sm:left-[12%] sm:top-[12%] sm:mb-0",
                     cardClasses
                   )}
                 >
@@ -363,7 +371,7 @@ export const IsometricRankingStack = React.forwardRef<
 
                 {/* Isometric SVG Stack */}
                 <svg
-                  viewBox="0 0 540 440"
+                  viewBox={`0 0 ${SVG_W} ${SVG_H}`}
                   className="h-auto w-full overflow-visible"
                   role="group"
                   aria-label="Interactive AI visibility ranking layers"
@@ -376,45 +384,45 @@ export const IsometricRankingStack = React.forwardRef<
                       cy="50%"
                       r="50%"
                     >
-                      <stop offset="20%" stopColor="white" stopOpacity="1" />
+                      <stop offset="25%" stopColor="white" stopOpacity="1" />
                       <stop offset="100%" stopColor="white" stopOpacity="0" />
                     </radialGradient>
                     <mask id={`${uid}-grid-mask`}>
                       <ellipse
-                        cx={CX}
-                        cy={floorOriginY - 25}
-                        rx="230"
-                        ry="135"
+                        cx={bottomCenterX}
+                        cy={bottomCenterY}
+                        rx="225"
+                        ry="130"
                         fill={`url(#${uid}-grid-mask-grad)`}
                       />
                     </mask>
 
-                    {/* Active Top Face Gradient */}
+                    {/* Active Top Face Directional Specular Gradient */}
                     <linearGradient
                       id={`${uid}-top-face-dark`}
-                      x1="0%"
-                      y1="0%"
-                      x2="100%"
-                      y2="100%"
+                      x1="15%"
+                      y1="85%"
+                      x2="85%"
+                      y2="15%"
                     >
-                      <stop offset="0%" stopColor="#1B1B1E" />
-                      <stop offset="50%" stopColor="#323237" />
-                      <stop offset="100%" stopColor="#1F1F23" />
+                      <stop offset="0%" stopColor="#1A1A1D" />
+                      <stop offset="52%" stopColor="#35353B" />
+                      <stop offset="100%" stopColor="#232328" />
                     </linearGradient>
                     <linearGradient
                       id={`${uid}-top-face-light`}
-                      x1="0%"
-                      y1="0%"
-                      x2="100%"
-                      y2="100%"
+                      x1="15%"
+                      y1="85%"
+                      x2="85%"
+                      y2="15%"
                     >
-                      <stop offset="0%" stopColor="#E4E4E7" />
-                      <stop offset="50%" stopColor="#F4F4F5" />
-                      <stop offset="100%" stopColor="#D4D4D8" />
+                      <stop offset="0%" stopColor="#DCDCE0" />
+                      <stop offset="52%" stopColor="#F4F4F6" />
+                      <stop offset="100%" stopColor="#E4E4E8" />
                     </linearGradient>
                   </defs>
 
-                  {/* Isometric Floor Grid */}
+                  {/* Cube-Locked Isometric Floor Grid */}
                   <g
                     mask={`url(#${uid}-grid-mask)`}
                     className={cn(
@@ -538,7 +546,7 @@ export const IsometricRankingStack = React.forwardRef<
                           initial={false}
                           animate={{ opacity: isTopActive ? 1 : 0 }}
                           transition={{
-                            duration: shouldReduceMotion ? 0 : 0.24,
+                            duration: shouldReduceMotion ? 0 : 0.22,
                             ease: EASE_OUT_QUINT,
                           }}
                           fill={
@@ -549,7 +557,7 @@ export const IsometricRankingStack = React.forwardRef<
                           className={cn(
                             !isForcedDark &&
                               !isForcedLight &&
-                              "fill-[#E4E4E7] dark:fill-[#26262A]"
+                              "fill-[#E4E4E8] dark:fill-[#2A2A2F]"
                           )}
                         />
 
@@ -559,15 +567,15 @@ export const IsometricRankingStack = React.forwardRef<
                           initial={false}
                           animate={{ opacity: isFilled ? 1 : 0 }}
                           transition={{
-                            duration: shouldReduceMotion ? 0 : 0.24,
+                            duration: shouldReduceMotion ? 0 : 0.22,
                             ease: EASE_OUT_QUINT,
                           }}
                           className={cn(
                             isForcedDark
-                              ? "fill-[#1E1E22]"
+                              ? "fill-[#222226]"
                               : isForcedLight
                                 ? "fill-[#D4D4D8]"
-                                : "fill-[#D4D4D8] dark:fill-[#1E1E22]"
+                                : "fill-[#D4D4D8] dark:fill-[#222226]"
                           )}
                         />
 
@@ -577,15 +585,15 @@ export const IsometricRankingStack = React.forwardRef<
                           initial={false}
                           animate={{ opacity: isFilled ? 1 : 0 }}
                           transition={{
-                            duration: shouldReduceMotion ? 0 : 0.24,
+                            duration: shouldReduceMotion ? 0 : 0.22,
                             ease: EASE_OUT_QUINT,
                           }}
                           className={cn(
                             isForcedDark
-                              ? "fill-[#141417]"
+                              ? "fill-[#151518]"
                               : isForcedLight
                                 ? "fill-[#E4E4E7]"
-                                : "fill-[#E4E4E7] dark:fill-[#141417]"
+                                : "fill-[#E4E4E7] dark:fill-[#151518]"
                           )}
                         />
 
@@ -595,10 +603,10 @@ export const IsometricRankingStack = React.forwardRef<
                             "transition-colors duration-200",
                             isTopActive
                               ? isForcedDark
-                                ? "stroke-white/90"
+                                ? "stroke-white/95"
                                 : isForcedLight
-                                  ? "stroke-black/80"
-                                  : "stroke-black/80 dark:stroke-white/90"
+                                  ? "stroke-black/85"
+                                  : "stroke-black/85 dark:stroke-white/95"
                               : isForcedDark
                                 ? "stroke-white/45"
                                 : isForcedLight
@@ -608,20 +616,16 @@ export const IsometricRankingStack = React.forwardRef<
                           strokeWidth={isTopActive ? "1.25" : "1"}
                           fill="none"
                         >
-                          {/* Top diamond front edges */}
                           <polyline
                             points={`${pTop.left.x},${pTop.left.y} ${pTop.bottom.x},${pTop.bottom.y} ${pTop.right.x},${pTop.right.y}`}
                           />
-                          {/* Top diamond back edges */}
                           <polyline
                             points={`${pTop.left.x},${pTop.left.y} ${pTop.top.x},${pTop.top.y} ${pTop.right.x},${pTop.right.y}`}
-                            opacity={isFilled && !isTopActive ? 0.22 : 0.85}
+                            opacity={isFilled && !isTopActive ? 0.2 : 0.85}
                           />
-                          {/* Bottom diamond front edges */}
                           <polyline
                             points={`${pBot.left.x},${pBot.left.y} ${pBot.bottom.x},${pBot.bottom.y} ${pBot.right.x},${pBot.right.y}`}
                           />
-                          {/* Vertical corner posts */}
                           <line
                             x1={pTop.left.x}
                             y1={pTop.left.y}
@@ -642,7 +646,7 @@ export const IsometricRankingStack = React.forwardRef<
                           />
                         </g>
 
-                        {/* Vertex anchor dots */}
+                        {/* Crisp vertex anchor dots */}
                         <g
                           className={cn(
                             isForcedDark
@@ -651,24 +655,24 @@ export const IsometricRankingStack = React.forwardRef<
                                 ? "fill-[#FAFAFA] stroke-black/70"
                                 : "fill-[#FAFAFA] stroke-black/70 dark:fill-[#0A0A0A] dark:stroke-white/80"
                           )}
-                          strokeWidth="1.2"
+                          strokeWidth="1.1"
                         >
-                          <circle cx={pTop.left.x} cy={pTop.left.y} r="2.2" />
+                          <circle cx={pTop.left.x} cy={pTop.left.y} r="1.9" />
                           <circle
                             cx={pTop.bottom.x}
                             cy={pTop.bottom.y}
-                            r="2.2"
+                            r="1.9"
                           />
-                          <circle cx={pTop.right.x} cy={pTop.right.y} r="2.2" />
-                          <circle cx={pTop.top.x} cy={pTop.top.y} r="2.2" />
+                          <circle cx={pTop.right.x} cy={pTop.right.y} r="1.9" />
+                          <circle cx={pTop.top.x} cy={pTop.top.y} r="1.9" />
                         </g>
                       </g>
                     );
                   })}
 
-                  {/* Isometric Cited Brand Ring on Top Plane */}
+                  {/* Centered Isometric Cited Brand Ring on Top Plane */}
                   <g
-                    transform={`translate(${CX}, ${TOP_Y + DY - 12}) scale(1, 0.577) rotate(-45)`}
+                    transform={`translate(${CX}, ${TOP_Y + DY}) scale(1, 0.577) rotate(-45)`}
                     className="pointer-events-none"
                   >
                     <path
@@ -707,14 +711,14 @@ export const IsometricRankingStack = React.forwardRef<
                           shouldReduceMotion
                             ? { duration: 0 }
                             : {
-                                opacity: { duration: 0.18 },
+                                opacity: { duration: 0.16 },
                                 y: CONNECTOR_SPRING,
                               }
                         }
                         className="pointer-events-none"
                       >
                         <line
-                          x1={108}
+                          x1={154}
                           y1={0}
                           x2={CX - DX - 10}
                           y2={0}
@@ -744,7 +748,7 @@ export const IsometricRankingStack = React.forwardRef<
                   </AnimatePresence>
                 </svg>
 
-                {/* Active Tier Callout Label (positioned cleanly on left side) */}
+                {/* Active Tier Callout Label */}
                 <AnimatePresence mode="wait">
                   {activeData && activePlaneIndex !== null && (
                     <motion.div
@@ -761,13 +765,13 @@ export const IsometricRankingStack = React.forwardRef<
                           : { opacity: 0, x: -4 }
                       }
                       transition={{
-                        duration: shouldReduceMotion ? 0 : 0.2,
+                        duration: shouldReduceMotion ? 0 : 0.18,
                         ease: EASE_OUT_QUINT,
                       }}
                       style={{
-                        top: `${(activeConnectorY / 440) * 100}%`,
+                        top: `${(activeConnectorY / SVG_H) * 100}%`,
                       }}
-                      className="pointer-events-none absolute left-0 hidden w-[18%] -translate-y-1/2 pr-2 text-right sm:block"
+                      className="pointer-events-none absolute left-0 hidden w-[24.5%] -translate-y-1/2 pr-2 text-right sm:block"
                     >
                       <p
                         className={cn(
@@ -779,7 +783,7 @@ export const IsometricRankingStack = React.forwardRef<
                       </p>
                       <p
                         className={cn(
-                          "mt-1 text-[0.72rem] leading-[1.35]",
+                          "mt-1 text-[0.72rem] leading-[1.38]",
                           subtitleClasses
                         )}
                       >
