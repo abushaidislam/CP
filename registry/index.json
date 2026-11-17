@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-17T14:31:11.000Z",
+  "updatedAt": "2026-11-17T14:31:21.906Z",
   "totalComponents": 40,
   "components": [
     {
@@ -10,8 +10,8 @@
       "description": "An interactive keepsake photo box with a frosted translucent sleeve, sliding Polaroid print tray, hover lift physics, and an accessible full-bleed print viewer modal.",
       "category": "Custom",
       "isBuiltIn": false,
-      "updatedAt": 1794925860450,
-      "lastRepoSyncAt": 1794925870782,
+      "updatedAt": 1794925872335,
+      "lastRepoSyncAt": 1794925881783,
       "path": "registry/components/photo-box",
       "files": [
         "component.tsx",
