@@ -8,7 +8,7 @@ function cn(...classes: Array<string | undefined | null | false>): string {
   return classes.filter(Boolean).join(" ");
 }
 
-export type PaginationTheme = "light" | "dark";
+export type PaginationTheme = "auto" | "light" | "dark";
 
 export interface TactilePaginationProps
   extends Omit<React.HTMLAttributes<HTMLElement>, "onChange"> {
@@ -34,7 +34,7 @@ export interface TactilePaginationProps
   pageSizeUnitLabel?: string;
   /** Number of sibling pages shown around the active page */
   siblingCount?: number;
-  /** Color theme variant */
+  /** Color theme: "auto" follows Tailwind dark: class, or force "light" / "dark" */
   theme?: PaginationTheme;
   /** Disable all pagination interactions */
   disabled?: boolean;
@@ -49,28 +49,28 @@ function buildPageRange(
 ): PageItem[] {
   const safeTotal = Math.max(1, Math.floor(totalPages));
   const safeCurrent = Math.min(Math.max(1, currentPage), safeTotal);
+  const safeSiblings = Math.max(0, Math.floor(siblingCount));
 
-  // Reference shows 5 visible slots at page 1 of 10: [1, 2, 3, ..., 10]
-  const totalSlots = siblingCount * 2 + 3;
+  const totalSlots = safeSiblings * 2 + 3;
 
   if (safeTotal <= totalSlots + 2) {
     return Array.from({ length: safeTotal }, (_, i) => i + 1);
   }
 
-  const leftSibling = Math.max(safeCurrent - siblingCount, 1);
-  const rightSibling = Math.min(safeCurrent + siblingCount, safeTotal);
+  const leftSibling = Math.max(safeCurrent - safeSiblings, 1);
+  const rightSibling = Math.min(safeCurrent + safeSiblings, safeTotal);
 
   const showLeftEllipsis = leftSibling > 2;
   const showRightEllipsis = rightSibling < safeTotal - 1;
 
   if (!showLeftEllipsis && showRightEllipsis) {
-    const leftCount = Math.max(3, 2 * siblingCount + 1);
+    const leftCount = Math.max(3, 2 * safeSiblings + 1);
     const leftRange = Array.from({ length: leftCount }, (_, i) => i + 1);
     return [...leftRange, "ellipsis-right", safeTotal];
   }
 
   if (showLeftEllipsis && !showRightEllipsis) {
-    const rightCount = Math.max(3, 2 * siblingCount + 1);
+    const rightCount = Math.max(3, 2 * safeSiblings + 1);
     const rightRange = Array.from(
       { length: rightCount },
       (_, i) => safeTotal - rightCount + 1 + i
@@ -99,14 +99,15 @@ const TactilePagination = React.forwardRef<HTMLElement, TactilePaginationProps>(
       showPageSizeSelector = true,
       pageSizeUnitLabel = "rows",
       siblingCount = 1,
-      theme = "light",
+      theme = "auto",
       disabled = false,
       className,
       ...props
     },
     ref
   ) => {
-    const baseId = useId();
+    const rawId = useId();
+    const baseId = rawId.replace(/:/g, "");
     const shouldReduceMotion = useReducedMotion();
 
     const safeTotalPages = Math.max(1, Math.floor(totalPages));
@@ -175,21 +176,51 @@ const TactilePagination = React.forwardRef<HTMLElement, TactilePaginationProps>(
       [currentPage, safeTotalPages, siblingCount]
     );
 
-    const isDark = theme === "dark";
     const canGoPrev = !disabled && currentPage > 1;
     const canGoNext = !disabled && currentPage < safeTotalPages;
 
     const springTransition = shouldReduceMotion
-      ? { duration: 0 }
-      : { type: "spring" as const, stiffness: 520, damping: 38, mass: 0.8 };
+      ? { duration: 0.01 }
+      : { type: "spring" as const, stiffness: 460, damping: 36, mass: 0.75 };
+
+    // Pick light, dark, or auto (Tailwind dark:*) classes
+    const t = (lightCls: string, darkCls: string, autoCls: string) => {
+      if (theme === "light") return lightCls;
+      if (theme === "dark") return darkCls;
+      return autoCls;
+    };
+
+    const trackClass = t(
+      "bg-[#dbdbdb] shadow-[inset_0_1px_1px_rgba(0,0,0,0.04),0_1px_2px_rgba(0,0,0,0.06)]",
+      "bg-[#232326] shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_2px_6px_rgba(0,0,0,0.4)]",
+      "bg-[#dbdbdb] shadow-[inset_0_1px_1px_rgba(0,0,0,0.04),0_1px_2px_rgba(0,0,0,0.06)] dark:bg-[#232326] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_2px_6px_rgba(0,0,0,0.4)]"
+    );
+
+    const navButtonSurface = t(
+      "bg-[#ffffff] text-[#2c2827] shadow-[0_1px_2px_rgba(0,0,0,0.08),0_0_0_0.5px_rgba(0,0,0,0.03)] focus-visible:ring-[#2c2827]/40 focus-visible:ring-offset-[#dbdbdb]",
+      "bg-[#323236] text-[#f4f4f5] shadow-[0_1px_2px_rgba(0,0,0,0.35),inset_0_1px_0_rgba(255,255,255,0.08)] focus-visible:ring-white/40 focus-visible:ring-offset-[#232326]",
+      "bg-[#ffffff] text-[#2c2827] shadow-[0_1px_2px_rgba(0,0,0,0.08),0_0_0_0.5px_rgba(0,0,0,0.03)] focus-visible:ring-[#2c2827]/40 focus-visible:ring-offset-[#dbdbdb] dark:bg-[#323236] dark:text-[#f4f4f5] dark:shadow-[0_1px_2px_rgba(0,0,0,0.35),inset_0_1px_0_rgba(255,255,255,0.08)] dark:focus-visible:ring-white/40 dark:focus-visible:ring-offset-[#232326]"
+    );
+
+    const navButtonHover = t(
+      "hover:bg-[#fafafa] active:scale-[0.97] cursor-pointer",
+      "hover:bg-[#3b3b40] active:scale-[0.97] cursor-pointer",
+      "hover:bg-[#fafafa] dark:hover:bg-[#3b3b40] active:scale-[0.97] cursor-pointer"
+    );
+
+    const focusRingClass = t(
+      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 focus-visible:ring-[#2c2827]/40 focus-visible:ring-offset-[#dbdbdb]",
+      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 focus-visible:ring-white/40 focus-visible:ring-offset-[#232326]",
+      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 focus-visible:ring-[#2c2827]/40 focus-visible:ring-offset-[#dbdbdb] dark:focus-visible:ring-white/40 dark:focus-visible:ring-offset-[#232326]"
+    );
 
     return (
       <nav
         ref={ref}
         aria-label="Pagination"
         className={cn(
-          "inline-flex flex-col items-center gap-[22px] select-none",
-          disabled && "opacity-60 pointer-events-none",
+          "inline-flex max-w-full flex-col items-center gap-[22px] select-none",
+          disabled && "pointer-events-none opacity-60",
           className
         )}
         {...props}
@@ -197,10 +228,8 @@ const TactilePagination = React.forwardRef<HTMLElement, TactilePaginationProps>(
         {/* Top Pagination Bar */}
         <div
           className={cn(
-            "inline-flex items-center gap-1 p-1 rounded-[14px] transition-colors",
-            isDark
-              ? "bg-[#232326] shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_2px_6px_rgba(0,0,0,0.4)]"
-              : "bg-[#dbdbdb] shadow-[inset_0_1px_1px_rgba(0,0,0,0.04),0_1px_2px_rgba(0,0,0,0.06)]"
+            "inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-[14px] p-1 transition-colors duration-200",
+            trackClass
           )}
         >
           {/* Prev Button */}
@@ -210,19 +239,13 @@ const TactilePagination = React.forwardRef<HTMLElement, TactilePaginationProps>(
             disabled={!canGoPrev}
             aria-label="Previous page"
             className={cn(
-              "inline-flex items-center justify-center gap-1 h-[34px] px-3 rounded-[10px] text-[14px] font-medium leading-none tracking-[-0.01em] transition-all duration-150",
+              "inline-flex h-[34px] shrink-0 items-center justify-center gap-1 rounded-[10px] px-2.5 text-[14px] leading-none font-medium tracking-[-0.01em] transition-all duration-150 sm:px-3",
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1",
-              isDark
-                ? "bg-[#323236] text-[#f4f4f5] shadow-[0_1px_2px_rgba(0,0,0,0.35),inset_0_1px_0_rgba(255,255,255,0.08)] focus-visible:ring-white/40"
-                : "bg-[#ffffff] text-[#2c2827] shadow-[0_1px_2px_rgba(0,0,0,0.08),0_0_0_0.5px_rgba(0,0,0,0.03)] focus-visible:ring-[#2c2827]/40",
-              canGoPrev
-                ? isDark
-                  ? "hover:bg-[#3b3b40] active:scale-[0.97] cursor-pointer"
-                  : "hover:bg-[#fafafa] active:scale-[0.97] cursor-pointer"
-                : "opacity-55 cursor-not-allowed"
+              navButtonSurface,
+              canGoPrev ? navButtonHover : "cursor-not-allowed opacity-55"
             )}
           >
-            <ChevronLeft className="w-3.5 h-3.5 stroke-[2.2]" aria-hidden="true" />
+            <ChevronLeft className="h-3.5 w-3.5 stroke-[2.2]" aria-hidden="true" />
             <span>Prev</span>
           </button>
 
@@ -235,8 +258,12 @@ const TactilePagination = React.forwardRef<HTMLElement, TactilePaginationProps>(
                     key={item}
                     aria-hidden="true"
                     className={cn(
-                      "inline-flex items-center justify-center w-8 h-[34px] text-[14px] font-medium tracking-wider",
-                      isDark ? "text-[#a1a1aa]" : "text-[#2c2827]/80"
+                      "inline-flex h-[34px] w-7 items-center justify-center text-[14px] font-medium tracking-wider sm:w-8",
+                      t(
+                        "text-[#2c2827]/80",
+                        "text-[#a1a1aa]",
+                        "text-[#2c2827]/80 dark:text-[#a1a1aa]"
+                      )
                     )}
                   >
                     ...
@@ -254,18 +281,19 @@ const TactilePagination = React.forwardRef<HTMLElement, TactilePaginationProps>(
                   aria-label={`Page ${item}`}
                   aria-current={isActive ? "page" : undefined}
                   className={cn(
-                    "relative inline-flex items-center justify-center min-w-[34px] h-[34px] px-2 rounded-[10px] text-[14px] font-medium tabular-nums transition-colors duration-150 cursor-pointer",
-                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1",
-                    isDark
-                      ? "focus-visible:ring-white/40"
-                      : "focus-visible:ring-[#2c2827]/40",
+                    "relative inline-flex h-[34px] min-w-[32px] shrink-0 cursor-pointer items-center justify-center rounded-[10px] px-2 text-[14px] font-medium tabular-nums transition-colors duration-150 active:scale-[0.97] sm:min-w-[34px]",
+                    focusRingClass,
                     isActive
-                      ? isDark
-                        ? "text-[#18181b]"
-                        : "text-[#ffffff]"
-                      : isDark
-                        ? "text-[#d4d4d8] hover:text-white"
-                        : "text-[#2c2827] hover:text-black"
+                      ? t(
+                          "text-[#ffffff]",
+                          "text-[#18181b]",
+                          "text-[#ffffff] dark:text-[#18181b]"
+                        )
+                      : t(
+                          "text-[#2c2827] hover:text-black",
+                          "text-[#d4d4d8] hover:text-white",
+                          "text-[#2c2827] hover:text-black dark:text-[#d4d4d8] dark:hover:text-white"
+                        )
                   )}
                 >
                   {isActive && (
@@ -274,9 +302,11 @@ const TactilePagination = React.forwardRef<HTMLElement, TactilePaginationProps>(
                       transition={springTransition}
                       className={cn(
                         "absolute inset-0 rounded-[10px]",
-                        isDark
-                          ? "bg-[#ffffff] shadow-[0_1px_3px_rgba(0,0,0,0.3)]"
-                          : "bg-[#2c2827] shadow-[0_1px_2px_rgba(0,0,0,0.18)]"
+                        t(
+                          "bg-[#2c2827] shadow-[0_1px_2px_rgba(0,0,0,0.18),inset_0_1px_0_rgba(255,255,255,0.12)]",
+                          "bg-[#ffffff] shadow-[0_1px_3px_rgba(0,0,0,0.3)]",
+                          "bg-[#2c2827] shadow-[0_1px_2px_rgba(0,0,0,0.18),inset_0_1px_0_rgba(255,255,255,0.12)] dark:bg-[#ffffff] dark:shadow-[0_1px_3px_rgba(0,0,0,0.3)]"
+                        )
                       )}
                       aria-hidden="true"
                     />
@@ -294,20 +324,14 @@ const TactilePagination = React.forwardRef<HTMLElement, TactilePaginationProps>(
             disabled={!canGoNext}
             aria-label="Next page"
             className={cn(
-              "inline-flex items-center justify-center gap-1 h-[34px] px-3 rounded-[10px] text-[14px] font-medium leading-none tracking-[-0.01em] transition-all duration-150",
+              "inline-flex h-[34px] shrink-0 items-center justify-center gap-1 rounded-[10px] px-2.5 text-[14px] leading-none font-medium tracking-[-0.01em] transition-all duration-150 sm:px-3",
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1",
-              isDark
-                ? "bg-[#323236] text-[#f4f4f5] shadow-[0_1px_2px_rgba(0,0,0,0.35),inset_0_1px_0_rgba(255,255,255,0.08)] focus-visible:ring-white/40"
-                : "bg-[#ffffff] text-[#2c2827] shadow-[0_1px_2px_rgba(0,0,0,0.08),0_0_0_0.5px_rgba(0,0,0,0.03)] focus-visible:ring-[#2c2827]/40",
-              canGoNext
-                ? isDark
-                  ? "hover:bg-[#3b3b40] active:scale-[0.97] cursor-pointer"
-                  : "hover:bg-[#fafafa] active:scale-[0.97] cursor-pointer"
-                : "opacity-55 cursor-not-allowed"
+              navButtonSurface,
+              canGoNext ? navButtonHover : "cursor-not-allowed opacity-55"
             )}
           >
             <span>Next</span>
-            <ChevronRight className="w-3.5 h-3.5 stroke-[2.2]" aria-hidden="true" />
+            <ChevronRight className="h-3.5 w-3.5 stroke-[2.2]" aria-hidden="true" />
           </button>
         </div>
 
@@ -315,19 +339,23 @@ const TactilePagination = React.forwardRef<HTMLElement, TactilePaginationProps>(
         <AnimatePresence initial={false}>
           {showPageSizeSelector && (
             <motion.div
-              initial={shouldReduceMotion ? { opacity: 1 } : { opacity: 0, y: -6 }}
+              initial={
+                shouldReduceMotion ? { opacity: 1 } : { opacity: 0, y: -6 }
+              }
               animate={{ opacity: 1, y: 0 }}
-              exit={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: -6 }}
+              exit={
+                shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: -6 }
+              }
               transition={
-                shouldReduceMotion ? { duration: 0 } : { duration: 0.18, ease: "easeOut" }
+                shouldReduceMotion
+                  ? { duration: 0.01 }
+                  : { duration: 0.18, ease: "easeOut" }
               }
               role="group"
               aria-label="Rows per page"
               className={cn(
-                "inline-flex items-center gap-0.5 p-1 rounded-[14px] transition-colors",
-                isDark
-                  ? "bg-[#232326] shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_2px_6px_rgba(0,0,0,0.4)]"
-                  : "bg-[#dbdbdb] shadow-[inset_0_1px_1px_rgba(0,0,0,0.04),0_1px_2px_rgba(0,0,0,0.06)]"
+                "inline-flex items-center gap-0.5 rounded-[14px] p-1 transition-colors duration-200",
+                trackClass
               )}
             >
               {validOptions.map((size) => {
@@ -340,18 +368,19 @@ const TactilePagination = React.forwardRef<HTMLElement, TactilePaginationProps>(
                     aria-pressed={isSelected}
                     aria-label={`${size} ${pageSizeUnitLabel} per page`}
                     className={cn(
-                      "relative inline-flex items-center justify-center h-[34px] px-3 rounded-[10px] text-[14px] tabular-nums transition-colors duration-150 cursor-pointer",
-                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1",
-                      isDark
-                        ? "focus-visible:ring-white/40"
-                        : "focus-visible:ring-[#2c2827]/40",
+                      "relative inline-flex h-[34px] cursor-pointer items-center justify-center rounded-[10px] px-3 text-[14px] tabular-nums transition-colors duration-150 active:scale-[0.97]",
+                      focusRingClass,
                       isSelected
-                        ? isDark
-                          ? "font-semibold text-[#ffffff]"
-                          : "font-semibold text-[#2c2827]"
-                        : isDark
-                          ? "font-medium text-[#d4d4d8] hover:text-white"
-                          : "font-medium text-[#2c2827] hover:text-black"
+                        ? t(
+                            "font-semibold text-[#2c2827]",
+                            "font-semibold text-[#ffffff]",
+                            "font-semibold text-[#2c2827] dark:text-[#ffffff]"
+                          )
+                        : t(
+                            "font-medium text-[#2c2827] hover:text-black",
+                            "font-medium text-[#d4d4d8] hover:text-white",
+                            "font-medium text-[#2c2827] hover:text-black dark:text-[#d4d4d8] dark:hover:text-white"
+                          )
                     )}
                   >
                     {isSelected && (
@@ -360,9 +389,11 @@ const TactilePagination = React.forwardRef<HTMLElement, TactilePaginationProps>(
                         transition={springTransition}
                         className={cn(
                           "absolute inset-0 rounded-[10px]",
-                          isDark
-                            ? "bg-[#323236] shadow-[0_1px_2px_rgba(0,0,0,0.35),inset_0_1px_0_rgba(255,255,255,0.08)]"
-                            : "bg-[#ffffff] shadow-[0_1px_2px_rgba(0,0,0,0.08),0_0_0_0.5px_rgba(0,0,0,0.03)]"
+                          t(
+                            "bg-[#ffffff] shadow-[0_1px_2px_rgba(0,0,0,0.08),0_0_0_0.5px_rgba(0,0,0,0.03)]",
+                            "bg-[#323236] shadow-[0_1px_2px_rgba(0,0,0,0.35),inset_0_1px_0_rgba(255,255,255,0.08)]",
+                            "bg-[#ffffff] shadow-[0_1px_2px_rgba(0,0,0,0.08),0_0_0_0.5px_rgba(0,0,0,0.03)] dark:bg-[#323236] dark:shadow-[0_1px_2px_rgba(0,0,0,0.35),inset_0_1px_0_rgba(255,255,255,0.08)]"
+                          )
                         )}
                         aria-hidden="true"
                       />
@@ -383,5 +414,9 @@ const TactilePagination = React.forwardRef<HTMLElement, TactilePaginationProps>(
 
 TactilePagination.displayName = "TactilePagination";
 
-export { TactilePagination as component, TactilePagination as Component, TactilePagination };
+export {
+  TactilePagination as component,
+  TactilePagination as Component,
+  TactilePagination,
+};
 export default TactilePagination;
