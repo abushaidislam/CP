@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-17T10:56:43.478Z",
+  "updatedAt": "2026-11-17T10:56:51.885Z",
   "totalComponents": 37,
   "components": [
     {
@@ -10,8 +10,8 @@
       "description": "",
       "category": "Custom",
       "isBuiltIn": false,
-      "updatedAt": 1794912993476,
-      "lastRepoSyncAt": 1794913003344,
+      "updatedAt": 1794913002270,
+      "lastRepoSyncAt": 1794913011835,
       "path": "registry/components/alarm-wighht",
       "files": [
         "component.tsx",
