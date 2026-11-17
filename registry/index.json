@@ -1,8 +1,26 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-17T17:04:22.436Z",
-  "totalComponents": 43,
+  "updatedAt": "2026-11-17T17:06:48.229Z",
+  "totalComponents": 44,
   "components": [
+    {
+      "id": "comp-1794935044468-dg8nw",
+      "slug": "isometric-ranking-stack",
+      "name": "IsometricRankingStack",
+      "description": "Interactive isometric 4-tier AI visibility cube stack with cumulative layer shading, floating prompt/answer cards, and spring-tracked step callouts.",
+      "category": "Custom",
+      "isBuiltIn": false,
+      "updatedAt": 1794935200643,
+      "lastRepoSyncAt": 1794935208111,
+      "path": "registry/components/isometric-ranking-stack",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "index.css",
+        "manifest.json"
+      ],
+      "dependencies": []
+    },
     {
       "id": "comp-1794933862605-fmpfy",
       "slug": "ai-search-hero",
