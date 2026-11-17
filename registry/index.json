@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-17T16:50:20.236Z",
+  "updatedAt": "2026-11-17T16:51:01.560Z",
   "totalComponents": 43,
   "components": [
     {
@@ -11,7 +11,7 @@
       "category": "Custom",
       "isBuiltIn": false,
       "updatedAt": 1794934211017,
-      "lastRepoSyncAt": 1794934220186,
+      "lastRepoSyncAt": 1794934261366,
       "path": "registry/components/ai-search-hero",
       "files": [
         "component.tsx",
