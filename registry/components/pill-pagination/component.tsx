@@ -1,224 +1,250 @@
 "use client";
 
-import React, { useId, useMemo, useState } from "react";
-import { motion, useReducedMotion } from "framer-motion";
+import React, { useId, useState, useEffect, useMemo } from "react";
+import { motion, useReducedMotion, AnimatePresence } from "framer-motion";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
-function cn(...classes: (string | undefined | null | false)[]) {
+function cn(...classes: Array<string | undefined | null | false>): string {
   return classes.filter(Boolean).join(" ");
 }
 
-export type PaginationPageItem = number | "ellipsis-start" | "ellipsis-end";
+export type PaginationTheme = "light" | "dark";
 
-export interface PillPaginationProps
+export interface TactilePaginationProps
   extends Omit<React.HTMLAttributes<HTMLElement>, "onChange"> {
-  /** Current active 1-based page number (controlled). */
-  page?: number;
-  /** Initial active 1-based page number (uncontrolled). */
-  defaultPage?: number;
-  /** Total number of pages available. */
+  /** Total number of pages */
   totalPages?: number;
-  /** Callback fired when the active page changes. */
+  /** Controlled current page (1-indexed) */
+  page?: number;
+  /** Initial page when uncontrolled (1-indexed) */
+  defaultPage?: number;
+  /** Callback fired when page changes */
   onPageChange?: (page: number) => void;
-  /** Current selected page size (controlled). */
-  pageSize?: number;
-  /** Initial selected page size (uncontrolled). */
-  defaultPageSize?: number;
-  /** Available page size options shown in the lower pill bar. */
+  /** Available page size options */
   pageSizeOptions?: number[];
-  /** Suffix appended only to the active page size pill (e.g., "rows"). */
-  pageSizeUnitLabel?: string;
-  /** Callback fired when the page size changes. */
+  /** Controlled active page size */
+  pageSize?: number;
+  /** Initial page size when uncontrolled */
+  defaultPageSize?: number;
+  /** Callback fired when page size changes */
   onPageSizeChange?: (pageSize: number) => void;
-  /** Whether to render the secondary page size selector pill bar. */
+  /** Toggle visibility of the bottom row-count selector pill */
   showPageSizeSelector?: boolean;
-  /** Number of sibling pages displayed adjacent to the current page. */
+  /** Label suffix shown on the active page size pill */
+  pageSizeUnitLabel?: string;
+  /** Number of sibling pages shown around the active page */
   siblingCount?: number;
-  /** Accessible label for the pagination navigation landmark. */
-  ariaLabel?: string;
+  /** Color theme variant */
+  theme?: PaginationTheme;
+  /** Disable all pagination interactions */
+  disabled?: boolean;
 }
+
+type PageItem = number | "ellipsis-left" | "ellipsis-right";
 
 function buildPageRange(
   currentPage: number,
   totalPages: number,
   siblingCount: number
-): PaginationPageItem[] {
+): PageItem[] {
   const safeTotal = Math.max(1, Math.floor(totalPages));
-  const safeCurrent = Math.min(Math.max(1, Math.floor(currentPage)), safeTotal);
-  const safeSiblings = Math.max(0, Math.floor(siblingCount));
+  const safeCurrent = Math.min(Math.max(1, currentPage), safeTotal);
 
-  // Total visible slots before truncation: first + last + current + 2*siblings + 2 ellipses
-  const totalSlots = safeSiblings * 2 + 5;
+  // Reference shows 5 visible slots at page 1 of 10: [1, 2, 3, ..., 10]
+  const totalSlots = siblingCount * 2 + 3;
 
-  if (safeTotal <= totalSlots) {
-    return Array.from({ length: safeTotal }, (_, index) => index + 1);
+  if (safeTotal <= totalSlots + 2) {
+    return Array.from({ length: safeTotal }, (_, i) => i + 1);
   }
 
-  const leftSiblingIndex = Math.max(safeCurrent - safeSiblings, 1);
-  const rightSiblingIndex = Math.min(safeCurrent + safeSiblings, safeTotal);
+  const leftSibling = Math.max(safeCurrent - siblingCount, 1);
+  const rightSibling = Math.min(safeCurrent + siblingCount, safeTotal);
 
-  const shouldShowLeftEllipsis = leftSiblingIndex > 2;
-  const shouldShowRightEllipsis = rightSiblingIndex < safeTotal - 1;
+  const showLeftEllipsis = leftSibling > 2;
+  const showRightEllipsis = rightSibling < safeTotal - 1;
 
-  if (!shouldShowLeftEllipsis && shouldShowRightEllipsis) {
-    const leftItemCount = 3 + 2 * safeSiblings;
-    const leftRange = Array.from({ length: leftItemCount }, (_, i) => i + 1);
-    return [...leftRange, "ellipsis-end", safeTotal];
+  if (!showLeftEllipsis && showRightEllipsis) {
+    const leftCount = Math.max(3, 2 * siblingCount + 1);
+    const leftRange = Array.from({ length: leftCount }, (_, i) => i + 1);
+    return [...leftRange, "ellipsis-right", safeTotal];
   }
 
-  if (shouldShowLeftEllipsis && !shouldShowRightEllipsis) {
-    const rightItemCount = 3 + 2 * safeSiblings;
+  if (showLeftEllipsis && !showRightEllipsis) {
+    const rightCount = Math.max(3, 2 * siblingCount + 1);
     const rightRange = Array.from(
-      { length: rightItemCount },
-      (_, i) => safeTotal - rightItemCount + i + 1
+      { length: rightCount },
+      (_, i) => safeTotal - rightCount + 1 + i
     );
-    return [1, "ellipsis-start", ...rightRange];
+    return [1, "ellipsis-left", ...rightRange];
   }
 
   const middleRange = Array.from(
-    { length: rightSiblingIndex - leftSiblingIndex + 1 },
-    (_, i) => leftSiblingIndex + i
+    { length: rightSibling - leftSibling + 1 },
+    (_, i) => leftSibling + i
   );
-  return [1, "ellipsis-start", ...middleRange, "ellipsis-end", safeTotal];
+  return [1, "ellipsis-left", ...middleRange, "ellipsis-right", safeTotal];
 }
 
-export const PillPagination = React.forwardRef<HTMLElement, PillPaginationProps>(
+const TactilePagination = React.forwardRef<HTMLElement, TactilePaginationProps>(
   (
     {
+      totalPages = 10,
       page: controlledPage,
       defaultPage = 1,
-      totalPages = 10,
       onPageChange,
+      pageSizeOptions = [5, 10, 20],
       pageSize: controlledPageSize,
       defaultPageSize = 5,
-      pageSizeOptions = [5, 10, 20],
-      pageSizeUnitLabel = "rows",
       onPageSizeChange,
       showPageSizeSelector = true,
+      pageSizeUnitLabel = "rows",
       siblingCount = 1,
-      ariaLabel = "Pagination",
+      theme = "light",
+      disabled = false,
       className,
-      ...rest
+      ...props
     },
     ref
   ) => {
-    const instanceId = useId();
+    const baseId = useId();
     const shouldReduceMotion = useReducedMotion();
 
     const safeTotalPages = Math.max(1, Math.floor(totalPages));
-
-    const [uncontrolledPage, setUncontrolledPage] = useState<number>(() =>
-      Math.min(Math.max(1, Math.floor(defaultPage)), safeTotalPages)
-    );
-    const [uncontrolledPageSize, setUncontrolledPageSize] = useState<number>(
-      () =>
-        pageSizeOptions.includes(defaultPageSize)
-          ? defaultPageSize
-          : pageSizeOptions[0] ?? 5
-    );
-
-    const activePage = Math.min(
-      Math.max(
-        1,
-        Math.floor(
-          controlledPage !== undefined ? controlledPage : uncontrolledPage
-        )
-      ),
+    const clampedDefaultPage = Math.min(
+      Math.max(1, Math.floor(defaultPage)),
       safeTotalPages
     );
 
-    const activePageSize =
-      controlledPageSize !== undefined
-        ? controlledPageSize
-        : uncontrolledPageSize;
-
-    const pageItems = useMemo(
-      () => buildPageRange(activePage, safeTotalPages, siblingCount),
-      [activePage, safeTotalPages, siblingCount]
+    const [internalPage, setInternalPage] = useState<number>(clampedDefaultPage);
+    const isPageControlled = controlledPage !== undefined;
+    const currentPage = Math.min(
+      Math.max(1, Math.floor(isPageControlled ? controlledPage : internalPage)),
+      safeTotalPages
     );
 
+    const validOptions = useMemo(() => {
+      const cleaned = pageSizeOptions.filter(
+        (n) => typeof n === "number" && Number.isFinite(n) && n > 0
+      );
+      return cleaned.length > 0 ? cleaned : [5, 10, 20];
+    }, [pageSizeOptions]);
+
+    const initialSize = validOptions.includes(defaultPageSize)
+      ? defaultPageSize
+      : validOptions[0];
+
+    const [internalPageSize, setInternalPageSize] = useState<number>(initialSize);
+    const isSizeControlled = controlledPageSize !== undefined;
+    const currentPageSize = isSizeControlled
+      ? controlledPageSize
+      : internalPageSize;
+
+    useEffect(() => {
+      if (!isPageControlled) {
+        setInternalPage(clampedDefaultPage);
+      }
+    }, [clampedDefaultPage, isPageControlled]);
+
+    useEffect(() => {
+      if (!isSizeControlled) {
+        setInternalPageSize(initialSize);
+      }
+    }, [initialSize, isSizeControlled]);
+
     const handlePageSelect = (nextPage: number) => {
+      if (disabled) return;
       const clamped = Math.min(Math.max(1, nextPage), safeTotalPages);
-      if (clamped === activePage) return;
-      if (controlledPage === undefined) {
-        setUncontrolledPage(clamped);
+      if (clamped === currentPage) return;
+      if (!isPageControlled) {
+        setInternalPage(clamped);
       }
       onPageChange?.(clamped);
     };
 
     const handlePageSizeSelect = (nextSize: number) => {
-      if (nextSize === activePageSize) return;
-      if (controlledPageSize === undefined) {
-        setUncontrolledPageSize(nextSize);
+      if (disabled) return;
+      if (nextSize === currentPageSize) return;
+      if (!isSizeControlled) {
+        setInternalPageSize(nextSize);
       }
       onPageSizeChange?.(nextSize);
     };
 
-    const isPrevDisabled = activePage <= 1;
-    const isNextDisabled = activePage >= safeTotalPages;
+    const pageItems = useMemo(
+      () => buildPageRange(currentPage, safeTotalPages, siblingCount),
+      [currentPage, safeTotalPages, siblingCount]
+    );
+
+    const isDark = theme === "dark";
+    const canGoPrev = !disabled && currentPage > 1;
+    const canGoNext = !disabled && currentPage < safeTotalPages;
 
     const springTransition = shouldReduceMotion
       ? { duration: 0 }
-      : { type: "spring" as const, stiffness: 460, damping: 36, mass: 0.8 };
+      : { type: "spring" as const, stiffness: 520, damping: 38, mass: 0.8 };
 
     return (
       <nav
         ref={ref}
-        aria-label={ariaLabel}
+        aria-label="Pagination"
         className={cn(
-          "inline-flex flex-col items-center gap-[22px] select-none font-sans antialiased",
+          "inline-flex flex-col items-center gap-[22px] select-none",
+          disabled && "opacity-60 pointer-events-none",
           className
         )}
-        {...rest}
+        {...props}
       >
-        {/* Primary Page Navigation Pill Track */}
+        {/* Top Pagination Bar */}
         <div
-          role="group"
-          aria-label="Page navigation"
           className={cn(
-            "inline-flex items-center p-[6px] rounded-[20px]",
-            "bg-[#DCDCDC] dark:bg-[#232326]",
-            "border border-black/[0.03] dark:border-white/[0.06]"
+            "inline-flex items-center gap-1 p-1 rounded-[14px] transition-colors",
+            isDark
+              ? "bg-[#232326] shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_2px_6px_rgba(0,0,0,0.4)]"
+              : "bg-[#dbdbdb] shadow-[inset_0_1px_1px_rgba(0,0,0,0.04),0_1px_2px_rgba(0,0,0,0.06)]"
           )}
         >
-          {/* Previous Button */}
+          {/* Prev Button */}
           <button
             type="button"
-            onClick={() => handlePageSelect(activePage - 1)}
-            disabled={isPrevDisabled}
-            aria-label="Go to previous page"
+            onClick={() => handlePageSelect(currentPage - 1)}
+            disabled={!canGoPrev}
+            aria-label="Previous page"
             className={cn(
-              "inline-flex items-center justify-center gap-[6px] h-[42px] px-[16px] rounded-[14px]",
-              "text-[15px] font-medium leading-none tracking-[-0.01em]",
-              "bg-[#FAFAFA] text-[#171717] dark:bg-[#141416] dark:text-[#F4F4F5]",
-              "shadow-[0_1px_2px_rgba(0,0,0,0.06),0_0_0_1px_rgba(0,0,0,0.02)] dark:shadow-[0_1px_2px_rgba(0,0,0,0.4),0_0_0_1px_rgba(255,255,255,0.05)]",
-              "transition-all duration-150",
-              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#171717]/40 dark:focus-visible:ring-white/40",
-              isPrevDisabled
-                ? "opacity-60 cursor-not-allowed"
-                : "hover:bg-white dark:hover:bg-[#1C1C1F] active:scale-[0.98] cursor-pointer"
+              "inline-flex items-center justify-center gap-1 h-[34px] px-3 rounded-[10px] text-[14px] font-medium leading-none tracking-[-0.01em] transition-all duration-150",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1",
+              isDark
+                ? "bg-[#323236] text-[#f4f4f5] shadow-[0_1px_2px_rgba(0,0,0,0.35),inset_0_1px_0_rgba(255,255,255,0.08)] focus-visible:ring-white/40"
+                : "bg-[#ffffff] text-[#2c2827] shadow-[0_1px_2px_rgba(0,0,0,0.08),0_0_0_0.5px_rgba(0,0,0,0.03)] focus-visible:ring-[#2c2827]/40",
+              canGoPrev
+                ? isDark
+                  ? "hover:bg-[#3b3b40] active:scale-[0.97] cursor-pointer"
+                  : "hover:bg-[#fafafa] active:scale-[0.97] cursor-pointer"
+                : "opacity-55 cursor-not-allowed"
             )}
           >
-            <ChevronLeft className="w-[15px] h-[15px] stroke-[2.2] opacity-85" />
+            <ChevronLeft className="w-3.5 h-3.5 stroke-[2.2]" aria-hidden="true" />
             <span>Prev</span>
           </button>
 
-          {/* Numeric Page Items */}
-          <div className="inline-flex items-center gap-[4px] px-[8px]">
+          {/* Page Numbers */}
+          <div className="inline-flex items-center gap-0.5 px-0.5">
             {pageItems.map((item) => {
-              if (item === "ellipsis-start" || item === "ellipsis-end") {
+              if (item === "ellipsis-left" || item === "ellipsis-right") {
                 return (
                   <span
                     key={item}
                     aria-hidden="true"
-                    className="inline-flex items-center justify-center w-[36px] h-[42px] text-[15px] font-medium text-[#222222] dark:text-[#A1A1AA] tracking-[0.04em]"
+                    className={cn(
+                      "inline-flex items-center justify-center w-8 h-[34px] text-[14px] font-medium tracking-wider",
+                      isDark ? "text-[#a1a1aa]" : "text-[#2c2827]/80"
+                    )}
                   >
                     ...
                   </span>
                 );
               }
 
-              const isActive = item === activePage;
+              const isActive = item === currentPage;
 
               return (
                 <button
@@ -228,20 +254,31 @@ export const PillPagination = React.forwardRef<HTMLElement, PillPaginationProps>
                   aria-label={`Page ${item}`}
                   aria-current={isActive ? "page" : undefined}
                   className={cn(
-                    "relative inline-flex items-center justify-center min-w-[42px] h-[42px] px-[10px] rounded-[14px]",
-                    "text-[15px] font-medium leading-none tabular-nums",
-                    "transition-colors duration-150 cursor-pointer",
-                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#171717]/40 dark:focus-visible:ring-white/40",
+                    "relative inline-flex items-center justify-center min-w-[34px] h-[34px] px-2 rounded-[10px] text-[14px] font-medium tabular-nums transition-colors duration-150 cursor-pointer",
+                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1",
+                    isDark
+                      ? "focus-visible:ring-white/40"
+                      : "focus-visible:ring-[#2c2827]/40",
                     isActive
-                      ? "text-white dark:text-[#111113]"
-                      : "text-[#1E1E1E] hover:text-black dark:text-[#D4D4D8] dark:hover:text-white"
+                      ? isDark
+                        ? "text-[#18181b]"
+                        : "text-[#ffffff]"
+                      : isDark
+                        ? "text-[#d4d4d8] hover:text-white"
+                        : "text-[#2c2827] hover:text-black"
                   )}
                 >
                   {isActive && (
                     <motion.span
-                      layoutId={`${instanceId}-active-page`}
+                      layoutId={`${baseId}-active-page-pill`}
                       transition={springTransition}
-                      className="absolute inset-0 rounded-[14px] bg-[#141414] dark:bg-[#F4F4F5] shadow-[0_2px_6px_rgba(0,0,0,0.18)]"
+                      className={cn(
+                        "absolute inset-0 rounded-[10px]",
+                        isDark
+                          ? "bg-[#ffffff] shadow-[0_1px_3px_rgba(0,0,0,0.3)]"
+                          : "bg-[#2c2827] shadow-[0_1px_2px_rgba(0,0,0,0.18)]"
+                      )}
+                      aria-hidden="true"
                     />
                   )}
                   <span className="relative z-10">{item}</span>
@@ -253,81 +290,98 @@ export const PillPagination = React.forwardRef<HTMLElement, PillPaginationProps>
           {/* Next Button */}
           <button
             type="button"
-            onClick={() => handlePageSelect(activePage + 1)}
-            disabled={isNextDisabled}
-            aria-label="Go to next page"
+            onClick={() => handlePageSelect(currentPage + 1)}
+            disabled={!canGoNext}
+            aria-label="Next page"
             className={cn(
-              "inline-flex items-center justify-center gap-[6px] h-[42px] px-[16px] rounded-[14px]",
-              "text-[15px] font-medium leading-none tracking-[-0.01em]",
-              "bg-[#FAFAFA] text-[#171717] dark:bg-[#141416] dark:text-[#F4F4F5]",
-              "shadow-[0_1px_2px_rgba(0,0,0,0.06),0_0_0_1px_rgba(0,0,0,0.02)] dark:shadow-[0_1px_2px_rgba(0,0,0,0.4),0_0_0_1px_rgba(255,255,255,0.05)]",
-              "transition-all duration-150",
-              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#171717]/40 dark:focus-visible:ring-white/40",
-              isNextDisabled
-                ? "opacity-60 cursor-not-allowed"
-                : "hover:bg-white dark:hover:bg-[#1C1C1F] active:scale-[0.98] cursor-pointer"
+              "inline-flex items-center justify-center gap-1 h-[34px] px-3 rounded-[10px] text-[14px] font-medium leading-none tracking-[-0.01em] transition-all duration-150",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1",
+              isDark
+                ? "bg-[#323236] text-[#f4f4f5] shadow-[0_1px_2px_rgba(0,0,0,0.35),inset_0_1px_0_rgba(255,255,255,0.08)] focus-visible:ring-white/40"
+                : "bg-[#ffffff] text-[#2c2827] shadow-[0_1px_2px_rgba(0,0,0,0.08),0_0_0_0.5px_rgba(0,0,0,0.03)] focus-visible:ring-[#2c2827]/40",
+              canGoNext
+                ? isDark
+                  ? "hover:bg-[#3b3b40] active:scale-[0.97] cursor-pointer"
+                  : "hover:bg-[#fafafa] active:scale-[0.97] cursor-pointer"
+                : "opacity-55 cursor-not-allowed"
             )}
           >
             <span>Next</span>
-            <ChevronRight className="w-[15px] h-[15px] stroke-[2.2] opacity-85" />
+            <ChevronRight className="w-3.5 h-3.5 stroke-[2.2]" aria-hidden="true" />
           </button>
         </div>
 
-        {/* Secondary Rows Per Page Segmented Pill Track */}
-        {showPageSizeSelector && pageSizeOptions.length > 0 && (
-          <div
-            role="radiogroup"
-            aria-label="Rows per page"
-            className={cn(
-              "inline-flex items-center p-[6px] gap-[4px] rounded-[20px]",
-              "bg-[#DCDCDC] dark:bg-[#232326]",
-              "border border-black/[0.03] dark:border-white/[0.06]"
-            )}
-          >
-            {pageSizeOptions.map((size) => {
-              const isSelected = size === activePageSize;
-              const label =
-                isSelected && pageSizeUnitLabel
-                  ? `${size} ${pageSizeUnitLabel}`
-                  : `${size}`;
-
-              return (
-                <button
-                  key={size}
-                  type="button"
-                  role="radio"
-                  aria-checked={isSelected}
-                  aria-label={`${size} ${pageSizeUnitLabel || "rows"} per page`}
-                  onClick={() => handlePageSizeSelect(size)}
-                  className={cn(
-                    "relative inline-flex items-center justify-center h-[42px] px-[16px] rounded-[14px]",
-                    "text-[15px] leading-none tracking-[-0.01em] tabular-nums whitespace-nowrap",
-                    "transition-colors duration-150 cursor-pointer",
-                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#171717]/40 dark:focus-visible:ring-white/40",
-                    isSelected
-                      ? "font-semibold text-[#141414] dark:text-[#F4F4F5]"
-                      : "font-medium text-[#222222] hover:text-black dark:text-[#A1A1AA] dark:hover:text-white"
-                  )}
-                >
-                  {isSelected && (
-                    <motion.span
-                      layoutId={`${instanceId}-active-size`}
-                      transition={springTransition}
-                      className="absolute inset-0 rounded-[14px] bg-[#FAFAFA] dark:bg-[#141416] shadow-[0_1px_3px_rgba(0,0,0,0.08),0_0_0_1px_rgba(0,0,0,0.02)] dark:shadow-[0_1px_3px_rgba(0,0,0,0.45),0_0_0_1px_rgba(255,255,255,0.06)]"
-                    />
-                  )}
-                  <span className="relative z-10">{label}</span>
-                </button>
-              );
-            })}
-          </div>
-        )}
+        {/* Bottom Rows-Per-Page Selector Pill */}
+        <AnimatePresence initial={false}>
+          {showPageSizeSelector && (
+            <motion.div
+              initial={shouldReduceMotion ? { opacity: 1 } : { opacity: 0, y: -6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: -6 }}
+              transition={
+                shouldReduceMotion ? { duration: 0 } : { duration: 0.18, ease: "easeOut" }
+              }
+              role="group"
+              aria-label="Rows per page"
+              className={cn(
+                "inline-flex items-center gap-0.5 p-1 rounded-[14px] transition-colors",
+                isDark
+                  ? "bg-[#232326] shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_2px_6px_rgba(0,0,0,0.4)]"
+                  : "bg-[#dbdbdb] shadow-[inset_0_1px_1px_rgba(0,0,0,0.04),0_1px_2px_rgba(0,0,0,0.06)]"
+              )}
+            >
+              {validOptions.map((size) => {
+                const isSelected = size === currentPageSize;
+                return (
+                  <button
+                    key={size}
+                    type="button"
+                    onClick={() => handlePageSizeSelect(size)}
+                    aria-pressed={isSelected}
+                    aria-label={`${size} ${pageSizeUnitLabel} per page`}
+                    className={cn(
+                      "relative inline-flex items-center justify-center h-[34px] px-3 rounded-[10px] text-[14px] tabular-nums transition-colors duration-150 cursor-pointer",
+                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1",
+                      isDark
+                        ? "focus-visible:ring-white/40"
+                        : "focus-visible:ring-[#2c2827]/40",
+                      isSelected
+                        ? isDark
+                          ? "font-semibold text-[#ffffff]"
+                          : "font-semibold text-[#2c2827]"
+                        : isDark
+                          ? "font-medium text-[#d4d4d8] hover:text-white"
+                          : "font-medium text-[#2c2827] hover:text-black"
+                    )}
+                  >
+                    {isSelected && (
+                      <motion.span
+                        layoutId={`${baseId}-active-size-pill`}
+                        transition={springTransition}
+                        className={cn(
+                          "absolute inset-0 rounded-[10px]",
+                          isDark
+                            ? "bg-[#323236] shadow-[0_1px_2px_rgba(0,0,0,0.35),inset_0_1px_0_rgba(255,255,255,0.08)]"
+                            : "bg-[#ffffff] shadow-[0_1px_2px_rgba(0,0,0,0.08),0_0_0_0.5px_rgba(0,0,0,0.03)]"
+                        )}
+                        aria-hidden="true"
+                      />
+                    )}
+                    <span className="relative z-10 whitespace-nowrap">
+                      {isSelected ? `${size} ${pageSizeUnitLabel}` : size}
+                    </span>
+                  </button>
+                );
+              })}
+            </motion.div>
+          )}
+        </AnimatePresence>
       </nav>
     );
   }
 );
 
-PillPagination.displayName = "PillPagination";
+TactilePagination.displayName = "TactilePagination";
 
-export { PillPagination as component, PillPagination as Component };
-export default PillPagination;
+export { TactilePagination as component, TactilePagination as Component, TactilePagination };
+export default TactilePagination;
