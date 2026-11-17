@@ -27,7 +27,23 @@ export interface AiSearchHeroProps
   onSecondaryClick?: () => void;
 }
 
-const EASE_OUT_EXPO: [number, number, number, number] = [0.22, 1, 0.36, 1];
+// Quintic ease-out for a long, silky deceleration tail
+const EASE_OUT_QUINT: [number, number, number, number] = [0.16, 1, 0.3, 1];
+
+// Critically-damped spring (zeta ~ 1.05): fluid velocity with zero bounce
+const SLOT_SPRING = {
+  type: "spring" as const,
+  stiffness: 240,
+  damping: 31,
+  mass: 0.9,
+};
+
+const HOVER_SPRING = {
+  type: "spring" as const,
+  stiffness: 420,
+  damping: 32,
+  mass: 0.6,
+};
 
 interface BadgeWrapperProps {
   label: string;
@@ -64,40 +80,56 @@ function PlatformBadge({
               width: 0,
               marginLeft: 0,
               marginRight: 0,
-              opacity: 0,
-              scale: 0.35,
-              filter: "blur(5px)",
             }
       }
       animate={{
         width: "0.94em",
         marginLeft: leading ? "0em" : "0.14em",
         marginRight: "0.14em",
-        opacity: 1,
-        scale: 1,
-        filter: "blur(0px)",
       }}
-      transition={
-        skipMotion
-          ? { duration: 0 }
-          : {
-              duration: 0.46,
-              delay,
-              ease: EASE_OUT_EXPO,
-            }
-      }
-      whileHover={shouldReduceMotion ? undefined : { scale: 1.07 }}
-      className={cn(
-        "inline-flex items-center justify-center align-middle select-none overflow-hidden",
-        "h-[0.94em] rounded-[0.26em] -translate-y-[0.06em]",
-        "shrink-0 transition-shadow duration-200",
-        className
-      )}
-      style={style}
+      transition={skipMotion ? { duration: 0 } : { ...SLOT_SPRING, delay }}
+      className="inline-flex items-center justify-center align-middle select-none h-[0.94em] -translate-y-[0.06em] shrink-0"
     >
-      <span className="flex h-[0.94em] w-[0.94em] shrink-0 items-center justify-center">
+      <motion.span
+        initial={
+          skipMotion
+            ? false
+            : {
+                opacity: 0,
+                scale: 0.52,
+                filter: "blur(5px)",
+              }
+        }
+        animate={{
+          opacity: 1,
+          scale: 1,
+          filter: "blur(0px)",
+        }}
+        transition={
+          skipMotion
+            ? { duration: 0 }
+            : {
+                duration: 0.44,
+                delay: delay + 0.04,
+                ease: EASE_OUT_QUINT,
+              }
+        }
+        whileHover={
+          shouldReduceMotion
+            ? undefined
+            : { scale: 1.08, y: -1, transition: HOVER_SPRING }
+        }
+        className={cn(
+          "flex h-[0.94em] w-[0.94em] shrink-0 items-center justify-center rounded-[0.26em]",
+          className
+        )}
+        style={{
+          willChange: skipMotion ? undefined : "transform, opacity, filter",
+          ...style,
+        }}
+      >
         {children}
-      </span>
+      </motion.span>
     </motion.span>
   );
 }
@@ -246,17 +278,17 @@ export const AiSearchHero = React.forwardRef<HTMLElement, AiSearchHeroProps>(
       skipMotion
         ? { duration: 0 }
         : {
-            duration: 0.48,
+            duration: 0.56,
             delay: index * safeStagger,
-            ease: EASE_OUT_EXPO,
+            ease: EASE_OUT_QUINT,
           };
 
     const lineInitial = skipMotion
       ? false
-      : { opacity: 0, y: 12, filter: "blur(8px)" };
+      : { opacity: 0, y: 10, filter: "blur(6px)" };
 
     const lineAnimate = { opacity: 1, y: 0, filter: "blur(0px)" };
-    const iconStartDelay = safeStagger * 4.8;
+    const iconStartDelay = safeStagger * 4.5;
 
     const surfaceClasses =
       theme === "dark"
@@ -313,6 +345,9 @@ export const AiSearchHero = React.forwardRef<HTMLElement, AiSearchHeroProps>(
               initial={lineInitial}
               animate={lineAnimate}
               transition={lineTransition(0)}
+              style={{
+                willChange: skipMotion ? undefined : "transform, opacity, filter",
+              }}
               className="block sm:whitespace-nowrap"
             >
               Get found on{" "}
@@ -333,12 +368,15 @@ export const AiSearchHero = React.forwardRef<HTMLElement, AiSearchHeroProps>(
               initial={lineInitial}
               animate={lineAnimate}
               transition={lineTransition(1)}
+              style={{
+                willChange: skipMotion ? undefined : "transform, opacity, filter",
+              }}
               className="block sm:whitespace-nowrap"
             >
               <PlatformBadge
                 label="ChatGPT"
                 leading
-                delay={iconStartDelay + safeStagger * 1.4}
+                delay={iconStartDelay + safeStagger * 1.3}
                 animateOnMount={animateOnMount}
                 shouldReduceMotion={shouldReduceMotion}
                 className="bg-[#141416] ring-1 ring-black/15 dark:ring-white/15"
@@ -348,7 +386,7 @@ export const AiSearchHero = React.forwardRef<HTMLElement, AiSearchHeroProps>(
               ChatGPT,{" "}
               <PlatformBadge
                 label="Claude"
-                delay={iconStartDelay + safeStagger * 1.8}
+                delay={iconStartDelay + safeStagger * 1.7}
                 animateOnMount={animateOnMount}
                 shouldReduceMotion={shouldReduceMotion}
                 className="bg-[#D96B43] shadow-[0_1px_2px_rgba(0,0,0,0.08)] dark:shadow-none"
@@ -358,7 +396,7 @@ export const AiSearchHero = React.forwardRef<HTMLElement, AiSearchHeroProps>(
               Claude,{" "}
               <PlatformBadge
                 label="Codex"
-                delay={iconStartDelay + safeStagger * 2.2}
+                delay={iconStartDelay + safeStagger * 2.1}
                 animateOnMount={animateOnMount}
                 shouldReduceMotion={shouldReduceMotion}
                 className="shadow-[0_1px_2px_rgba(0,0,0,0.08)] dark:shadow-none"
@@ -377,12 +415,15 @@ export const AiSearchHero = React.forwardRef<HTMLElement, AiSearchHeroProps>(
               initial={lineInitial}
               animate={lineAnimate}
               transition={lineTransition(2)}
+              style={{
+                willChange: skipMotion ? undefined : "transform, opacity, filter",
+              }}
               className="block sm:whitespace-nowrap"
             >
               and{" "}
               <PlatformBadge
                 label="Perplexity and AI answers"
-                delay={iconStartDelay + safeStagger * 3.1}
+                delay={iconStartDelay + safeStagger * 2.9}
                 animateOnMount={animateOnMount}
                 shouldReduceMotion={shouldReduceMotion}
                 className="bg-[#1D7D84] shadow-[0_1px_2px_rgba(0,0,0,0.08)] dark:shadow-none"
@@ -399,16 +440,16 @@ export const AiSearchHero = React.forwardRef<HTMLElement, AiSearchHeroProps>(
               initial={
                 skipMotion
                   ? false
-                  : { opacity: 0, y: 8, filter: "blur(6px)" }
+                  : { opacity: 0, y: 8, filter: "blur(5px)" }
               }
               animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
               transition={
                 skipMotion
                   ? { duration: 0 }
                   : {
-                      duration: 0.55,
-                      delay: safeStagger * 3.2,
-                      ease: EASE_OUT_EXPO,
+                      duration: 0.6,
+                      delay: safeStagger * 3.1,
+                      ease: EASE_OUT_QUINT,
                     }
               }
               className={cn(
@@ -425,16 +466,16 @@ export const AiSearchHero = React.forwardRef<HTMLElement, AiSearchHeroProps>(
             initial={
               skipMotion
                 ? false
-                : { opacity: 0, y: 10, filter: "blur(6px)" }
+                : { opacity: 0, y: 8, filter: "blur(5px)" }
             }
             animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
             transition={
               skipMotion
                 ? { duration: 0 }
                 : {
-                    duration: 0.55,
-                    delay: safeStagger * 4.0,
-                    ease: EASE_OUT_EXPO,
+                    duration: 0.6,
+                    delay: safeStagger * 3.8,
+                    ease: EASE_OUT_QUINT,
                   }
             }
             className="mt-7 sm:mt-8 flex flex-wrap items-center justify-center gap-3"
