@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-17T15:13:03.422Z",
+  "updatedAt": "2026-11-17T15:14:24.621Z",
   "totalComponents": 41,
   "components": [
     {
@@ -10,8 +10,8 @@
       "description": "Asymmetric 5-card editorial bento showcase for AI legal and compliance research platforms, featuring an interactive document-action stack, staggered category grid, and natural-language download comman",
       "category": "Custom",
       "isBuiltIn": false,
-      "updatedAt": 1794928372888,
-      "lastRepoSyncAt": 1794928383284,
+      "updatedAt": 1794928454939,
+      "lastRepoSyncAt": 1794928464481,
       "path": "registry/components/legal-bento-showcase",
       "files": [
         "component.tsx",
