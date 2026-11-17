@@ -1,8 +1,26 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-16T13:14:23.318Z",
-  "totalComponents": 35,
+  "updatedAt": "2026-11-17T04:10:22.492Z",
+  "totalComponents": 36,
   "components": [
+    {
+      "id": "comp-1794888607294-l6uu5",
+      "slug": "thermaldialwidget",
+      "name": "Thermaldialwidget",
+      "description": "",
+      "category": "Cards",
+      "isBuiltIn": false,
+      "updatedAt": 1794888614355,
+      "lastRepoSyncAt": 1794888622452,
+      "path": "registry/components/thermaldialwidget",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "index.css",
+        "manifest.json"
+      ],
+      "dependencies": []
+    },
     {
       "id": "comp-1794818189282-2mauz",
       "slug": "unlimiteddesignhero",
