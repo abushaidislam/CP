@@ -1,23 +1,30 @@
 "use client";
 
 import React from "react";
-import { SpatialCardCarousel } from "@/components/ui/component";
+import {
+  SpatialCardCarousel,
+  type SpatialCarouselTheme,
+} from "@/components/ui/component";
 
 const settings = {
-  theme: "light",
+  theme: "auto",
   autoPlay: true,
   interval: 2400,
   pauseOnHover: true,
 };
 
-type ThemeMode = "light" | "dark";
+const VALID_THEMES: SpatialCarouselTheme[] = ["auto", "light", "dark"];
 
 export default function SpatialCardCarouselDemo(
   props: Partial<typeof settings>
 ) {
   const config = { ...settings, ...props };
 
-  const theme: ThemeMode = config.theme === "dark" ? "dark" : "light";
+  const theme: SpatialCarouselTheme = VALID_THEMES.includes(
+    config.theme as SpatialCarouselTheme
+  )
+    ? (config.theme as SpatialCarouselTheme)
+    : "auto";
 
   const interval =
     typeof config.interval === "number" &&
@@ -26,11 +33,16 @@ export default function SpatialCardCarouselDemo(
       ? Math.min(config.interval, 10000)
       : 2400;
 
+  const wrapperThemeClass =
+    theme === "dark"
+      ? "bg-[#0B0B0C]"
+      : theme === "light"
+        ? "bg-[#FFFFFF]"
+        : "bg-[#FFFFFF] dark:bg-[#0B0B0C]";
+
   return (
     <div
-      className={`flex min-h-[580px] w-full items-center justify-center p-4 sm:p-8 transition-colors duration-500 ${
-        theme === "dark" ? "bg-[#0B0B0C]" : "bg-[#FFFFFF]"
-      }`}
+      className={`flex min-h-[580px] w-full items-center justify-center p-4 sm:p-8 transition-colors duration-500 ${wrapperThemeClass}`}
     >
       <div className="w-full max-w-5xl">
         <SpatialCardCarousel
