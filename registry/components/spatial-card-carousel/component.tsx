@@ -55,11 +55,11 @@ interface OrbitalSlot {
 }
 
 const ORBITAL_SLOTS: OrbitalSlot[] = [
-  // Slot 0: Hero focal center
+  // Slot 0: Hero focal center (z: 0 for razor-sharp 1:1 rendering)
   {
     xPct: 0,
     yPct: 0,
-    zPx: 140,
+    zPx: 0,
     scale: 1,
     rotateX: 0,
     rotateY: 0,
@@ -72,7 +72,7 @@ const ORBITAL_SLOTS: OrbitalSlot[] = [
   {
     xPct: -78,
     yPct: -62,
-    zPx: -40,
+    zPx: -80,
     scale: 0.44,
     rotateX: 7,
     rotateY: 15,
@@ -85,7 +85,7 @@ const ORBITAL_SLOTS: OrbitalSlot[] = [
   {
     xPct: -68,
     yPct: 76,
-    zPx: -20,
+    zPx: -60,
     scale: 0.46,
     rotateX: -6,
     rotateY: 13,
@@ -98,7 +98,7 @@ const ORBITAL_SLOTS: OrbitalSlot[] = [
   {
     xPct: 96,
     yPct: 12,
-    zPx: -50,
+    zPx: -95,
     scale: 0.42,
     rotateX: 4,
     rotateY: -16,
@@ -111,7 +111,7 @@ const ORBITAL_SLOTS: OrbitalSlot[] = [
   {
     xPct: 86,
     yPct: -66,
-    zPx: -90,
+    zPx: -140,
     scale: 0.38,
     rotateX: 9,
     rotateY: -14,
@@ -124,7 +124,7 @@ const ORBITAL_SLOTS: OrbitalSlot[] = [
   {
     xPct: -118,
     yPct: 8,
-    zPx: -120,
+    zPx: -180,
     scale: 0.34,
     rotateX: -5,
     rotateY: 20,
@@ -137,7 +137,7 @@ const ORBITAL_SLOTS: OrbitalSlot[] = [
   {
     xPct: 74,
     yPct: 84,
-    zPx: -70,
+    zPx: -115,
     scale: 0.4,
     rotateX: -7,
     rotateY: -13,
@@ -150,7 +150,7 @@ const ORBITAL_SLOTS: OrbitalSlot[] = [
   {
     xPct: -26,
     yPct: -102,
-    zPx: -180,
+    zPx: -240,
     scale: 0.28,
     rotateX: 11,
     rotateY: 8,
@@ -163,7 +163,7 @@ const ORBITAL_SLOTS: OrbitalSlot[] = [
   {
     xPct: 18,
     yPct: 108,
-    zPx: -160,
+    zPx: -220,
     scale: 0.3,
     rotateX: -9,
     rotateY: -8,
@@ -176,7 +176,7 @@ const ORBITAL_SLOTS: OrbitalSlot[] = [
   {
     xPct: 126,
     yPct: -24,
-    zPx: -200,
+    zPx: -270,
     scale: 0.26,
     rotateX: 6,
     rotateY: -20,
@@ -195,7 +195,7 @@ function getOrbitalSlot(offset: number, total: number): OrbitalSlot {
   return {
     xPct: Math.cos(angle) * 110,
     yPct: Math.sin(angle) * 90,
-    zPx: -180,
+    zPx: -240,
     scale: 0.28,
     rotateX: 6,
     rotateY: Math.cos(angle) * -18,
@@ -643,6 +643,7 @@ const SpatialCardCarousel = React.forwardRef<
     const wheelLockRef = useRef<number>(0);
     const dragStartRef = useRef<{ x: number; y: number } | null>(null);
     const didDragRef = useRef<boolean>(false);
+    const hasMountedRef = useRef<boolean>(false);
 
     // Zero-rerender GPU-accelerated pointer parallax
     const rawPointerX = useMotionValue(0);
@@ -656,26 +657,29 @@ const SpatialCardCarousel = React.forwardRef<
       setActiveIndex(((initialIndex % total) + total) % total);
     }, [initialIndex, total]);
 
+    useEffect(() => {
+      if (!hasMountedRef.current) {
+        hasMountedRef.current = true;
+        return;
+      }
+      onActiveChange?.(activeIndex, items[activeIndex]);
+    }, [activeIndex, items, onActiveChange]);
+
     const selectIndex = useCallback(
       (nextIdx: number) => {
         const normalized = ((nextIdx % total) + total) % total;
         setActiveIndex(normalized);
         setInteractionTick((t) => t + 1);
-        onActiveChange?.(normalized, items[normalized]);
       },
-      [items, onActiveChange, total]
+      [total]
     );
 
     const stepBy = useCallback(
       (delta: number) => {
-        setActiveIndex((prev) => {
-          const next = (((prev + delta) % total) + total) % total;
-          onActiveChange?.(next, items[next]);
-          return next;
-        });
+        setActiveIndex((prev) => (((prev + delta) % total) + total) % total);
         setInteractionTick((t) => t + 1);
       },
-      [items, onActiveChange, total]
+      [total]
     );
 
     // Smooth autoplay timer (resets cleanly after any manual interaction)
@@ -685,24 +689,11 @@ const SpatialCardCarousel = React.forwardRef<
 
       const clampedInterval = Math.max(900, interval);
       const timer = window.setInterval(() => {
-        setActiveIndex((prev) => {
-          const next = (prev + 1) % total;
-          onActiveChange?.(next, items[next]);
-          return next;
-        });
+        setActiveIndex((prev) => (prev + 1) % total);
       }, clampedInterval);
 
       return () => window.clearInterval(timer);
-    }, [
-      autoPlay,
-      interval,
-      isHovered,
-      interactionTick,
-      items,
-      onActiveChange,
-      pauseOnHover,
-      total,
-    ]);
+    }, [autoPlay, interval, isHovered, interactionTick, pauseOnHover, total]);
 
     // Native non-passive wheel listener for smooth mouse-wheel & trackpad scrubbing
     useEffect(() => {
@@ -764,6 +755,11 @@ const SpatialCardCarousel = React.forwardRef<
       }
     };
 
+    const handlePointerCancel = () => {
+      dragStartRef.current = null;
+      didDragRef.current = false;
+    };
+
     const handlePointerLeave = () => {
       setIsHovered(false);
       dragStartRef.current = null;
@@ -800,9 +796,10 @@ const SpatialCardCarousel = React.forwardRef<
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerCancel}
         onPointerLeave={handlePointerLeave}
         className={cn(
-          "relative flex h-[540px] w-full cursor-grab select-none items-center justify-center overflow-hidden rounded-2xl transition-colors duration-700 active:cursor-grabbing focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D4F742] focus-visible:ring-offset-2 sm:h-[640px]",
+          "relative flex h-[540px] w-full touch-pan-y cursor-grab select-none items-center justify-center overflow-hidden rounded-2xl transition-colors duration-700 active:cursor-grabbing focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D4F742] focus-visible:ring-offset-2 sm:h-[640px]",
           isDark
             ? "bg-[#0B0B0C] text-white"
             : "bg-[#FFFFFF] text-[#111113]",
