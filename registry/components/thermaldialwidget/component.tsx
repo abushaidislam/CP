@@ -19,6 +19,7 @@ import {
   Lock,
   Unlock,
 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 // ============================================================================
 // TYPES & INTERFACES (21st.dev Ready)
@@ -357,7 +358,7 @@ export const ThermalDialWidget = forwardRef<HTMLDivElement, ThermalDialWidgetPro
       disabled = false,
       scale = 1,
       unit = 'C',
-      className = '',
+      className,
       style,
       ...rest
     },
@@ -588,9 +589,11 @@ export const ThermalDialWidget = forwardRef<HTMLDivElement, ThermalDialWidgetPro
         onKeyDown={onKeyDown}
         onFocus={() => setIsFocused(true)}
         onBlur={() => setIsFocused(false)}
-        className={`relative inline-flex select-none items-center justify-center outline-none ${
-          disabled ? 'cursor-not-allowed opacity-70' : 'cursor-grab active:cursor-grabbing'
-        } ${className}`}
+        className={cn(
+          'relative inline-flex select-none items-center justify-center rounded-[25.5%] shadow-[0_22px_50px_-12px_rgba(0,0,0,0.28)] ring-1 ring-zinc-900/10 outline-none focus-visible:ring-2 focus-visible:ring-orange-500/60 focus-visible:ring-offset-4 focus-visible:ring-offset-zinc-50 dark:shadow-none dark:ring-0 dark:focus-visible:ring-offset-black',
+          disabled ? 'cursor-not-allowed opacity-70' : 'cursor-grab active:cursor-grabbing',
+          className
+        )}
         style={{
           width: `${Math.round(466 * scale)}px`,
           height: `${Math.round(473 * scale)}px`,
@@ -605,7 +608,7 @@ export const ThermalDialWidget = forwardRef<HTMLDivElement, ThermalDialWidgetPro
           - Smooth inset & subtle outer rim glow
         */}
         <div
-          className="relative h-full w-full overflow-hidden rounded-[25.5%] bg-[#020202]"
+          className="relative h-full w-full overflow-hidden rounded-[25.5%] bg-[#020202] dark:bg-[#020202]"
           style={{
             boxShadow: palette.rimShadow,
           }}
@@ -640,7 +643,7 @@ export const ThermalDialWidget = forwardRef<HTMLDivElement, ThermalDialWidgetPro
             onPointerCancel={onPointerUp}
           >
             <defs>
-{/* Tens Digit Vertical Fill Gradient */}
+              {/* Tens Digit Vertical Fill Gradient */}
               <linearGradient
                 id={`tensGrad-${uid}`}
                 x1="68"
@@ -726,7 +729,10 @@ export const ThermalDialWidget = forwardRef<HTMLDivElement, ThermalDialWidgetPro
             </g>
 
             {/* Ones Digit (x=220, y=234 — 30px higher than Tens Digit with soft drop shadow) */}
-            <g transform="translate(220, 234)" style={{ filter: "drop-shadow(-10px 6px 8px rgba(0, 0, 0, 0.78))" }}>
+            <g
+              transform="translate(220, 234)"
+              style={{ filter: 'drop-shadow(-10px 6px 8px rgba(0, 0, 0, 0.78))' }}
+            >
               <path d={onesPath} fill={`url(#onesGrad-${uid})`} fillRule="evenodd" />
             </g>
 
@@ -782,36 +788,9 @@ const SEASON_PRESETS: PresetConfig[] = [
   { season: 'Winter', temp: 16, icon: Snowflake },
 ];
 
-const DEFAULT_TSX_SNIPPET = `import React, { useState } from "react";
-import { ThermalDialWidget, SeasonMode } from "@/components/ui/thermal-dial-widget";
+export interface AppProps extends React.HTMLAttributes<HTMLDivElement> {}
 
-export default function ThermalDialWidgetDemo() {
-  const [temperature, setTemperature] = useState<number>(38);
-  const [season, setSeason] = useState<SeasonMode>("Summer");
-
-  return (
-    <div className="flex min-h-[600px] w-full flex-col items-center justify-center bg-black p-6">
-      <ThermalDialWidget
-        value={temperature}
-        label={season}
-        autoSeason={true}
-        variant="ember"
-        scale={0.85}
-        onChange={(nextTemp, nextSeason) => {
-          setTemperature(nextTemp);
-          setSeason(nextSeason);
-        }}
-      />
-    </div>
-  );
-}`;
-
-const METADATA_SNIPPET = `Name: Thermal Dial Thermostat Widget
-Slug: thermal-dial-widget
-Description: A tactile dark-mode squircle climate dial widget featuring a 61-tick radial gauge, staggered modular display typography, critically damped needle physics, and a specular rim-glow horizon.
-Tags: thermostat, weather, dial, gauge, widget`;
-
-export default function App() {
+export default function App({ className, ...props }: AppProps) {
   const [temperature, setTemperature] = useState<number>(38);
   const [season, setSeason] = useState<SeasonMode>('Summer');
   const [autoSeason, setAutoSeason] = useState<boolean>(true);
@@ -837,9 +816,13 @@ export default function App() {
   };
 
   return (
-    <div className="relative flex min-h-screen w-full flex-col items-center justify-center overflow-hidden bg-black text-zinc-100 selection:bg-orange-500/30">
-
-
+    <div
+      className={cn(
+        'relative flex min-h-screen w-full flex-col items-center justify-center overflow-hidden bg-zinc-50 text-zinc-900 selection:bg-orange-500/20 dark:bg-black dark:text-zinc-100 dark:selection:bg-orange-500/30',
+        className
+      )}
+      {...props}
+    >
       {/* Main 1:1 Reference Widget Stage */}
       <main className="flex flex-1 items-center justify-center p-4">
         <ThermalDialWidget
@@ -853,102 +836,104 @@ export default function App() {
       </main>
 
       {/* 21st.dev Interactive Controller Dock */}
-      
-        <aside
-          aria-label="21st.dev Demo Controller"
-          className="fixed bottom-4 z-20 flex max-w-[95vw] flex-wrap items-center justify-center gap-2.5 rounded-2xl border border-white/10 bg-zinc-950/90 px-3.5 py-2.5 shadow-2xl backdrop-blur-xl"
+      <aside
+        aria-label="21st.dev Demo Controller"
+        className="fixed bottom-4 z-20 flex max-w-[95vw] flex-wrap items-center justify-center gap-2.5 rounded-2xl border border-zinc-200/80 bg-white/85 px-3.5 py-2.5 shadow-xl shadow-zinc-900/10 backdrop-blur-xl dark:border-white/10 dark:bg-zinc-950/90 dark:shadow-2xl"
+      >
+        {/* Season Presets */}
+        <div className="flex items-center gap-1">
+          {SEASON_PRESETS.map((p) => {
+            const Icon = p.icon;
+            const currentDisplayedSeason = autoSeason
+              ? deriveSeasonFromTemp(temperature)
+              : season;
+            const isActive = currentDisplayedSeason === p.season;
+            return (
+              <button
+                key={p.season}
+                type="button"
+                onClick={() => handlePreset(p)}
+                className={cn(
+                  'inline-flex items-center gap-1.5 rounded-xl px-2.5 py-1.5 text-xs font-medium transition-colors',
+                  isActive
+                    ? 'bg-orange-500/15 text-orange-700 ring-1 ring-orange-500/35 dark:bg-orange-500/20 dark:text-orange-300 dark:ring-orange-500/40'
+                    : 'text-zinc-600 hover:bg-zinc-900/5 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-white/5 dark:hover:text-zinc-200'
+                )}
+              >
+                <Icon className="h-3.5 w-3.5" />
+                <span>{p.season}</span>
+                <span className="font-mono text-[11px] tabular-nums opacity-70">{p.temp}°</span>
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="h-4 w-px bg-zinc-200 dark:bg-white/10" />
+
+        {/* Temperature Scrubber */}
+        <label className="flex items-center gap-2 text-xs text-zinc-600 dark:text-zinc-400">
+          <span className="w-9 font-mono tabular-nums text-zinc-900 dark:text-zinc-200">
+            {temperature}°C
+          </span>
+          <input
+            type="range"
+            min={16}
+            max={45}
+            step={1}
+            value={temperature}
+            onChange={(e) => {
+              const next = Number(e.target.value);
+              handleTempChange(next, deriveSeasonFromTemp(next));
+            }}
+            className="h-1.5 w-24 cursor-pointer appearance-none rounded-lg bg-zinc-200 accent-orange-500 dark:bg-zinc-800"
+          />
+        </label>
+
+        <div className="h-4 w-px bg-zinc-200 dark:bg-white/10" />
+
+        {/* Auto-Season Sync Toggle */}
+        <button
+          type="button"
+          onClick={() => setAutoSeason((prev) => !prev)}
+          className={cn(
+            'inline-flex items-center gap-1.5 rounded-xl border px-2.5 py-1.5 text-xs font-medium transition-colors',
+            autoSeason
+              ? 'border-emerald-600/30 bg-emerald-500/10 text-emerald-700 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300'
+              : 'border-zinc-200 bg-zinc-100/80 text-zinc-600 hover:text-zinc-900 dark:border-white/10 dark:bg-white/5 dark:text-zinc-400 dark:hover:text-zinc-200'
+          )}
+          title="Automatically sync Season label with Temperature range"
         >
-          {/* Season Presets */}
-          <div className="flex items-center gap-1">
-            {SEASON_PRESETS.map((p) => {
-              const Icon = p.icon;
-              const currentDisplayedSeason = autoSeason
-                ? deriveSeasonFromTemp(temperature)
-                : season;
-              const isActive = currentDisplayedSeason === p.season;
-              return (
-                <button
-                  key={p.season}
-                  type="button"
-                  onClick={() => handlePreset(p)}
-                  className={`inline-flex items-center gap-1.5 rounded-xl px-2.5 py-1.5 text-xs font-medium transition-all ${
-                    isActive
-                      ? 'bg-orange-500/20 text-orange-300 ring-1 ring-orange-500/40'
-                      : 'text-zinc-400 hover:bg-white/5 hover:text-zinc-200'
-                  }`}
-                >
-                  <Icon className="h-3.5 w-3.5" />
-                  <span>{p.season}</span>
-                  <span className="font-mono text-[11px] opacity-70">{p.temp}°</span>
-                </button>
-              );
-            })}
-          </div>
+          {autoSeason ? <Unlock className="h-3.5 w-3.5" /> : <Lock className="h-3.5 w-3.5" />}
+          <span>{autoSeason ? 'Auto Season' : 'Locked Label'}</span>
+        </button>
 
-          <div className="h-4 w-px bg-white/10" />
+        {/* Glow Theme Mode Toggle */}
+        <button
+          type="button"
+          onClick={() => setVariant((prev) => (prev === 'ember' ? 'auto' : 'ember'))}
+          className={cn(
+            'inline-flex items-center gap-1.5 rounded-xl border px-2.5 py-1.5 text-xs font-medium transition-colors',
+            variant === 'auto'
+              ? 'border-sky-600/30 bg-sky-500/10 text-sky-700 dark:border-sky-500/30 dark:bg-sky-500/10 dark:text-sky-300'
+              : 'border-orange-600/30 bg-orange-500/10 text-orange-700 dark:border-orange-500/30 dark:bg-orange-500/10 dark:text-orange-300'
+          )}
+          title="Switch between 1:1 Reference Ember Glow and Adaptive Seasonal Glow"
+        >
+          <Sparkles className="h-3.5 w-3.5" />
+          <span>{variant === 'ember' ? '1:1 Ember Glow' : 'Adaptive Glow'}</span>
+        </button>
 
-          {/* Temperature Scrubber */}
-          <label className="flex items-center gap-2 text-xs text-zinc-400">
-            <span className="w-9 font-mono text-zinc-200">{temperature}°C</span>
-            <input
-              type="range"
-              min={16}
-              max={45}
-              step={1}
-              value={temperature}
-              onChange={(e) => {
-                const next = Number(e.target.value);
-                handleTempChange(next, deriveSeasonFromTemp(next));
-              }}
-              className="h-1.5 w-24 cursor-pointer appearance-none rounded-lg bg-zinc-800 accent-orange-500"
-            />
-          </label>
-
-          <div className="h-4 w-px bg-white/10" />
-
-          {/* Auto-Season Sync Toggle */}
-          <button
-            type="button"
-            onClick={() => setAutoSeason((prev) => !prev)}
-            className={`inline-flex items-center gap-1.5 rounded-xl border px-2.5 py-1.5 text-xs font-medium transition-colors ${
-              autoSeason
-                ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300'
-                : 'border-white/10 bg-white/5 text-zinc-400 hover:text-zinc-200'
-            }`}
-            title="Automatically sync Season label with Temperature range"
-          >
-            {autoSeason ? <Unlock className="h-3.5 w-3.5" /> : <Lock className="h-3.5 w-3.5" />}
-            <span>{autoSeason ? 'Auto Season' : 'Locked Label'}</span>
-          </button>
-
-          {/* Glow Theme Mode Toggle */}
-          <button
-            type="button"
-            onClick={() => setVariant((prev) => (prev === 'ember' ? 'auto' : 'ember'))}
-            className={`inline-flex items-center gap-1.5 rounded-xl border px-2.5 py-1.5 text-xs font-medium transition-colors ${
-              variant === 'auto'
-                ? 'border-sky-500/30 bg-sky-500/10 text-sky-300'
-                : 'border-orange-500/30 bg-orange-500/10 text-orange-300'
-            }`}
-            title="Switch between 1:1 Reference Ember Glow and Adaptive Seasonal Glow"
-          >
-            <Sparkles className="h-3.5 w-3.5" />
-            <span>{variant === 'ember' ? '1:1 Ember Glow' : 'Adaptive Glow'}</span>
-          </button>
-
-          {/* Reset to Exact 38° Summer Reference */}
-          <button
-            type="button"
-            onClick={handleResetReference}
-            className="inline-flex items-center gap-1 rounded-xl border border-white/10 bg-white/5 px-2.5 py-1.5 text-xs font-medium text-zinc-300 transition-colors hover:bg-white/10 hover:text-white"
-            title="Reset to exact reference state (Summer 38°)"
-          >
-            <RotateCcw className="h-3.5 w-3.5" />
-            <span>Reset 38°</span>
-          </button>
-        </aside>
-
-
+        {/* Reset to Exact 38° Summer Reference */}
+        <button
+          type="button"
+          onClick={handleResetReference}
+          className="inline-flex items-center gap-1 rounded-xl border border-zinc-200 bg-zinc-100/80 px-2.5 py-1.5 text-xs font-medium text-zinc-700 transition-colors hover:bg-zinc-200/80 hover:text-zinc-950 dark:border-white/10 dark:bg-white/5 dark:text-zinc-300 dark:hover:bg-white/10 dark:hover:text-white"
+          title="Reset to exact reference state (Summer 38°)"
+        >
+          <RotateCcw className="h-3.5 w-3.5" />
+          <span>Reset 38°</span>
+        </button>
+      </aside>
     </div>
   );
 }

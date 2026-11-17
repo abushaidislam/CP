@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-17T04:10:29.388Z",
+  "updatedAt": "2026-11-17T04:59:24.939Z",
   "totalComponents": 36,
   "components": [
     {
@@ -10,8 +10,8 @@
       "description": "",
       "category": "Cards",
       "isBuiltIn": false,
-      "updatedAt": 1794888620690,
-      "lastRepoSyncAt": 1794888629298,
+      "updatedAt": 1794891397689,
+      "lastRepoSyncAt": 1794891564871,
       "path": "registry/components/thermaldialwidget",
       "files": [
         "component.tsx",
@@ -19,7 +19,9 @@
         "index.css",
         "manifest.json"
       ],
-      "dependencies": []
+      "dependencies": [
+        "lucide-react"
+      ]
     },
     {
       "id": "comp-1794818189282-2mauz",
