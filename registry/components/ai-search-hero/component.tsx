@@ -1,7 +1,12 @@
 "use client";
 
-import React, { useId } from "react";
-import { motion, useReducedMotion } from "framer-motion";
+import React, { useEffect, useId, useState } from "react";
+import {
+  LayoutGroup,
+  motion,
+  MotionConfig,
+  useReducedMotion,
+} from "framer-motion";
 
 function cn(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");
@@ -27,15 +32,15 @@ export interface AiSearchHeroProps
   onSecondaryClick?: () => void;
 }
 
-// Quintic ease-out for a long, silky deceleration tail
+// Quintic ease-out for silky deceleration
 const EASE_OUT_QUINT: [number, number, number, number] = [0.16, 1, 0.3, 1];
 
-// Critically-damped spring (zeta ~ 1.05): fluid velocity with zero bounce
-const SLOT_SPRING = {
+// Critically-damped GPU FLIP spring (zero bounce, continuous velocity)
+const FLIP_SPRING = {
   type: "spring" as const,
-  stiffness: 240,
-  damping: 31,
-  mass: 0.9,
+  stiffness: 260,
+  damping: 32,
+  mass: 0.85,
 };
 
 const HOVER_SPRING = {
@@ -45,11 +50,10 @@ const HOVER_SPRING = {
   mass: 0.6,
 };
 
-interface BadgeWrapperProps {
+interface BadgeProps {
   label: string;
-  delay: number;
-  animateOnMount: boolean;
-  shouldReduceMotion: boolean;
+  delay?: number;
+  skipMotion: boolean;
   leading?: boolean;
   className?: string;
   style?: React.CSSProperties;
@@ -58,18 +62,16 @@ interface BadgeWrapperProps {
 
 function PlatformBadge({
   label,
-  delay,
-  animateOnMount,
-  shouldReduceMotion,
+  delay = 0,
+  skipMotion,
   leading = false,
   className,
   style,
   children,
-}: BadgeWrapperProps) {
-  const skipMotion = !animateOnMount || shouldReduceMotion;
-
+}: BadgeProps) {
   return (
     <motion.span
+      layout
       role="img"
       aria-label={label}
       title={label}
@@ -77,59 +79,59 @@ function PlatformBadge({
         skipMotion
           ? false
           : {
-              width: 0,
-              marginLeft: 0,
-              marginRight: 0,
+              opacity: 0,
+              scale: 0.42,
+              filter: "blur(6px)",
             }
       }
       animate={{
-        width: "0.94em",
-        marginLeft: leading ? "0em" : "0.14em",
-        marginRight: "0.14em",
+        opacity: 1,
+        scale: 1,
+        filter: "blur(0px)",
       }}
-      transition={skipMotion ? { duration: 0 } : { ...SLOT_SPRING, delay }}
-      className="inline-flex items-center justify-center align-middle select-none h-[0.94em] -translate-y-[0.06em] shrink-0"
+      transition={
+        skipMotion
+          ? { duration: 0 }
+          : {
+              layout: FLIP_SPRING,
+              opacity: { duration: 0.36, delay, ease: EASE_OUT_QUINT },
+              scale: { ...FLIP_SPRING, delay },
+              filter: { duration: 0.38, delay, ease: EASE_OUT_QUINT },
+            }
+      }
+      whileHover={
+        skipMotion ? undefined : { scale: 1.08, y: -1, transition: HOVER_SPRING }
+      }
+      className={cn(
+        "inline-flex items-center justify-center align-middle select-none",
+        "w-[0.94em] h-[0.94em] rounded-[0.26em] -translate-y-[0.06em] shrink-0",
+        leading ? "mr-[0.14em]" : "mx-[0.14em]",
+        className
+      )}
+      style={{
+        willChange: skipMotion ? undefined : "transform, opacity, filter",
+        ...style,
+      }}
     >
-      <motion.span
-        initial={
-          skipMotion
-            ? false
-            : {
-                opacity: 0,
-                scale: 0.52,
-                filter: "blur(5px)",
-              }
-        }
-        animate={{
-          opacity: 1,
-          scale: 1,
-          filter: "blur(0px)",
-        }}
-        transition={
-          skipMotion
-            ? { duration: 0 }
-            : {
-                duration: 0.44,
-                delay: delay + 0.04,
-                ease: EASE_OUT_QUINT,
-              }
-        }
-        whileHover={
-          shouldReduceMotion
-            ? undefined
-            : { scale: 1.08, y: -1, transition: HOVER_SPRING }
-        }
-        className={cn(
-          "flex h-[0.94em] w-[0.94em] shrink-0 items-center justify-center rounded-[0.26em]",
-          className
-        )}
-        style={{
-          willChange: skipMotion ? undefined : "transform, opacity, filter",
-          ...style,
-        }}
-      >
-        {children}
-      </motion.span>
+      {children}
+    </motion.span>
+  );
+}
+
+function FlipWord({
+  children,
+  skipMotion,
+}: {
+  children: React.ReactNode;
+  skipMotion: boolean;
+}) {
+  return (
+    <motion.span
+      layout="position"
+      transition={skipMotion ? { duration: 0 } : { layout: FLIP_SPRING }}
+      className="inline-block"
+    >
+      {children}
     </motion.span>
   );
 }
@@ -274,6 +276,36 @@ export const AiSearchHero = React.forwardRef<HTMLElement, AiSearchHeroProps>(
       ? Math.max(0, Math.min(0.4, staggerDelay))
       : 0.09;
 
+    const [showLine1Badge, setShowLine1Badge] = useState(skipMotion);
+    const [showLine2Badges, setShowLine2Badges] = useState(skipMotion);
+    const [showLine3Badge, setShowLine3Badge] = useState(skipMotion);
+
+    useEffect(() => {
+      if (skipMotion) {
+        setShowLine1Badge(true);
+        setShowLine2Badges(true);
+        setShowLine3Badge(true);
+        return;
+      }
+
+      const baseMs = safeStagger * 4.5 * 1000;
+      const t1 = window.setTimeout(() => setShowLine1Badge(true), baseMs);
+      const t2 = window.setTimeout(
+        () => setShowLine2Badges(true),
+        baseMs + safeStagger * 1.4 * 1000
+      );
+      const t3 = window.setTimeout(
+        () => setShowLine3Badge(true),
+        baseMs + safeStagger * 2.8 * 1000
+      );
+
+      return () => {
+        window.clearTimeout(t1);
+        window.clearTimeout(t2);
+        window.clearTimeout(t3);
+      };
+    }, [skipMotion, safeStagger]);
+
     const lineTransition = (index: number) =>
       skipMotion
         ? { duration: 0 }
@@ -288,7 +320,6 @@ export const AiSearchHero = React.forwardRef<HTMLElement, AiSearchHeroProps>(
       : { opacity: 0, y: 10, filter: "blur(6px)" };
 
     const lineAnimate = { opacity: 1, y: 0, filter: "blur(0px)" };
-    const iconStartDelay = safeStagger * 4.5;
 
     const surfaceClasses =
       theme === "dark"
@@ -319,124 +350,170 @@ export const AiSearchHero = React.forwardRef<HTMLElement, AiSearchHeroProps>(
           : "bg-white text-[#18181B] border border-black/[0.12] shadow-[0_1px_2px_rgba(0,0,0,0.04)] hover:bg-[#F4F4F5] focus-visible:ring-offset-[#FAFAFA] dark:bg-[#151517] dark:text-[#E5E5EA] dark:border-white/10 dark:shadow-none dark:hover:bg-[#1C1C20] dark:hover:border-white/[0.16] dark:focus-visible:ring-offset-[#0A0A0A]";
 
     return (
-      <section
-        ref={ref}
-        aria-labelledby={`${uid}-heading`}
-        className={cn(
-          "relative w-full overflow-hidden px-4 py-14 sm:px-8 sm:py-20",
-          "flex flex-col items-center justify-center text-center antialiased transition-colors duration-200",
-          surfaceClasses,
-          className
-        )}
-        style={{
-          fontFamily:
-            '"Inter", "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
-          ...style,
-        }}
-        {...rest}
-      >
-        <div className="mx-auto flex w-full max-w-[820px] flex-col items-center">
-          <h1
-            id={`${uid}-heading`}
-            className="font-medium tracking-[-0.032em] leading-[1.18] text-[2rem] sm:text-[2.85rem] md:text-[3.35rem]"
-          >
-            {/* Line 1 */}
-            <motion.span
-              initial={lineInitial}
-              animate={lineAnimate}
-              transition={lineTransition(0)}
-              style={{
-                willChange: skipMotion ? undefined : "transform, opacity, filter",
-              }}
-              className="block sm:whitespace-nowrap"
+      <MotionConfig reducedMotion="user">
+        <section
+          ref={ref}
+          aria-labelledby={`${uid}-heading`}
+          className={cn(
+            "relative w-full overflow-hidden px-4 py-14 sm:px-8 sm:py-20",
+            "flex flex-col items-center justify-center text-center antialiased transition-colors duration-200",
+            surfaceClasses,
+            className
+          )}
+          style={{
+            fontFamily:
+              '"Inter", "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+            ...style,
+          }}
+          {...rest}
+        >
+          <div className="mx-auto flex w-full max-w-[820px] flex-col items-center">
+            <h1
+              id={`${uid}-heading`}
+              className="font-medium tracking-[-0.032em] leading-[1.18] text-[2rem] sm:text-[2.85rem] md:text-[3.35rem]"
             >
-              Get found on{" "}
-              <PlatformBadge
-                label="Google"
-                delay={iconStartDelay}
-                animateOnMount={animateOnMount}
-                shouldReduceMotion={shouldReduceMotion}
-                className={googleBadgeClasses}
-              >
-                <GoogleIcon />
-              </PlatformBadge>
-              Google,
-            </motion.span>
+              {/* Line 1 */}
+              <LayoutGroup id={`${uid}-line1`}>
+                <motion.span
+                  initial={lineInitial}
+                  animate={lineAnimate}
+                  transition={lineTransition(0)}
+                  style={{
+                    willChange: skipMotion
+                      ? undefined
+                      : "transform, opacity, filter",
+                  }}
+                  className="flex flex-wrap items-center justify-center sm:flex-nowrap"
+                >
+                  <FlipWord skipMotion={skipMotion}>Get found on</FlipWord>
+                  {!showLine1Badge && <span>&nbsp;</span>}
+                  {showLine1Badge && (
+                    <PlatformBadge
+                      label="Google"
+                      skipMotion={skipMotion}
+                      className={googleBadgeClasses}
+                    >
+                      <GoogleIcon />
+                    </PlatformBadge>
+                  )}
+                  <FlipWord skipMotion={skipMotion}>Google,</FlipWord>
+                </motion.span>
+              </LayoutGroup>
 
-            {/* Line 2 */}
-            <motion.span
-              initial={lineInitial}
-              animate={lineAnimate}
-              transition={lineTransition(1)}
-              style={{
-                willChange: skipMotion ? undefined : "transform, opacity, filter",
-              }}
-              className="block sm:whitespace-nowrap"
-            >
-              <PlatformBadge
-                label="ChatGPT"
-                leading
-                delay={iconStartDelay + safeStagger * 1.3}
-                animateOnMount={animateOnMount}
-                shouldReduceMotion={shouldReduceMotion}
-                className="bg-[#141416] ring-1 ring-black/15 dark:ring-white/15"
-              >
-                <OpenAiIcon />
-              </PlatformBadge>
-              ChatGPT,{" "}
-              <PlatformBadge
-                label="Claude"
-                delay={iconStartDelay + safeStagger * 1.7}
-                animateOnMount={animateOnMount}
-                shouldReduceMotion={shouldReduceMotion}
-                className="bg-[#D96B43] shadow-[0_1px_2px_rgba(0,0,0,0.08)] dark:shadow-none"
-              >
-                <ClaudeIcon />
-              </PlatformBadge>
-              Claude,{" "}
-              <PlatformBadge
-                label="Codex"
-                delay={iconStartDelay + safeStagger * 2.1}
-                animateOnMount={animateOnMount}
-                shouldReduceMotion={shouldReduceMotion}
-                className="shadow-[0_1px_2px_rgba(0,0,0,0.08)] dark:shadow-none"
-                style={{
-                  background:
-                    "linear-gradient(135deg, #7B96FF 0%, #5263FF 100%)",
-                }}
-              >
-                <CodexIcon maskId={`${uid}-codex-mask`} />
-              </PlatformBadge>
-              Codex
-            </motion.span>
+              {/* Line 2 */}
+              <LayoutGroup id={`${uid}-line2`}>
+                <motion.span
+                  initial={lineInitial}
+                  animate={lineAnimate}
+                  transition={lineTransition(1)}
+                  style={{
+                    willChange: skipMotion
+                      ? undefined
+                      : "transform, opacity, filter",
+                  }}
+                  className="flex flex-wrap items-center justify-center sm:flex-nowrap"
+                >
+                  {showLine2Badges && (
+                    <PlatformBadge
+                      label="ChatGPT"
+                      leading
+                      delay={0}
+                      skipMotion={skipMotion}
+                      className="bg-[#141416] ring-1 ring-black/15 dark:ring-white/15"
+                    >
+                      <OpenAiIcon />
+                    </PlatformBadge>
+                  )}
+                  <FlipWord skipMotion={skipMotion}>ChatGPT,</FlipWord>
+                  {!showLine2Badges && <span>&nbsp;</span>}
+                  {showLine2Badges && (
+                    <PlatformBadge
+                      label="Claude"
+                      delay={0.04}
+                      skipMotion={skipMotion}
+                      className="bg-[#D96B43] shadow-[0_1px_2px_rgba(0,0,0,0.08)] dark:shadow-none"
+                    >
+                      <ClaudeIcon />
+                    </PlatformBadge>
+                  )}
+                  <FlipWord skipMotion={skipMotion}>Claude,</FlipWord>
+                  {!showLine2Badges && <span>&nbsp;</span>}
+                  {showLine2Badges && (
+                    <PlatformBadge
+                      label="Codex"
+                      delay={0.08}
+                      skipMotion={skipMotion}
+                      className="shadow-[0_1px_2px_rgba(0,0,0,0.08)] dark:shadow-none"
+                      style={{
+                        background:
+                          "linear-gradient(135deg, #7B96FF 0%, #5263FF 100%)",
+                      }}
+                    >
+                      <CodexIcon maskId={`${uid}-codex-mask`} />
+                    </PlatformBadge>
+                  )}
+                  <FlipWord skipMotion={skipMotion}>Codex</FlipWord>
+                </motion.span>
+              </LayoutGroup>
 
-            {/* Line 3 */}
-            <motion.span
-              initial={lineInitial}
-              animate={lineAnimate}
-              transition={lineTransition(2)}
-              style={{
-                willChange: skipMotion ? undefined : "transform, opacity, filter",
-              }}
-              className="block sm:whitespace-nowrap"
-            >
-              and{" "}
-              <PlatformBadge
-                label="Perplexity and AI answers"
-                delay={iconStartDelay + safeStagger * 2.9}
-                animateOnMount={animateOnMount}
-                shouldReduceMotion={shouldReduceMotion}
-                className="bg-[#1D7D84] shadow-[0_1px_2px_rgba(0,0,0,0.08)] dark:shadow-none"
-              >
-                <PerplexityIcon />
-              </PlatformBadge>
-              every AI answer
-            </motion.span>
-          </h1>
+              {/* Line 3 */}
+              <LayoutGroup id={`${uid}-line3`}>
+                <motion.span
+                  initial={lineInitial}
+                  animate={lineAnimate}
+                  transition={lineTransition(2)}
+                  style={{
+                    willChange: skipMotion
+                      ? undefined
+                      : "transform, opacity, filter",
+                  }}
+                  className="flex flex-wrap items-center justify-center sm:flex-nowrap"
+                >
+                  <FlipWord skipMotion={skipMotion}>and</FlipWord>
+                  {!showLine3Badge && <span>&nbsp;</span>}
+                  {showLine3Badge && (
+                    <PlatformBadge
+                      label="Perplexity and AI answers"
+                      skipMotion={skipMotion}
+                      className="bg-[#1D7D84] shadow-[0_1px_2px_rgba(0,0,0,0.08)] dark:shadow-none"
+                    >
+                      <PerplexityIcon />
+                    </PlatformBadge>
+                  )}
+                  <FlipWord skipMotion={skipMotion}>every AI answer</FlipWord>
+                </motion.span>
+              </LayoutGroup>
+            </h1>
 
-          {/* Subtitle */}
-          {subtitle && (
-            <motion.p
+            {/* Subtitle */}
+            {subtitle && (
+              <motion.p
+                initial={
+                  skipMotion
+                    ? false
+                    : { opacity: 0, y: 8, filter: "blur(5px)" }
+                }
+                animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+                transition={
+                  skipMotion
+                    ? { duration: 0 }
+                    : {
+                        duration: 0.6,
+                        delay: safeStagger * 3.1,
+                        ease: EASE_OUT_QUINT,
+                      }
+                }
+                className={cn(
+                  "mt-5 sm:mt-6 max-w-[460px] text-[0.9375rem] sm:text-[1rem] leading-[1.58] tracking-[-0.005em]",
+                  subtitleClasses
+                )}
+              >
+                {subtitle}
+              </motion.p>
+            )}
+
+            {/* CTA Row */}
+            <motion.div
               initial={
                 skipMotion
                   ? false
@@ -448,94 +525,69 @@ export const AiSearchHero = React.forwardRef<HTMLElement, AiSearchHeroProps>(
                   ? { duration: 0 }
                   : {
                       duration: 0.6,
-                      delay: safeStagger * 3.1,
+                      delay: safeStagger * 3.8,
                       ease: EASE_OUT_QUINT,
                     }
               }
-              className={cn(
-                "mt-5 sm:mt-6 max-w-[460px] text-[0.9375rem] sm:text-[1rem] leading-[1.58] tracking-[-0.005em]",
-                subtitleClasses
-              )}
+              className="mt-7 sm:mt-8 flex flex-wrap items-center justify-center gap-3"
             >
-              {subtitle}
-            </motion.p>
-          )}
-
-          {/* CTA Row */}
-          <motion.div
-            initial={
-              skipMotion
-                ? false
-                : { opacity: 0, y: 8, filter: "blur(5px)" }
-            }
-            animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-            transition={
-              skipMotion
-                ? { duration: 0 }
-                : {
-                    duration: 0.6,
-                    delay: safeStagger * 3.8,
-                    ease: EASE_OUT_QUINT,
-                  }
-            }
-            className="mt-7 sm:mt-8 flex flex-wrap items-center justify-center gap-3"
-          >
-            {/* Primary Pill CTA */}
-            <button
-              type="button"
-              onClick={onPrimaryClick}
-              className={cn(
-                "relative inline-flex h-11 items-center justify-center rounded-full px-6",
-                "text-[0.875rem] font-medium tracking-[-0.01em] text-white",
-                "transition-all duration-150 hover:brightness-110 active:scale-[0.98]",
-                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4A7AFF] focus-visible:ring-offset-2",
-                theme === "dark"
-                  ? "focus-visible:ring-offset-[#0A0A0A]"
-                  : theme === "light"
-                    ? "focus-visible:ring-offset-[#FAFAFA]"
-                    : "focus-visible:ring-offset-[#FAFAFA] dark:focus-visible:ring-offset-[#0A0A0A]"
-              )}
-              style={{
-                background:
-                  "radial-gradient(120% 100% at 50% 0%, #3E6EFF 0%, #1C3A8A 48%, #101218 100%)",
-                boxShadow:
-                  "inset 0 1px 0 rgba(255,255,255,0.3), 0 0 0 1px rgba(255,255,255,0.12), 0 4px 12px rgba(16,18,24,0.18)",
-              }}
-            >
-              <span className="relative z-10">{primaryCtaText}</span>
-            </button>
-
-            {/* Secondary Pill CTA */}
-            <button
-              type="button"
-              onClick={onSecondaryClick}
-              className={cn(
-                "group inline-flex h-11 items-center justify-center gap-2 rounded-full px-6",
-                "text-[0.875rem] font-medium tracking-[-0.01em]",
-                "transition-all duration-150 active:scale-[0.98]",
-                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4A7AFF] focus-visible:ring-offset-2",
-                secondaryBtnClasses
-              )}
-            >
-              <span>{secondaryCtaText}</span>
-              <svg
-                viewBox="0 0 16 16"
-                fill="none"
-                className="h-3.5 w-3.5 transition-transform duration-200 group-hover:translate-x-0.5"
-                aria-hidden="true"
+              {/* Primary Pill CTA */}
+              <button
+                type="button"
+                onClick={onPrimaryClick}
+                className={cn(
+                  "relative inline-flex h-11 items-center justify-center rounded-full px-6",
+                  "text-[0.875rem] font-medium tracking-[-0.01em] text-white",
+                  "transition-all duration-150 hover:brightness-110 active:scale-[0.98]",
+                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4A7AFF] focus-visible:ring-offset-2",
+                  theme === "dark"
+                    ? "focus-visible:ring-offset-[#0A0A0A]"
+                    : theme === "light"
+                      ? "focus-visible:ring-offset-[#FAFAFA]"
+                      : "focus-visible:ring-offset-[#FAFAFA] dark:focus-visible:ring-offset-[#0A0A0A]"
+                )}
+                style={{
+                  background:
+                    "radial-gradient(120% 100% at 50% 0%, #3E6EFF 0%, #1C3A8A 48%, #101218 100%)",
+                  boxShadow:
+                    "inset 0 1px 0 rgba(255,255,255,0.3), 0 0 0 1px rgba(255,255,255,0.12), 0 4px 12px rgba(16,18,24,0.18)",
+                }}
               >
-                <path
-                  d="M3.5 8h9m0 0L9 4.5M12.5 8L9 11.5"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-            </button>
-          </motion.div>
-        </div>
-      </section>
+                <span className="relative z-10">{primaryCtaText}</span>
+              </button>
+
+              {/* Secondary Pill CTA */}
+              <button
+                type="button"
+                onClick={onSecondaryClick}
+                className={cn(
+                  "group inline-flex h-11 items-center justify-center gap-2 rounded-full px-6",
+                  "text-[0.875rem] font-medium tracking-[-0.01em]",
+                  "transition-all duration-150 active:scale-[0.98]",
+                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4A7AFF] focus-visible:ring-offset-2",
+                  secondaryBtnClasses
+                )}
+              >
+                <span>{secondaryCtaText}</span>
+                <svg
+                  viewBox="0 0 16 16"
+                  fill="none"
+                  className="h-3.5 w-3.5 transition-transform duration-200 group-hover:translate-x-0.5"
+                  aria-hidden="true"
+                >
+                  <path
+                    d="M3.5 8h9m0 0L9 4.5M12.5 8L9 11.5"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </button>
+            </motion.div>
+          </div>
+        </section>
+      </MotionConfig>
     );
   }
 );
