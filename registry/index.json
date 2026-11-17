@@ -1,8 +1,26 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-17T10:50:43.185Z",
+  "updatedAt": "2026-11-17T10:54:33.962Z",
   "totalComponents": 37,
   "components": [
+    {
+      "id": "comp-1794911670084-bxw3x",
+      "slug": "alarm-wighht",
+      "name": "AlarmWighht",
+      "description": "",
+      "category": "Custom",
+      "isBuiltIn": false,
+      "updatedAt": 1794912864411,
+      "lastRepoSyncAt": 1794912873879,
+      "path": "registry/components/alarm-wighht",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "index.css",
+        "manifest.json"
+      ],
+      "dependencies": []
+    },
     {
       "id": "comp-1794888607294-l6uu5",
       "slug": "thermaldialwidget",
@@ -22,24 +40,6 @@
       "dependencies": [
         "lucide-react"
       ]
-    },
-    {
-      "id": "comp-1794911670084-bxw3x",
-      "slug": "alarm-wighht",
-      "name": "AlarmWighht",
-      "description": "",
-      "category": "Custom",
-      "isBuiltIn": false,
-      "updatedAt": 1794911691993,
-      "lastRepoSyncAt": 1794912460893,
-      "path": "registry/components/alarm-wighht",
-      "files": [
-        "component.tsx",
-        "default.tsx",
-        "index.css",
-        "manifest.json"
-      ],
-      "dependencies": []
     },
     {
       "id": "comp-1794818189282-2mauz",

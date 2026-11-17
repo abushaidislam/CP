@@ -166,12 +166,14 @@ const THEME_TOKENS: Record<
     centerBtnBg: 'bg-[#010101] hover:bg-[#0d0d0d]',
     centerIcon: 'text-[#ffffff]',
     dockBar: 'bg-[#010101]',
-    focusRing: 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0edafb] focus-visible:ring-offset-2 focus-visible:ring-offset-[#010101]',
+    focusRing:
+      'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0edafb] focus-visible:ring-offset-2 focus-visible:ring-offset-[#010101]',
   },
   light: {
     pillInactive: 'bg-[#e2e4e9] text-[#52555e] hover:bg-[#d6d9e0]',
     pillActive: 'bg-[#0e6b94] text-[#ffffff]',
-    cardBg: 'bg-[#ffffff] shadow-[0_20px_48px_-16px_rgba(15,23,42,0.16)] ring-1 ring-black/5',
+    cardBg:
+      'bg-[#ffffff] shadow-[0_20px_48px_-16px_rgba(15,23,42,0.16)] ring-1 ring-black/5',
     labelText: 'text-[#64748b]',
     timeText: 'text-[#0f172a]',
     stopBtn: 'bg-[#f1f5f9] text-[#0f172a] hover:bg-[#e2e8f0]',
@@ -181,7 +183,8 @@ const THEME_TOKENS: Record<
     centerBtnBg: 'bg-[#ffffff] hover:bg-[#f8fafc] shadow-sm',
     centerIcon: 'text-[#0f172a]',
     dockBar: 'bg-[#0f172a]/85',
-    focusRing: 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0284c7] focus-visible:ring-offset-2 focus-visible:ring-offset-[#ffffff]',
+    focusRing:
+      'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0284c7] focus-visible:ring-offset-2 focus-visible:ring-offset-[#ffffff]',
   },
 };
 
@@ -239,6 +242,29 @@ export const FocusTimerWidget = forwardRef<HTMLDivElement, FocusTimerWidgetProps
         (initialRemainingSeconds === undefined || initialRemainingSeconds > 0)
     );
     const [statusAnnouncement, setStatusAnnouncement] = useState<string>('');
+
+    useEffect(() => {
+      if (!initialPresetId) return;
+      const matched = safePresets.find((p) => p.id === initialPresetId);
+      if (matched) {
+        setActivePresetId(matched.id);
+        const nextTotal = Math.max(1, Math.round(matched.minutes * 60));
+        setRemainingSeconds(
+          initialRemainingSeconds !== undefined
+            ? Math.min(Math.max(0, initialRemainingSeconds), nextTotal)
+            : nextTotal
+        );
+      }
+    }, [initialPresetId, safePresets]);
+
+    useEffect(() => {
+      if (initialRemainingSeconds === undefined) return;
+      setRemainingSeconds(Math.min(Math.max(0, initialRemainingSeconds), totalSeconds));
+    }, [initialRemainingSeconds, totalSeconds]);
+
+    useEffect(() => {
+      setIsRunning(initialRunning);
+    }, [initialRunning]);
 
     const playCompletionChime = useCallback(() => {
       if (!soundEnabled || typeof window === 'undefined') return;
