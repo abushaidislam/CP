@@ -2,6 +2,7 @@ import { createHmac, createHash, timingSafeEqual } from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 
 export const OWNER_SESSION_COOKIE = "studio_owner_session";
+export const OWNER_SESSION_HEADER = "x-studio-owner-token";
 export const STUDIO_CLIENT_HEADER = "x-studio-client";
 export const STUDIO_CLIENT_HEADER_VALUE = "component-studio";
 
@@ -27,6 +28,7 @@ interface GlobalSecurityStore {
   dailyQuota: DailyQuotaRecord;
   runtimePasscodeHash: string | null;
   blockedRequestsCount: number;
+  explicitlyLocked: boolean;
 }
 
 const globalForSecurity = globalThis as unknown as {
@@ -49,6 +51,7 @@ function getSecurityStore(): GlobalSecurityStore {
       },
       runtimePasscodeHash: null,
       blockedRequestsCount: 0,
+      explicitlyLocked: false,
     };
   }
   const store = globalForSecurity.__studioSecurityStore;
@@ -83,11 +86,21 @@ export function hasConfiguredPasscode(): boolean {
   return Boolean(getEnvPasscode() || store.runtimePasscodeHash);
 }
 
+export function setExplicitlyLocked(locked: boolean): void {
+  const store = getSecurityStore();
+  store.explicitlyLocked = locked;
+}
+
+export function isExplicitlyLocked(): boolean {
+  return Boolean(getSecurityStore().explicitlyLocked);
+}
+
 export function setRuntimeOwnerPasscode(newPasscode: string): void {
   const clean = newPasscode.trim();
   if (!clean) return;
   const store = getSecurityStore();
   store.runtimePasscodeHash = sha256Hex(clean);
+  store.explicitlyLocked = false;
 }
 
 /**
@@ -141,7 +154,7 @@ export function createOwnerSessionToken(ttlSeconds: number = 60 * 60 * 24 * 7): 
 }
 
 /**
- * Verifies an HMAC-SHA256 signed session token from cookie
+ * Verifies an HMAC-SHA256 signed session token from cookie or header
  */
 export function verifyOwnerSessionToken(token?: string | null): boolean {
   if (!token || typeof token !== "string" || !token.includes(".")) {
@@ -181,8 +194,32 @@ export function verifyOwnerSessionToken(token?: string | null): boolean {
 }
 
 export function isOwnerRequestAuthenticated(req: NextRequest): boolean {
-  const token = req.cookies.get(OWNER_SESSION_COOKIE)?.value;
-  return verifyOwnerSessionToken(token);
+  const cookieToken = req.cookies.get(OWNER_SESSION_COOKIE)?.value;
+  if (verifyOwnerSessionToken(cookieToken)) {
+    return true;
+  }
+
+  const headerToken =
+    req.headers.get(OWNER_SESSION_HEADER)?.trim() ||
+    req.headers
+      .get("authorization")
+      ?.replace(/^Bearer\s+/i, "")
+      .trim();
+  if (verifyOwnerSessionToken(headerToken)) {
+    return true;
+  }
+
+  // If no passcode has been configured via STUDIO_ACCESS_CODE or runtime setup,
+  // and the session has not been explicitly locked, allow same-origin Studio requests seamlessly.
+  if (
+    !hasConfiguredPasscode() &&
+    !isExplicitlyLocked() &&
+    req.headers.get(STUDIO_CLIENT_HEADER) === STUDIO_CLIENT_HEADER_VALUE
+  ) {
+    return true;
+  }
+
+  return false;
 }
 
 export function getClientIp(req: NextRequest): string {
@@ -350,7 +387,7 @@ export function getRateLimitStatus(
 
 export function getConfiguredAiRateLimitPerMin(): number {
   const parsed = Number(process.env.STUDIO_RATE_LIMIT_PER_MIN);
-  return Number.isFinite(parsed) && parsed > 0 ? Math.min(120, Math.floor(parsed)) : 10;
+  return Number.isFinite(parsed) && parsed > 0 ? Math.min(120, Math.floor(parsed)) : 30;
 }
 
 export function getDailyQuotaSummary(): {

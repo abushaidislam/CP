@@ -43,6 +43,7 @@ export function SecurityShieldModal({
     isSecurityModalOpen,
     setSecurityModalOpen,
     isOwnerAuthenticated,
+    ownerSessionToken,
     securityTelemetry,
     setSecurityTelemetry,
   } = useStudioStore();
@@ -70,8 +71,16 @@ export function SecurityShieldModal({
   const fetchSessionStatus = useCallback(async () => {
     setIsLoadingStatus(true);
     try {
+      const headers: Record<string, string> = {
+        "X-Studio-Client": "component-studio",
+      };
+      const currentToken = useStudioStore.getState().ownerSessionToken;
+      if (currentToken) {
+        headers["X-Studio-Owner-Token"] = currentToken;
+      }
       const res = await fetch("/api/auth/session", {
         method: "GET",
+        headers,
         cache: "no-store",
       });
       if (res.ok) {
@@ -130,7 +139,7 @@ export function SecurityShieldModal({
 
       setSecurityTelemetry(data);
       setPasscode("");
-      setStatusNotice("Owner session unlocked. Signed HttpOnly cookie active.");
+      setStatusNotice("Owner session unlocked. Signed session token active.");
     } catch {
       setErrorMsg("Failed to verify owner passcode. Please try again.");
     } finally {
@@ -148,6 +157,7 @@ export function SecurityShieldModal({
         method: "DELETE",
         headers: {
           "X-Studio-Client": "component-studio",
+          ...(ownerSessionToken ? { "X-Studio-Owner-Token": ownerSessionToken } : {}),
         },
       });
       if (res.ok) {
@@ -173,6 +183,7 @@ export function SecurityShieldModal({
         headers: {
           "Content-Type": "application/json",
           "X-Studio-Client": "component-studio",
+          ...(ownerSessionToken ? { "X-Studio-Owner-Token": ownerSessionToken } : {}),
         },
         body: JSON.stringify({
           action: "update-settings",
@@ -200,6 +211,7 @@ export function SecurityShieldModal({
         headers: {
           "Content-Type": "application/json",
           "X-Studio-Client": "component-studio",
+          ...(ownerSessionToken ? { "X-Studio-Owner-Token": ownerSessionToken } : {}),
         },
         body: JSON.stringify({
           action: "update-settings",

@@ -1,10 +1,12 @@
 "use client";
 
-import React, { useState, useRef, useEffect, useMemo } from "react";
+import React, { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import {
   useStudioStore,
   AttachedImage,
   AttachedCodeSnippet,
+  StudioFileName,
+  AiChatRole,
 } from "@/lib/store/studio-store";
 import { auditComponentGuidelines } from "@/lib/sandbox/guideline-linter";
 import { Button } from "@/components/ui/button";
@@ -37,11 +39,14 @@ import {
   ChangeApprovalCard,
   Plan,
   PromptInput,
+  Suggestion,
+  SuggestionGroup,
   TaskItemProps,
   ReasoningStep,
   AttachCodeDialog,
   ImagePreviewDialog,
   CodePreviewDialog,
+  SlashCommandItem,
 } from "@/components/ui/ai-elements";
 import { MarkdownContent } from "@/components/ui/markdown-content";
 import { cn } from "@/lib/utils";
@@ -69,6 +74,12 @@ import {
   X,
   Lock,
   Unlock,
+  Copy,
+  RotateCcw,
+  Palette,
+  Compass,
+  BookmarkCheck,
+  Play,
 } from "lucide-react";
 
 const MODEL_OPTIONS = [
@@ -95,7 +106,49 @@ const MODEL_OPTIONS = [
   },
 ];
 
-
+const ROLE_OPTIONS: Array<{
+  id: AiChatRole;
+  name: string;
+  tag: string;
+  description: string;
+  icon: React.ComponentType<{ className?: string }>;
+}> = [
+  {
+    id: "copilot",
+    name: "Co-Pilot",
+    tag: "All-Rounder",
+    description: "Full-stack React 19, Tailwind v4, and Framer Motion component engineer.",
+    icon: Code2,
+  },
+  {
+    id: "designer",
+    name: "UI Designer",
+    tag: "Visual Craft",
+    description: "Bespoke visual hierarchy, refined dark/light tokens, and micro-interactions.",
+    icon: Palette,
+  },
+  {
+    id: "architect",
+    name: "Code Architect",
+    tag: "Clean AST",
+    description: "Composable subcomponents, strict TypeScript generics, and hook performance.",
+    icon: Compass,
+  },
+  {
+    id: "auditor",
+    name: "Standards Auditor",
+    tag: "21st.dev & A11y",
+    description: "Strict 21st.dev compliance, WCAG AA contrast, ARIA roles, and keyboard nav.",
+    icon: ShieldCheck,
+  },
+  {
+    id: "optimizer",
+    name: "Motion Engineer",
+    tag: "60fps Springs",
+    description: "Natural Framer Motion spring physics, layoutId transitions, and gesture polish.",
+    icon: Zap,
+  },
+];
 
 export interface AiAssistantPanelProps {
   isMobile?: boolean;
@@ -109,7 +162,9 @@ export function AiAssistantPanel({ isMobile = false, onClose }: AiAssistantPanel
     isAiPanelOpen,
     aiPanelWidth,
     aiModel,
+    aiRole,
     preserveDesignSkill,
+    autoApplyAiChanges,
     aiChatMessages,
     isAiThinking,
     compilerError,
@@ -121,13 +176,20 @@ export function AiAssistantPanel({ isMobile = false, onClose }: AiAssistantPanel
     setAiPanelOpen,
     setAiPanelWidth,
     setAiModel,
+    setAiRole,
     togglePreserveDesignSkill,
+    toggleAutoApplyAiChanges,
     addAiChatMessage,
+    deleteAiChatMessage,
     approveAiMessageChanges,
     rejectAiMessageChanges,
     revertAiMessageChanges,
     clearAiChat,
     setAiThinking,
+    addDependencies,
+    saveCheckpoint,
+    addTerminalLog,
+    updateFile,
   } = useStudioStore();
 
   const [promptInput, setPromptInput] = useState("");
@@ -136,6 +198,8 @@ export function AiAssistantPanel({ isMobile = false, onClose }: AiAssistantPanel
   const [isAttachCodeDialogOpen, setIsAttachCodeDialogOpen] = useState(false);
   const [previewImage, setPreviewImage] = useState<{ url: string; name?: string } | null>(null);
   const [previewSnippet, setPreviewSnippet] = useState<AttachedCodeSnippet | null>(null);
+  const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
+  const [checkpointSavedId, setCheckpointSavedId] = useState<string | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [thinkingSeconds, setThinkingSeconds] = useState(0);
@@ -150,6 +214,7 @@ export function AiAssistantPanel({ isMobile = false, onClose }: AiAssistantPanel
   const currentWidthRef = useRef(aiPanelWidth);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const requestStartTimeRef = useRef<number>(0);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   // Handle uploaded or clipboard-pasted image files
   const handleImageFilesAdded = (fileList: File[]) => {
@@ -263,6 +328,9 @@ export function AiAssistantPanel({ isMobile = false, onClose }: AiAssistantPanel
     [activeDemoCode]
   );
 
+  const currentModelObj = MODEL_OPTIONS.find((m) => m.id === aiModel) || MODEL_OPTIONS[0];
+  const currentRoleObj = ROLE_OPTIONS.find((r) => r.id === aiRole) || ROLE_OPTIONS[0];
+
   // Detailed 5-stage sequential execution pipeline showing exact AI work in real time
   const workingSteps = useMemo<ReasoningStep[]>(() => {
     const step1: ReasoningStep = {
@@ -286,7 +354,7 @@ export function AiAssistantPanel({ isMobile = false, onClose }: AiAssistantPanel
       category: "ast",
       items: [
         "Exported component AST",
-        "TypeScript Props interface",
+        `Specialist: ${currentRoleObj.name}`,
         preserveDesignSkill ? "UI Design Lock active" : "Visual edit mode",
       ],
       status:
@@ -343,7 +411,7 @@ export function AiAssistantPanel({ isMobile = false, onClose }: AiAssistantPanel
       items: [
         "TypeScript & JSX check",
         "Unified diff calculation",
-        "Sandbox preview ready",
+        autoApplyAiChanges ? "Auto-applying to live canvas" : "Staging diff for approval",
       ],
       status: thinkingSeconds < 6 ? "pending" : "running",
     };
@@ -359,6 +427,8 @@ export function AiAssistantPanel({ isMobile = false, onClose }: AiAssistantPanel
     planTasks.length,
     auditResult.score,
     aiModel,
+    currentRoleObj.name,
+    autoApplyAiChanges,
   ]);
 
   const currentStepTitle = useMemo(() => {
@@ -468,14 +538,43 @@ export function AiAssistantPanel({ isMobile = false, onClose }: AiAssistantPanel
     };
   }, [setAiPanelWidth]);
 
-  const currentModelObj = MODEL_OPTIONS.find((m) => m.id === aiModel) || MODEL_OPTIONS[0];
+  // Stop in-flight AI request
+  const handleStopGeneration = useCallback(() => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+    setAiThinking(false);
+    addTerminalLog({
+      type: "info",
+      message: "AI Copilot generation stopped by user.",
+    });
+  }, [setAiThinking, addTerminalLog]);
+
+  const handleCopyMessage = useCallback((id: string, content: string) => {
+    navigator.clipboard?.writeText(content);
+    setCopiedMessageId(id);
+    setTimeout(() => setCopiedMessageId(null), 1800);
+  }, []);
+
+  const handleSaveAiCheckpoint = useCallback(
+    (msgId: string, label: string) => {
+      saveCheckpoint(label);
+      setCheckpointSavedId(msgId);
+      setTimeout(() => setCheckpointSavedId(null), 2200);
+    },
+    [saveCheckpoint]
+  );
 
   // Submit AI Prompt
   const handleSubmitPrompt = async (
     customPrompt?: string,
     action: "chat" | "autofix" | "audit" = "chat"
   ) => {
-    const text = (customPrompt || promptInput).trim();
+    const latestState = useStudioStore.getState();
+    if (latestState.isAiThinking) return;
+
+    const text = (customPrompt ?? promptInput).trim();
     const hasAttachments =
       attachedImages.length > 0 || attachedCodeSnippets.length > 0;
     if (!text && !hasAttachments && action === "chat") return;
@@ -498,13 +597,25 @@ export function AiAssistantPanel({ isMobile = false, onClose }: AiAssistantPanel
         ? "Perform a full standards and quality audit."
         : "Please review and incorporate the attached images and code references.");
 
+    const latestFiles = latestState.files;
+    const latestDemoCode =
+      latestFiles["default.tsx"] ?? latestFiles["demo.tsx"] ?? "";
+
     // Capture baseline snapshot before request
-    const baselineSnapshot = {
-      "component.tsx": files["component.tsx"],
-      "default.tsx": activeDemoCode,
-      "demo.tsx": activeDemoCode,
-      "index.css": files["index.css"],
+    const baselineSnapshot: Partial<Record<StudioFileName, string>> = {
+      "component.tsx": latestFiles["component.tsx"],
+      "default.tsx": latestDemoCode,
+      "demo.tsx": latestDemoCode,
+      "index.css": latestFiles["index.css"],
     };
+
+    const historyPayload = latestState.aiChatMessages
+      .filter((m) => !m.isError && m.role !== "system")
+      .slice(-10)
+      .map((m) => ({
+        role: m.role,
+        content: m.content,
+      }));
 
     addAiChatMessage({
       role: "user",
@@ -519,32 +630,36 @@ export function AiAssistantPanel({ isMobile = false, onClose }: AiAssistantPanel
           : undefined,
     });
 
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
     requestStartTimeRef.current = Date.now();
     setAiThinking(true);
 
     try {
-      const historyPayload = aiChatMessages.map((m) => ({
-        role: m.role,
-        content: m.content,
-      }));
+      const requestHeaders: Record<string, string> = {
+        "Content-Type": "application/json",
+        "X-Studio-Client": "component-studio",
+      };
+      if (latestState.ownerSessionToken) {
+        requestHeaders["X-Studio-Owner-Token"] = latestState.ownerSessionToken;
+      }
 
       const res = await fetch("/api/ai-assistant", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Studio-Client": "component-studio",
-        },
+        headers: requestHeaders,
+        signal: controller.signal,
         body: JSON.stringify({
           prompt: userMessageContent,
           action,
-          componentCode: files["component.tsx"],
-          defaultCode: activeDemoCode,
-          demoCode: activeDemoCode,
-          cssCode: files["index.css"],
-          dependencies,
+          componentCode: latestFiles["component.tsx"],
+          defaultCode: latestDemoCode,
+          demoCode: latestDemoCode,
+          cssCode: latestFiles["index.css"],
+          dependencies: latestState.dependencies,
           model: currentModelObj.id,
-          role: "copilot",
-          preserveDesign: preserveDesignSkill,
+          role: latestState.aiRole || "copilot",
+          preserveDesign: latestState.preserveDesignSkill,
+          compilerError: latestState.compilerError || null,
           history: historyPayload,
           images: currentImages.map((img) => ({
             name: img.name,
@@ -566,6 +681,9 @@ export function AiAssistantPanel({ isMobile = false, onClose }: AiAssistantPanel
         requiresOwnerAuth?: boolean;
         quotaExceeded?: boolean;
         rateLimited?: boolean;
+        complianceScore?: number;
+        addedDependencies?: string[];
+        followUpSuggestions?: string[];
         dailyQuota?: {
           used: number;
           limit: number;
@@ -599,9 +717,9 @@ export function AiAssistantPanel({ isMobile = false, onClose }: AiAssistantPanel
         };
       }
 
-      if (data.dailyQuota && securityTelemetry) {
+      if (data.dailyQuota && latestState.securityTelemetry) {
         setSecurityTelemetry({
-          ...securityTelemetry,
+          ...latestState.securityTelemetry,
           dailyQuota: {
             used: data.dailyQuota.used,
             limit: data.dailyQuota.limit,
@@ -609,7 +727,7 @@ export function AiAssistantPanel({ isMobile = false, onClose }: AiAssistantPanel
             resetAt:
               data.dailyQuota.resetAt ||
               data.dailyQuota.resetAtUtc ||
-              securityTelemetry.dailyQuota.resetAt,
+              latestState.securityTelemetry.dailyQuota.resetAt,
           },
         });
       }
@@ -626,8 +744,9 @@ export function AiAssistantPanel({ isMobile = false, onClose }: AiAssistantPanel
         }
         addAiChatMessage({
           role: "assistant",
-          authorRole: "Co-Pilot",
+          authorRole: currentRoleObj.name,
           modelUsed: currentModelObj.id,
+          isError: true,
           content:
             (typeof data.error === "string" && data.error) ||
             "Failed to process request with Gemini AI.",
@@ -645,6 +764,19 @@ export function AiAssistantPanel({ isMobile = false, onClose }: AiAssistantPanel
           )
         : [];
       const hasChangedFiles = changedFileNames.length > 0;
+
+      // Auto-install any new NPM dependencies detected or returned by the AI
+      const addedDeps = Array.isArray(data.addedDependencies)
+        ? data.addedDependencies.filter(
+            (d) =>
+              typeof d === "string" &&
+              d.trim().length > 0 &&
+              !latestState.dependencies.includes(d.trim())
+          )
+        : [];
+      if (addedDeps.length > 0) {
+        addDependencies(addedDeps);
+      }
 
       const recordedSteps: ReasoningStep[] =
         Array.isArray(data.reasoningSteps) && data.reasoningSteps.length > 0
@@ -677,7 +809,7 @@ export function AiAssistantPanel({ isMobile = false, onClose }: AiAssistantPanel
                 category: "ast" as const,
                 items: [
                   "Exported component AST",
-                  "TypeScript Props interface",
+                  `Role: ${currentRoleObj.name}`,
                   preserveDesignSkill ? "UI Design Lock active" : "Visual edit mode",
                 ],
                 status: "done" as const,
@@ -685,7 +817,7 @@ export function AiAssistantPanel({ isMobile = false, onClose }: AiAssistantPanel
               {
                 title: "Evaluating styling & 21st.dev compliance",
                 description: `Verified ${passedCount} of ${planTasks.length} static guideline checks including className merging and dark/light theme support.`,
-                detail: `${auditResult.score}/100`,
+                detail: `${data.complianceScore ?? auditResult.score}/100`,
                 category: "audit" as const,
                 items: [
                   `${passedCount}/${planTasks.length} checks passed`,
@@ -723,23 +855,50 @@ export function AiAssistantPanel({ isMobile = false, onClose }: AiAssistantPanel
         !recordedSteps.some((s) => s.category === "verify")
       ) {
         recordedSteps.push({
-          title: "Prepared unified diff & sandbox check",
-          description: `Computed line-by-line diff across ${changedFileNames.join(", ")} and staged changes for approval.`,
+          title: latestState.autoApplyAiChanges
+            ? "Auto-applied changes & verified diff"
+            : "Prepared unified diff & sandbox check",
+          description: latestState.autoApplyAiChanges
+            ? `Applied updates to ${changedFileNames.join(", ")} on the live canvas with 1-click rollback support.`
+            : `Computed line-by-line diff across ${changedFileNames.join(", ")} and staged changes for approval.`,
           detail: `${changedFileNames.length} file${changedFileNames.length === 1 ? "" : "s"}`,
           category: "verify",
           items: [
-            ...changedFileNames.map((f) => `Staged ${f}`),
-            "Ready for diff review",
+            ...changedFileNames.map((f) =>
+              latestState.autoApplyAiChanges ? `Applied ${f}` : `Staged ${f}`
+            ),
+            "1-click Revert ready",
           ],
           status: "done",
         });
       }
 
+      const shouldAutoApply = hasChangedFiles && latestState.autoApplyAiChanges;
+
+      // Apply files immediately if autoApplyAiChanges is enabled
+      if (shouldAutoApply && data.changedFiles) {
+        if (typeof data.changedFiles["component.tsx"] === "string") {
+          updateFile("component.tsx", data.changedFiles["component.tsx"]);
+        }
+        const incomingDemo =
+          data.changedFiles["default.tsx"] ?? data.changedFiles["demo.tsx"];
+        if (typeof incomingDemo === "string") {
+          updateFile("default.tsx", incomingDemo);
+        }
+        if (typeof data.changedFiles["index.css"] === "string") {
+          updateFile("index.css", data.changedFiles["index.css"]);
+        }
+        addTerminalLog({
+          type: "system",
+          message: `Copilot auto-applied updates to ${changedFileNames.join(", ")}.`,
+        });
+      }
+
       addAiChatMessage({
         role: "assistant",
-        authorRole: "Co-Pilot",
+        authorRole: currentRoleObj.name,
         modelUsed: currentModelObj.id,
-        content: data.message || "I've reviewed your component.",
+        content: data.message || "I've reviewed and updated your component.",
         reasoning: {
           durationSeconds: elapsedSeconds,
           steps: recordedSteps,
@@ -747,20 +906,61 @@ export function AiAssistantPanel({ isMobile = false, onClose }: AiAssistantPanel
         },
         changedFiles: hasChangedFiles ? data.changedFiles : undefined,
         previousFiles: hasChangedFiles ? baselineSnapshot : undefined,
-        approvalStatus: hasChangedFiles ? "pending" : undefined,
-        applied: false,
+        approvalStatus: hasChangedFiles
+          ? shouldAutoApply
+            ? "approved"
+            : "pending"
+          : undefined,
+        applied: shouldAutoApply,
+        addedDependencies: addedDeps.length > 0 ? addedDeps : undefined,
+        followUpSuggestions: Array.isArray(data.followUpSuggestions)
+          ? data.followUpSuggestions.slice(0, 4)
+          : undefined,
+        complianceScore:
+          typeof data.complianceScore === "number"
+            ? data.complianceScore
+            : undefined,
       });
     } catch (err: unknown) {
+      if (err instanceof Error && err.name === "AbortError") {
+        return;
+      }
       const errorMsg = err instanceof Error ? err.message : String(err);
       addAiChatMessage({
         role: "assistant",
-        authorRole: "Co-Pilot",
+        authorRole: currentRoleObj.name,
         modelUsed: currentModelObj.id,
-        content: `Connection error: ${errorMsg}. Please verify your network connection and server configuration.`,
+        isError: true,
+        content: `Connection error: ${errorMsg}. Please verify your network connection and click Retry.`,
       });
     } finally {
+      abortControllerRef.current = null;
       setAiThinking(false);
     }
+  };
+
+  // Retry a previous assistant response by finding the preceding user prompt
+  const handleRetryTurn = (assistantMsgIndex: number) => {
+    if (isAiThinking) return;
+    let precedingUserPrompt = "";
+    for (let i = assistantMsgIndex - 1; i >= 0; i--) {
+      if (aiChatMessages[i]?.role === "user") {
+        precedingUserPrompt = aiChatMessages[i].content;
+        break;
+      }
+    }
+    const targetMsg = aiChatMessages[assistantMsgIndex];
+    if (targetMsg) {
+      deleteAiChatMessage(targetMsg.id);
+    }
+    if (precedingUserPrompt) {
+      handleSubmitPrompt(precedingUserPrompt, "chat");
+    }
+  };
+
+  const handleSlashCommandSelect = (cmd: SlashCommandItem) => {
+    setPromptInput("");
+    handleSubmitPrompt(cmd.prompt, cmd.action || "chat");
   };
 
   if (!isAiPanelOpen && !isMobile) return null;
@@ -778,33 +978,33 @@ export function AiAssistantPanel({ isMobile = false, onClose }: AiAssistantPanel
         isMobile ? "w-full border-0" : "border-l border-border"
       )}
     >
-        {/* Resizable Left Edge Drag Handle (desktop only) */}
-        {!isMobile && (
-          <div
-            role="separator"
-            aria-orientation="vertical"
-            aria-label="Resize Copilot panel width"
-            aria-valuenow={aiPanelWidth}
-            aria-valuemin={340}
-            aria-valuemax={800}
-            tabIndex={0}
-            onMouseDown={handleResizeStart}
-            onKeyDown={(e) => {
-              const step = e.shiftKey ? 40 : 20;
-              if (e.key === "ArrowLeft") {
-                e.preventDefault();
-                setAiPanelWidth(Math.min(800, aiPanelWidth + step));
-              } else if (e.key === "ArrowRight") {
-                e.preventDefault();
-                setAiPanelWidth(Math.max(340, aiPanelWidth - step));
-              }
-            }}
-            className="absolute -left-1 top-0 bottom-0 w-2 cursor-ew-resize touch-none hover:bg-primary/20 active:bg-primary/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring transition-colors z-30 group"
-            title="Drag left/right or use arrow keys to resize Copilot panel"
-          >
-            <div className="h-full w-px bg-border group-hover:bg-primary transition-colors mx-auto" />
-          </div>
-        )}
+      {/* Resizable Left Edge Drag Handle (desktop only) */}
+      {!isMobile && (
+        <div
+          role="separator"
+          aria-orientation="vertical"
+          aria-label="Resize Copilot panel width"
+          aria-valuenow={aiPanelWidth}
+          aria-valuemin={340}
+          aria-valuemax={800}
+          tabIndex={0}
+          onMouseDown={handleResizeStart}
+          onKeyDown={(e) => {
+            const step = e.shiftKey ? 40 : 20;
+            if (e.key === "ArrowLeft") {
+              e.preventDefault();
+              setAiPanelWidth(Math.min(800, aiPanelWidth + step));
+            } else if (e.key === "ArrowRight") {
+              e.preventDefault();
+              setAiPanelWidth(Math.max(340, aiPanelWidth - step));
+            }
+          }}
+          className="absolute -left-1 top-0 bottom-0 w-2 cursor-ew-resize touch-none hover:bg-primary/20 active:bg-primary/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring transition-colors z-30 group"
+          title="Drag left/right or use arrow keys to resize Copilot panel"
+        >
+          <div className="h-full w-px bg-border group-hover:bg-primary transition-colors mx-auto" />
+        </div>
+      )}
 
       {/* Top Header - Editorial, Clean & Polished */}
       <div className="studio-toolbar-surface flex h-11 shrink-0 items-center justify-between gap-2 border-b border-border bg-card/40 px-2.5 @[420px]:px-3 select-none overflow-hidden">
@@ -817,17 +1017,11 @@ export function AiAssistantPanel({ isMobile = false, onClose }: AiAssistantPanel
             <span className="text-xs font-semibold tracking-tight text-foreground font-sans">
               Copilot
             </span>
-            <Badge
-              variant="secondary"
-              className="hidden @[440px]:inline-flex rounded-none text-[10px] py-0 px-1.5 font-normal text-muted-foreground font-sans"
-            >
-              Co-Assistant
-            </Badge>
           </div>
 
           <div className="h-3.5 w-px bg-border/70 mx-0.5 shrink-0" />
 
-          {/* Model Dropdown */}
+          {/* Model & Specialist Persona Dropdown */}
           <DropdownMenu>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -840,15 +1034,24 @@ export function AiAssistantPanel({ isMobile = false, onClose }: AiAssistantPanel
                     <span className="truncate max-w-[90px] @[440px]:max-w-[130px]">
                       {currentModelObj.name.replace("Gemini ", "")}
                     </span>
+                    <span className="hidden @[460px]:inline text-border">•</span>
+                    <span className="hidden @[460px]:inline truncate text-foreground font-medium">
+                      {currentRoleObj.name}
+                    </span>
                     <ChevronDown className="size-2.5 opacity-60 shrink-0" />
                   </Button>
                 </DropdownMenuTrigger>
               </TooltipTrigger>
-              <TooltipContent side="bottom">Active Gemini model</TooltipContent>
+              <TooltipContent side="bottom">
+                Configure Gemini model, specialist persona & execution preferences
+              </TooltipContent>
             </Tooltip>
-            <DropdownMenuContent align="start" className="w-68 rounded-none font-sans">
+            <DropdownMenuContent
+              align="start"
+              className="w-72 rounded-none font-sans max-h-[80vh] overflow-y-auto"
+            >
               <DropdownMenuLabel className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
-                Gemini Model
+                Gemini Engine
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
               {MODEL_OPTIONS.map((m) => {
@@ -865,11 +1068,16 @@ export function AiAssistantPanel({ isMobile = false, onClose }: AiAssistantPanel
                         <span className="font-medium text-xs text-foreground">
                           {m.name}
                         </span>
-                        <Badge variant="secondary" className="rounded-none text-[9px] py-0 px-1 font-normal font-sans">
+                        <Badge
+                          variant="secondary"
+                          className="rounded-none text-[9px] py-0 px-1 font-normal font-sans"
+                        >
                           {m.tag}
                         </Badge>
                       </div>
-                      {aiModel === m.id && <Check className="size-3.5 text-foreground" />}
+                      {aiModel === m.id && (
+                        <Check className="size-3.5 text-foreground" />
+                      )}
                     </div>
                     <span className="text-[10px] text-muted-foreground leading-snug">
                       {m.description}
@@ -877,10 +1085,85 @@ export function AiAssistantPanel({ isMobile = false, onClose }: AiAssistantPanel
                   </DropdownMenuItem>
                 );
               })}
+
               <DropdownMenuSeparator />
               <DropdownMenuLabel className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
-                Copilot Skill
+                Specialist Persona
               </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              {ROLE_OPTIONS.map((r) => {
+                const RoleIcon = r.icon;
+                return (
+                  <DropdownMenuItem
+                    key={r.id}
+                    onClick={() => setAiRole(r.id)}
+                    className="flex flex-col items-start gap-1 py-1.5 cursor-pointer rounded-none font-sans"
+                  >
+                    <div className="flex items-center justify-between w-full">
+                      <div className="flex items-center gap-1.5">
+                        <RoleIcon className="size-3.5 text-muted-foreground" />
+                        <span className="font-medium text-xs text-foreground">
+                          {r.name}
+                        </span>
+                        <Badge
+                          variant="secondary"
+                          className="rounded-none text-[9px] py-0 px-1 font-normal font-sans"
+                        >
+                          {r.tag}
+                        </Badge>
+                      </div>
+                      {aiRole === r.id && (
+                        <Check className="size-3.5 text-foreground" />
+                      )}
+                    </div>
+                    <span className="text-[10px] text-muted-foreground leading-snug">
+                      {r.description}
+                    </span>
+                  </DropdownMenuItem>
+                );
+              })}
+
+              <DropdownMenuSeparator />
+              <DropdownMenuLabel className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+                Execution Skills
+              </DropdownMenuLabel>
+              <DropdownMenuItem
+                onClick={() => toggleAutoApplyAiChanges()}
+                className="flex flex-col items-start gap-1 py-1.5 cursor-pointer rounded-none font-sans"
+              >
+                <div className="flex items-center justify-between w-full">
+                  <div className="flex items-center gap-1.5">
+                    <Play
+                      className={cn(
+                        "size-3.5",
+                        autoApplyAiChanges
+                          ? "text-emerald-500"
+                          : "text-muted-foreground"
+                      )}
+                    />
+                    <span className="font-medium text-xs text-foreground">
+                      Auto-Apply Code to Live Canvas
+                    </span>
+                    <Badge
+                      variant="secondary"
+                      className={cn(
+                        "rounded-none text-[9px] py-0 px-1 font-normal font-sans",
+                        autoApplyAiChanges &&
+                          "bg-emerald-500/15 text-emerald-500 border-emerald-500/30"
+                      )}
+                    >
+                      {autoApplyAiChanges ? "On" : "Manual"}
+                    </Badge>
+                  </div>
+                  {autoApplyAiChanges && (
+                    <Check className="size-3.5 text-emerald-500" />
+                  )}
+                </div>
+                <span className="text-[10px] text-muted-foreground leading-snug">
+                  Immediately updates live preview when Copilot edits files (with 1-click Revert).
+                </span>
+              </DropdownMenuItem>
+
               <DropdownMenuItem
                 onClick={() => togglePreserveDesignSkill()}
                 className="flex flex-col items-start gap-1 py-1.5 cursor-pointer rounded-none font-sans"
@@ -906,7 +1189,9 @@ export function AiAssistantPanel({ isMobile = false, onClose }: AiAssistantPanel
                       {preserveDesignSkill ? "Active" : "Off"}
                     </Badge>
                   </div>
-                  {preserveDesignSkill && <Check className="size-3.5 text-emerald-500" />}
+                  {preserveDesignSkill && (
+                    <Check className="size-3.5 text-emerald-500" />
+                  )}
                 </div>
                 <span className="text-[10px] text-muted-foreground leading-snug">
                   Edits code, logic, and types without altering existing UI design or layout.
@@ -1015,20 +1300,22 @@ export function AiAssistantPanel({ isMobile = false, onClose }: AiAssistantPanel
           {securityTelemetry?.dailyQuota && (
             <Badge
               variant="outline"
-              className="rounded-none text-[9px] py-0 px-1 font-mono tabular-nums border-border/80 text-muted-foreground shrink-0"
+              className="rounded-none text-[9px] py-0 px-1 font-sans tabular-nums border-border/80 text-muted-foreground shrink-0"
             >
               {securityTelemetry.dailyQuota.remaining}/{securityTelemetry.dailyQuota.limit} left
             </Badge>
           )}
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => setSecurityModalOpen(true)}
-          className="h-6 rounded-none px-2 text-[10px] font-sans shrink-0"
-        >
-          {isOwnerAuthenticated ? "Shield" : "Unlock Owner"}
-        </Button>
+        <div className="flex items-center gap-1 shrink-0">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setSecurityModalOpen(true)}
+            className="h-6 rounded-none px-2 text-[10px] font-sans shrink-0"
+          >
+            {isOwnerAuthenticated ? "Shield" : "Unlock Owner"}
+          </Button>
+        </div>
       </div>
 
       {/* Collapsible Guidelines Drawer Banner */}
@@ -1075,14 +1362,40 @@ export function AiAssistantPanel({ isMobile = false, onClose }: AiAssistantPanel
                         variant="eyebrow"
                         className="rounded-none text-[9px] py-0 px-1.5"
                       >
-                        AI CO-ENGINEER
+                        {currentRoleObj.name.toUpperCase()}
                       </Badge>
                     </div>
                     <p className="text-[11px] text-muted-foreground leading-relaxed font-sans mt-0.5">
-                      Grounded pairing assistant for React components, Tailwind styling, and Framer Motion springs.
+                      Grounded pairing assistant for React components, Tailwind styling, and Framer Motion springs. Type <kbd className="font-mono text-[10px] px-1 py-0.5 border border-border bg-muted/60">/</kbd> for quick slash commands.
                     </p>
                   </div>
                 </div>
+              </div>
+
+              {/* Specialist Persona Quick Strip */}
+              <div className="flex flex-wrap items-center gap-1 pt-2 border-t border-border/60">
+                {ROLE_OPTIONS.map((role) => {
+                  const Icon = role.icon;
+                  const isActive = aiRole === role.id;
+                  return (
+                    <Button
+                      key={role.id}
+                      type="button"
+                      variant={isActive ? "secondary" : "ghost"}
+                      size="sm"
+                      onClick={() => setAiRole(role.id)}
+                      className={cn(
+                        "h-6 gap-1 px-2 text-[10px] rounded-none font-sans",
+                        isActive
+                          ? "bg-foreground text-background hover:bg-foreground/90 font-medium"
+                          : "text-muted-foreground hover:text-foreground"
+                      )}
+                    >
+                      <Icon className="size-2.5 shrink-0" />
+                      <span>{role.name}</span>
+                    </Button>
+                  );
+                })}
               </div>
 
               {/* Live Component Telemetry Strip */}
@@ -1405,7 +1718,7 @@ export function AiAssistantPanel({ isMobile = false, onClose }: AiAssistantPanel
             return (
               <div
                 key={msg.id}
-                className="my-2 py-1 px-2.5 rounded-md bg-muted/30 border border-border/40 text-[11px] text-muted-foreground text-center font-sans"
+                className="my-2 py-1 px-2.5 rounded-none bg-muted/30 border border-border/40 text-[11px] text-muted-foreground text-center font-sans"
               >
                 <MarkdownContent content={msg.content} />
               </div>
@@ -1516,12 +1829,12 @@ export function AiAssistantPanel({ isMobile = false, onClose }: AiAssistantPanel
                   >
                     {(msg.modelUsed || aiModel).replace("gemini-", "")}
                   </Badge>
-                  {msg.reasoning?.steps && msg.reasoning.steps.length > 0 && (
+                  {typeof msg.complianceScore === "number" && (
                     <Badge
-                      variant="secondary"
-                      className="rounded-none text-[9px] py-0 px-1.5 font-normal text-muted-foreground font-sans border border-border/60 bg-muted/40"
+                      variant="outline"
+                      className="rounded-none text-[9px] py-0 px-1.5 font-normal text-muted-foreground font-sans border-border/70 bg-background/60 tabular-nums"
                     >
-                      {msg.reasoning.steps.length} steps executed
+                      Score {msg.complianceScore}/100
                     </Badge>
                   )}
                   {hasCodeChanges && (
@@ -1529,7 +1842,9 @@ export function AiAssistantPanel({ isMobile = false, onClose }: AiAssistantPanel
                       variant="outline"
                       className="rounded-none text-[9px] py-0 px-1.5 font-medium text-emerald-600 dark:text-emerald-400 font-sans border-emerald-500/30 bg-emerald-500/10"
                     >
-                      Code updated
+                      {resolvedStatus === "approved"
+                        ? "Applied to Canvas"
+                        : "Code Staged"}
                     </Badge>
                   )}
                 </MessageHeader>
@@ -1541,7 +1856,7 @@ export function AiAssistantPanel({ isMobile = false, onClose }: AiAssistantPanel
                     durationSeconds={msg.reasoning.durationSeconds}
                     steps={msg.reasoning.steps}
                     summary={msg.reasoning.summary}
-                    defaultOpen={isLatestMessage}
+                    defaultOpen={false}
                   />
                 )}
 
@@ -1549,7 +1864,12 @@ export function AiAssistantPanel({ isMobile = false, onClose }: AiAssistantPanel
                 <Bubble
                   variant="editorial"
                   align="start"
-                  className="w-full mt-1 rounded-none border border-border/60 bg-card/30 px-3 py-2.5"
+                  className={cn(
+                    "w-full mt-1 rounded-none border px-3 py-2.5",
+                    msg.isError
+                      ? "border-rose-500/40 bg-rose-500/5"
+                      : "border-border/60 bg-card/30"
+                  )}
                 >
                   <MarkdownContent content={msg.content} />
 
@@ -1557,6 +1877,7 @@ export function AiAssistantPanel({ isMobile = false, onClose }: AiAssistantPanel
                   {hasCodeChanges && msg.changedFiles && (
                     <ChangeApprovalCard
                       changedFiles={msg.changedFiles}
+                      addedDependencies={msg.addedDependencies}
                       baselineFiles={
                         msg.previousFiles
                           ? {
@@ -1588,11 +1909,112 @@ export function AiAssistantPanel({ isMobile = false, onClose }: AiAssistantPanel
                       }
                       onReject={() => rejectAiMessageChanges(msg.id)}
                       onRevert={() => revertAiMessageChanges(msg.id)}
+                      onSaveCheckpoint={() =>
+                        handleSaveAiCheckpoint(
+                          msg.id,
+                          `AI Copilot (${msg.authorRole || "Co-Pilot"}): ${msg.content.slice(0, 42)}`
+                        )
+                      }
                     />
                   )}
                 </Bubble>
 
-                <MessageFooter>{msg.timestamp}</MessageFooter>
+                {/* Follow-Up Suggestion Chips */}
+                {isLatestMessage &&
+                  !isAiThinking &&
+                  Array.isArray(msg.followUpSuggestions) &&
+                  msg.followUpSuggestions.length > 0 && (
+                    <div className="mt-2 w-full">
+                      <SuggestionGroup className="gap-1.5">
+                        {msg.followUpSuggestions.map((suggestion, sIdx) => (
+                          <Suggestion
+                            key={`${msg.id}-sug-${sIdx}`}
+                            icon={
+                              <Sparkles className="size-2.5 text-primary shrink-0" />
+                            }
+                            onClick={() =>
+                              handleSubmitPrompt(suggestion, "chat")
+                            }
+                            className="rounded-none text-[11px] h-6 px-2 bg-card/50 hover:bg-card"
+                          >
+                            {suggestion}
+                          </Suggestion>
+                        ))}
+                      </SuggestionGroup>
+                    </div>
+                  )}
+
+                {/* Assistant Message Footer & Action Bar */}
+                <div className="flex items-center justify-between gap-2 w-full mt-1">
+                  <MessageFooter>{msg.timestamp}</MessageFooter>
+                  <div className="flex items-center gap-0.5">
+                    {checkpointSavedId === msg.id && (
+                      <Badge
+                        variant="secondary"
+                        className="rounded-none text-[9px] py-0 px-1.5 font-sans text-emerald-500 bg-emerald-500/10"
+                      >
+                        <BookmarkCheck className="size-2.5 mr-1" />
+                        Checkpoint Saved
+                      </Badge>
+                    )}
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon-sm"
+                          onClick={() => handleCopyMessage(msg.id, msg.content)}
+                          className="size-6 rounded-none text-muted-foreground hover:text-foreground"
+                        >
+                          {copiedMessageId === msg.id ? (
+                            <Check className="size-3 text-emerald-500" />
+                          ) : (
+                            <Copy className="size-3" />
+                          )}
+                          <span className="sr-only">Copy response</span>
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom">Copy response</TooltipContent>
+                    </Tooltip>
+
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon-sm"
+                          disabled={isAiThinking}
+                          onClick={() => handleRetryTurn(idx)}
+                          className="size-6 rounded-none text-muted-foreground hover:text-foreground"
+                        >
+                          <RotateCcw className="size-3" />
+                          <span className="sr-only">Regenerate response</span>
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom">
+                        Retry / Regenerate
+                      </TooltipContent>
+                    </Tooltip>
+
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon-sm"
+                          onClick={() => deleteAiChatMessage(msg.id)}
+                          className="size-6 rounded-none text-muted-foreground hover:text-rose-500"
+                        >
+                          <Trash2 className="size-3" />
+                          <span className="sr-only">Delete message</span>
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom">
+                        Remove message
+                      </TooltipContent>
+                    </Tooltip>
+                  </div>
+                </div>
               </MessageContent>
             </Message>
           );
@@ -1612,7 +2034,7 @@ export function AiAssistantPanel({ isMobile = false, onClose }: AiAssistantPanel
             <MessageContent align="start" className="w-full min-w-0">
               <MessageHeader className="flex-wrap gap-1.5">
                 <span className="font-semibold text-foreground text-xs font-sans">
-                  Co-Pilot
+                  {currentRoleObj.name}
                 </span>
                 <span className="text-[10px] text-muted-foreground/50">•</span>
                 <Badge
@@ -1634,14 +2056,14 @@ export function AiAssistantPanel({ isMobile = false, onClose }: AiAssistantPanel
                 durationSeconds={thinkingSeconds}
                 activeStep={currentStepTitle}
                 steps={workingSteps}
-                summary={`Executing 5-stage analysis & code synthesis with ${currentModelObj.name} under Component Studio standards.`}
+                summary={`Executing 5-stage analysis & code synthesis with ${currentModelObj.name} (${currentRoleObj.name}).`}
               />
             </MessageContent>
           </Message>
         )}
       </div>
 
-      {/* Bottom Area: Command-Grade Prompt Input with Attachments */}
+      {/* Bottom Area: Command-Grade Prompt Input with Attachments & Slash Commands */}
       <div className="studio-toolbar-surface p-2.5 @[420px]:p-3 border-t border-border bg-card/40 select-none shrink-0">
         {attachmentNotice && (
           <div className="mb-2 flex items-center justify-between gap-2 rounded-none border border-amber-500/30 bg-amber-500/10 px-2.5 py-1.5 text-xs text-amber-600 dark:text-amber-400 font-sans animate-in fade-in duration-150">
@@ -1665,8 +2087,10 @@ export function AiAssistantPanel({ isMobile = false, onClose }: AiAssistantPanel
           value={promptInput}
           onChange={(e) => setPromptInput(e.target.value)}
           onSubmit={() => handleSubmitPrompt()}
+          onStop={handleStopGeneration}
+          onSlashCommandSelect={handleSlashCommandSelect}
           isLoading={isAiThinking}
-          placeholder="Ask Copilot... (paste image or code)"
+          placeholder="Ask Copilot or type / for commands..."
           attachedImages={attachedImages}
           onRemoveImage={handleRemoveImage}
           onPreviewImage={(img) =>
@@ -1680,15 +2104,33 @@ export function AiAssistantPanel({ isMobile = false, onClose }: AiAssistantPanel
           onImageFilesPasted={handleImageFilesAdded}
           modelBadge={
             <div className="flex items-center gap-1 shrink-0">
-              <Badge
-                variant="outline"
-                className="rounded-none text-[10px] py-0.5 px-1.5 font-normal text-muted-foreground border-border/80 font-sans shrink-0 whitespace-nowrap flex items-center gap-1 bg-background/80"
-              >
-                <Sparkles className="size-2.5 text-primary shrink-0" />
-                <span className="truncate max-w-[85px] @[420px]:max-w-none">
-                  {currentModelObj.name.replace("Gemini ", "")}
-                </span>
-              </Badge>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={toggleAutoApplyAiChanges}
+                    className={cn(
+                      "h-5 gap-1 px-1.5 text-[10px] font-normal font-sans rounded-none transition-colors shrink-0",
+                      autoApplyAiChanges
+                        ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/15"
+                        : "border-border/80 bg-background/80 text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    <Play className="size-2.5 shrink-0" />
+                    <span className="hidden @[380px]:inline">
+                      {autoApplyAiChanges ? "Auto-Apply" : "Stage Only"}
+                    </span>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="top" className="font-sans text-xs">
+                  {autoApplyAiChanges
+                    ? "Auto-Apply ON: Code edits apply directly to the live preview canvas with 1-click Revert"
+                    : "Stage Only: Code edits wait for manual Approve & Apply"}
+                </TooltipContent>
+              </Tooltip>
+
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button

@@ -11,29 +11,49 @@ import {
   getEnvPasscode,
   getRateLimitStatus,
   hasConfiguredPasscode,
+  isExplicitlyLocked,
   isOwnerRequestAuthenticated,
   recordFailedPasscodeAttempt,
   resetDailyQuotaCounter,
   setCustomDailyQuotaLimit,
+  setExplicitlyLocked,
   setRuntimeOwnerPasscode,
   verifyOwnerPasscode,
   verifyPayloadSize,
   verifySameOriginRequest,
 } from "@/lib/security/api-guard";
 
-function buildSessionPayload(req: NextRequest, authenticatedOverride?: boolean) {
+function isHttpsRequest(req: NextRequest): boolean {
+  const proto = req.headers.get("x-forwarded-proto");
+  if (proto && proto.includes("https")) return true;
+  return req.nextUrl?.protocol === "https:" || process.env.NODE_ENV === "production";
+}
+
+function buildSessionPayload(
+  req: NextRequest,
+  authenticatedOverride?: boolean,
+  sessionToken?: string | null
+) {
   const ip = getClientIp(req);
+  const configured = hasConfiguredPasscode();
+  const locked = isExplicitlyLocked();
   const authenticated =
     authenticatedOverride !== undefined
       ? authenticatedOverride
-      : isOwnerRequestAuthenticated(req);
+      : isOwnerRequestAuthenticated(req) || (!configured && !locked);
   const hasEnv = Boolean(getEnvPasscode());
-  const configured = hasConfiguredPasscode();
   const limitPerMin = getConfiguredAiRateLimitPerMin();
+  const activeToken =
+    sessionToken !== undefined
+      ? sessionToken
+      : authenticated
+      ? createOwnerSessionToken()
+      : null;
 
   return {
     success: true,
     authenticated,
+    sessionToken: activeToken,
     hasEnvPasscode: hasEnv,
     hasCustomPasscode: configured && !hasEnv,
     requiresPasscodeSetup: !configured,
@@ -51,7 +71,19 @@ function buildSessionPayload(req: NextRequest, authenticatedOverride?: boolean) 
 }
 
 export async function GET(req: NextRequest) {
-  return NextResponse.json(buildSessionPayload(req));
+  const payload = buildSessionPayload(req);
+  const res = NextResponse.json(payload);
+  if (payload.authenticated && payload.sessionToken) {
+    const https = isHttpsRequest(req);
+    res.cookies.set(OWNER_SESSION_COOKIE, payload.sessionToken, {
+      httpOnly: true,
+      sameSite: https ? "none" : "lax",
+      path: "/",
+      maxAge: 60 * 60 * 24 * 7,
+      secure: https,
+    });
+  }
+  return res;
 }
 
 export async function POST(req: NextRequest) {
@@ -72,6 +104,7 @@ export async function POST(req: NextRequest) {
   }
 
   const ip = getClientIp(req);
+  const https = isHttpsRequest(req);
 
   try {
     const body = (await req.json()) as {
@@ -113,16 +146,15 @@ export async function POST(req: NextRequest) {
         refreshedToken = createOwnerSessionToken();
       }
 
-      const res = NextResponse.json(buildSessionPayload(req, true));
-      if (refreshedToken) {
-        res.cookies.set(OWNER_SESSION_COOKIE, refreshedToken, {
-          httpOnly: true,
-          sameSite: "lax",
-          path: "/",
-          maxAge: 60 * 60 * 24 * 7,
-          secure: process.env.NODE_ENV === "production",
-        });
-      }
+      const activeToken = refreshedToken || createOwnerSessionToken();
+      const res = NextResponse.json(buildSessionPayload(req, true, activeToken));
+      res.cookies.set(OWNER_SESSION_COOKIE, activeToken, {
+        httpOnly: true,
+        sameSite: https ? "none" : "lax",
+        path: "/",
+        maxAge: 60 * 60 * 24 * 7,
+        secure: https,
+      });
       return res;
     }
 
@@ -186,16 +218,17 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    setExplicitlyLocked(false);
     clearFailedPasscodeAttempts(ip);
     const token = createOwnerSessionToken();
-    const res = NextResponse.json(buildSessionPayload(req, true));
+    const res = NextResponse.json(buildSessionPayload(req, true, token));
 
     res.cookies.set(OWNER_SESSION_COOKIE, token, {
       httpOnly: true,
-      sameSite: "lax",
+      sameSite: https ? "none" : "lax",
       path: "/",
       maxAge: 60 * 60 * 24 * 7,
-      secure: process.env.NODE_ENV === "production",
+      secure: https,
     });
 
     return res;
@@ -222,13 +255,15 @@ export async function DELETE(req: NextRequest) {
     );
   }
 
-  const res = NextResponse.json(buildSessionPayload(req, false));
+  setExplicitlyLocked(true);
+  const https = isHttpsRequest(req);
+  const res = NextResponse.json(buildSessionPayload(req, false, null));
   res.cookies.set(OWNER_SESSION_COOKIE, "", {
     httpOnly: true,
-    sameSite: "lax",
+    sameSite: https ? "none" : "lax",
     path: "/",
     maxAge: 0,
-    secure: process.env.NODE_ENV === "production",
+    secure: https,
   });
   return res;
 }

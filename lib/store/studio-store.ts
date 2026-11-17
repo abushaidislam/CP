@@ -3,9 +3,55 @@ import { persist, createJSONStorage, type StateStorage } from "zustand/middlewar
 import { DEFAULT_TEMPLATES } from "@/lib/sandbox/default-templates";
 
 const memoryStorageFallback = new Map<string, string>();
+let pendingStorageTimer: ReturnType<typeof setTimeout> | null = null;
+
+const flushToLocalStorage = (name: string, value: string): void => {
+  if (typeof window === "undefined" || !window.localStorage) return;
+  try {
+    window.localStorage.setItem(name, value);
+  } catch {
+    // Recover from QuotaExceededError (5MB browser localStorage limit with 30+ components & base64 PNGs)
+    try {
+      const parsed = JSON.parse(value);
+      if (parsed?.state) {
+        // Step 1: Trim checkpoint histories to latest 3 per variant
+        if (parsed.state.variantsByTemplate) {
+          for (const tid of Object.keys(parsed.state.variantsByTemplate)) {
+            const list = parsed.state.variantsByTemplate[tid];
+            if (Array.isArray(list)) {
+              parsed.state.variantsByTemplate[tid] = list.map((v: ComponentVariant) => ({
+                ...v,
+                checkpoints: Array.isArray(v.checkpoints) ? v.checkpoints.slice(0, 3) : [],
+              }));
+            }
+          }
+        }
+        // Step 2: Strip oversized base64 PNG strings (>80KB) that exceed localStorage quota
+        if (parsed.state.userComponents) {
+          for (const cid of Object.keys(parsed.state.userComponents)) {
+            const c = parsed.state.userComponents[cid];
+            if (
+              c?.previewImage &&
+              c.previewImage.startsWith("data:image/png;base64,") &&
+              c.previewImage.length > 80_000
+            ) {
+              c.previewImage =
+                DEFAULT_TEMPLATE_PREVIEWS[cid] || DEFAULT_TEMPLATE_PREVIEWS["blank"];
+            }
+          }
+        }
+        window.localStorage.setItem(name, JSON.stringify(parsed));
+      }
+    } catch {
+      // Ignore if storage remains locked
+    }
+  }
+};
 
 const resilientStudioStorage: StateStorage = {
   getItem: (name: string): string | null => {
+    const inMemory = memoryStorageFallback.get(name);
+    if (inMemory !== undefined) return inMemory;
     try {
       if (typeof window !== "undefined" && window.localStorage) {
         return window.localStorage.getItem(name);
@@ -13,52 +59,24 @@ const resilientStudioStorage: StateStorage = {
     } catch {
       // Fallback to in-memory storage
     }
-    return memoryStorageFallback.get(name) ?? null;
+    return null;
   },
   setItem: (name: string, value: string): void => {
     memoryStorageFallback.set(name, value);
     if (typeof window === "undefined" || !window.localStorage) return;
-    try {
-      window.localStorage.setItem(name, value);
-    } catch {
-      // Recover from QuotaExceededError (5MB browser localStorage limit with 30+ components & base64 PNGs)
-      try {
-        const parsed = JSON.parse(value);
-        if (parsed?.state) {
-          // Step 1: Trim checkpoint histories to latest 3 per variant
-          if (parsed.state.variantsByTemplate) {
-            for (const tid of Object.keys(parsed.state.variantsByTemplate)) {
-              const list = parsed.state.variantsByTemplate[tid];
-              if (Array.isArray(list)) {
-                parsed.state.variantsByTemplate[tid] = list.map((v: ComponentVariant) => ({
-                  ...v,
-                  checkpoints: Array.isArray(v.checkpoints) ? v.checkpoints.slice(0, 3) : [],
-                }));
-              }
-            }
-          }
-          // Step 2: Strip oversized base64 PNG strings (>80KB) that exceed localStorage quota
-          if (parsed.state.userComponents) {
-            for (const cid of Object.keys(parsed.state.userComponents)) {
-              const c = parsed.state.userComponents[cid];
-              if (
-                c?.previewImage &&
-                c.previewImage.startsWith("data:image/png;base64,") &&
-                c.previewImage.length > 80_000
-              ) {
-                c.previewImage =
-                  DEFAULT_TEMPLATE_PREVIEWS[cid] || DEFAULT_TEMPLATE_PREVIEWS["blank"];
-              }
-            }
-          }
-          window.localStorage.setItem(name, JSON.stringify(parsed));
-        }
-      } catch {
-        // Ignore if storage remains locked
-      }
+    if (pendingStorageTimer) {
+      clearTimeout(pendingStorageTimer);
     }
+    pendingStorageTimer = setTimeout(() => {
+      pendingStorageTimer = null;
+      flushToLocalStorage(name, value);
+    }, 400);
   },
   removeItem: (name: string): void => {
+    if (pendingStorageTimer) {
+      clearTimeout(pendingStorageTimer);
+      pendingStorageTimer = null;
+    }
     memoryStorageFallback.delete(name);
     try {
       if (typeof window !== "undefined" && window.localStorage) {
@@ -157,6 +175,10 @@ export interface AiChatMessage {
   }>;
   applied?: boolean;
   approvalStatus?: "pending" | "approved" | "rejected";
+  followUpSuggestions?: string[];
+  addedDependencies?: string[];
+  complianceScore?: number;
+  isError?: boolean;
 }
 
 export interface RecordingConfig {
@@ -262,8 +284,10 @@ export interface StudioState {
   isDependencyModalOpen: boolean;
   isSecurityModalOpen: boolean;
   isOwnerAuthenticated: boolean;
+  ownerSessionToken: string | null;
   securityTelemetry: {
     authenticated: boolean;
+    sessionToken?: string | null;
     hasEnvPasscode: boolean;
     hasCustomPasscode: boolean;
     requiresPasscodeSetup: boolean;
@@ -293,6 +317,7 @@ export interface StudioState {
   aiModel: string;
   aiRole: AiChatRole;
   preserveDesignSkill: boolean;
+  autoApplyAiChanges: boolean;
   aiChatMessages: AiChatMessage[];
   isAiThinking: boolean;
 
@@ -366,6 +391,7 @@ export interface StudioState {
   setDependencyModalOpen: (open: boolean) => void;
   setSecurityModalOpen: (open: boolean) => void;
   setOwnerAuthenticated: (authenticated: boolean) => void;
+  setOwnerSessionToken: (token: string | null) => void;
   setSecurityTelemetry: (
     telemetry: StudioState["securityTelemetry"]
   ) => void;
@@ -387,7 +413,10 @@ export interface StudioState {
   setAiRole: (role: AiChatRole) => void;
   setPreserveDesignSkill: (preserve: boolean) => void;
   togglePreserveDesignSkill: () => void;
+  setAutoApplyAiChanges: (enabled: boolean) => void;
+  toggleAutoApplyAiChanges: () => void;
   addAiChatMessage: (msg: Omit<AiChatMessage, "id" | "timestamp">) => void;
+  deleteAiChatMessage: (id: string) => void;
   markAiMessageApplied: (id: string) => void;
   approveAiMessageChanges: (
     id: string,
@@ -1127,7 +1156,8 @@ export const useStudioStore = create<StudioState>()(
       isPublishModalOpen: false,
       isDependencyModalOpen: false,
       isSecurityModalOpen: false,
-      isOwnerAuthenticated: false,
+      isOwnerAuthenticated: true,
+      ownerSessionToken: null,
       securityTelemetry: null,
 
       terminalLogs: [
@@ -1149,6 +1179,7 @@ export const useStudioStore = create<StudioState>()(
       aiModel: "gemini-4-hydrogen",
       aiRole: "copilot",
       preserveDesignSkill: true,
+      autoApplyAiChanges: true,
       aiChatMessages: [],
       isAiThinking: false,
 
@@ -2159,11 +2190,16 @@ export const useStudioStore = create<StudioState>()(
       setSecurityModalOpen: (open) => set({ isSecurityModalOpen: open }),
       setOwnerAuthenticated: (authenticated) =>
         set({ isOwnerAuthenticated: authenticated }),
+      setOwnerSessionToken: (token) => set({ ownerSessionToken: token }),
       setSecurityTelemetry: (telemetry) =>
-        set({
+        set((state) => ({
           securityTelemetry: telemetry,
           isOwnerAuthenticated: Boolean(telemetry?.authenticated),
-        }),
+          ownerSessionToken:
+            telemetry?.sessionToken !== undefined
+              ? telemetry.sessionToken
+              : state.ownerSessionToken,
+        })),
 
       addTerminalLog: ({ type, message }) =>
         set((state) => {
@@ -2231,6 +2267,11 @@ export const useStudioStore = create<StudioState>()(
       togglePreserveDesignSkill: () =>
         set((state) => ({ preserveDesignSkill: !state.preserveDesignSkill })),
 
+      setAutoApplyAiChanges: (enabled) => set({ autoApplyAiChanges: enabled }),
+
+      toggleAutoApplyAiChanges: () =>
+        set((state) => ({ autoApplyAiChanges: !state.autoApplyAiChanges })),
+
       addAiChatMessage: (msg) =>
         set((state) => ({
           aiChatMessages: [
@@ -2244,6 +2285,11 @@ export const useStudioStore = create<StudioState>()(
               ...msg,
             },
           ],
+        })),
+
+      deleteAiChatMessage: (id) =>
+        set((state) => ({
+          aiChatMessages: state.aiChatMessages.filter((m) => m.id !== id),
         })),
 
       markAiMessageApplied: (id) =>
@@ -2508,6 +2554,18 @@ export const useStudioStore = create<StudioState>()(
                 (existing.savedInRepo !== false &&
                   (m.updatedAt || 0) >= (existing.updatedAt || 0));
 
+              const resolvedPreviewImage =
+                (m.previewImage && m.previewImage !== "./preview.png"
+                  ? m.previewImage
+                  : undefined) ||
+                (existing?.previewImage &&
+                existing.previewImage !== "./preview.png" &&
+                existing.previewImage !== DEFAULT_TEMPLATE_PREVIEWS["blank"]
+                  ? existing.previewImage
+                  : undefined) ||
+                DEFAULT_TEMPLATE_PREVIEWS[m.id] ||
+                DEFAULT_TEMPLATE_PREVIEWS["blank"];
+
               if (shouldAcceptRepoCode) {
                 nextUserComponents[m.id] = {
                   id: m.id,
@@ -2519,11 +2577,7 @@ export const useStudioStore = create<StudioState>()(
                   updatedAt: m.updatedAt || Date.now(),
                   files: normalizedRepoFiles,
                   dependencies: m.dependencies || [],
-                  previewImage:
-                    m.previewImage ||
-                    existing?.previewImage ||
-                    DEFAULT_TEMPLATE_PREVIEWS[m.id] ||
-                    DEFAULT_TEMPLATE_PREVIEWS["blank"],
+                  previewImage: resolvedPreviewImage,
                   repoSlug: m.slug,
                   savedInRepo: true,
                   lastRepoSyncAt: m.lastRepoSyncAt,
@@ -2546,6 +2600,7 @@ export const useStudioStore = create<StudioState>()(
                 nextUserComponents[m.id] = {
                   ...existing,
                   files: normalizeStudioFiles(existing.files),
+                  previewImage: resolvedPreviewImage,
                   repoSlug: m.slug,
                   savedInRepo: true,
                   lastRepoSyncAt: m.lastRepoSyncAt,
@@ -3155,6 +3210,8 @@ export const useStudioStore = create<StudioState>()(
         aiModel: state.aiModel,
         aiRole: state.aiRole,
         preserveDesignSkill: state.preserveDesignSkill,
+        autoApplyAiChanges: state.autoApplyAiChanges,
+        ownerSessionToken: state.ownerSessionToken,
         variantsByTemplate: state.variantsByTemplate,
         activeVariantByTemplate: state.activeVariantByTemplate,
         userComponents: state.userComponents,

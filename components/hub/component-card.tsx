@@ -1,8 +1,7 @@
 "use client";
 
-import React, { useState, useEffect, useRef, useMemo } from "react";
+import React, { useState } from "react";
 import { UserComponent, useStudioStore } from "@/lib/store/studio-store";
-import { compileSandboxHtml } from "@/lib/sandbox/sandbox-compiler";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -75,56 +74,12 @@ export function ComponentCard({
   onDeleteDialogOpenChange,
 }: ComponentCardProps) {
   const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
-  const [isInView, setIsInView] = useState(false);
-  const [isIframeReady, setIsIframeReady] = useState(false);
-  const cardRef = useRef<HTMLDivElement | null>(null);
 
   const isDeleteDialogOpen = controlledOpen !== undefined ? controlledOpen : uncontrolledOpen;
   const setIsDeleteDialogOpen = (open: boolean) => {
     setUncontrolledOpen(open);
     onDeleteDialogOpenChange?.(open);
   };
-
-  // Lazy-mount live sandboxed preview when card enters viewport
-  useEffect(() => {
-    const el = cardRef.current;
-    if (!el) return;
-    if (typeof IntersectionObserver === "undefined") {
-      setIsInView(true);
-      return;
-    }
-    const observer = new IntersectionObserver(
-      (entries) => {
-        for (const entry of entries) {
-          if (entry.isIntersecting) {
-            setIsInView(true);
-            observer.disconnect();
-            break;
-          }
-        }
-      },
-      { rootMargin: "200px" }
-    );
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, []);
-
-  const compiledPreviewHtml = useMemo(() => {
-    if (!isInView || !component?.files) return "";
-    try {
-      const res = compileSandboxHtml(
-        component.files["component.tsx"] || "",
-        component.files["default.tsx"] || component.files["demo.tsx"] || "",
-        component.files["index.css"] || "",
-        component.dependencies || [],
-        "dark",
-        "dark"
-      );
-      return res.error ? "" : res.html;
-    } catch {
-      return "";
-    }
-  }, [isInView, component]);
 
   const handlePreview = () => {
     if (onPreview) {
@@ -159,13 +114,14 @@ export function ComponentCard({
     }
   };
 
+  const hasValidPreviewImage = Boolean(
+    component.previewImage && component.previewImage !== "./preview.png"
+  );
+
   return (
     <>
-      <div
-        ref={cardRef}
-        className="relative flex flex-col justify-between overflow-hidden rounded-none bg-card text-card-foreground transition-colors duration-200 hover:bg-muted/15 font-sans h-full group"
-      >
-        {/* Sharp 0px-Radius Visual Stage */}
+      <div className="relative flex flex-col justify-between overflow-hidden rounded-none bg-card text-card-foreground transition-colors duration-200 hover:bg-muted/15 font-sans h-full group">
+        {/* Sharp 0px-Radius Static Image Stage (Zero Live Iframes for Low CPU/RAM) */}
         <div
           role="button"
           tabIndex={0}
@@ -185,45 +141,27 @@ export function ComponentCard({
             className="pointer-events-none absolute inset-0 opacity-20 bg-[linear-gradient(to_right,#27272a_1px,transparent_1px),linear-gradient(to_bottom,#27272a_1px,transparent_1px)] bg-[size:24px_24px]"
           />
 
-          {/* Fallback / Initial Preview Visual */}
-          {component.previewImage ? (
+          {/* Static Component Preview Image (No Live Iframe Execution) */}
+          {hasValidPreviewImage ? (
+            // eslint-disable-next-line @next/next/no-img-element
             <img
               src={component.previewImage}
               alt={component.name}
-              className={`relative z-10 w-full h-full object-contain p-5 pointer-events-none select-none transition-all duration-300 group-hover:scale-105 drop-shadow-md ${
-                isIframeReady ? "opacity-0" : "opacity-100"
-              }`}
+              loading="lazy"
+              decoding="async"
+              className="relative z-10 w-full h-full object-contain p-5 pointer-events-none select-none transition-transform duration-300 group-hover:scale-105 drop-shadow-md opacity-100"
             />
           ) : (
-            !isIframeReady && (
-              <div className="relative z-10 flex flex-col items-center justify-center gap-2 select-none pointer-events-none">
-                <div className="flex size-9 items-center justify-center rounded-none bg-zinc-900 border border-zinc-800 text-zinc-400">
-                  {renderCategoryIcon(component.category, "size-4 text-zinc-400")}
-                </div>
-                <Badge
-                  variant="outline"
-                  className="font-sans text-[10px] text-zinc-400 font-normal px-2 py-0.5 rounded-none border-zinc-800 bg-zinc-900/80"
-                >
-                  Preview canvas
-                </Badge>
+            <div className="relative z-10 flex flex-col items-center justify-center gap-2 select-none pointer-events-none">
+              <div className="flex size-9 items-center justify-center rounded-none bg-zinc-900 border border-zinc-800 text-zinc-400">
+                {renderCategoryIcon(component.category, "size-4 text-zinc-400")}
               </div>
-            )
-          )}
-
-          {/* Live Interactive Sandboxed Component Preview (excluded from sequential tab order to prevent keyboard traps) */}
-          {isInView && compiledPreviewHtml && (
-            <div className="absolute inset-0 z-10 overflow-hidden pointer-events-none" aria-hidden="true">
-              <iframe
-                title={`${component.name} live stage`}
-                srcDoc={compiledPreviewHtml}
-                tabIndex={-1}
-                aria-hidden="true"
-                onLoad={() => setIsIframeReady(true)}
-                sandbox="allow-scripts allow-same-origin"
-                className={`w-[200%] h-[200%] origin-top-left scale-50 border-0 transition-opacity duration-300 ${
-                  isIframeReady ? "opacity-100" : "opacity-0"
-                }`}
-              />
+              <Badge
+                variant="outline"
+                className="font-sans text-[10px] text-zinc-400 font-normal px-2 py-0.5 rounded-none border-zinc-800 bg-zinc-900/80"
+              >
+                Preview canvas
+              </Badge>
             </div>
           )}
 
