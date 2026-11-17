@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-17T10:50:28.300Z",
+  "updatedAt": "2026-11-17T10:50:36.852Z",
   "totalComponents": 37,
   "components": [
     {
@@ -10,8 +10,8 @@
       "description": "",
       "category": "Cards",
       "isBuiltIn": false,
-      "updatedAt": 1794912616621,
-      "lastRepoSyncAt": 1794912628160,
+      "updatedAt": 1794912626968,
+      "lastRepoSyncAt": 1794912636762,
       "path": "registry/components/thermaldialwidget",
       "files": [
         "component.tsx",
