@@ -18,8 +18,10 @@ export interface StackStep {
   description: string;
 }
 
-export interface IsometricRankingStackProps
-  extends Omit<React.HTMLAttributes<HTMLElement>, "title"> {
+export interface IsometricRankingStackProps extends Omit<
+  React.HTMLAttributes<HTMLElement>,
+  "title"
+> {
   /** Color theme: "auto" follows Tailwind's .dark class, or force "dark" / "light" */
   theme?: "auto" | "dark" | "light";
   /** Hero headline text */
@@ -831,5 +833,8 @@ export const IsometricRankingStack = React.forwardRef<
 
 IsometricRankingStack.displayName = "IsometricRankingStack";
 
-export { IsometricRankingStack as component, IsometricRankingStack as Component };
+export {
+  IsometricRankingStack as component,
+  IsometricRankingStack as Component,
+};
 export default IsometricRankingStack;
