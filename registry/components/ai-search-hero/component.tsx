@@ -34,6 +34,7 @@ interface BadgeWrapperProps {
   delay: number;
   animateOnMount: boolean;
   shouldReduceMotion: boolean;
+  leading?: boolean;
   className?: string;
   style?: React.CSSProperties;
   children: React.ReactNode;
@@ -44,6 +45,7 @@ function PlatformBadge({
   delay,
   animateOnMount,
   shouldReduceMotion,
+  leading = false,
   className,
   style,
   children,
@@ -58,28 +60,44 @@ function PlatformBadge({
       initial={
         skipMotion
           ? false
-          : { opacity: 0, scale: 0.45, filter: "blur(6px)" }
+          : {
+              width: 0,
+              marginLeft: 0,
+              marginRight: 0,
+              opacity: 0,
+              scale: 0.35,
+              filter: "blur(5px)",
+            }
       }
-      animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
+      animate={{
+        width: "0.94em",
+        marginLeft: leading ? "0em" : "0.14em",
+        marginRight: "0.14em",
+        opacity: 1,
+        scale: 1,
+        filter: "blur(0px)",
+      }}
       transition={
         skipMotion
           ? { duration: 0 }
           : {
-              duration: 0.42,
+              duration: 0.46,
               delay,
               ease: EASE_OUT_EXPO,
             }
       }
       whileHover={shouldReduceMotion ? undefined : { scale: 1.07 }}
       className={cn(
-        "inline-flex items-center justify-center align-middle select-none",
-        "w-[0.94em] h-[0.94em] rounded-[0.26em] mx-[0.14em] -translate-y-[0.06em]",
+        "inline-flex items-center justify-center align-middle select-none overflow-hidden",
+        "h-[0.94em] rounded-[0.26em] -translate-y-[0.06em]",
         "shrink-0 transition-shadow duration-200",
         className
       )}
       style={style}
     >
-      {children}
+      <span className="flex h-[0.94em] w-[0.94em] shrink-0 items-center justify-center">
+        {children}
+      </span>
     </motion.span>
   );
 }
@@ -88,7 +106,7 @@ function GoogleIcon() {
   return (
     <svg
       viewBox="0 0 24 24"
-      className="w-[56%] h-[56%]"
+      className="w-[56%] h-[56%] shrink-0"
       aria-hidden="true"
     >
       <path
@@ -116,7 +134,7 @@ function OpenAiIcon() {
     <svg
       viewBox="0 0 24 24"
       fill="none"
-      className="w-[58%] h-[58%] text-white"
+      className="w-[58%] h-[58%] shrink-0 text-white"
       aria-hidden="true"
     >
       <path
@@ -132,7 +150,7 @@ function ClaudeIcon() {
     <svg
       viewBox="0 0 24 24"
       fill="none"
-      className="w-[58%] h-[58%] text-white"
+      className="w-[58%] h-[58%] shrink-0 text-white"
       aria-hidden="true"
     >
       <path
@@ -150,7 +168,7 @@ function CodexIcon({ maskId }: { maskId: string }) {
     <svg
       viewBox="0 0 24 24"
       fill="none"
-      className="w-[62%] h-[62%]"
+      className="w-[62%] h-[62%] shrink-0"
       aria-hidden="true"
     >
       <defs>
@@ -185,7 +203,7 @@ function PerplexityIcon() {
     <svg
       viewBox="0 0 24 24"
       fill="none"
-      className="w-[56%] h-[56%] text-white"
+      className="w-[56%] h-[56%] shrink-0 text-white"
       aria-hidden="true"
     >
       <path
@@ -228,18 +246,19 @@ export const AiSearchHero = React.forwardRef<HTMLElement, AiSearchHeroProps>(
       skipMotion
         ? { duration: 0 }
         : {
-            duration: 0.5,
+            duration: 0.48,
             delay: index * safeStagger,
             ease: EASE_OUT_EXPO,
           };
 
     const lineInitial = skipMotion
       ? false
-      : { opacity: 0, y: 10, filter: "blur(8px)" };
+      : { opacity: 0, y: 12, filter: "blur(8px)" };
 
     const lineAnimate = { opacity: 1, y: 0, filter: "blur(0px)" };
 
-    const iconBaseDelay = safeStagger * 3.4;
+    // Icons begin expanding right after the 3 headline lines settle into sharpness
+    const iconStartDelay = safeStagger * 4.8;
 
     return (
       <section
@@ -261,7 +280,7 @@ export const AiSearchHero = React.forwardRef<HTMLElement, AiSearchHeroProps>(
           <h1
             id={`${uid}-heading`}
             className={cn(
-              "font-medium tracking-[-0.032em] leading-[1.16]",
+              "font-medium tracking-[-0.032em] leading-[1.18]",
               "text-[2rem] sm:text-[2.85rem] md:text-[3.35rem]",
               isLight ? "text-[#0A0A0A]" : "text-[#F5F5F7]"
             )}
@@ -271,12 +290,12 @@ export const AiSearchHero = React.forwardRef<HTMLElement, AiSearchHeroProps>(
               initial={lineInitial}
               animate={lineAnimate}
               transition={lineTransition(0)}
-              className="block"
+              className="block sm:whitespace-nowrap"
             >
               Get found on{" "}
               <PlatformBadge
                 label="Google"
-                delay={iconBaseDelay}
+                delay={iconStartDelay}
                 animateOnMount={animateOnMount}
                 shouldReduceMotion={shouldReduceMotion}
                 className={cn(
@@ -285,7 +304,7 @@ export const AiSearchHero = React.forwardRef<HTMLElement, AiSearchHeroProps>(
                 )}
               >
                 <GoogleIcon />
-              </PlatformBadge>{" "}
+              </PlatformBadge>
               Google,
             </motion.span>
 
@@ -294,36 +313,37 @@ export const AiSearchHero = React.forwardRef<HTMLElement, AiSearchHeroProps>(
               initial={lineInitial}
               animate={lineAnimate}
               transition={lineTransition(1)}
-              className="block"
+              className="block sm:whitespace-nowrap"
             >
               <PlatformBadge
                 label="ChatGPT"
-                delay={iconBaseDelay + safeStagger * 0.9}
+                leading
+                delay={iconStartDelay + safeStagger * 1.4}
                 animateOnMount={animateOnMount}
                 shouldReduceMotion={shouldReduceMotion}
                 className={cn(
-                  "bg-[#141416] ml-0",
+                  "bg-[#141416]",
                   isLight
                     ? "ring-1 ring-black/15"
                     : "ring-1 ring-white/15"
                 )}
               >
                 <OpenAiIcon />
-              </PlatformBadge>{" "}
+              </PlatformBadge>
               ChatGPT,{" "}
               <PlatformBadge
                 label="Claude"
-                delay={iconBaseDelay + safeStagger * 1.4}
+                delay={iconStartDelay + safeStagger * 1.8}
                 animateOnMount={animateOnMount}
                 shouldReduceMotion={shouldReduceMotion}
                 className="bg-[#D96B43]"
               >
                 <ClaudeIcon />
-              </PlatformBadge>{" "}
+              </PlatformBadge>
               Claude,{" "}
               <PlatformBadge
                 label="Codex"
-                delay={iconBaseDelay + safeStagger * 1.9}
+                delay={iconStartDelay + safeStagger * 2.2}
                 animateOnMount={animateOnMount}
                 shouldReduceMotion={shouldReduceMotion}
                 style={{
@@ -332,7 +352,7 @@ export const AiSearchHero = React.forwardRef<HTMLElement, AiSearchHeroProps>(
                 }}
               >
                 <CodexIcon maskId={`${uid}-codex-mask`} />
-              </PlatformBadge>{" "}
+              </PlatformBadge>
               Codex
             </motion.span>
 
@@ -341,18 +361,18 @@ export const AiSearchHero = React.forwardRef<HTMLElement, AiSearchHeroProps>(
               initial={lineInitial}
               animate={lineAnimate}
               transition={lineTransition(2)}
-              className="block"
+              className="block sm:whitespace-nowrap"
             >
               and{" "}
               <PlatformBadge
                 label="Perplexity and AI answers"
-                delay={iconBaseDelay + safeStagger * 2.4}
+                delay={iconStartDelay + safeStagger * 3.1}
                 animateOnMount={animateOnMount}
                 shouldReduceMotion={shouldReduceMotion}
                 className="bg-[#1D7D84]"
               >
                 <PerplexityIcon />
-              </PlatformBadge>{" "}
+              </PlatformBadge>
               every AI answer
             </motion.span>
           </h1>
@@ -371,7 +391,7 @@ export const AiSearchHero = React.forwardRef<HTMLElement, AiSearchHeroProps>(
                   ? { duration: 0 }
                   : {
                       duration: 0.55,
-                      delay: safeStagger * 2.6,
+                      delay: safeStagger * 3.2,
                       ease: EASE_OUT_EXPO,
                     }
               }
@@ -397,7 +417,7 @@ export const AiSearchHero = React.forwardRef<HTMLElement, AiSearchHeroProps>(
                 ? { duration: 0 }
                 : {
                     duration: 0.55,
-                    delay: safeStagger * 3.3,
+                    delay: safeStagger * 4.0,
                     ease: EASE_OUT_EXPO,
                   }
             }
