@@ -1,8 +1,26 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-17T14:02:04.393Z",
-  "totalComponents": 39,
+  "updatedAt": "2026-11-17T14:20:32.624Z",
+  "totalComponents": 40,
   "components": [
+    {
+      "id": "comp-1794925219975-ryx72",
+      "slug": "photo-box",
+      "name": "PhotoBox",
+      "description": "An interactive keepsake photo box with a frosted translucent sleeve, sliding Polaroid print tray, hover lift physics, and an accessible full-bleed print viewer modal.",
+      "category": "Custom",
+      "isBuiltIn": false,
+      "updatedAt": 1794925225459,
+      "lastRepoSyncAt": 1794925232545,
+      "path": "registry/components/photo-box",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "index.css",
+        "manifest.json"
+      ],
+      "dependencies": []
+    },
     {
       "id": "comp-1794923856828-2l2cs",
       "slug": "pill-pagination",
