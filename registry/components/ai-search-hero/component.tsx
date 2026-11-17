@@ -9,8 +9,8 @@ function cn(...classes: Array<string | false | null | undefined>) {
 
 export interface AiSearchHeroProps
   extends Omit<React.HTMLAttributes<HTMLElement>, "title"> {
-  /** Color theme for the hero surface and typography */
-  theme?: "dark" | "light";
+  /** Color theme: "auto" follows Tailwind's .dark class, or force "dark" / "light" */
+  theme?: "auto" | "dark" | "light";
   /** Supporting description displayed below the headline */
   subtitle?: string;
   /** Label for the primary gradient CTA pill */
@@ -220,7 +220,7 @@ function PerplexityIcon() {
 export const AiSearchHero = React.forwardRef<HTMLElement, AiSearchHeroProps>(
   (
     {
-      theme = "dark",
+      theme = "auto",
       subtitle = "Cited checks what Google and AI assistants say about your brand every day, and shows you which pages to fix so they mention you more.",
       primaryCtaText = "Start for free",
       secondaryCtaText = "See it on your site",
@@ -229,6 +229,7 @@ export const AiSearchHero = React.forwardRef<HTMLElement, AiSearchHeroProps>(
       onPrimaryClick,
       onSecondaryClick,
       className,
+      style,
       ...rest
     },
     ref
@@ -236,7 +237,6 @@ export const AiSearchHero = React.forwardRef<HTMLElement, AiSearchHeroProps>(
     const uid = useId();
     const shouldReduceMotion = Boolean(useReducedMotion());
     const skipMotion = !animateOnMount || shouldReduceMotion;
-    const isLight = theme === "light";
 
     const safeStagger = Number.isFinite(staggerDelay)
       ? Math.max(0, Math.min(0.4, staggerDelay))
@@ -256,9 +256,35 @@ export const AiSearchHero = React.forwardRef<HTMLElement, AiSearchHeroProps>(
       : { opacity: 0, y: 12, filter: "blur(8px)" };
 
     const lineAnimate = { opacity: 1, y: 0, filter: "blur(0px)" };
-
-    // Icons begin expanding right after the 3 headline lines settle into sharpness
     const iconStartDelay = safeStagger * 4.8;
+
+    const surfaceClasses =
+      theme === "dark"
+        ? "bg-[#0A0A0A] text-[#F5F5F7]"
+        : theme === "light"
+          ? "bg-[#FAFAFA] text-[#09090B]"
+          : "bg-transparent text-[#09090B] dark:text-[#F5F5F7]";
+
+    const subtitleClasses =
+      theme === "dark"
+        ? "text-[#8E8E93]"
+        : theme === "light"
+          ? "text-[#52525B]"
+          : "text-[#52525B] dark:text-[#8E8E93]";
+
+    const googleBadgeClasses =
+      theme === "dark"
+        ? "bg-[#EFEFEF] ring-1 ring-white/15"
+        : theme === "light"
+          ? "bg-white ring-1 ring-black/[0.08] shadow-[0_1px_2px_rgba(0,0,0,0.06)]"
+          : "bg-white ring-1 ring-black/[0.08] shadow-[0_1px_2px_rgba(0,0,0,0.06)] dark:bg-[#EFEFEF] dark:ring-white/15 dark:shadow-none";
+
+    const secondaryBtnClasses =
+      theme === "dark"
+        ? "bg-[#151517] text-[#E5E5EA] border border-white/10 hover:bg-[#1C1C20] hover:border-white/[0.16] focus-visible:ring-offset-[#0A0A0A]"
+        : theme === "light"
+          ? "bg-white text-[#18181B] border border-black/[0.12] shadow-[0_1px_2px_rgba(0,0,0,0.04)] hover:bg-[#F4F4F5] focus-visible:ring-offset-[#FAFAFA]"
+          : "bg-white text-[#18181B] border border-black/[0.12] shadow-[0_1px_2px_rgba(0,0,0,0.04)] hover:bg-[#F4F4F5] focus-visible:ring-offset-[#FAFAFA] dark:bg-[#151517] dark:text-[#E5E5EA] dark:border-white/10 dark:shadow-none dark:hover:bg-[#1C1C20] dark:hover:border-white/[0.16] dark:focus-visible:ring-offset-[#0A0A0A]";
 
     return (
       <section
@@ -266,24 +292,21 @@ export const AiSearchHero = React.forwardRef<HTMLElement, AiSearchHeroProps>(
         aria-labelledby={`${uid}-heading`}
         className={cn(
           "relative w-full overflow-hidden px-4 py-14 sm:px-8 sm:py-20",
-          "flex flex-col items-center justify-center text-center antialiased",
-          isLight ? "bg-[#FAFAFA] text-[#0A0A0A]" : "bg-[#0A0A0A] text-[#F5F5F7]",
+          "flex flex-col items-center justify-center text-center antialiased transition-colors duration-200",
+          surfaceClasses,
           className
         )}
         style={{
           fontFamily:
             '"Inter", "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+          ...style,
         }}
         {...rest}
       >
         <div className="mx-auto flex w-full max-w-[820px] flex-col items-center">
           <h1
             id={`${uid}-heading`}
-            className={cn(
-              "font-medium tracking-[-0.032em] leading-[1.18]",
-              "text-[2rem] sm:text-[2.85rem] md:text-[3.35rem]",
-              isLight ? "text-[#0A0A0A]" : "text-[#F5F5F7]"
-            )}
+            className="font-medium tracking-[-0.032em] leading-[1.18] text-[2rem] sm:text-[2.85rem] md:text-[3.35rem]"
           >
             {/* Line 1 */}
             <motion.span
@@ -298,10 +321,7 @@ export const AiSearchHero = React.forwardRef<HTMLElement, AiSearchHeroProps>(
                 delay={iconStartDelay}
                 animateOnMount={animateOnMount}
                 shouldReduceMotion={shouldReduceMotion}
-                className={cn(
-                  "bg-[#EFEFEF]",
-                  isLight ? "ring-1 ring-black/10" : "ring-1 ring-white/15"
-                )}
+                className={googleBadgeClasses}
               >
                 <GoogleIcon />
               </PlatformBadge>
@@ -321,12 +341,7 @@ export const AiSearchHero = React.forwardRef<HTMLElement, AiSearchHeroProps>(
                 delay={iconStartDelay + safeStagger * 1.4}
                 animateOnMount={animateOnMount}
                 shouldReduceMotion={shouldReduceMotion}
-                className={cn(
-                  "bg-[#141416]",
-                  isLight
-                    ? "ring-1 ring-black/15"
-                    : "ring-1 ring-white/15"
-                )}
+                className="bg-[#141416] ring-1 ring-black/15 dark:ring-white/15"
               >
                 <OpenAiIcon />
               </PlatformBadge>
@@ -336,7 +351,7 @@ export const AiSearchHero = React.forwardRef<HTMLElement, AiSearchHeroProps>(
                 delay={iconStartDelay + safeStagger * 1.8}
                 animateOnMount={animateOnMount}
                 shouldReduceMotion={shouldReduceMotion}
-                className="bg-[#D96B43]"
+                className="bg-[#D96B43] shadow-[0_1px_2px_rgba(0,0,0,0.08)] dark:shadow-none"
               >
                 <ClaudeIcon />
               </PlatformBadge>
@@ -346,6 +361,7 @@ export const AiSearchHero = React.forwardRef<HTMLElement, AiSearchHeroProps>(
                 delay={iconStartDelay + safeStagger * 2.2}
                 animateOnMount={animateOnMount}
                 shouldReduceMotion={shouldReduceMotion}
+                className="shadow-[0_1px_2px_rgba(0,0,0,0.08)] dark:shadow-none"
                 style={{
                   background:
                     "linear-gradient(135deg, #7B96FF 0%, #5263FF 100%)",
@@ -369,7 +385,7 @@ export const AiSearchHero = React.forwardRef<HTMLElement, AiSearchHeroProps>(
                 delay={iconStartDelay + safeStagger * 3.1}
                 animateOnMount={animateOnMount}
                 shouldReduceMotion={shouldReduceMotion}
-                className="bg-[#1D7D84]"
+                className="bg-[#1D7D84] shadow-[0_1px_2px_rgba(0,0,0,0.08)] dark:shadow-none"
               >
                 <PerplexityIcon />
               </PlatformBadge>
@@ -397,7 +413,7 @@ export const AiSearchHero = React.forwardRef<HTMLElement, AiSearchHeroProps>(
               }
               className={cn(
                 "mt-5 sm:mt-6 max-w-[460px] text-[0.9375rem] sm:text-[1rem] leading-[1.58] tracking-[-0.005em]",
-                isLight ? "text-[#52525B]" : "text-[#8E8E93]"
+                subtitleClasses
               )}
             >
               {subtitle}
@@ -430,18 +446,19 @@ export const AiSearchHero = React.forwardRef<HTMLElement, AiSearchHeroProps>(
               className={cn(
                 "relative inline-flex h-11 items-center justify-center rounded-full px-6",
                 "text-[0.875rem] font-medium tracking-[-0.01em] text-white",
-                "transition-transform duration-150 active:scale-[0.98]",
+                "transition-all duration-150 hover:brightness-110 active:scale-[0.98]",
                 "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4A7AFF] focus-visible:ring-offset-2",
-                isLight
-                  ? "focus-visible:ring-offset-[#FAFAFA]"
-                  : "focus-visible:ring-offset-[#0A0A0A]"
+                theme === "dark"
+                  ? "focus-visible:ring-offset-[#0A0A0A]"
+                  : theme === "light"
+                    ? "focus-visible:ring-offset-[#FAFAFA]"
+                    : "focus-visible:ring-offset-[#FAFAFA] dark:focus-visible:ring-offset-[#0A0A0A]"
               )}
               style={{
                 background:
                   "radial-gradient(120% 100% at 50% 0%, #3E6EFF 0%, #1C3A8A 48%, #101218 100%)",
-                boxShadow: isLight
-                  ? "inset 0 1px 0 rgba(255,255,255,0.35), 0 4px 14px rgba(28,58,138,0.28)"
-                  : "inset 0 1px 0 rgba(255,255,255,0.28), 0 0 0 1px rgba(255,255,255,0.12)",
+                boxShadow:
+                  "inset 0 1px 0 rgba(255,255,255,0.3), 0 0 0 1px rgba(255,255,255,0.12), 0 4px 12px rgba(16,18,24,0.18)",
               }}
             >
               <span className="relative z-10">{primaryCtaText}</span>
@@ -454,11 +471,9 @@ export const AiSearchHero = React.forwardRef<HTMLElement, AiSearchHeroProps>(
               className={cn(
                 "group inline-flex h-11 items-center justify-center gap-2 rounded-full px-6",
                 "text-[0.875rem] font-medium tracking-[-0.01em]",
-                "transition-colors duration-150 active:scale-[0.98]",
+                "transition-all duration-150 active:scale-[0.98]",
                 "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4A7AFF] focus-visible:ring-offset-2",
-                isLight
-                  ? "bg-white text-[#18181B] border border-black/12 hover:bg-[#F4F4F5] focus-visible:ring-offset-[#FAFAFA]"
-                  : "bg-[#151517] text-[#E5E5EA] border border-white/10 hover:bg-[#1C1C20] hover:border-white/16 focus-visible:ring-offset-[#0A0A0A]"
+                secondaryBtnClasses
               )}
             >
               <span>{secondaryCtaText}</span>
