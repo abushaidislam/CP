@@ -1,8 +1,28 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-17T10:47:40.950Z",
+  "updatedAt": "2026-11-17T10:49:24.700Z",
   "totalComponents": 37,
   "components": [
+    {
+      "id": "comp-1794888607294-l6uu5",
+      "slug": "thermaldialwidget",
+      "name": "Thermaldialwidget",
+      "description": "",
+      "category": "Cards",
+      "isBuiltIn": false,
+      "updatedAt": 1794912553826,
+      "lastRepoSyncAt": 1794912564568,
+      "path": "registry/components/thermaldialwidget",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "index.css",
+        "manifest.json"
+      ],
+      "dependencies": [
+        "lucide-react"
+      ]
+    },
     {
       "id": "comp-1794911670084-bxw3x",
       "slug": "alarm-wighht",
@@ -20,26 +40,6 @@
         "manifest.json"
       ],
       "dependencies": []
-    },
-    {
-      "id": "comp-1794888607294-l6uu5",
-      "slug": "thermaldialwidget",
-      "name": "Thermaldialwidget",
-      "description": "",
-      "category": "Cards",
-      "isBuiltIn": false,
-      "updatedAt": 1794891397689,
-      "lastRepoSyncAt": 1794891564871,
-      "path": "registry/components/thermaldialwidget",
-      "files": [
-        "component.tsx",
-        "default.tsx",
-        "index.css",
-        "manifest.json"
-      ],
-      "dependencies": [
-        "lucide-react"
-      ]
     },
     {
       "id": "comp-1794818189282-2mauz",
