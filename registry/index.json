@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-17T14:00:18.835Z",
+  "updatedAt": "2026-11-17T14:02:04.393Z",
   "totalComponents": 39,
   "components": [
     {
@@ -10,14 +10,15 @@
       "description": "",
       "category": "Custom",
       "isBuiltIn": false,
-      "updatedAt": 1794924009643,
-      "lastRepoSyncAt": 1794924018695,
+      "updatedAt": 1794924114537,
+      "lastRepoSyncAt": 1794924124261,
       "path": "registry/components/pill-pagination",
       "files": [
         "component.tsx",
         "default.tsx",
         "index.css",
-        "manifest.json"
+        "manifest.json",
+        "preview.png"
       ],
       "dependencies": []
     },
