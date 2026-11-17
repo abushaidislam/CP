@@ -16,8 +16,10 @@ const settings = {
 export default function AiSearchHeroDemo(props: Partial<typeof settings>) {
   const config = { ...settings, ...props };
 
-  const theme: "dark" | "light" =
-    config.theme === "light" ? "light" : "dark";
+  const theme: "auto" | "dark" | "light" =
+    config.theme === "light" || config.theme === "auto"
+      ? config.theme
+      : "dark";
 
   const staggerDelay =
     typeof config.staggerDelay === "number" &&
@@ -25,11 +27,16 @@ export default function AiSearchHeroDemo(props: Partial<typeof settings>) {
       ? Math.max(0, Math.min(0.4, config.staggerDelay))
       : 0.09;
 
+  const canvasBg =
+    theme === "light"
+      ? "bg-[#FAFAFA]"
+      : theme === "dark"
+        ? "bg-[#0A0A0A]"
+        : "bg-background";
+
   return (
     <div
-      className={`w-full min-h-[460px] flex items-center justify-center p-4 sm:p-8 transition-colors duration-200 ${
-        theme === "light" ? "bg-[#FAFAFA]" : "bg-[#0A0A0A]"
-      }`}
+      className={`w-full min-h-[460px] flex items-center justify-center p-4 sm:p-8 transition-colors duration-200 ${canvasBg}`}
     >
       <AiSearchHero
         key={`${String(config.animateOnMount)}-${staggerDelay}`}
