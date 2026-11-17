@@ -8,8 +8,13 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { motion, useReducedMotion } from "framer-motion";
-import { ChevronLeft, ChevronRight, Pause, Play } from "lucide-react";
+import {
+  motion,
+  useMotionValue,
+  useReducedMotion,
+  useSpring,
+  useTransform,
+} from "framer-motion";
 
 function cn(...classes: Array<string | undefined | null | false>): string {
   return classes.filter(Boolean).join(" ");
@@ -31,7 +36,6 @@ export interface SpatialCardCarouselProps
   autoPlay?: boolean;
   interval?: number;
   pauseOnHover?: boolean;
-  showControls?: boolean;
   initialIndex?: number;
   onActiveChange?: (index: number, item: SpatialCardItem) => void;
   ariaLabel?: string;
@@ -40,6 +44,7 @@ export interface SpatialCardCarouselProps
 interface OrbitalSlot {
   xPct: number;
   yPct: number;
+  zPx: number;
   scale: number;
   rotateX: number;
   rotateY: number;
@@ -54,6 +59,7 @@ const ORBITAL_SLOTS: OrbitalSlot[] = [
   {
     xPct: 0,
     yPct: 0,
+    zPx: 140,
     scale: 1,
     rotateX: 0,
     rotateY: 0,
@@ -66,22 +72,24 @@ const ORBITAL_SLOTS: OrbitalSlot[] = [
   {
     xPct: -78,
     yPct: -62,
+    zPx: -40,
     scale: 0.44,
-    rotateX: 8,
-    rotateY: 16,
+    rotateX: 7,
+    rotateY: 15,
     rotateZ: -4,
     opacity: 0.94,
     zIndex: 24,
     blur: 0,
   },
-  // Slot 2: Lower-left foreground-ish satellite
+  // Slot 2: Lower-left satellite
   {
     xPct: -68,
     yPct: 76,
+    zPx: -20,
     scale: 0.46,
     rotateX: -6,
-    rotateY: 14,
-    rotateZ: 5,
+    rotateY: 13,
+    rotateZ: 4,
     opacity: 0.96,
     zIndex: 28,
     blur: 0,
@@ -90,9 +98,10 @@ const ORBITAL_SLOTS: OrbitalSlot[] = [
   {
     xPct: 96,
     yPct: 12,
+    zPx: -50,
     scale: 0.42,
     rotateX: 4,
-    rotateY: -18,
+    rotateY: -16,
     rotateZ: 3,
     opacity: 0.92,
     zIndex: 22,
@@ -102,22 +111,24 @@ const ORBITAL_SLOTS: OrbitalSlot[] = [
   {
     xPct: 86,
     yPct: -66,
+    zPx: -90,
     scale: 0.38,
-    rotateX: 10,
-    rotateY: -15,
-    rotateZ: 6,
+    rotateX: 9,
+    rotateY: -14,
+    rotateZ: 5,
     opacity: 0.88,
     zIndex: 18,
-    blur: 0.3,
+    blur: 0.25,
   },
   // Slot 5: Far-left middle
   {
     xPct: -118,
     yPct: 8,
+    zPx: -120,
     scale: 0.34,
     rotateX: -5,
-    rotateY: 22,
-    rotateZ: -6,
+    rotateY: 20,
+    rotateZ: -5,
     opacity: 0.82,
     zIndex: 14,
     blur: 0.4,
@@ -126,9 +137,10 @@ const ORBITAL_SLOTS: OrbitalSlot[] = [
   {
     xPct: 74,
     yPct: 84,
+    zPx: -70,
     scale: 0.4,
-    rotateX: -8,
-    rotateY: -14,
+    rotateX: -7,
+    rotateY: -13,
     rotateZ: -3,
     opacity: 0.9,
     zIndex: 20,
@@ -138,37 +150,40 @@ const ORBITAL_SLOTS: OrbitalSlot[] = [
   {
     xPct: -26,
     yPct: -102,
+    zPx: -180,
     scale: 0.28,
-    rotateX: 12,
+    rotateX: 11,
     rotateY: 8,
     rotateZ: -2,
     opacity: 0.72,
     zIndex: 10,
-    blur: 0.8,
+    blur: 0.7,
   },
   // Slot 8: Deep lower-center
   {
     xPct: 18,
     yPct: 108,
+    zPx: -160,
     scale: 0.3,
-    rotateX: -10,
+    rotateX: -9,
     rotateY: -8,
-    rotateZ: 4,
+    rotateZ: 3,
     opacity: 0.75,
     zIndex: 12,
-    blur: 0.6,
+    blur: 0.55,
   },
   // Slot 9: Deep right-back
   {
     xPct: 126,
     yPct: -24,
+    zPx: -200,
     scale: 0.26,
     rotateX: 6,
-    rotateY: -22,
-    rotateZ: 8,
+    rotateY: -20,
+    rotateZ: 7,
     opacity: 0.68,
     zIndex: 8,
-    blur: 1,
+    blur: 0.85,
   },
 ];
 
@@ -176,17 +191,18 @@ function getOrbitalSlot(offset: number, total: number): OrbitalSlot {
   if (offset === 0) return ORBITAL_SLOTS[0];
   if (offset < ORBITAL_SLOTS.length) return ORBITAL_SLOTS[offset];
 
-  const angle = ((offset / Math.max(total, 1)) * Math.PI * 2) - Math.PI / 2;
+  const angle = (offset / Math.max(total, 1)) * Math.PI * 2 - Math.PI / 2;
   return {
     xPct: Math.cos(angle) * 110,
     yPct: Math.sin(angle) * 90,
+    zPx: -180,
     scale: 0.28,
     rotateX: 6,
     rotateY: Math.cos(angle) * -18,
     rotateZ: Math.sin(angle) * 5,
     opacity: 0.7,
     zIndex: 6,
-    blur: 0.8,
+    blur: 0.75,
   };
 }
 
@@ -279,21 +295,18 @@ function createDefaultItems(uid: string): SpatialCardItem[] {
               </linearGradient>
             </defs>
             <rect width="320" height="400" fill="#DCDCD9" />
-            {/* Hooded coat silhouette */}
             <path
               d="M65 400 L82 246 C86 212 104 190 112 162 C110 118 128 84 162 82 C196 80 218 112 216 158 C224 188 242 212 248 248 L266 400 Z"
               fill={`url(#${uid}-hood)`}
               stroke="#B6DA36"
               strokeWidth="2"
             />
-            {/* Inner face & hair frame */}
             <ellipse cx="164" cy="154" rx="34" ry="44" fill="#DFC0AA" />
             <path
               d="M128 150 C128 112 198 112 198 150 C190 134 140 134 128 150 Z"
               fill="#19191B"
             />
             <rect x="134" y="138" width="58" height="12" fill="#19191B" />
-            {/* Minimal facial features */}
             <path
               d="M144 160 Q150 157 156 160 M170 160 Q176 157 182 160"
               stroke="#241C18"
@@ -306,7 +319,6 @@ function createDefaultItems(uid: string): SpatialCardItem[] {
               strokeWidth="2.5"
               fill="none"
             />
-            {/* Chest emblem */}
             <g transform="translate(186, 266)" fill="#181B12">
               <circle cx="8" cy="6" r="3" />
               <circle cx="20" cy="8" r="4.5" />
@@ -330,7 +342,6 @@ function createDefaultItems(uid: string): SpatialCardItem[] {
             className="h-3/4 w-3/4"
             aria-hidden="true"
           >
-            {/* Outer ring of dots */}
             {Array.from({ length: 14 }).map((_, idx) => {
               const angle = (idx / 14) * Math.PI * 2;
               const cx = 120 + Math.cos(angle) * 44;
@@ -339,11 +350,9 @@ function createDefaultItems(uid: string): SpatialCardItem[] {
                 <circle key={idx} cx={cx} cy={cy} r="5.5" fill="#F4F4F5" />
               );
             })}
-            {/* Vertical stem */}
             {[154, 174, 194, 214, 234].map((y) => (
               <circle key={y} cx="120" cy={y} r="5.5" fill="#F4F4F5" />
             ))}
-            {/* Cross arms */}
             {[82, 101, 139, 158].map((x) => (
               <circle key={x} cx={x} cy="194" r="5.5" fill="#F4F4F5" />
             ))}
@@ -444,7 +453,6 @@ function createDefaultItems(uid: string): SpatialCardItem[] {
               parasail
             </span>
           </div>
-          {/* Halftone globe accent */}
           <svg
             viewBox="0 0 240 240"
             className="pointer-events-none absolute -right-8 top-12 h-56 w-56 opacity-40"
@@ -479,7 +487,6 @@ function createDefaultItems(uid: string): SpatialCardItem[] {
               strokeDasharray="3 5"
             />
           </svg>
-          {/* Minimal desk & monitor silhouette */}
           <svg
             viewBox="0 0 260 110"
             className="relative z-10 w-full"
@@ -512,10 +519,7 @@ function createDefaultItems(uid: string): SpatialCardItem[] {
               aria-hidden="true"
             >
               <circle cx="60" cy="58" r="42" fill="#E4E4E7" />
-              <path
-                d="M36 96 C38 72 82 72 84 96"
-                fill="#1F1F23"
-              />
+              <path d="M36 96 C38 72 82 72 84 96" fill="#1F1F23" />
               <circle cx="60" cy="48" r="20" fill="#2A2A2E" />
               <path
                 d="M50 52 Q60 62 70 52"
@@ -596,6 +600,13 @@ function createDefaultItems(uid: string): SpatialCardItem[] {
   ];
 }
 
+const ORBITAL_SPRING = {
+  type: "spring" as const,
+  stiffness: 118,
+  damping: 25,
+  mass: 1.02,
+};
+
 const SpatialCardCarousel = React.forwardRef<
   HTMLDivElement,
   SpatialCardCarouselProps
@@ -607,7 +618,6 @@ const SpatialCardCarousel = React.forwardRef<
       autoPlay = true,
       interval = 2400,
       pauseOnHover = true,
-      showControls = true,
       initialIndex = 0,
       onActiveChange,
       ariaLabel = "3D spatial card showcase",
@@ -623,20 +633,24 @@ const SpatialCardCarousel = React.forwardRef<
       propItems && propItems.length > 0 ? propItems : defaultItems;
     const total = items.length;
 
-    const safeInitial =
-      ((initialIndex % total) + total) % total;
+    const safeInitial = ((initialIndex % total) + total) % total;
     const [activeIndex, setActiveIndex] = useState<number>(safeInitial);
-    const [isPlaying, setIsPlaying] = useState<boolean>(autoPlay);
     const [isHovered, setIsHovered] = useState<boolean>(false);
-    const [pointerTilt, setPointerTilt] = useState<{ x: number; y: number }>({
-      x: 0,
-      y: 0,
-    });
-    const stageRef = useRef<HTMLDivElement | null>(null);
+    const [interactionTick, setInteractionTick] = useState<number>(0);
 
-    useEffect(() => {
-      setIsPlaying(autoPlay);
-    }, [autoPlay]);
+    const stageRef = useRef<HTMLDivElement | null>(null);
+    const wheelAccumulatorRef = useRef<number>(0);
+    const wheelLockRef = useRef<number>(0);
+    const dragStartRef = useRef<{ x: number; y: number } | null>(null);
+    const didDragRef = useRef<boolean>(false);
+
+    // Zero-rerender GPU-accelerated pointer parallax
+    const rawPointerX = useMotionValue(0);
+    const rawPointerY = useMotionValue(0);
+    const smoothTiltY = useSpring(rawPointerX, { stiffness: 120, damping: 24 });
+    const smoothTiltX = useSpring(rawPointerY, { stiffness: 120, damping: 24 });
+    const stageRotateY = useTransform(smoothTiltY, [-0.5, 0.5], [-6, 6]);
+    const stageRotateX = useTransform(smoothTiltX, [-0.5, 0.5], [5, -5]);
 
     useEffect(() => {
       setActiveIndex(((initialIndex % total) + total) % total);
@@ -646,21 +660,27 @@ const SpatialCardCarousel = React.forwardRef<
       (nextIdx: number) => {
         const normalized = ((nextIdx % total) + total) % total;
         setActiveIndex(normalized);
+        setInteractionTick((t) => t + 1);
         onActiveChange?.(normalized, items[normalized]);
       },
       [items, onActiveChange, total]
     );
 
-    const handleNext = useCallback(() => {
-      selectIndex(activeIndex + 1);
-    }, [activeIndex, selectIndex]);
+    const stepBy = useCallback(
+      (delta: number) => {
+        setActiveIndex((prev) => {
+          const next = (((prev + delta) % total) + total) % total;
+          onActiveChange?.(next, items[next]);
+          return next;
+        });
+        setInteractionTick((t) => t + 1);
+      },
+      [items, onActiveChange, total]
+    );
 
-    const handlePrev = useCallback(() => {
-      selectIndex(activeIndex - 1);
-    }, [activeIndex, selectIndex]);
-
+    // Smooth autoplay timer (resets cleanly after any manual interaction)
     useEffect(() => {
-      if (!isPlaying || total <= 1) return;
+      if (!autoPlay || total <= 1) return;
       if (pauseOnHover && isHovered) return;
 
       const clampedInterval = Math.max(900, interval);
@@ -674,38 +694,90 @@ const SpatialCardCarousel = React.forwardRef<
 
       return () => window.clearInterval(timer);
     }, [
+      autoPlay,
       interval,
       isHovered,
-      isPlaying,
+      interactionTick,
       items,
       onActiveChange,
       pauseOnHover,
       total,
     ]);
 
+    // Native non-passive wheel listener for smooth mouse-wheel & trackpad scrubbing
+    useEffect(() => {
+      const el = stageRef.current;
+      if (!el || total <= 1) return;
+
+      const onWheel = (e: WheelEvent) => {
+        const dominantDelta =
+          Math.abs(e.deltaY) >= Math.abs(e.deltaX) ? e.deltaY : e.deltaX;
+        if (Math.abs(dominantDelta) < 2) return;
+
+        e.preventDefault();
+
+        const now = performance.now();
+        if (now - wheelLockRef.current < 260) return;
+
+        wheelAccumulatorRef.current += dominantDelta;
+        if (Math.abs(wheelAccumulatorRef.current) >= 36) {
+          const direction = wheelAccumulatorRef.current > 0 ? 1 : -1;
+          wheelAccumulatorRef.current = 0;
+          wheelLockRef.current = now;
+          stepBy(direction);
+        }
+      };
+
+      el.addEventListener("wheel", onWheel, { passive: false });
+      return () => el.removeEventListener("wheel", onWheel);
+    }, [stepBy, total]);
+
+    const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+      dragStartRef.current = { x: e.clientX, y: e.clientY };
+      didDragRef.current = false;
+    };
+
     const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+      if (dragStartRef.current) {
+        const dx = e.clientX - dragStartRef.current.x;
+        const dy = e.clientY - dragStartRef.current.y;
+        if (Math.hypot(dx, dy) > 8) {
+          didDragRef.current = true;
+        }
+      }
+
       if (shouldReduceMotion || !stageRef.current) return;
       const rect = stageRef.current.getBoundingClientRect();
-      const nx = (e.clientX - rect.left) / rect.width - 0.5;
-      const ny = (e.clientY - rect.top) / rect.height - 0.5;
-      setPointerTilt({
-        x: Number((-ny * 8).toFixed(2)),
-        y: Number((nx * 10).toFixed(2)),
-      });
+      rawPointerX.set((e.clientX - rect.left) / rect.width - 0.5);
+      rawPointerY.set((e.clientY - rect.top) / rect.height - 0.5);
+    };
+
+    const handlePointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+      if (!dragStartRef.current) return;
+      const dx = e.clientX - dragStartRef.current.x;
+      const dy = e.clientY - dragStartRef.current.y;
+      dragStartRef.current = null;
+
+      const primaryDelta = Math.abs(dx) >= Math.abs(dy) ? dx : dy;
+      if (Math.abs(primaryDelta) >= 36) {
+        stepBy(primaryDelta < 0 ? 1 : -1);
+      }
     };
 
     const handlePointerLeave = () => {
       setIsHovered(false);
-      setPointerTilt({ x: 0, y: 0 });
+      dragStartRef.current = null;
+      rawPointerX.set(0);
+      rawPointerY.set(0);
     };
 
     const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
-      if (e.key === "ArrowRight") {
+      if (e.key === "ArrowRight" || e.key === "ArrowDown") {
         e.preventDefault();
-        handleNext();
-      } else if (e.key === "ArrowLeft") {
+        stepBy(1);
+      } else if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
         e.preventDefault();
-        handlePrev();
+        stepBy(-1);
       }
     };
 
@@ -725,45 +797,55 @@ const SpatialCardCarousel = React.forwardRef<
         tabIndex={0}
         onKeyDown={handleKeyDown}
         onPointerEnter={() => setIsHovered(true)}
+        onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
         onPointerLeave={handlePointerLeave}
         className={cn(
-          "relative flex h-[540px] w-full select-none items-center justify-center overflow-hidden rounded-2xl transition-colors duration-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D4F742] focus-visible:ring-offset-2 sm:h-[640px]",
+          "relative flex h-[540px] w-full cursor-grab select-none items-center justify-center overflow-hidden rounded-2xl transition-colors duration-700 active:cursor-grabbing focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D4F742] focus-visible:ring-offset-2 sm:h-[640px]",
           isDark
             ? "bg-[#0B0B0C] text-white"
             : "bg-[#FFFFFF] text-[#111113]",
           className
         )}
-        style={{ perspective: "1400px" }}
+        style={{ perspective: "1500px" }}
         {...rest}
       >
         <div className="sr-only" aria-live="polite">
           {`Showing ${activeItem.title} (${activeIndex + 1} of ${total})`}
         </div>
 
-        {/* 3D Orbital Stage */}
-        <div
+        {/* 3D Orbital Stage with GPU-accelerated pointer tilt */}
+        <motion.div
           className="relative flex h-full w-full items-center justify-center"
-          style={{ transformStyle: "preserve-3d" }}
+          style={{
+            transformStyle: "preserve-3d",
+            rotateX: shouldReduceMotion ? 0 : stageRotateX,
+            rotateY: shouldReduceMotion ? 0 : stageRotateY,
+          }}
         >
           {items.map((item, idx) => {
             const offset = (idx - activeIndex + total) % total;
             const isHero = offset === 0;
             const slot = getOrbitalSlot(offset, total);
 
-            const targetRotateX = isHero
-              ? pointerTilt.x
-              : slot.rotateX + pointerTilt.x * 0.45;
-            const targetRotateY = isHero
-              ? pointerTilt.y
-              : slot.rotateY + pointerTilt.y * 0.45;
-
             return (
               <motion.button
                 key={item.id}
                 type="button"
-                onClick={() => selectIndex(idx)}
-                aria-label={`Focus ${item.title}`}
+                onClick={() => {
+                  if (didDragRef.current) return;
+                  if (isHero) {
+                    stepBy(1);
+                  } else {
+                    selectIndex(idx);
+                  }
+                }}
+                aria-label={
+                  isHero
+                    ? `${item.title} (active, click to advance)`
+                    : `Focus ${item.title}`
+                }
                 aria-current={isHero ? "true" : undefined}
                 initial={false}
                 animate={
@@ -776,14 +858,11 @@ const SpatialCardCarousel = React.forwardRef<
                       }
                     : {
                         x: `${slot.xPct}%`,
-                        y: [
-                          `${slot.yPct}%`,
-                          `${slot.yPct + (isHero ? 0 : idx % 2 === 0 ? -1.8 : 1.8)}%`,
-                          `${slot.yPct}%`,
-                        ],
+                        y: `${slot.yPct}%`,
+                        z: slot.zPx,
                         scale: slot.scale,
-                        rotateX: targetRotateX,
-                        rotateY: targetRotateY,
+                        rotateX: slot.rotateX,
+                        rotateY: slot.rotateY,
                         rotateZ: slot.rotateZ,
                         opacity: slot.opacity,
                       }
@@ -792,24 +871,23 @@ const SpatialCardCarousel = React.forwardRef<
                   shouldReduceMotion
                     ? { duration: 0.25 }
                     : {
-                        x: { type: "spring", stiffness: 165, damping: 26 },
-                        scale: { type: "spring", stiffness: 175, damping: 26 },
-                        rotateX: { type: "spring", stiffness: 180, damping: 24 },
-                        rotateY: { type: "spring", stiffness: 180, damping: 24 },
-                        rotateZ: { type: "spring", stiffness: 165, damping: 26 },
-                        opacity: { duration: 0.45, ease: "easeOut" },
-                        y: isHero
-                          ? { type: "spring", stiffness: 165, damping: 26 }
-                          : {
-                              duration: 4.5 + (idx % 3) * 0.8,
-                              repeat: Infinity,
-                              ease: "easeInOut",
-                            },
+                        x: ORBITAL_SPRING,
+                        y: ORBITAL_SPRING,
+                        z: ORBITAL_SPRING,
+                        scale: ORBITAL_SPRING,
+                        rotateX: ORBITAL_SPRING,
+                        rotateY: ORBITAL_SPRING,
+                        rotateZ: ORBITAL_SPRING,
+                        opacity: { duration: 0.5, ease: [0.22, 1, 0.36, 1] },
                       }
                 }
                 whileHover={
                   !isHero && !shouldReduceMotion
-                    ? { scale: slot.scale * 1.08, opacity: 1 }
+                    ? {
+                        scale: slot.scale * 1.1,
+                        opacity: 1,
+                        transition: { duration: 0.28, ease: [0.22, 1, 0.36, 1] },
+                      }
                     : undefined
                 }
                 style={{
@@ -819,9 +897,10 @@ const SpatialCardCarousel = React.forwardRef<
                       ? `blur(${slot.blur}px)`
                       : undefined,
                   transformStyle: "preserve-3d",
+                  willChange: "transform, opacity",
                 }}
                 className={cn(
-                  "group absolute aspect-[4/5] w-[210px] cursor-pointer overflow-hidden rounded-[14px] border text-left transition-shadow duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D4F742] focus-visible:ring-offset-2 sm:w-[270px] md:w-[300px]",
+                  "group absolute aspect-[4/5] w-[210px] cursor-pointer overflow-hidden rounded-[14px] border text-left transition-shadow duration-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D4F742] focus-visible:ring-offset-2 sm:w-[270px] md:w-[300px]",
                   isDark
                     ? "border-white/10 shadow-[0_26px_70px_-14px_rgba(0,0,0,0.85)]"
                     : "border-black/10 shadow-[0_24px_60px_-14px_rgba(0,0,0,0.18)]",
@@ -831,86 +910,50 @@ const SpatialCardCarousel = React.forwardRef<
                       : "ring-1 ring-black/5")
                 )}
               >
-                {item.renderContent ? (
-                  item.renderContent()
-                ) : item.image ? (
-                  <img
-                    src={item.image}
-                    alt={item.imageAlt ?? item.title}
-                    className="h-full w-full object-cover"
-                    draggable={false}
-                  />
-                ) : (
-                  <div className="flex h-full w-full flex-col justify-end bg-neutral-900 p-5 text-white">
-                    <span className="text-sm font-medium">{item.title}</span>
-                    {item.subtitle && (
-                      <span className="text-xs text-white/60">
-                        {item.subtitle}
-                      </span>
-                    )}
-                  </div>
-                )}
+                {/* Isolated ambient float so orbital spring transitions never stutter */}
+                <motion.div
+                  className="h-full w-full"
+                  animate={
+                    shouldReduceMotion || isHero
+                      ? { y: 0 }
+                      : {
+                          y: [0, idx % 2 === 0 ? -6 : 6, 0],
+                        }
+                  }
+                  transition={
+                    shouldReduceMotion || isHero
+                      ? { duration: 0.4, ease: "easeOut" }
+                      : {
+                          duration: 5 + (idx % 3) * 0.9,
+                          repeat: Infinity,
+                          ease: "easeInOut",
+                        }
+                  }
+                >
+                  {item.renderContent ? (
+                    item.renderContent()
+                  ) : item.image ? (
+                    <img
+                      src={item.image}
+                      alt={item.imageAlt ?? item.title}
+                      className="h-full w-full object-cover"
+                      draggable={false}
+                    />
+                  ) : (
+                    <div className="flex h-full w-full flex-col justify-end bg-neutral-900 p-5 text-white">
+                      <span className="text-sm font-medium">{item.title}</span>
+                      {item.subtitle && (
+                        <span className="text-xs text-white/60">
+                          {item.subtitle}
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </motion.div>
               </motion.button>
             );
           })}
-        </div>
-
-        {/* Minimal Floating Navigation Pill */}
-        {showControls && (
-          <div
-            className={cn(
-              "absolute bottom-5 left-1/2 z-50 flex -translate-x-1/2 items-center gap-1.5 rounded-full border px-2 py-1.5 backdrop-blur-md transition-colors duration-300",
-              isDark
-                ? "border-white/15 bg-black/60 text-white"
-                : "border-black/10 bg-white/80 text-neutral-900 shadow-sm"
-            )}
-          >
-            <button
-              type="button"
-              onClick={handlePrev}
-              aria-label="Previous card"
-              className={cn(
-                "flex h-7 w-7 items-center justify-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D4F742]",
-                isDark ? "hover:bg-white/10" : "hover:bg-black/5"
-              )}
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setIsPlaying((prev) => !prev)}
-              aria-label={isPlaying ? "Pause showcase" : "Play showcase"}
-              className={cn(
-                "flex h-7 w-7 items-center justify-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D4F742]",
-                isDark ? "hover:bg-white/10" : "hover:bg-black/5"
-              )}
-            >
-              {isPlaying ? (
-                <Pause className="h-3.5 w-3.5" />
-              ) : (
-                <Play className="h-3.5 w-3.5 translate-x-[0.5px]" />
-              )}
-            </button>
-
-            <span className="min-w-[44px] px-1.5 text-center font-mono text-[11px] tabular-nums opacity-75">
-              {String(activeIndex + 1).padStart(2, "0")}/
-              {String(total).padStart(2, "0")}
-            </span>
-
-            <button
-              type="button"
-              onClick={handleNext}
-              aria-label="Next card"
-              className={cn(
-                "flex h-7 w-7 items-center justify-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D4F742]",
-                isDark ? "hover:bg-white/10" : "hover:bg-black/5"
-              )}
-            >
-              <ChevronRight className="h-4 w-4" />
-            </button>
-          </div>
-        )}
+        </motion.div>
       </div>
     );
   }
