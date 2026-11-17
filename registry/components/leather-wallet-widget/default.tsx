@@ -49,7 +49,7 @@ export default function LeatherWalletWidgetDemo(
         id: "stripe",
         name: "Stripe",
         balance: stripeBalance,
-        accentColor: "#636EEA",
+        accentColor: "#6372E8",
         textColor: "#FFFFFF",
         logo: "stripe",
         last4: "4821",
@@ -70,7 +70,7 @@ export default function LeatherWalletWidgetDemo(
   );
 
   return (
-    <div className="w-full min-h-[460px] flex items-center justify-center p-8 bg-[#F6F5F2] dark:bg-neutral-950">
+    <div className="w-full min-h-[460px] flex items-center justify-center p-8 bg-[#F4F3EF] dark:bg-[#0A0A0B]">
       <LeatherWalletWidget
         cards={cards}
         currencySymbol={config.currencySymbol || "$"}
