@@ -1,8 +1,26 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-17T10:58:01.860Z",
-  "totalComponents": 37,
+  "updatedAt": "2026-11-17T11:27:15.717Z",
+  "totalComponents": 38,
   "components": [
+    {
+      "id": "comp-1794914807480-pm3um",
+      "slug": "leather-wallet-widget",
+      "name": "LeatherWalletWidget",
+      "description": "",
+      "category": "Custom",
+      "isBuiltIn": false,
+      "updatedAt": 1794914826784,
+      "lastRepoSyncAt": 1794914835643,
+      "path": "registry/components/leather-wallet-widget",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "index.css",
+        "manifest.json"
+      ],
+      "dependencies": []
+    },
     {
       "id": "comp-1794911670084-bxw3x",
       "slug": "alarm-wighht",
