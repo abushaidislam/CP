@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-17T16:53:21.430Z",
+  "updatedAt": "2026-11-17T16:53:29.549Z",
   "totalComponents": 43,
   "components": [
     {
@@ -10,8 +10,8 @@
       "description": "SaaS hero section with inline AI platform squircle badges, staggered blur-to-sharp text reveal, and a top-lit gradient primary CTA.",
       "category": "Custom",
       "isBuiltIn": false,
-      "updatedAt": 1794934390711,
-      "lastRepoSyncAt": 1794934401270,
+      "updatedAt": 1794934400558,
+      "lastRepoSyncAt": 1794934409476,
       "path": "registry/components/ai-search-hero",
       "files": [
         "component.tsx",
