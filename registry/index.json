@@ -1,8 +1,26 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-17T15:14:43.724Z",
-  "totalComponents": 41,
+  "updatedAt": "2026-11-17T15:18:33.566Z",
+  "totalComponents": 42,
   "components": [
+    {
+      "id": "comp-1794928690536-i4n5g",
+      "slug": "spatial-card-carousel",
+      "name": "SpatialCardCarousel",
+      "description": "A 3D orbital card showcase that keeps one editorial card centered in crisp focus while surrounding satellite cards drift across layered Z-depths, supporting light/dark themes, pointer tilt, and keyboa",
+      "category": "Custom",
+      "isBuiltIn": false,
+      "updatedAt": 1794928705052,
+      "lastRepoSyncAt": 1794928713489,
+      "path": "registry/components/spatial-card-carousel",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "index.css",
+        "manifest.json"
+      ],
+      "dependencies": []
+    },
     {
       "id": "comp-1794928292961-lnv9u",
       "slug": "legal-bento-showcase",
