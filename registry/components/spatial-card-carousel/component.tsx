@@ -29,10 +29,12 @@ export interface SpatialCardItem {
   renderContent?: () => React.ReactNode;
 }
 
+export type SpatialCarouselTheme = "auto" | "light" | "dark";
+
 export interface SpatialCardCarouselProps
   extends React.HTMLAttributes<HTMLDivElement> {
   items?: SpatialCardItem[];
-  theme?: "light" | "dark";
+  theme?: SpatialCarouselTheme;
   autoPlay?: boolean;
   interval?: number;
   pauseOnHover?: boolean;
@@ -614,7 +616,7 @@ const SpatialCardCarousel = React.forwardRef<
   (
     {
       items: propItems,
-      theme = "light",
+      theme = "auto",
       autoPlay = true,
       interval = 2400,
       pauseOnHover = true,
@@ -777,7 +779,27 @@ const SpatialCardCarousel = React.forwardRef<
       }
     };
 
-    const isDark = theme === "dark";
+    const stageThemeClass =
+      theme === "dark"
+        ? "bg-[#0B0B0C] text-white"
+        : theme === "light"
+          ? "bg-[#FFFFFF] text-[#111113]"
+          : "bg-[#FFFFFF] text-[#111113] dark:bg-[#0B0B0C] dark:text-white";
+
+    const cardThemeClass =
+      theme === "dark"
+        ? "border-white/10 shadow-[0_26px_70px_-14px_rgba(0,0,0,0.85)]"
+        : theme === "light"
+          ? "border-black/10 shadow-[0_24px_60px_-14px_rgba(0,0,0,0.18)]"
+          : "border-black/10 shadow-[0_24px_60px_-14px_rgba(0,0,0,0.18)] dark:border-white/10 dark:shadow-[0_26px_70px_-14px_rgba(0,0,0,0.85)]";
+
+    const heroRingClass =
+      theme === "dark"
+        ? "ring-1 ring-white/15"
+        : theme === "light"
+          ? "ring-1 ring-black/5"
+          : "ring-1 ring-black/5 dark:ring-white/15";
+
     const activeItem = items[activeIndex];
 
     return (
@@ -800,9 +822,7 @@ const SpatialCardCarousel = React.forwardRef<
         onPointerLeave={handlePointerLeave}
         className={cn(
           "relative flex h-[540px] w-full touch-pan-y cursor-grab select-none items-center justify-center overflow-hidden rounded-2xl transition-colors duration-700 active:cursor-grabbing focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D4F742] focus-visible:ring-offset-2 sm:h-[640px]",
-          isDark
-            ? "bg-[#0B0B0C] text-white"
-            : "bg-[#FFFFFF] text-[#111113]",
+          stageThemeClass,
           className
         )}
         style={{ perspective: "1500px" }}
@@ -898,13 +918,8 @@ const SpatialCardCarousel = React.forwardRef<
                 }}
                 className={cn(
                   "group absolute aspect-[4/5] w-[210px] cursor-pointer overflow-hidden rounded-[14px] border text-left transition-shadow duration-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D4F742] focus-visible:ring-offset-2 sm:w-[270px] md:w-[300px]",
-                  isDark
-                    ? "border-white/10 shadow-[0_26px_70px_-14px_rgba(0,0,0,0.85)]"
-                    : "border-black/10 shadow-[0_24px_60px_-14px_rgba(0,0,0,0.18)]",
-                  isHero &&
-                    (isDark
-                      ? "ring-1 ring-white/15"
-                      : "ring-1 ring-black/5")
+                  cardThemeClass,
+                  isHero && heroRingClass
                 )}
               >
                 {/* Isolated ambient float so orbital spring transitions never stutter */}
@@ -937,10 +952,10 @@ const SpatialCardCarousel = React.forwardRef<
                       draggable={false}
                     />
                   ) : (
-                    <div className="flex h-full w-full flex-col justify-end bg-neutral-900 p-5 text-white">
+                    <div className="flex h-full w-full flex-col justify-end bg-neutral-100 p-5 text-neutral-900 dark:bg-neutral-900 dark:text-white">
                       <span className="text-sm font-medium">{item.title}</span>
                       {item.subtitle && (
-                        <span className="text-xs text-white/60">
+                        <span className="text-xs text-neutral-500 dark:text-white/60">
                           {item.subtitle}
                         </span>
                       )}

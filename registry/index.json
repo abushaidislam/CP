@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-17T15:26:29.942Z",
+  "updatedAt": "2026-11-17T15:28:05.513Z",
   "totalComponents": 42,
   "components": [
     {
@@ -10,8 +10,8 @@
       "description": "A 3D orbital card showcase that keeps one editorial card centered in crisp focus while surrounding satellite cards drift across layered Z-depths, supporting light/dark themes, pointer tilt, and keyboa",
       "category": "Custom",
       "isBuiltIn": false,
-      "updatedAt": 1794929180546,
-      "lastRepoSyncAt": 1794929189885,
+      "updatedAt": 1794929276157,
+      "lastRepoSyncAt": 1794929285358,
       "path": "registry/components/spatial-card-carousel",
       "files": [
         "component.tsx",
