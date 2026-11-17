@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-17T11:27:24.678Z",
+  "updatedAt": "2026-11-17T11:32:54.136Z",
   "totalComponents": 38,
   "components": [
     {
@@ -10,14 +10,15 @@
       "description": "",
       "category": "Custom",
       "isBuiltIn": false,
-      "updatedAt": 1794914835898,
-      "lastRepoSyncAt": 1794914844595,
+      "updatedAt": 1794915163573,
+      "lastRepoSyncAt": 1794915173996,
       "path": "registry/components/leather-wallet-widget",
       "files": [
         "component.tsx",
         "default.tsx",
         "index.css",
-        "manifest.json"
+        "manifest.json",
+        "preview.png"
       ],
       "dependencies": []
     },
