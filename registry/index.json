@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-18T06:49:34.531Z",
+  "updatedAt": "2026-11-18T06:53:43.944Z",
   "totalComponents": 45,
   "components": [
     {
@@ -10,14 +10,15 @@
       "description": "An editorial scroll-stacking services section with oversized index numerals, animated motion preview cards, and scroll-linked depth dimming as each layer pins.",
       "category": "Custom",
       "isBuiltIn": false,
-      "updatedAt": 1794984565405,
-      "lastRepoSyncAt": 1794984574478,
+      "updatedAt": 1794984814284,
+      "lastRepoSyncAt": 1794984823770,
       "path": "registry/components/sticky-services-stack",
       "files": [
         "component.tsx",
         "default.tsx",
         "index.css",
-        "manifest.json"
+        "manifest.json",
+        "preview.png"
       ],
       "dependencies": []
     },
