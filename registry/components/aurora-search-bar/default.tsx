@@ -10,6 +10,7 @@ import {
 const settings = {
   placeholder: "Search",
   auroraMode: "pulse",
+  glass: true,
   defaultExpanded: false,
   expandedWidth: 340,
   theme: "auto",
@@ -58,6 +59,7 @@ export default function AuroraSearchBarDemo(
             : "Search"
         }
         auroraMode={auroraMode}
+        glass={Boolean(config.glass)}
         expanded={expanded}
         onExpandedChange={setExpanded}
         expandedWidth={expandedWidth}
