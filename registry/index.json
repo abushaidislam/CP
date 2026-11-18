@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-18T12:39:38.467Z",
+  "updatedAt": "2026-11-18T12:42:47.796Z",
   "totalComponents": 48,
   "components": [
     {
@@ -10,8 +10,8 @@
       "description": "An expandable circular-to-pill search bar with critically-damped spring morphing and an iridescent bottom-edge aurora shimmer.",
       "category": "Custom",
       "isBuiltIn": false,
-      "updatedAt": 1795005568975,
-      "lastRepoSyncAt": 1795005578392,
+      "updatedAt": 1795005757617,
+      "lastRepoSyncAt": 1795005767499,
       "path": "registry/components/aurora-search-bar",
       "files": [
         "component.tsx",

@@ -41,6 +41,8 @@ export interface AuroraSearchBarProps
   expandedWidth?: number;
   /** Bottom-edge aurora shimmer behavior */
   auroraMode?: AuroraMode;
+  /** Enable frosted glassmorphism surface with specular rim highlights */
+  glass?: boolean;
   /** Color theme override; defaults to "auto" to follow Tailwind dark mode */
   theme?: AuroraSearchTheme;
   /** Collapse the pill when clicking outside while the input is empty */
@@ -54,6 +56,13 @@ export interface AuroraSearchBarProps
 const COLLAPSED_SIZE = 48;
 const MIN_EXPANDED_WIDTH = 200;
 const MAX_EXPANDED_WIDTH = 640;
+
+const MORPH_SPRING = {
+  type: "spring" as const,
+  stiffness: 320,
+  damping: 32,
+  mass: 0.88,
+};
 
 const AuroraEdgeGlow: React.FC<{
   active: boolean;
@@ -74,16 +83,16 @@ const AuroraEdgeGlow: React.FC<{
     >
       {/* Soft diffused multi-color aurora plumes rising from the bottom inner edge */}
       <motion.div
-        className="absolute inset-x-3 -bottom-2 h-7"
+        className="absolute inset-x-3 -bottom-2 h-7 will-change-transform"
         initial={false}
         animate={
           isPulsing
             ? {
-                opacity: [0, 0.92, 0.96, 0, 0],
+                opacity: [0, 0.9, 0.96, 0, 0],
                 scaleX: [0.94, 1, 1.03, 0.96, 0.94],
               }
             : {
-                opacity: isSteady ? 0.9 : 0,
+                opacity: isSteady ? 0.92 : 0,
                 scaleX: isSteady ? 1 : 0.95,
               }
         }
@@ -92,26 +101,26 @@ const AuroraEdgeGlow: React.FC<{
             ? {
                 duration: 3.4,
                 repeat: Infinity,
-                times: [0, 0.2, 0.55, 0.78, 1],
+                times: [0, 0.22, 0.56, 0.8, 1],
                 ease: "easeInOut",
               }
             : {
-                duration: reducedMotion ? 0 : 0.35,
+                duration: reducedMotion ? 0 : 0.4,
                 ease: [0.22, 1, 0.36, 1],
               }
         }
       >
         <motion.div
-          className="relative h-full w-full blur-[10px]"
+          className="relative h-full w-full blur-[11px] will-change-transform"
           animate={
             active && !reducedMotion
-              ? { x: ["-6%", "6%", "-6%"] }
+              ? { x: ["-7%", "7%", "-7%"] }
               : { x: "0%" }
           }
           transition={
             active && !reducedMotion
               ? {
-                  duration: 6,
+                  duration: 6.5,
                   repeat: Infinity,
                   ease: "easeInOut",
                 }
@@ -119,24 +128,24 @@ const AuroraEdgeGlow: React.FC<{
           }
         >
           <span
-            className="absolute bottom-0 left-[10%] h-5 w-[26%] rounded-full"
+            className="absolute bottom-0 left-[8%] h-5 w-[28%] rounded-full"
             style={{
               background:
-                "radial-gradient(circle, rgba(56,189,248,0.62) 0%, rgba(16,185,129,0.48) 55%, transparent 100%)",
+                "radial-gradient(circle, rgba(56,189,248,0.65) 0%, rgba(16,185,129,0.5) 55%, transparent 100%)",
             }}
           />
           <span
-            className="absolute bottom-0 left-[30%] h-6 w-[30%] rounded-full"
+            className="absolute bottom-0 left-[29%] h-6 w-[32%] rounded-full"
             style={{
               background:
-                "radial-gradient(circle, rgba(236,72,153,0.72) 0%, rgba(168,85,247,0.52) 55%, transparent 100%)",
+                "radial-gradient(circle, rgba(236,72,153,0.75) 0%, rgba(168,85,247,0.54) 55%, transparent 100%)",
             }}
           />
           <span
-            className="absolute bottom-0 left-[52%] h-5 w-[26%] rounded-full"
+            className="absolute bottom-0 left-[52%] h-5 w-[28%] rounded-full"
             style={{
               background:
-                "radial-gradient(circle, rgba(245,158,11,0.52) 0%, rgba(59,130,246,0.46) 60%, transparent 100%)",
+                "radial-gradient(circle, rgba(245,158,11,0.54) 0%, rgba(59,130,246,0.48) 60%, transparent 100%)",
             }}
           />
         </motion.div>
@@ -147,7 +156,7 @@ const AuroraEdgeGlow: React.FC<{
         className="absolute inset-x-4 bottom-0 h-px"
         style={{
           background:
-            "linear-gradient(90deg, transparent 0%, rgba(56,189,248,0.65) 20%, rgba(16,185,129,0.75) 36%, rgba(236,72,153,0.92) 54%, rgba(245,158,11,0.7) 72%, rgba(59,130,246,0.55) 86%, transparent 100%)",
+            "linear-gradient(90deg, transparent 0%, rgba(56,189,248,0.7) 20%, rgba(16,185,129,0.78) 36%, rgba(236,72,153,0.95) 54%, rgba(245,158,11,0.72) 72%, rgba(59,130,246,0.58) 86%, transparent 100%)",
         }}
         initial={false}
         animate={
@@ -164,11 +173,11 @@ const AuroraEdgeGlow: React.FC<{
             ? {
                 duration: 3.4,
                 repeat: Infinity,
-                times: [0, 0.2, 0.55, 0.78, 1],
+                times: [0, 0.22, 0.56, 0.8, 1],
                 ease: "easeInOut",
               }
             : {
-                duration: reducedMotion ? 0 : 0.35,
+                duration: reducedMotion ? 0 : 0.4,
                 ease: [0.22, 1, 0.36, 1],
               }
         }
@@ -189,6 +198,7 @@ export const AuroraSearchBar = forwardRef<HTMLInputElement, AuroraSearchBarProps
       onExpandedChange,
       expandedWidth = 340,
       auroraMode = "pulse",
+      glass = true,
       theme = "auto",
       collapseOnClickOutside = true,
       placeholder = "Search",
@@ -237,7 +247,10 @@ export const AuroraSearchBar = forwardRef<HTMLInputElement, AuroraSearchBarProps
 
     const clampedWidth = Math.min(
       MAX_EXPANDED_WIDTH,
-      Math.max(MIN_EXPANDED_WIDTH, Number.isFinite(expandedWidth) ? expandedWidth : 340)
+      Math.max(
+        MIN_EXPANDED_WIDTH,
+        Number.isFinite(expandedWidth) ? expandedWidth : 340
+      )
     );
 
     const setExpandedState = useCallback(
@@ -322,33 +335,71 @@ export const AuroraSearchBar = forwardRef<HTMLInputElement, AuroraSearchBarProps
         auroraMode === "pulse" ||
         (auroraMode === "focus" && (isFocused || currentValue.length > 0)));
 
-    const surfaceClasses =
-      theme === "dark"
-        ? "bg-[#191919] border-white/[0.08] text-zinc-100 hover:border-white/[0.14]"
+    const surfaceClasses = glass
+      ? theme === "dark"
+        ? cn(
+            "bg-[#191919]/75 backdrop-blur-xl backdrop-saturate-150 text-zinc-100",
+            "shadow-[0_12px_36px_rgba(0,0,0,0.45),inset_0_1px_0_0_rgba(255,255,255,0.09)]",
+            isFocused
+              ? "border-white/[0.18]"
+              : "border-white/[0.10] hover:border-white/[0.16]"
+          )
         : theme === "light"
-          ? "bg-white border-zinc-200/90 text-zinc-900 shadow-sm hover:border-zinc-300"
-          : "bg-white dark:bg-[#191919] border-zinc-200/90 dark:border-white/[0.08] text-zinc-900 dark:text-zinc-100 shadow-sm dark:shadow-none hover:border-zinc-300 dark:hover:border-white/[0.14]";
+          ? cn(
+              "bg-white/75 backdrop-blur-xl backdrop-saturate-150 text-zinc-900",
+              "shadow-[0_8px_30px_rgba(0,0,0,0.06),inset_0_1px_0_0_rgba(255,255,255,0.85)]",
+              isFocused
+                ? "border-zinc-900/[0.16]"
+                : "border-zinc-900/[0.08] hover:border-zinc-900/[0.14]"
+            )
+          : cn(
+              "bg-white/75 dark:bg-[#191919]/75 backdrop-blur-xl backdrop-saturate-150 text-zinc-900 dark:text-zinc-100",
+              "shadow-[0_8px_30px_rgba(0,0,0,0.06),inset_0_1px_0_0_rgba(255,255,255,0.85)] dark:shadow-[0_12px_36px_rgba(0,0,0,0.45),inset_0_1px_0_0_rgba(255,255,255,0.09)]",
+              isFocused
+                ? "border-zinc-900/[0.16] dark:border-white/[0.18]"
+                : "border-zinc-900/[0.08] dark:border-white/[0.10] hover:border-zinc-900/[0.14] dark:hover:border-white/[0.16]"
+            )
+      : theme === "dark"
+        ? cn(
+            "bg-[#191919] text-zinc-100",
+            isFocused
+              ? "border-white/[0.16]"
+              : "border-white/[0.08] hover:border-white/[0.14]"
+          )
+        : theme === "light"
+          ? cn(
+              "bg-white text-zinc-900 shadow-sm",
+              isFocused
+                ? "border-zinc-300"
+                : "border-zinc-200/90 hover:border-zinc-300"
+            )
+          : cn(
+              "bg-white dark:bg-[#191919] text-zinc-900 dark:text-zinc-100 shadow-sm dark:shadow-none",
+              isFocused
+                ? "border-zinc-300 dark:border-white/[0.16]"
+                : "border-zinc-200/90 dark:border-white/[0.08] hover:border-zinc-300 dark:hover:border-white/[0.14]"
+            );
 
     const iconClasses =
       theme === "dark"
-        ? "text-zinc-500 group-hover:text-zinc-300"
+        ? "text-zinc-400 group-hover:text-zinc-200"
         : theme === "light"
-          ? "text-zinc-400 group-hover:text-zinc-700"
-          : "text-zinc-400 dark:text-zinc-500 group-hover:text-zinc-700 dark:group-hover:text-zinc-300";
+          ? "text-zinc-500 group-hover:text-zinc-800"
+          : "text-zinc-500 dark:text-zinc-400 group-hover:text-zinc-800 dark:group-hover:text-zinc-200";
 
     const inputTextClasses =
       theme === "dark"
-        ? "text-zinc-100 placeholder:text-[#6b6b6b] caret-white"
+        ? "text-zinc-100 placeholder:text-[#737373] caret-white"
         : theme === "light"
           ? "text-zinc-900 placeholder:text-zinc-400 caret-zinc-900"
-          : "text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 dark:placeholder:text-[#6b6b6b] caret-zinc-900 dark:caret-white";
+          : "text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 dark:placeholder:text-[#737373] caret-zinc-900 dark:caret-white";
 
     const clearBtnClasses =
       theme === "dark"
-        ? "text-zinc-500 hover:text-zinc-200 hover:bg-white/[0.08]"
+        ? "text-zinc-400 hover:text-zinc-100 hover:bg-white/[0.1]"
         : theme === "light"
-          ? "text-zinc-400 hover:text-zinc-700 hover:bg-zinc-100"
-          : "text-zinc-400 dark:text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-white/[0.08]";
+          ? "text-zinc-400 hover:text-zinc-700 hover:bg-zinc-900/[0.06]"
+          : "text-zinc-400 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-100 hover:bg-zinc-900/[0.06] dark:hover:bg-white/[0.1]";
 
     return (
       <div
@@ -362,24 +413,23 @@ export const AuroraSearchBar = forwardRef<HTMLInputElement, AuroraSearchBarProps
           animate={{
             width: isExpanded ? clampedWidth : COLLAPSED_SIZE,
           }}
-          transition={
-            shouldReduceMotion
-              ? { duration: 0 }
-              : {
-                  type: "spring",
-                  stiffness: 380,
-                  damping: 34,
-                  mass: 0.85,
-                }
-          }
+          transition={shouldReduceMotion ? { duration: 0 } : MORPH_SPRING}
           style={{ height: COLLAPSED_SIZE, maxWidth: "100%" }}
           className={cn(
-            "group relative flex items-center overflow-hidden rounded-full border transition-colors duration-200",
+            "group relative flex items-center overflow-hidden rounded-full border transition-colors duration-200 will-change-[width]",
             surfaceClasses,
             disabled && "pointer-events-none opacity-50",
             className
           )}
         >
+          {/* Subtle top specular glass sheen */}
+          {glass && (
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-x-4 top-0 h-px bg-gradient-to-r from-transparent via-white/40 to-transparent opacity-60 dark:via-white/20"
+            />
+          )}
+
           <AuroraEdgeGlow
             active={auroraActive}
             mode={auroraMode}
@@ -404,20 +454,44 @@ export const AuroraSearchBar = forwardRef<HTMLInputElement, AuroraSearchBarProps
               iconClasses
             )}
           >
-            <Search className="h-[18px] w-[18px]" strokeWidth={2} />
+            <motion.span
+              className="inline-flex items-center justify-center"
+              whileHover={shouldReduceMotion ? undefined : { scale: 1.07 }}
+              whileTap={shouldReduceMotion ? undefined : { scale: 0.92 }}
+              animate={
+                shouldReduceMotion
+                  ? undefined
+                  : { rotate: isExpanded ? 0 : -6 }
+              }
+              transition={{
+                type: "spring",
+                stiffness: 420,
+                damping: 26,
+              }}
+            >
+              <Search className="h-[18px] w-[18px]" strokeWidth={2} />
+            </motion.span>
           </button>
 
           <AnimatePresence initial={false}>
             {isExpanded && (
               <motion.div
                 key="search-input-wrap"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{
-                  duration: shouldReduceMotion ? 0 : 0.18,
-                  ease: "easeOut",
-                }}
+                initial={
+                  shouldReduceMotion ? { opacity: 0 } : { opacity: 0, x: -6 }
+                }
+                animate={{ opacity: 1, x: 0 }}
+                exit={
+                  shouldReduceMotion ? { opacity: 0 } : { opacity: 0, x: -4 }
+                }
+                transition={
+                  shouldReduceMotion
+                    ? { duration: 0 }
+                    : {
+                        duration: 0.22,
+                        ease: [0.22, 1, 0.36, 1],
+                      }
+                }
                 className="relative z-10 flex min-w-0 flex-1 items-center pr-3"
               >
                 <input
@@ -452,10 +526,22 @@ export const AuroraSearchBar = forwardRef<HTMLInputElement, AuroraSearchBarProps
                       type="button"
                       onClick={handleClear}
                       aria-label="Clear search"
-                      initial={{ opacity: 0, scale: 0.8 }}
+                      initial={
+                        shouldReduceMotion
+                          ? { opacity: 0 }
+                          : { opacity: 0, scale: 0.78 }
+                      }
                       animate={{ opacity: 1, scale: 1 }}
-                      exit={{ opacity: 0, scale: 0.8 }}
-                      transition={{ duration: shouldReduceMotion ? 0 : 0.14 }}
+                      exit={
+                        shouldReduceMotion
+                          ? { opacity: 0 }
+                          : { opacity: 0, scale: 0.78 }
+                      }
+                      transition={
+                        shouldReduceMotion
+                          ? { duration: 0 }
+                          : { type: "spring", stiffness: 460, damping: 28 }
+                      }
                       className={cn(
                         "ml-1.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full transition-colors outline-none focus-visible:ring-2 focus-visible:ring-zinc-400/60",
                         clearBtnClasses
