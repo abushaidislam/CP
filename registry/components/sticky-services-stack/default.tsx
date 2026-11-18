@@ -8,6 +8,7 @@ import {
 
 const settings = {
   theme: "auto",
+  cardCount: 5,
   sectionLabel: "(Services)",
   sectionIntro: "From core brand foundations to cross-functional moments.",
   ctaLabel: "Let's work together",
@@ -28,6 +29,11 @@ export default function StickyServicesStackDemo(
     ? (config.theme as StickyServicesTheme)
     : "auto";
 
+  const rawCount = Number(config.cardCount);
+  const cardCount = Number.isFinite(rawCount)
+    ? Math.max(1, Math.min(5, Math.round(rawCount)))
+    : settings.cardCount;
+
   const sectionLabel =
     typeof config.sectionLabel === "string" && config.sectionLabel.trim()
       ? config.sectionLabel
@@ -45,6 +51,7 @@ export default function StickyServicesStackDemo(
     <div className="w-full min-h-[400px]">
       <StickyServicesStack
         theme={theme}
+        cardCount={cardCount}
         sectionLabel={sectionLabel}
         sectionIntro={sectionIntro}
         ctaLabel={ctaLabel}
