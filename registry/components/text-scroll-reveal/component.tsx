@@ -14,167 +14,146 @@ function cn(...classes: Array<string | false | null | undefined>): string {
   return classes.filter(Boolean).join(" ");
 }
 
-export type TextScrollRevealTheme = "auto" | "light" | "dark";
-export type TextRevealMode = "line" | "word" | "character";
-export type TextRevealEffect = "mask" | "blur" | "fade-up" | "scale";
-export type TextRevealTrigger = "scroll" | "in-view";
-export type TextRevealTag = "h1" | "h2" | "h3" | "p" | "div";
+export type TextScrollTheme = "auto" | "light" | "dark";
+export type TextScrollPreset =
+  | "blur-reveal"
+  | "fade-in"
+  | "change-color"
+  | "scale-reveal"
+  | "random-stagger"
+  | "random-scale"
+  | "overscale"
+  | "slide";
 
 export interface TextScrollRevealProps
   extends React.HTMLAttributes<HTMLElement> {
   text?: string;
-  as?: TextRevealTag;
-  mode?: TextRevealMode;
-  effect?: TextRevealEffect;
-  trigger?: TextRevealTrigger;
-  once?: boolean;
+  label?: string;
+  preset?: TextScrollPreset;
+  accentColor?: string;
   dimOpacity?: number;
-  duration?: number;
-  stagger?: number;
-  theme?: TextScrollRevealTheme;
+  theme?: TextScrollTheme;
+  as?: "h1" | "h2" | "h3" | "p" | "div";
 }
 
-const DEFAULT_TEXT = `Design is not just what it looks like and feels like.
-Design is how it works—shaped by intention, rhythm, and every quiet detail in between.
-When typography moves with purpose, every word earns the reader's attention.`;
+export const DEFAULT_SCROLL_TEXT =
+  "Every effect comes fully pre-configured. Just drop it into your page, change the text, adjust a few settings if you want, and it's instantly ready to use, no setup or animation work required.";
 
-const EDITORIAL_EASE: [number, number, number, number] = [0.16, 1, 0.3, 1];
+export const TEXT_SCROLL_PRESETS: Array<{
+  id: TextScrollPreset;
+  label: string;
+}> = [
+  { id: "blur-reveal", label: "001 Blur Reveal" },
+  { id: "fade-in", label: "002 Fade in" },
+  { id: "change-color", label: "003 Change color" },
+  { id: "scale-reveal", label: "004 Scale reveal" },
+  { id: "random-stagger", label: "005 Random Stagger" },
+  { id: "random-scale", label: "006 Random Scale" },
+  { id: "overscale", label: "007 Overscale" },
+  { id: "slide", label: "008 Slide" },
+];
 
-interface ScrubTokenProps {
-  token: string;
-  progress: MotionValue<number>;
-  range: [number, number];
-  effect: TextRevealEffect;
-  dimOpacity: number;
-  isLine?: boolean;
+// Deterministic hash in [0, 1) so SSR and client never mismatch
+function seededUnit(index: number, salt = 17): number {
+  const x = Math.sin((index + 1) * 12.9898 + salt * 78.233) * 43758.5453;
+  return x - Math.floor(x);
 }
 
-function ScrubToken({
-  token,
-  progress,
-  range,
-  effect,
-  dimOpacity,
-  isLine = false,
-}: ScrubTokenProps) {
-  const opacity = useTransform(progress, range, [dimOpacity, 1]);
-  const y = useTransform(
-    progress,
-    range,
-    effect === "mask" || effect === "fade-up" ? [18, 0] : [0, 0]
-  );
-  const scale = useTransform(
-    progress,
-    range,
-    effect === "scale" ? [0.92, 1] : [1, 1]
-  );
-  const filter = useTransform(
-    progress,
-    range,
-    effect === "blur" ? ["blur(8px)", "blur(0px)"] : ["blur(0px)", "blur(0px)"]
-  );
-
-  return (
-    <span
-      className={cn(
-        "relative inline-block",
-        effect === "mask" && "overflow-hidden align-bottom",
-        isLine ? "block" : "mr-[0.26em]"
-      )}
-    >
-      <motion.span
-        style={{ opacity, y, scale, filter }}
-        className="inline-block will-change-transform"
-      >
-        {token}
-      </motion.span>
-    </span>
-  );
-}
-
-interface ScrubWordWithCharsProps {
+interface WordTokenProps {
   word: string;
+  index: number;
+  total: number;
   progress: MotionValue<number>;
-  startIdx: number;
-  totalChars: number;
-  effect: TextRevealEffect;
+  preset: TextScrollPreset;
   dimOpacity: number;
+  accentColor: string;
+  baseColor: string;
+  mutedColor: string;
 }
 
-function ScrubWordWithChars({
+function WordToken({
   word,
+  index,
+  total,
   progress,
-  startIdx,
-  totalChars,
-  effect,
+  preset,
   dimOpacity,
-}: ScrubWordWithCharsProps) {
-  const chars = Array.from(word);
-  return (
-    <span className="mr-[0.26em] inline-block whitespace-nowrap">
-      {chars.map((char, idx) => {
-        const globalIdx = startIdx + idx;
-        const start = globalIdx / Math.max(1, totalChars);
-        const end = Math.min(1, start + 1.4 / Math.max(1, totalChars));
-        return (
-          <ScrubChar
-            key={`${globalIdx}-${char}`}
-            char={char}
-            progress={progress}
-            range={[start, end]}
-            effect={effect}
-            dimOpacity={dimOpacity}
-          />
-        );
-      })}
-    </span>
-  );
-}
+  accentColor,
+  baseColor,
+  mutedColor,
+}: WordTokenProps) {
+  const safeTotal = Math.max(1, total);
 
-interface ScrubCharProps {
-  char: string;
-  progress: MotionValue<number>;
-  range: [number, number];
-  effect: TextRevealEffect;
-  dimOpacity: number;
-}
+  const isRandomOrder =
+    preset === "random-stagger" || preset === "random-scale";
+  const orderPos = isRandomOrder
+    ? seededUnit(index, 31) * 0.72
+    : (index / safeTotal) * 0.78;
 
-function ScrubChar({
-  char,
-  progress,
-  range,
-  effect,
-  dimOpacity,
-}: ScrubCharProps) {
-  const opacity = useTransform(progress, range, [dimOpacity, 1]);
-  const y = useTransform(
-    progress,
-    range,
-    effect === "mask" || effect === "fade-up" ? [14, 0] : [0, 0]
-  );
-  const scale = useTransform(
-    progress,
-    range,
-    effect === "scale" ? [0.88, 1] : [1, 1]
-  );
+  const start = orderPos;
+  const end = Math.min(1, start + Math.max(0.14, 1.8 / safeTotal));
+
+  const initialScale =
+    preset === "scale-reveal"
+      ? 0.82
+      : preset === "overscale"
+        ? 1.5
+        : preset === "random-scale"
+          ? 0.45 + seededUnit(index, 53) * 0.85
+          : 1;
+
+  const initialY =
+    preset === "slide" ? 36 : preset === "overscale" ? 6 : 0;
+
+  const initialOpacity =
+    preset === "change-color"
+      ? 1
+      : preset === "blur-reveal" ||
+          preset === "random-stagger" ||
+          preset === "random-scale" ||
+          preset === "slide"
+        ? 0
+        : dimOpacity;
+
+  const initialBlur =
+    preset === "blur-reveal" || preset === "random-scale"
+      ? "blur(10px)"
+      : "blur(0px)";
+
+  const opacity = useTransform(progress, [start, end], [initialOpacity, 1]);
+  const scale = useTransform(progress, [start, end], [initialScale, 1]);
+  const y = useTransform(progress, [start, end], [initialY, 0]);
   const filter = useTransform(
     progress,
-    range,
-    effect === "blur" ? ["blur(6px)", "blur(0px)"] : ["blur(0px)", "blur(0px)"]
+    [start, end],
+    [initialBlur, "blur(0px)"]
+  );
+  const color = useTransform(
+    progress,
+    [start, end],
+    preset === "change-color"
+      ? [mutedColor, accentColor]
+      : [baseColor, baseColor]
   );
 
   return (
     <span
       className={cn(
-        "inline-block",
-        effect === "mask" && "overflow-hidden align-bottom"
+        "mr-[0.26em] inline-block",
+        preset === "slide" && "overflow-hidden align-bottom"
       )}
     >
       <motion.span
-        style={{ opacity, y, scale, filter }}
-        className="inline-block will-change-transform"
+        style={{
+          opacity,
+          scale,
+          y,
+          filter,
+          color: preset === "change-color" ? color : undefined,
+        }}
+        className="inline-block origin-center will-change-transform"
       >
-        {char}
+        {word}
       </motion.span>
     </span>
   );
@@ -186,16 +165,13 @@ export const TextScrollReveal = React.forwardRef<
 >(
   (
     {
-      text = DEFAULT_TEXT,
-      as = "p",
-      mode = "word",
-      effect = "mask",
-      trigger = "scroll",
-      once = false,
-      dimOpacity = 0.15,
-      duration = 0.65,
-      stagger = 0.04,
+      text = DEFAULT_SCROLL_TEXT,
+      label,
+      preset = "blur-reveal",
+      accentColor = "#E04A14",
+      dimOpacity = 0.16,
       theme = "auto",
+      as = "p",
       className,
       ...rest
     },
@@ -205,269 +181,100 @@ export const TextScrollReveal = React.forwardRef<
     const labelId = useId();
     const prefersReducedMotion = Boolean(useReducedMotion());
 
-    const safeDim = Math.max(0, Math.min(0.95, dimOpacity));
-    const safeDuration = Math.max(0.15, Math.min(2, duration));
-    const safeStagger = Math.max(0.01, Math.min(0.25, stagger));
+    const safeDim = Math.max(0.05, Math.min(0.85, dimOpacity));
 
     const { scrollYProgress } = useScroll({
       target: containerRef,
-      offset: ["start 0.85", "end 0.35"],
+      offset: ["start 0.82", "end 0.42"],
     });
 
     const smoothProgress = useSpring(scrollYProgress, {
-      stiffness: 160,
-      damping: 30,
-      mass: 0.25,
+      stiffness: 150,
+      damping: 28,
+      mass: 0.22,
     });
 
     const lines = useMemo(
-      () =>
-        text
-          .split("\n")
-          .map((l) => l.trim())
-          .filter(Boolean),
+      () => text.trim().split(/\s+/).filter(Boolean),
       [text]
     );
-
-    const parsedStats = useMemo(() => {
-      let wordCount = 0;
-      let charCount = 0;
-      const lineData = lines.map((line) => {
-        const words = line.split(/\s+/).filter(Boolean);
-        const wordStart = wordCount;
-        const wordEntries = words.map((w) => {
-          const charStart = charCount;
-          const len = Array.from(w).length;
-          charCount += len;
-          return { word: w, charStart };
-        });
-        wordCount += words.length;
-        return { line, wordStart, wordEntries };
-      });
-      return { lineData, totalWords: wordCount, totalChars: charCount };
-    }, [lines]);
 
     const isDarkForced = theme === "dark";
     const isLightForced = theme === "light";
 
-    const themeClasses = isDarkForced
-      ? "text-zinc-50"
+    const baseColor = isDarkForced ? "#F4F4F5" : "#111111";
+    const mutedColor = isDarkForced ? "#52525B" : "#C4C4C4";
+
+    const containerTheme = isDarkForced
+      ? "text-zinc-100"
       : isLightForced
         ? "text-zinc-950"
-        : "text-zinc-950 dark:text-zinc-50";
+        : "text-zinc-950 dark:text-zinc-100";
+
+    const labelTheme = isDarkForced
+      ? "text-zinc-400"
+      : isLightForced
+        ? "text-zinc-500"
+        : "text-zinc-500 dark:text-zinc-400";
 
     const Tag = as;
 
-    const getInViewInitial = () => {
-      switch (effect) {
-        case "mask":
-          return { opacity: 0, y: "100%" };
-        case "blur":
-          return { opacity: 0, filter: "blur(8px)", y: 8 };
-        case "scale":
-          return { opacity: 0, scale: 0.9 };
-        case "fade-up":
-        default:
-          return { opacity: 0, y: 18 };
-      }
-    };
-
-    const getInViewTarget = () => ({
-      opacity: 1,
-      y: 0,
-      scale: 1,
-      filter: "blur(0px)",
-    });
-
     return (
-      <div
+      <section
         ref={(node) => {
-          containerRef.current = node;
+          containerRef.current = node as HTMLDivElement | null;
           if (typeof ref === "function") {
             ref(node);
           } else if (ref) {
             (ref as React.MutableRefObject<HTMLElement | null>).current = node;
           }
         }}
-        className={cn("relative w-full", themeClasses, className)}
+        aria-labelledby={label ? labelId : undefined}
+        className={cn(
+          "relative mx-auto flex w-full max-w-[820px] flex-col items-center px-6 py-20 text-center sm:py-28",
+          containerTheme,
+          className
+        )}
         style={{
           fontFamily:
             '"Plus Jakarta Sans", "Inter", "Helvetica Neue", Arial, sans-serif',
         }}
         {...rest}
       >
+        {label && (
+          <span
+            id={labelId}
+            className={cn(
+              "mb-4 text-[11px] font-medium tracking-[-0.01em]",
+              labelTheme
+            )}
+          >
+            {label}
+          </span>
+        )}
+
         <Tag
-          id={labelId}
-          aria-label={text.replace(/\n/g, " ")}
-          className="text-[clamp(1.75rem,4.2vw,3.5rem)] leading-[1.16] font-medium tracking-[-0.03em]"
+          aria-label={text}
+          className="text-[clamp(1.5rem,3.3vw,2.65rem)] leading-[1.16] font-semibold tracking-[-0.03em]"
         >
-          {prefersReducedMotion ? (
-            lines.map((line, idx) => (
-              <span key={idx} className="block">
-                {line}
-              </span>
-            ))
-          ) : trigger === "scroll" ? (
-            <>
-              {mode === "line" &&
-                parsedStats.lineData.map((item, idx) => {
-                  const total = Math.max(1, parsedStats.lineData.length);
-                  const start = idx / total;
-                  const end = Math.min(1, start + 1 / total);
-                  return (
-                    <ScrubToken
-                      key={idx}
-                      token={item.line}
-                      progress={smoothProgress}
-                      range={[start, end]}
-                      effect={effect}
-                      dimOpacity={safeDim}
-                      isLine
-                    />
-                  );
-                })}
-
-              {mode === "word" &&
-                parsedStats.lineData.map((item, lineIdx) => (
-                  <span key={lineIdx} className="block">
-                    {item.wordEntries.map((entry, wordIdx) => {
-                      const globalIdx = item.wordStart + wordIdx;
-                      const total = Math.max(1, parsedStats.totalWords);
-                      const start = globalIdx / total;
-                      const end = Math.min(1, start + 1.25 / total);
-                      return (
-                        <ScrubToken
-                          key={`${lineIdx}-${wordIdx}`}
-                          token={entry.word}
-                          progress={smoothProgress}
-                          range={[start, end]}
-                          effect={effect}
-                          dimOpacity={safeDim}
-                        />
-                      );
-                    })}
-                  </span>
-                ))}
-
-              {mode === "character" &&
-                parsedStats.lineData.map((item, lineIdx) => (
-                  <span key={lineIdx} className="block">
-                    {item.wordEntries.map((entry, wordIdx) => (
-                      <ScrubWordWithChars
-                        key={`${lineIdx}-${wordIdx}`}
-                        word={entry.word}
-                        progress={smoothProgress}
-                        startIdx={entry.charStart}
-                        totalChars={parsedStats.totalChars}
-                        effect={effect}
-                        dimOpacity={safeDim}
-                      />
-                    ))}
-                  </span>
-                ))}
-            </>
-          ) : (
-            <>
-              {mode === "line" &&
-                parsedStats.lineData.map((item, idx) => (
-                  <span
-                    key={idx}
-                    className={cn(
-                      "block",
-                      effect === "mask" && "overflow-hidden"
-                    )}
-                  >
-                    <motion.span
-                      className="inline-block"
-                      initial={getInViewInitial()}
-                      whileInView={getInViewTarget()}
-                      viewport={{ once, amount: 0.2 }}
-                      transition={{
-                        duration: safeDuration,
-                        delay: idx * safeStagger * 2.5,
-                        ease: EDITORIAL_EASE,
-                      }}
-                    >
-                      {item.line}
-                    </motion.span>
-                  </span>
-                ))}
-
-              {mode === "word" &&
-                parsedStats.lineData.map((item, lineIdx) => (
-                  <span key={lineIdx} className="block">
-                    {item.wordEntries.map((entry, wordIdx) => {
-                      const globalIdx = item.wordStart + wordIdx;
-                      return (
-                        <span
-                          key={`${lineIdx}-${wordIdx}`}
-                          className={cn(
-                            "mr-[0.26em] inline-block",
-                            effect === "mask" && "overflow-hidden align-bottom"
-                          )}
-                        >
-                          <motion.span
-                            className="inline-block"
-                            initial={getInViewInitial()}
-                            whileInView={getInViewTarget()}
-                            viewport={{ once, amount: 0.2 }}
-                            transition={{
-                              duration: safeDuration,
-                              delay: globalIdx * safeStagger,
-                              ease: EDITORIAL_EASE,
-                            }}
-                          >
-                            {entry.word}
-                          </motion.span>
-                        </span>
-                      );
-                    })}
-                  </span>
-                ))}
-
-              {mode === "character" &&
-                parsedStats.lineData.map((item, lineIdx) => (
-                  <span key={lineIdx} className="block">
-                    {item.wordEntries.map((entry, wordIdx) => (
-                      <span
-                        key={`${lineIdx}-${wordIdx}`}
-                        className="mr-[0.26em] inline-block whitespace-nowrap"
-                      >
-                        {Array.from(entry.word).map((char, charIdx) => {
-                          const globalChar = entry.charStart + charIdx;
-                          return (
-                            <span
-                              key={`${globalChar}-${char}`}
-                              className={cn(
-                                "inline-block",
-                                effect === "mask" &&
-                                  "overflow-hidden align-bottom"
-                              )}
-                            >
-                              <motion.span
-                                className="inline-block"
-                                initial={getInViewInitial()}
-                                whileInView={getInViewTarget()}
-                                viewport={{ once, amount: 0.2 }}
-                                transition={{
-                                  duration: safeDuration,
-                                  delay: globalChar * (safeStagger * 0.45),
-                                  ease: EDITORIAL_EASE,
-                                }}
-                              >
-                                {char}
-                              </motion.span>
-                            </span>
-                          );
-                        })}
-                      </span>
-                    ))}
-                  </span>
-                ))}
-            </>
-          )}
+          {prefersReducedMotion
+            ? text
+            : lines.map((word, idx) => (
+                <WordToken
+                  key={`${idx}-${word}`}
+                  word={word}
+                  index={idx}
+                  total={lines.length}
+                  progress={smoothProgress}
+                  preset={preset}
+                  dimOpacity={safeDim}
+                  accentColor={accentColor}
+                  baseColor={baseColor}
+                  mutedColor={mutedColor}
+                />
+              ))}
         </Tag>
-      </div>
+      </section>
     );
   }
 );
