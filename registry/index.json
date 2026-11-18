@@ -1,8 +1,26 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-17T17:21:49.331Z",
-  "totalComponents": 44,
+  "updatedAt": "2026-11-18T06:46:01.871Z",
+  "totalComponents": 45,
   "components": [
+    {
+      "id": "comp-1794984337235-ww84y",
+      "slug": "sticky-services-stack",
+      "name": "StickyServicesStack",
+      "description": "An editorial scroll-stacking services section with oversized index numerals, animated motion preview cards, and scroll-linked depth dimming as each layer pins.",
+      "category": "Custom",
+      "isBuiltIn": false,
+      "updatedAt": 1794984352064,
+      "lastRepoSyncAt": 1794984361794,
+      "path": "registry/components/sticky-services-stack",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "index.css",
+        "manifest.json"
+      ],
+      "dependencies": []
+    },
     {
       "id": "comp-1794935044468-dg8nw",
       "slug": "isometric-ranking-stack",
