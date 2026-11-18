@@ -1,8 +1,26 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-18T07:06:37.024Z",
-  "totalComponents": 45,
+  "updatedAt": "2026-11-18T08:09:56.574Z",
+  "totalComponents": 46,
   "components": [
+    {
+      "id": "comp-1794989377194-vo0t2",
+      "slug": "creative-grid-poster",
+      "name": "CreativeGridPoster",
+      "description": "An interactive 13x14 Swiss-grid editorial quote poster combining staggered typography, 17 vector artifact tiles, and hover museum-label captions.",
+      "category": "Custom",
+      "isBuiltIn": false,
+      "updatedAt": 1794989387695,
+      "lastRepoSyncAt": 1794989396508,
+      "path": "registry/components/creative-grid-poster",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "index.css",
+        "manifest.json"
+      ],
+      "dependencies": []
+    },
     {
       "id": "comp-1794984337235-ww84y",
       "slug": "sticky-services-stack",
