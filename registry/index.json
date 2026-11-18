@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-18T08:29:58.579Z",
+  "updatedAt": "2026-11-18T08:30:23.300Z",
   "totalComponents": 47,
   "components": [
     {
@@ -10,8 +10,8 @@
       "description": "",
       "category": "Custom",
       "isBuiltIn": false,
-      "updatedAt": 1794990589350,
-      "lastRepoSyncAt": 1794990598524,
+      "updatedAt": 1794990613376,
+      "lastRepoSyncAt": 1794990623216,
       "path": "registry/components/text-scroll-reveal",
       "files": [
         "component.tsx",
