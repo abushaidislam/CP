@@ -1,8 +1,27 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-18T08:47:49.168Z",
+  "updatedAt": "2026-11-18T09:28:41.192Z",
   "totalComponents": 47,
   "components": [
+    {
+      "id": "comp-1794989377194-vo0t2",
+      "slug": "creative-grid-poster",
+      "name": "CreativeGridPoster",
+      "description": "An interactive 13x14 Swiss-grid editorial quote poster combining staggered typography, 17 vector artifact tiles, and hover museum-label captions.",
+      "category": "Custom",
+      "isBuiltIn": false,
+      "updatedAt": 1794994109822,
+      "lastRepoSyncAt": 1794994120980,
+      "path": "registry/components/creative-grid-poster",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "index.css",
+        "manifest.json",
+        "preview.png"
+      ],
+      "dependencies": []
+    },
     {
       "id": "comp-1794990574287-6zazx",
       "slug": "text-scroll-reveal",
@@ -19,24 +38,6 @@
         "index.css",
         "manifest.json",
         "preview.png"
-      ],
-      "dependencies": []
-    },
-    {
-      "id": "comp-1794989377194-vo0t2",
-      "slug": "creative-grid-poster",
-      "name": "CreativeGridPoster",
-      "description": "An interactive 13x14 Swiss-grid editorial quote poster combining staggered typography, 17 vector artifact tiles, and hover museum-label captions.",
-      "category": "Custom",
-      "isBuiltIn": false,
-      "updatedAt": 1794989664510,
-      "lastRepoSyncAt": 1794989673983,
-      "path": "registry/components/creative-grid-poster",
-      "files": [
-        "component.tsx",
-        "default.tsx",
-        "index.css",
-        "manifest.json"
       ],
       "dependencies": []
     },
