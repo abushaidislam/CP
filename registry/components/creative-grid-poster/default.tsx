@@ -8,9 +8,11 @@ import {
 
 const settings = {
   theme: "auto",
-  showCaptions: true,
+  eyebrow: "(Manifesto)",
+  sectionTitle: "On Craft, Invention & Human Agency",
+  ctaLabel: "Start building",
+  showInspector: true,
   animateEntrance: true,
-  attribution: "WWW.DREX.ART",
 };
 
 const VALID_THEMES: CreativeGridTheme[] = ["auto", "light", "dark"];
@@ -26,18 +28,28 @@ export default function CreativeGridPosterDemo(
     ? (config.theme as CreativeGridTheme)
     : "auto";
 
-  const attribution =
-    typeof config.attribution === "string"
-      ? config.attribution
-      : settings.attribution;
+  const eyebrow =
+    typeof config.eyebrow === "string" && config.eyebrow.trim()
+      ? config.eyebrow
+      : settings.eyebrow;
+
+  const sectionTitle =
+    typeof config.sectionTitle === "string" && config.sectionTitle.trim()
+      ? config.sectionTitle
+      : settings.sectionTitle;
+
+  const ctaLabel =
+    typeof config.ctaLabel === "string" ? config.ctaLabel : settings.ctaLabel;
 
   return (
-    <div className="w-full min-h-[400px] flex items-center justify-center">
+    <div className="w-full min-h-[400px]">
       <CreativeGridPoster
         theme={theme}
-        showCaptions={Boolean(config.showCaptions)}
+        eyebrow={eyebrow}
+        sectionTitle={sectionTitle}
+        ctaLabel={ctaLabel}
+        showInspector={Boolean(config.showInspector)}
         animateEntrance={Boolean(config.animateEntrance)}
-        attribution={attribution}
       />
     </div>
   );
