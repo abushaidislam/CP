@@ -1,6 +1,14 @@
 import { create } from "zustand";
 import { persist, createJSONStorage, type StateStorage } from "zustand/middleware";
 import { DEFAULT_TEMPLATES } from "@/lib/sandbox/default-templates";
+import {
+  cacheComponentPreview,
+  cacheComponentsBatch,
+  getCachedPreviewSync,
+  loadBrowserCachedPreviews,
+  removeCachedComponentPreview,
+  setCachedPreviewSync,
+} from "@/lib/cache/preview-cache";
 
 const memoryStorageFallback = new Map<string, string>();
 let pendingStorageTimer: ReturnType<typeof setTimeout> | null = null;
@@ -11,6 +19,7 @@ const flushToLocalStorage = (name: string, value: string): void => {
     window.localStorage.setItem(name, value);
   } catch {
     // Recover from QuotaExceededError (5MB browser localStorage limit with 30+ components & base64 PNGs)
+    // Offload heavy preview images to Browser Cache (IndexedDB + CacheStorage) before slimming localStorage
     try {
       const parsed = JSON.parse(value);
       if (parsed?.state) {
@@ -26,7 +35,8 @@ const flushToLocalStorage = (name: string, value: string): void => {
             }
           }
         }
-        // Step 2: Strip oversized base64 PNG strings (>80KB) that exceed localStorage quota
+        // Step 2: Persist oversized base64 PNG strings (>80KB) in Browser Cache (IndexedDB/CacheStorage)
+        // and replace only the localStorage copy so localStorage stays under 5MB
         if (parsed.state.userComponents) {
           for (const cid of Object.keys(parsed.state.userComponents)) {
             const c = parsed.state.userComponents[cid];
@@ -35,6 +45,8 @@ const flushToLocalStorage = (name: string, value: string): void => {
               c.previewImage.startsWith("data:image/png;base64,") &&
               c.previewImage.length > 80_000
             ) {
+              setCachedPreviewSync(cid, c.previewImage);
+              void cacheComponentPreview(cid, c.previewImage);
               c.previewImage =
                 DEFAULT_TEMPLATE_PREVIEWS[cid] || DEFAULT_TEMPLATE_PREVIEWS["blank"];
             }
@@ -444,6 +456,7 @@ export interface StudioState {
   setGithubRepoConfig: (
     config: Partial<{ repo: string; branch: string; token: string }>
   ) => void;
+  hydrateFromBrowserCache: () => Promise<void>;
   hydrateFromProjectRepo: () => Promise<void>;
   saveComponentToProjectRepo: (options?: {
     componentId?: string;
@@ -1059,8 +1072,20 @@ export function studioPersistMerge(
   const normalizedPersistedComponents: Record<string, UserComponent> = {};
   for (const [id, comp] of Object.entries(persisted.userComponents || {})) {
     if (!comp) continue;
+    const cachedPreview = getCachedPreviewSync(id);
+    const hasCustomPreview =
+      comp.previewImage &&
+      comp.previewImage !== "./preview.png" &&
+      comp.previewImage !== DEFAULT_TEMPLATE_PREVIEWS["blank"];
+    const resolvedPreview = hasCustomPreview
+      ? comp.previewImage
+      : cachedPreview || comp.previewImage;
+    if (resolvedPreview && resolvedPreview !== DEFAULT_TEMPLATE_PREVIEWS["blank"]) {
+      setCachedPreviewSync(id, resolvedPreview);
+    }
     normalizedPersistedComponents[id] = {
       ...comp,
+      previewImage: resolvedPreview,
       files: normalizeStudioFiles(comp.files),
     };
   }
@@ -2013,6 +2038,7 @@ export const useStudioStore = create<StudioState>()(
 
         if (typeof window !== "undefined" && typeof fetch === "function") {
           const slug = compToDelete?.repoSlug || "";
+          void removeCachedComponentPreview(id);
           fetch(
             `/api/repo-sync?id=${encodeURIComponent(id)}&slug=${encodeURIComponent(slug)}`,
             { method: "DELETE" }
@@ -2118,7 +2144,9 @@ export const useStudioStore = create<StudioState>()(
         return dupId;
       },
 
-      updateComponentPreview: (id, previewImage) =>
+      updateComponentPreview: (id, previewImage) => {
+        setCachedPreviewSync(id, previewImage);
+        void cacheComponentPreview(id, previewImage);
         set((state) => {
           const comp = state.userComponents?.[id];
           if (!comp) return state;
@@ -2133,7 +2161,8 @@ export const useStudioStore = create<StudioState>()(
               },
             },
           };
-        }),
+        });
+      },
 
       recordComponentVisit: (id) =>
         set((state) => ({
@@ -2495,8 +2524,68 @@ export const useStudioStore = create<StudioState>()(
           },
         })),
 
+      hydrateFromBrowserCache: async () => {
+        if (typeof window === "undefined") return;
+        try {
+          const { previews, components: cachedComponents } =
+            await loadBrowserCachedPreviews();
+          const hasPreviews = Object.keys(previews).length > 0;
+          const hasCachedComponents =
+            cachedComponents && Object.keys(cachedComponents).length > 0;
+
+          if (!hasPreviews && !hasCachedComponents) return;
+
+          set((state) => {
+            const nextUserComponents: Record<string, UserComponent> = {
+              ...(cachedComponents || {}),
+              ...(state.userComponents || {}),
+            };
+            let changed = false;
+
+            if (hasCachedComponents) {
+              for (const [id, cachedComp] of Object.entries(cachedComponents!)) {
+                if (!nextUserComponents[id] && cachedComp) {
+                  nextUserComponents[id] = {
+                    ...cachedComp,
+                    files: normalizeStudioFiles(cachedComp.files),
+                  };
+                  changed = true;
+                }
+              }
+            }
+
+            for (const [id, comp] of Object.entries(nextUserComponents)) {
+              if (!comp) continue;
+              const cachedImg = previews[id];
+              const isPlaceholder =
+                !comp.previewImage ||
+                comp.previewImage === "./preview.png" ||
+                comp.previewImage === DEFAULT_TEMPLATE_PREVIEWS["blank"];
+              if (cachedImg && (isPlaceholder || comp.previewImage !== cachedImg)) {
+                nextUserComponents[id] = {
+                  ...comp,
+                  previewImage: cachedImg,
+                };
+                changed = true;
+              }
+            }
+
+            if (!changed) return state;
+            return {
+              userComponents: nextUserComponents,
+            };
+          });
+        } catch {
+          // Ignore browser cache read errors
+        }
+      },
+
       hydrateFromProjectRepo: async () => {
         if (typeof window === "undefined") return;
+        // 1. Immediately restore previews & components from Browser Cache (IndexedDB / CacheStorage)
+        // so cards display their preview images in milliseconds before the network call completes.
+        void get().hydrateFromBrowserCache();
+
         try {
           const res = await fetch("/api/repo-sync", {
             method: "GET",
@@ -2531,6 +2620,9 @@ export const useStudioStore = create<StudioState>()(
 
           if (!data.success) return;
 
+          let resolvedComponentsForCache: Record<string, UserComponent> | null =
+            null;
+
           set((state) => {
             const nextUserComponents = { ...(state.userComponents || {}) };
             const nextVariants = { ...(state.variantsByTemplate || {}) };
@@ -2558,6 +2650,7 @@ export const useStudioStore = create<StudioState>()(
                 (m.previewImage && m.previewImage !== "./preview.png"
                   ? m.previewImage
                   : undefined) ||
+                getCachedPreviewSync(m.id) ||
                 (existing?.previewImage &&
                 existing.previewImage !== "./preview.png" &&
                 existing.previewImage !== DEFAULT_TEMPLATE_PREVIEWS["blank"]
@@ -2565,6 +2658,8 @@ export const useStudioStore = create<StudioState>()(
                   : undefined) ||
                 DEFAULT_TEMPLATE_PREVIEWS[m.id] ||
                 DEFAULT_TEMPLATE_PREVIEWS["blank"];
+
+              setCachedPreviewSync(m.id, resolvedPreviewImage);
 
               if (shouldAcceptRepoCode) {
                 nextUserComponents[m.id] = {
@@ -2610,6 +2705,8 @@ export const useStudioStore = create<StudioState>()(
               }
             }
 
+            resolvedComponentsForCache = nextUserComponents;
+
             const activeComp = nextUserComponents[state.currentTemplateId];
             const shouldRefreshActiveFiles =
               currentComponentReplacedFromRepo &&
@@ -2636,6 +2733,10 @@ export const useStudioStore = create<StudioState>()(
                   : state.repoSyncStatus,
             };
           });
+
+          if (resolvedComponentsForCache) {
+            void cacheComponentsBatch(resolvedComponentsForCache);
+          }
         } catch {
           // Ignore network errors during initial background hydration
         }

@@ -1,7 +1,12 @@
 "use client";
 
 import React, { useState } from "react";
-import { UserComponent, useStudioStore } from "@/lib/store/studio-store";
+import {
+  DEFAULT_TEMPLATE_PREVIEWS,
+  UserComponent,
+  useStudioStore,
+} from "@/lib/store/studio-store";
+import { getCachedPreviewSync } from "@/lib/cache/preview-cache";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -114,8 +119,17 @@ export function ComponentCard({
     }
   };
 
+  const cachedBrowserPreview = getCachedPreviewSync(component.id);
+  const isBlankPlaceholder =
+    component.previewImage === "./preview.png" ||
+    component.previewImage === DEFAULT_TEMPLATE_PREVIEWS["blank"];
+
+  const effectivePreviewImage = isBlankPlaceholder
+    ? cachedBrowserPreview || component.previewImage
+    : component.previewImage;
+
   const hasValidPreviewImage = Boolean(
-    component.previewImage && component.previewImage !== "./preview.png"
+    effectivePreviewImage && effectivePreviewImage !== "./preview.png"
   );
 
   return (
@@ -141,14 +155,14 @@ export function ComponentCard({
             className="pointer-events-none absolute inset-0 opacity-20 bg-[linear-gradient(to_right,#27272a_1px,transparent_1px),linear-gradient(to_bottom,#27272a_1px,transparent_1px)] bg-[size:24px_24px]"
           />
 
-          {/* Static Component Preview Image (No Live Iframe Execution) */}
+          {/* Static Component Preview Image (Instant Browser Cache Rendering) */}
           {hasValidPreviewImage ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
-              src={component.previewImage}
+              src={effectivePreviewImage}
               alt={component.name}
-              loading="lazy"
-              decoding="async"
+              loading="eager"
+              decoding="sync"
               className="relative z-10 w-full h-full object-contain p-5 pointer-events-none select-none transition-transform duration-300 group-hover:scale-105 drop-shadow-md opacity-100"
             />
           ) : (

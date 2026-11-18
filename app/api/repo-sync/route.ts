@@ -548,13 +548,68 @@ async function pushFilesToGithubRestApi(params: {
   }
 }
 
-async function readAllRepoComponents(cwd: string): Promise<{
+let cachedRepoComponents: {
+  cwd: string;
+  timestamp: number;
+  data: {
+    components: Array<{
+      manifest: RepoComponentManifest;
+      files: StudioFiles;
+    }>;
+    indexEntries: RepoIndexEntry[];
+  };
+} | null = null;
+
+let cachedGitWorkspaceInfo: {
+  cwd: string;
+  timestamp: number;
+  info: {
+    isGitRepo: boolean;
+    branch?: string;
+    lastCommitSha?: string;
+    remoteOrigin?: string;
+  };
+} | null = null;
+
+const SERVER_CACHE_TTL_MS = 60_000;
+
+export function invalidateRepoReadCache(): void {
+  cachedRepoComponents = null;
+  cachedGitWorkspaceInfo = null;
+}
+
+async function getCachedGitWorkspaceInfo(cwd: string) {
+  if (
+    cachedGitWorkspaceInfo &&
+    cachedGitWorkspaceInfo.cwd === cwd &&
+    Date.now() - cachedGitWorkspaceInfo.timestamp < SERVER_CACHE_TTL_MS
+  ) {
+    return cachedGitWorkspaceInfo.info;
+  }
+  const info = await getGitWorkspaceInfo(cwd);
+  cachedGitWorkspaceInfo = { cwd, timestamp: Date.now(), info };
+  return info;
+}
+
+async function readAllRepoComponents(
+  cwd: string,
+  forceRefresh = false
+): Promise<{
   components: Array<{
     manifest: RepoComponentManifest;
     files: StudioFiles;
   }>;
   indexEntries: RepoIndexEntry[];
 }> {
+  if (
+    !forceRefresh &&
+    cachedRepoComponents &&
+    cachedRepoComponents.cwd === cwd &&
+    Date.now() - cachedRepoComponents.timestamp < SERVER_CACHE_TTL_MS
+  ) {
+    return cachedRepoComponents.data;
+  }
+
   const componentsDir = path.join(cwd, COMPONENTS_DIR_REL);
   const results: Array<{
     manifest: RepoComponentManifest;
@@ -564,83 +619,101 @@ async function readAllRepoComponents(cwd: string): Promise<{
 
   try {
     const entries = await fs.readdir(componentsDir, { withFileTypes: true });
-    for (const entry of entries) {
-      if (!entry.isDirectory()) continue;
-      const slug = entry.name;
-      const compDir = path.join(componentsDir, slug);
-      const manifestPath = path.join(compDir, "manifest.json");
-      const compFilePath = path.join(compDir, "component.tsx");
-      const defaultFilePath = path.join(compDir, "default.tsx");
-      const cssFilePath = path.join(compDir, "index.css");
+    const dirEntries = entries.filter((e) => e.isDirectory());
 
-      try {
-        const [manifestRaw, componentTsx] = await Promise.all([
-          fs.readFile(manifestPath, "utf-8"),
-          fs.readFile(compFilePath, "utf-8"),
-        ]);
-        const defaultTsx = await fs
-          .readFile(defaultFilePath, "utf-8")
-          .catch(() => "");
-        const indexCss = await fs
-          .readFile(cssFilePath, "utf-8")
-          .catch(() => "@tailwind base;\n@tailwind components;\n@tailwind utilities;\n");
+    const loadedItems = await Promise.all(
+      dirEntries.map(async (entry) => {
+        const slug = entry.name;
+        const compDir = path.join(componentsDir, slug);
+        const manifestPath = path.join(compDir, "manifest.json");
+        const compFilePath = path.join(compDir, "component.tsx");
+        const defaultFilePath = path.join(compDir, "default.tsx");
+        const cssFilePath = path.join(compDir, "index.css");
 
-        const manifest = JSON.parse(manifestRaw) as RepoComponentManifest;
-        if (
-          manifest.previewImage === "./preview.png" ||
-          !manifest.previewImage
-        ) {
-          const previewPngPath = path.join(compDir, "preview.png");
-          try {
-            const pngBuf = await fs.readFile(previewPngPath);
-            manifest.previewImage = `data:image/png;base64,${pngBuf.toString("base64")}`;
-          } catch {
-            // No preview.png on disk
+        try {
+          const [manifestRaw, componentTsx, defaultTsx, indexCss] =
+            await Promise.all([
+              fs.readFile(manifestPath, "utf-8"),
+              fs.readFile(compFilePath, "utf-8"),
+              fs.readFile(defaultFilePath, "utf-8").catch(() => ""),
+              fs
+                .readFile(cssFilePath, "utf-8")
+                .catch(
+                  () =>
+                    "@tailwind base;\n@tailwind components;\n@tailwind utilities;\n"
+                ),
+            ]);
+
+          const manifest = JSON.parse(manifestRaw) as RepoComponentManifest;
+          if (
+            manifest.previewImage === "./preview.png" ||
+            !manifest.previewImage
+          ) {
+            const previewPngPath = path.join(compDir, "preview.png");
+            try {
+              const pngBuf = await fs.readFile(previewPngPath);
+              manifest.previewImage = `data:image/png;base64,${pngBuf.toString("base64")}`;
+            } catch {
+              // No preview.png on disk
+            }
           }
+
+          const files: StudioFiles = {
+            "component.tsx": componentTsx,
+            "default.tsx": defaultTsx,
+            "demo.tsx": defaultTsx,
+            "index.css": indexCss,
+          };
+
+          const fileList = [
+            "component.tsx",
+            "default.tsx",
+            "index.css",
+            "manifest.json",
+          ];
+          if (manifest.previewImage?.startsWith("data:image/png;base64,")) {
+            fileList.push("preview.png");
+          }
+
+          return {
+            componentItem: { manifest, files },
+            indexEntry: {
+              id: manifest.id,
+              slug: manifest.slug || slug,
+              name: manifest.name,
+              description: manifest.description,
+              category: manifest.category,
+              isBuiltIn: manifest.isBuiltIn,
+              updatedAt: manifest.updatedAt,
+              lastRepoSyncAt: manifest.lastRepoSyncAt,
+              path: `${COMPONENTS_DIR_REL}/${slug}`,
+              files: fileList,
+              dependencies: manifest.dependencies || [],
+            } as RepoIndexEntry,
+          };
+        } catch {
+          return null;
         }
+      })
+    );
 
-        const files: StudioFiles = {
-          "component.tsx": componentTsx,
-          "default.tsx": defaultTsx,
-          "demo.tsx": defaultTsx,
-          "index.css": indexCss,
-        };
-
-        const fileList = [
-          "component.tsx",
-          "default.tsx",
-          "index.css",
-          "manifest.json",
-        ];
-        if (manifest.previewImage?.startsWith("data:image/png;base64,")) {
-          fileList.push("preview.png");
-        }
-
-        results.push({ manifest, files });
-        indexEntries.push({
-          id: manifest.id,
-          slug: manifest.slug || slug,
-          name: manifest.name,
-          description: manifest.description,
-          category: manifest.category,
-          isBuiltIn: manifest.isBuiltIn,
-          updatedAt: manifest.updatedAt,
-          lastRepoSyncAt: manifest.lastRepoSyncAt,
-          path: `${COMPONENTS_DIR_REL}/${slug}`,
-          files: fileList,
-          dependencies: manifest.dependencies || [],
-        });
-      } catch {
-        // Skip incomplete component directories
-      }
+    for (const item of loadedItems) {
+      if (!item) continue;
+      results.push(item.componentItem);
+      indexEntries.push(item.indexEntry);
     }
   } catch {
     // Directory doesn't exist yet
   }
 
   indexEntries.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
-  return { components: results, indexEntries };
+  const data = { components: results, indexEntries };
+  cachedRepoComponents = { cwd, timestamp: Date.now(), data };
+  return data;
 }
+
+// Pre-warm the server cache in the background on module initialization
+void readAllRepoComponents(process.cwd()).catch(() => {});
 
 async function writeRegistryIndexFile(
   cwd: string,
@@ -665,26 +738,33 @@ export async function GET() {
     const cwd = process.cwd();
     const [{ components, indexEntries }, gitInfo] = await Promise.all([
       readAllRepoComponents(cwd),
-      getGitWorkspaceInfo(cwd),
+      getCachedGitWorkspaceInfo(cwd),
     ]);
 
     const envGithubRepo = process.env.GITHUB_REPO?.trim() || "";
     const envGithubBranch = process.env.GITHUB_BRANCH?.trim() || "main";
     const hasGithubToken = Boolean(process.env.GITHUB_TOKEN?.trim());
 
-    return NextResponse.json({
-      success: true,
-      registryPath: COMPONENTS_DIR_REL,
-      totalComponents: components.length,
-      components,
-      indexEntries,
-      gitInfo: {
-        ...gitInfo,
-        envGithubRepo,
-        envGithubBranch,
-        hasGithubToken,
+    return NextResponse.json(
+      {
+        success: true,
+        registryPath: COMPONENTS_DIR_REL,
+        totalComponents: components.length,
+        components,
+        indexEntries,
+        gitInfo: {
+          ...gitInfo,
+          envGithubRepo,
+          envGithubBranch,
+          hasGithubToken,
+        },
       },
-    });
+      {
+        headers: {
+          "Cache-Control": "private, max-age=15, stale-while-revalidate=300",
+        },
+      }
+    );
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
     return NextResponse.json(
@@ -904,8 +984,12 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // Rebuild master registry/index.json
-    const { indexEntries: diskIndexEntries } = await readAllRepoComponents(cwd);
+    // Rebuild master registry/index.json and refresh server cache
+    invalidateRepoReadCache();
+    const { indexEntries: diskIndexEntries } = await readAllRepoComponents(
+      cwd,
+      true
+    );
     const mergedIndexMap = new Map<string, RepoIndexEntry>();
     for (const entry of diskIndexEntries) {
       mergedIndexMap.set(entry.slug, entry);
@@ -1055,7 +1139,8 @@ export async function DELETE(req: NextRequest) {
     const compAbsDir = path.join(cwd, COMPONENTS_DIR_REL, target.manifest.slug);
     await fs.rm(compAbsDir, { recursive: true, force: true });
 
-    const { indexEntries } = await readAllRepoComponents(cwd);
+    invalidateRepoReadCache();
+    const { indexEntries } = await readAllRepoComponents(cwd, true);
     await writeRegistryIndexFile(cwd, indexEntries);
     await tryLocalGitCommit(
       cwd,
