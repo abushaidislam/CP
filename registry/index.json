@@ -1,8 +1,26 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-18T08:14:34.106Z",
-  "totalComponents": 46,
+  "updatedAt": "2026-11-18T08:29:58.579Z",
+  "totalComponents": 47,
   "components": [
+    {
+      "id": "comp-1794990574287-6zazx",
+      "slug": "text-scroll-reveal",
+      "name": "TextScrollReveal",
+      "description": "",
+      "category": "Custom",
+      "isBuiltIn": false,
+      "updatedAt": 1794990589350,
+      "lastRepoSyncAt": 1794990598524,
+      "path": "registry/components/text-scroll-reveal",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "index.css",
+        "manifest.json"
+      ],
+      "dependencies": []
+    },
     {
       "id": "comp-1794989377194-vo0t2",
       "slug": "creative-grid-poster",
