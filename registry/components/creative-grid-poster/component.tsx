@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useId, useState } from "react";
-import { motion, useReducedMotion } from "framer-motion";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 
 function cn(...classes: Array<string | false | null | undefined>): string {
   return classes.filter(Boolean).join(" ");
@@ -11,13 +11,18 @@ export type CreativeGridTheme = "auto" | "light" | "dark";
 
 export interface CreativeGridPosterProps
   extends React.HTMLAttributes<HTMLElement> {
+  eyebrow?: string;
+  sectionTitle?: string;
+  ctaLabel?: string;
+  ctaHref?: string;
+  onCtaClick?: (event: React.MouseEvent<HTMLAnchorElement>) => void;
   line1?: string;
   line2?: string;
   line3?: string;
   line4?: string;
   attribution?: string;
   theme?: CreativeGridTheme;
-  showCaptions?: boolean;
+  showInspector?: boolean;
   animateEntrance?: boolean;
 }
 
@@ -25,6 +30,8 @@ interface GridArtifact {
   id: string;
   label: string;
   year: string;
+  category: string;
+  note: string;
   colStart: number;
   colSpan: number;
   rowStart: number;
@@ -39,6 +46,8 @@ const ARTIFACTS: GridArtifact[] = [
     id: "mona-lisa",
     label: "Mona Lisa · Da Vinci",
     year: "1503",
+    category: "Fine Art",
+    note: "Painted on a modest poplar panel using layered oil glazes—proof that patience and observation outlast eras.",
     colStart: 8,
     colSpan: 2,
     rowStart: 2,
@@ -84,6 +93,8 @@ const ARTIFACTS: GridArtifact[] = [
     id: "kodak-camera",
     label: "35mm Film Camera",
     year: "1980s",
+    category: "Optics",
+    note: "Put precision glass and light capture into everyday hands, turning fleeting moments into permanent memory.",
     colStart: 11,
     colSpan: 2,
     rowStart: 2,
@@ -118,6 +129,8 @@ const ARTIFACTS: GridArtifact[] = [
     id: "cave-art",
     label: "Lascaux Cave Art",
     year: "15,000 BC",
+    category: "Origin",
+    note: "Charcoal and ochre on limestone walls—humanity's earliest impulse to tell stories visually.",
     colStart: 12,
     colSpan: 2,
     rowStart: 3,
@@ -146,8 +159,10 @@ const ARTIFACTS: GridArtifact[] = [
   },
   {
     id: "campfire",
-    label: "Discovery of Fire",
+    label: "Controlled Fire",
     year: "Early Human",
+    category: "Survival",
+    note: "The first energy technology—transforming raw nature into warmth, light, and community.",
     colStart: 1,
     colSpan: 2,
     rowStart: 4,
@@ -165,8 +180,10 @@ const ARTIFACTS: GridArtifact[] = [
   },
   {
     id: "tesla",
-    label: "Tesla",
+    label: "Electric Mobility",
     year: "2003",
+    category: "Energy",
+    note: "Re-engineered the century-old drivetrain from scratch, proving software belongs in physical machines.",
     colStart: 3,
     colSpan: 1,
     rowStart: 5,
@@ -183,6 +200,8 @@ const ARTIFACTS: GridArtifact[] = [
     id: "newspaper-sky",
     label: "Print & Journalism",
     year: "1851",
+    category: "Media",
+    note: "Ink on folded newsprint that carried ideas across continents before a single fiber cable existed.",
     colStart: 5,
     colSpan: 2,
     rowStart: 4,
@@ -223,6 +242,8 @@ const ARTIFACTS: GridArtifact[] = [
     id: "rocket",
     label: "Orbital Spaceflight",
     year: "1969",
+    category: "Aerospace",
+    note: "Built by engineers with slide rules who refused to accept gravity as a permanent boundary.",
     colStart: 1,
     colSpan: 2,
     rowStart: 6,
@@ -248,8 +269,10 @@ const ARTIFACTS: GridArtifact[] = [
   },
   {
     id: "nike",
-    label: "Nike",
+    label: "Athletic Design",
     year: "1971",
+    category: "Brand",
+    note: "A $35 student-drawn curve and a waffle iron reshaped global sport and design culture.",
     colStart: 8,
     colSpan: 1,
     rowStart: 6,
@@ -264,8 +287,10 @@ const ARTIFACTS: GridArtifact[] = [
   },
   {
     id: "fountain",
-    label: "Classical Architecture",
+    label: "Classical Fountain",
     year: "1600s",
+    category: "Civic Craft",
+    note: "Stonework and gravity-fed hydraulics turning public squares into living gathering places.",
     colStart: 10,
     colSpan: 3,
     rowStart: 5,
@@ -291,8 +316,10 @@ const ARTIFACTS: GridArtifact[] = [
   },
   {
     id: "instagram",
-    label: "Instagram",
+    label: "Social Photography",
     year: "2010",
+    category: "Software",
+    note: "Started as a small check-in prototype before pivoting into a global visual language.",
     colStart: 13,
     colSpan: 1,
     rowStart: 7,
@@ -333,8 +360,10 @@ const ARTIFACTS: GridArtifact[] = [
   },
   {
     id: "openai",
-    label: "OpenAI",
+    label: "Generative Intelligence",
     year: "2015",
+    category: "Computing",
+    note: "Researchers turning statistical math into conversational tools used by hundreds of millions.",
     colStart: 2,
     colSpan: 1,
     rowStart: 9,
@@ -354,8 +383,10 @@ const ARTIFACTS: GridArtifact[] = [
   },
   {
     id: "wheel",
-    label: "The Wheel",
+    label: "The Spoked Wheel",
     year: "3500 BC",
+    category: "Mechanics",
+    note: "One simple rotational insight that unlocked trade, clocks, turbines, and modern transport.",
     colStart: 8,
     colSpan: 2,
     rowStart: 8,
@@ -392,6 +423,8 @@ const ARTIFACTS: GridArtifact[] = [
     id: "iphone",
     label: "Original iPhone",
     year: "2007",
+    category: "Hardware",
+    note: "Replaced rigid plastic keypads with a multi-touch glass canvas that adapts to any idea.",
     colStart: 11,
     colSpan: 2,
     rowStart: 8,
@@ -424,6 +457,8 @@ const ARTIFACTS: GridArtifact[] = [
     id: "roman-arch",
     label: "Stone Arch",
     year: "1100s",
+    category: "Architecture",
+    note: "Load-bearing geometry carved by masons that still stands centuries after its builders.",
     colStart: 2,
     colSpan: 2,
     rowStart: 10,
@@ -445,8 +480,10 @@ const ARTIFACTS: GridArtifact[] = [
   },
   {
     id: "elon",
-    label: "Engineering Ambition",
+    label: "First-Principles Engineering",
     year: "2020s",
+    category: "Industry",
+    note: "Questioning inherited cost curves in rockets and batteries until the math works.",
     colStart: 6,
     colSpan: 1,
     rowStart: 10,
@@ -469,6 +506,8 @@ const ARTIFACTS: GridArtifact[] = [
     id: "pyramids",
     label: "Pyramids of Giza",
     year: "2560 BC",
+    category: "Monument",
+    note: "2.3 million limestone blocks aligned to true north using copper tools and human coordination.",
     colStart: 5,
     colSpan: 3,
     rowStart: 12,
@@ -489,6 +528,8 @@ const ARTIFACTS: GridArtifact[] = [
     id: "steve-jobs",
     label: "Steve Jobs",
     year: "1994",
+    category: "Philosophy",
+    note: '"Once you discover that you can poke it and something pops out the other side, you can change it."',
     colStart: 13,
     colSpan: 1,
     rowStart: 12,
@@ -532,13 +573,18 @@ export const CreativeGridPoster = React.forwardRef<
 >(
   (
     {
+      eyebrow = "(Manifesto)",
+      sectionTitle = "On Craft, Invention & Human Agency",
+      ctaLabel = "Start building",
+      ctaHref = "#contact",
+      onCtaClick,
       line1 = "EVERYTHING\nAROUND\nYOU",
       line2 = "THAT YOU\nCALLED LIFE",
       line3 = "WAS\nMADE BY\nPEOPLE",
       line4 = "THAT\nWERE NO\nSMARTER\nTHAN YOU.",
       attribution = "WWW.DREX.ART",
       theme = "auto",
-      showCaptions = true,
+      showInspector = true,
       animateEntrance = true,
       className,
       ...rest
@@ -547,7 +593,7 @@ export const CreativeGridPoster = React.forwardRef<
   ) => {
     const prefersReducedMotion = Boolean(useReducedMotion());
     const headingId = useId();
-    const [hoveredId, setHoveredId] = useState<string | null>(null);
+    const [activeIndex, setActiveIndex] = useState<number>(ARTIFACTS.length - 1);
 
     const shouldAnimate = animateEntrance && !prefersReducedMotion;
     const isDarkForced = theme === "dark";
@@ -559,11 +605,37 @@ export const CreativeGridPoster = React.forwardRef<
         ? "bg-[#E7E3DA] text-[#111111]"
         : "bg-[#E7E3DA] text-[#111111] dark:bg-[#121210] dark:text-[#F4F1EA]";
 
+    const borderMuted = isDarkForced
+      ? "border-white/12"
+      : isLightForced
+        ? "border-black/12"
+        : "border-black/12 dark:border-white/12";
+
+    const mutedText = isDarkForced
+      ? "text-zinc-400"
+      : isLightForced
+        ? "text-zinc-600"
+        : "text-zinc-600 dark:text-zinc-400";
+
+    const cardSurface = isDarkForced
+      ? "bg-[#191916] border-white/12"
+      : isLightForced
+        ? "bg-[#EFECE4] border-black/10"
+        : "bg-[#EFECE4] border-black/10 dark:bg-[#191916] dark:border-white/12";
+
     const gridLineColor = isDarkForced
       ? "rgba(244,241,234,0.12)"
       : isLightForced
         ? "rgba(17,17,17,0.12)"
         : "rgba(128,124,114,0.22)";
+
+    const activeArtifact = ARTIFACTS[activeIndex] ?? ARTIFACTS[0];
+
+    const handleStep = (delta: number) => {
+      setActiveIndex(
+        (prev) => (prev + delta + ARTIFACTS.length) % ARTIFACTS.length
+      );
+    };
 
     const quoteBlocks = [
       {
@@ -609,7 +681,7 @@ export const CreativeGridPoster = React.forwardRef<
         ref={ref}
         aria-labelledby={headingId}
         className={cn(
-          "relative flex w-full items-center justify-center p-4 sm:p-8 md:p-12",
+          "relative w-full py-12 sm:py-16 lg:py-24",
           outerBg,
           className
         )}
@@ -619,104 +691,244 @@ export const CreativeGridPoster = React.forwardRef<
         }}
         {...rest}
       >
-        <h2 id={headingId} className="sr-only">
-          {`${line1} ${line2} ${line3} ${line4}`.replace(/\n/g, " ")}
-        </h2>
+        <div className="mx-auto w-full max-w-[1360px] px-5 sm:px-8 lg:px-12">
+          <header
+            className={cn(
+              "mb-10 flex flex-wrap items-center justify-between gap-4 border-b pb-4 text-[12.5px] font-medium tracking-[-0.01em] sm:mb-12",
+              borderMuted
+            )}
+          >
+            <div className="flex items-center gap-4">
+              <span>{eyebrow}</span>
+              <span className={cn("hidden sm:inline", mutedText)}>
+                {sectionTitle}
+              </span>
+            </div>
 
-        <div
-          className="relative grid w-full max-w-[760px] grid-cols-[repeat(13,minmax(0,1fr))] grid-rows-[repeat(14,minmax(0,1fr))]"
-          style={{
-            aspectRatio: "13 / 14",
-            backgroundImage: `linear-gradient(to right, ${gridLineColor} 1px, transparent 1px), linear-gradient(to bottom, ${gridLineColor} 1px, transparent 1px)`,
-            backgroundSize: "calc(100% / 13) calc(100% / 14)",
-            borderRight: `1px solid ${gridLineColor}`,
-            borderBottom: `1px solid ${gridLineColor}`,
-          }}
-        >
-          {quoteBlocks.map((block, idx) => (
-            <motion.div
-              key={block.id}
-              initial={
-                shouldAnimate ? { opacity: 0, y: 12 } : { opacity: 1, y: 0 }
-              }
-              animate={{ opacity: 1, y: 0 }}
-              transition={{
-                duration: 0.65,
-                delay: idx * 0.12,
-                ease: EDITORIAL_EASE,
-              }}
-              className={cn("z-10 flex select-none", block.align)}
-              style={{
-                gridColumn: `${block.colStart} / span ${block.colSpan}`,
-                gridRow: `${block.rowStart} / span ${block.rowSpan}`,
-              }}
+            <div className="flex items-center gap-6">
+              <span className={cn("tabular-nums", mutedText)}>
+                {String(activeIndex + 1).padStart(2, "0")} /{" "}
+                {String(ARTIFACTS.length).padStart(2, "0")}
+              </span>
+              {ctaLabel && (
+                <a
+                  href={ctaHref}
+                  onClick={onCtaClick}
+                  className="inline-flex items-center gap-1 border-b border-current pb-0.5 transition-opacity hover:opacity-65 focus-visible:ring-2 focus-visible:ring-current focus-visible:outline-none"
+                >
+                  <span>{ctaLabel}</span>
+                  <span aria-hidden="true">→</span>
+                </a>
+              )}
+            </div>
+          </header>
+
+          <h2 id={headingId} className="sr-only">
+            {`${line1} ${line2} ${line3} ${line4}`.replace(/\n/g, " ")}
+          </h2>
+
+          <div
+            className={cn(
+              "grid grid-cols-1 items-start gap-10 lg:gap-14",
+              showInspector ? "lg:grid-cols-12" : "lg:grid-cols-1"
+            )}
+          >
+            <div
+              className={cn(
+                "flex justify-center",
+                showInspector ? "lg:col-span-8 lg:justify-start" : ""
+              )}
             >
-              <p className="whitespace-pre-line text-[clamp(0.85rem,2.6vw,1.65rem)] leading-[0.98] font-medium tracking-[-0.03em]">
-                {block.text}
-              </p>
-            </motion.div>
-          ))}
-
-          {ARTIFACTS.map((artifact, idx) => {
-            const isHovered = hoveredId === artifact.id;
-            return (
-              <motion.div
-                key={artifact.id}
-                initial={
-                  shouldAnimate
-                    ? { opacity: 0, scale: 0.94 }
-                    : { opacity: 1, scale: 1 }
-                }
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{
-                  duration: 0.5,
-                  delay: 0.2 + idx * 0.03,
-                  ease: EDITORIAL_EASE,
-                }}
-                whileHover={
-                  prefersReducedMotion
-                    ? undefined
-                    : { scale: 1.05, zIndex: 30 }
-                }
-                onMouseEnter={() => setHoveredId(artifact.id)}
-                onMouseLeave={() => setHoveredId(null)}
-                onFocus={() => setHoveredId(artifact.id)}
-                onBlur={() => setHoveredId(null)}
-                tabIndex={showCaptions ? 0 : -1}
-                aria-label={`${artifact.label} (${artifact.year})`}
-                className="relative cursor-pointer transition-shadow focus-visible:ring-2 focus-visible:ring-current focus-visible:outline-none"
+              <div
+                className="relative grid w-full max-w-[740px] grid-cols-[repeat(13,minmax(0,1fr))] grid-rows-[repeat(14,minmax(0,1fr))]"
                 style={{
-                  gridColumn: `${artifact.colStart} / span ${artifact.colSpan}`,
-                  gridRow: `${artifact.rowStart} / span ${artifact.rowSpan}`,
+                  aspectRatio: "13 / 14",
+                  backgroundImage: `linear-gradient(to right, ${gridLineColor} 1px, transparent 1px), linear-gradient(to bottom, ${gridLineColor} 1px, transparent 1px)`,
+                  backgroundSize: "calc(100% / 13) calc(100% / 14)",
+                  borderRight: `1px solid ${gridLineColor}`,
+                  borderBottom: `1px solid ${gridLineColor}`,
                 }}
               >
-                {artifact.render()}
-
-                {showCaptions && isHovered && (
+                {quoteBlocks.map((block, idx) => (
                   <motion.div
-                    initial={{ opacity: 0, y: 4 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.16 }}
-                    className="pointer-events-none absolute -bottom-7 left-1/2 z-40 -translate-x-1/2 rounded bg-[#111111] px-2 py-0.5 text-[10px] font-medium whitespace-nowrap text-[#F4F1EA] shadow-md"
+                    key={block.id}
+                    initial={
+                      shouldAnimate
+                        ? { opacity: 0, y: 12 }
+                        : { opacity: 1, y: 0 }
+                    }
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true, amount: 0.12 }}
+                    transition={{
+                      duration: 0.65,
+                      delay: idx * 0.1,
+                      ease: EDITORIAL_EASE,
+                    }}
+                    className={cn("z-10 flex select-none", block.align)}
+                    style={{
+                      gridColumn: `${block.colStart} / span ${block.colSpan}`,
+                      gridRow: `${block.rowStart} / span ${block.rowSpan}`,
+                    }}
                   >
-                    {artifact.label} · {artifact.year}
+                    <p className="whitespace-pre-line text-[clamp(0.8rem,2.2vw,1.55rem)] leading-[0.98] font-medium tracking-[-0.03em]">
+                      {block.text}
+                    </p>
                   </motion.div>
-                )}
-              </motion.div>
-            );
-          })}
+                ))}
 
-          {attribution && (
-            <div
-              className="flex items-center justify-start pl-1.5 text-[clamp(0.45rem,1vw,0.65rem)] font-medium tracking-[0.04em] opacity-80"
-              style={{
-                gridColumn: "1 / span 3",
-                gridRow: "13 / span 1",
-              }}
-            >
-              {attribution}
+                {ARTIFACTS.map((artifact, idx) => {
+                  const isActive = idx === activeIndex;
+                  return (
+                    <motion.button
+                      key={artifact.id}
+                      type="button"
+                      initial={
+                        shouldAnimate
+                          ? { opacity: 0, scale: 0.94 }
+                          : { opacity: 1, scale: 1 }
+                      }
+                      whileInView={{ opacity: 1, scale: 1 }}
+                      viewport={{ once: true, amount: 0.12 }}
+                      transition={{
+                        duration: 0.5,
+                        delay: 0.12 + idx * 0.025,
+                        ease: EDITORIAL_EASE,
+                      }}
+                      whileHover={
+                        prefersReducedMotion
+                          ? undefined
+                          : { scale: 1.05, zIndex: 30 }
+                      }
+                      onMouseEnter={() => setActiveIndex(idx)}
+                      onFocus={() => setActiveIndex(idx)}
+                      onClick={() => setActiveIndex(idx)}
+                      aria-label={`${artifact.label} (${artifact.year})`}
+                      aria-pressed={isActive}
+                      className={cn(
+                        "relative cursor-pointer p-0 text-left transition-shadow focus-visible:ring-2 focus-visible:ring-current focus-visible:outline-none",
+                        isActive &&
+                          showInspector &&
+                          "z-20 ring-1 ring-current ring-offset-1"
+                      )}
+                      style={{
+                        gridColumn: `${artifact.colStart} / span ${artifact.colSpan}`,
+                        gridRow: `${artifact.rowStart} / span ${artifact.rowSpan}`,
+                      }}
+                    >
+                      {artifact.render()}
+                    </motion.button>
+                  );
+                })}
+
+                {attribution && (
+                  <div
+                    className="flex items-center justify-start pl-1.5 text-[clamp(0.45rem,0.9vw,0.625rem)] font-medium tracking-[0.04em] opacity-75"
+                    style={{
+                      gridColumn: "1 / span 3",
+                      gridRow: "13 / span 1",
+                    }}
+                  >
+                    {attribution}
+                  </div>
+                )}
+              </div>
             </div>
-          )}
+
+            {showInspector && (
+              <aside className="flex flex-col justify-between gap-8 lg:sticky lg:top-10 lg:col-span-4">
+                <div
+                  className={cn("rounded-lg border p-6 sm:p-7", cardSurface)}
+                >
+                  <div className="mb-5 flex items-center justify-between text-[11px] font-medium tracking-wider uppercase">
+                    <span className={mutedText}>Artifact Index</span>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => handleStep(-1)}
+                        aria-label="Previous artifact"
+                        className={cn(
+                          "flex h-7 w-7 items-center justify-center rounded border transition-colors hover:opacity-70 focus-visible:ring-2 focus-visible:ring-current focus-visible:outline-none",
+                          borderMuted
+                        )}
+                      >
+                        ←
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleStep(1)}
+                        aria-label="Next artifact"
+                        className={cn(
+                          "flex h-7 w-7 items-center justify-center rounded border transition-colors hover:opacity-70 focus-visible:ring-2 focus-visible:ring-current focus-visible:outline-none",
+                          borderMuted
+                        )}
+                      >
+                        →
+                      </button>
+                    </div>
+                  </div>
+
+                  <AnimatePresence mode="wait">
+                    <motion.div
+                      key={activeArtifact.id}
+                      initial={
+                        prefersReducedMotion ? false : { opacity: 0, y: 6 }
+                      }
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={
+                        prefersReducedMotion
+                          ? undefined
+                          : { opacity: 0, y: -6 }
+                      }
+                      transition={{ duration: 0.22, ease: EDITORIAL_EASE }}
+                    >
+                      <div className="mb-4 h-24 w-28 overflow-hidden rounded border border-black/10 dark:border-white/10">
+                        {activeArtifact.render()}
+                      </div>
+
+                      <div className="mb-1.5 flex items-baseline justify-between gap-2">
+                        <h3 className="text-[18px] font-medium tracking-[-0.02em]">
+                          {activeArtifact.label}
+                        </h3>
+                        <span
+                          className={cn(
+                            "shrink-0 text-[12px] tabular-nums",
+                            mutedText
+                          )}
+                        >
+                          {activeArtifact.year}
+                        </span>
+                      </div>
+
+                      <p
+                        className={cn(
+                          "mb-3 text-[11px] font-medium tracking-wide uppercase",
+                          mutedText
+                        )}
+                      >
+                        {activeArtifact.category}
+                      </p>
+
+                      <p
+                        className={cn(
+                          "text-[13.5px] leading-[1.55]",
+                          mutedText
+                        )}
+                      >
+                        {activeArtifact.note}
+                      </p>
+                    </motion.div>
+                  </AnimatePresence>
+                </div>
+
+                <div className={cn("border-t pt-5", borderMuted)}>
+                  <p className={cn("text-[12.5px] leading-[1.55]", mutedText)}>
+                    Hover or select any artifact in the grid to inspect how
+                    ordinary builders reshaped the world around us.
+                  </p>
+                </div>
+              </aside>
+            )}
+          </div>
         </div>
       </section>
     );
