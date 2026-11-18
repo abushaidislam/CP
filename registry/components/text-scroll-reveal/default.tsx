@@ -2,79 +2,98 @@
 
 import React from "react";
 import {
+  TEXT_SCROLL_PRESETS,
   TextScrollReveal,
-  type TextRevealEffect,
-  type TextRevealMode,
-  type TextRevealTrigger,
-  type TextScrollRevealTheme,
+  type TextScrollPreset,
+  type TextScrollTheme,
 } from "@/components/ui/component";
 
 const settings = {
   theme: "auto",
-  mode: "word",
-  effect: "mask",
-  trigger: "scroll",
-  dimOpacity: 0.15,
-  once: false,
+  preset: "blur-reveal",
+  accentColor: "#E04A14",
+  dimOpacity: 0.16,
+  showAllPresets: true,
 };
 
-const VALID_THEMES: TextScrollRevealTheme[] = ["auto", "light", "dark"];
-const VALID_MODES: TextRevealMode[] = ["line", "word", "character"];
-const VALID_EFFECTS: TextRevealEffect[] = ["mask", "blur", "fade-up", "scale"];
-const VALID_TRIGGERS: TextRevealTrigger[] = ["scroll", "in-view"];
+const VALID_THEMES: TextScrollTheme[] = ["auto", "light", "dark"];
+const VALID_PRESETS: TextScrollPreset[] = [
+  "blur-reveal",
+  "fade-in",
+  "change-color",
+  "scale-reveal",
+  "random-stagger",
+  "random-scale",
+  "overscale",
+  "slide",
+];
 
 export default function TextScrollRevealDemo(
   props: Partial<typeof settings>
 ) {
   const config = { ...settings, ...props };
 
-  const theme: TextScrollRevealTheme = VALID_THEMES.includes(
-    config.theme as TextScrollRevealTheme
+  const theme: TextScrollTheme = VALID_THEMES.includes(
+    config.theme as TextScrollTheme
   )
-    ? (config.theme as TextScrollRevealTheme)
+    ? (config.theme as TextScrollTheme)
     : "auto";
 
-  const mode: TextRevealMode = VALID_MODES.includes(
-    config.mode as TextRevealMode
+  const preset: TextScrollPreset = VALID_PRESETS.includes(
+    config.preset as TextScrollPreset
   )
-    ? (config.mode as TextRevealMode)
-    : "word";
-
-  const effect: TextRevealEffect = VALID_EFFECTS.includes(
-    config.effect as TextRevealEffect
-  )
-    ? (config.effect as TextRevealEffect)
-    : "mask";
-
-  const trigger: TextRevealTrigger = VALID_TRIGGERS.includes(
-    config.trigger as TextRevealTrigger
-  )
-    ? (config.trigger as TextRevealTrigger)
-    : "scroll";
+    ? (config.preset as TextScrollPreset)
+    : "blur-reveal";
 
   const rawDim = Number(config.dimOpacity);
   const dimOpacity = Number.isFinite(rawDim)
-    ? Math.max(0, Math.min(0.95, rawDim))
+    ? Math.max(0.05, Math.min(0.85, rawDim))
     : settings.dimOpacity;
 
+  const accentColor =
+    typeof config.accentColor === "string" && config.accentColor.trim()
+      ? config.accentColor
+      : settings.accentColor;
+
+  const showAll = Boolean(config.showAllPresets);
+
   return (
-    <div className="w-full px-6 sm:px-10">
-      <div className="mx-auto flex max-w-4xl flex-col py-28 sm:py-36">
-        <p className="mb-10 text-xs font-medium tracking-widest uppercase opacity-50">
-          Scroll down to reveal ↓
+    <div className="w-full">
+      <div className="mx-auto max-w-[1100px] px-4 pt-20 pb-8 text-center">
+        <p className="text-xs font-medium tracking-widest uppercase opacity-50">
+          Scroll down to preview ↓
         </p>
-
-        <TextScrollReveal
-          theme={theme}
-          mode={mode}
-          effect={effect}
-          trigger={trigger}
-          dimOpacity={dimOpacity}
-          once={Boolean(config.once)}
-        />
-
-        <div className="h-[45vh]" aria-hidden="true" />
       </div>
+
+      {showAll ? (
+        <div className="mx-auto max-w-[1100px] divide-y divide-black/10 dark:divide-white/10">
+          {TEXT_SCROLL_PRESETS.map((item) => (
+            <TextScrollReveal
+              key={item.id}
+              label={item.label}
+              preset={item.id}
+              theme={theme}
+              accentColor={accentColor}
+              dimOpacity={dimOpacity}
+            />
+          ))}
+        </div>
+      ) : (
+        <div className="py-24">
+          <TextScrollReveal
+            label={
+              TEXT_SCROLL_PRESETS.find((p) => p.id === preset)?.label ??
+              "001 Blur Reveal"
+            }
+            preset={preset}
+            theme={theme}
+            accentColor={accentColor}
+            dimOpacity={dimOpacity}
+          />
+        </div>
+      )}
+
+      <div className="h-[35vh]" aria-hidden="true" />
     </div>
   );
 }
