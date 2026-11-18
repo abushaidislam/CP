@@ -14,7 +14,12 @@ function cn(...classes: Array<string | false | null | undefined>): string {
 }
 
 export type StickyServicesTheme = "auto" | "light" | "dark";
-export type ServicePreviewVariant = "identities" | "systems" | "guidelines";
+export type ServicePreviewVariant =
+  | "identities"
+  | "systems"
+  | "guidelines"
+  | "toolkits"
+  | "direction";
 
 export interface ServiceStackItem {
   id: string;
@@ -34,6 +39,7 @@ export interface StickyServicesStackProps
   ctaHref?: string;
   onCtaClick?: (event: React.MouseEvent<HTMLAnchorElement>) => void;
   items?: ServiceStackItem[];
+  cardCount?: number;
   theme?: StickyServicesTheme;
   enableStackDimming?: boolean;
   animatePreviews?: boolean;
@@ -68,6 +74,26 @@ export const DEFAULT_SERVICE_ITEMS: ServiceStackItem[] = [
       "We develop best practices and documentation that empower internal and external teams to ensure the identity is consistent and output at the highest of standards.",
     previewVariant: "guidelines",
   },
+  {
+    id: "toolkits",
+    indexLabel: "4",
+    category: "(Toolkits)",
+    headline:
+      "Delivering production-ready motion toolkits for product teams.",
+    description:
+      "We translate motion principles into reusable code tokens, easing curves, and component libraries—bridging design and engineering without friction.",
+    previewVariant: "toolkits",
+  },
+  {
+    id: "direction",
+    indexLabel: "5",
+    category: "(Direction)",
+    headline:
+      "Directing launch films and kinetic moments that move audiences.",
+    description:
+      "We art-direct flagship brand films, product reveals, and interactive web moments built to capture attention and elevate every launch.",
+    previewVariant: "direction",
+  },
 ];
 
 const EDITORIAL_EASE: [number, number, number, number] = [0.16, 1, 0.3, 1];
@@ -75,16 +101,26 @@ const EDITORIAL_EASE: [number, number, number, number] = [0.16, 1, 0.3, 1];
 interface PreviewMediaProps {
   variant: ServicePreviewVariant;
   animate: boolean;
+  prefersReducedMotion: boolean;
 }
 
-function ServicePreviewMedia({ variant, animate }: PreviewMediaProps) {
+function ServicePreviewMedia({
+  variant,
+  animate,
+  prefersReducedMotion,
+}: PreviewMediaProps) {
+  const hoverMotion = prefersReducedMotion
+    ? undefined
+    : { y: -2, scale: 1.015 };
+
   if (variant === "identities") {
     return (
-      <div
+      <motion.div
+        whileHover={hoverMotion}
+        transition={{ type: "spring", stiffness: 320, damping: 26 }}
         className="relative flex aspect-[16/9] w-[205px] items-center justify-center overflow-hidden rounded-[6px] border border-black/10 bg-[#E2FF65] text-[#09090B] sm:w-[218px]"
         aria-hidden="true"
       >
-        {/* Cobalt blue beat wipe matching the reference reel */}
         <motion.div
           className="pointer-events-none absolute inset-0 bg-[#0B33FF]"
           animate={
@@ -106,7 +142,6 @@ function ServicePreviewMedia({ variant, animate }: PreviewMediaProps) {
           }
         />
 
-        {/* Phase 1: Bold double chevron mark */}
         <motion.div
           className="absolute inset-0 flex items-center justify-start px-5"
           animate={
@@ -137,7 +172,6 @@ function ServicePreviewMedia({ variant, animate }: PreviewMediaProps) {
           </svg>
         </motion.div>
 
-        {/* Phase 2: Back Market wordmark + badge */}
         <motion.div
           className="relative z-10 flex items-center gap-2.5 px-4"
           animate={
@@ -178,7 +212,7 @@ function ServicePreviewMedia({ variant, animate }: PreviewMediaProps) {
             <span className="text-[17px]">Market</span>
           </div>
         </motion.div>
-      </div>
+      </motion.div>
     );
   }
 
@@ -195,7 +229,9 @@ function ServicePreviewMedia({ variant, animate }: PreviewMediaProps) {
     ];
 
     return (
-      <div
+      <motion.div
+        whileHover={hoverMotion}
+        transition={{ type: "spring", stiffness: 320, damping: 26 }}
         className="relative grid aspect-[16/9] w-[205px] grid-cols-4 grid-rows-2 gap-1 overflow-hidden rounded-[6px] border border-black/15 bg-[#09090B] p-1.5 sm:w-[218px] dark:border-white/15"
         aria-hidden="true"
       >
@@ -247,62 +283,180 @@ function ServicePreviewMedia({ variant, animate }: PreviewMediaProps) {
             {tile.label && <span className={tile.accent}>{tile.label}</span>}
           </motion.div>
         ))}
-      </div>
+      </motion.div>
     );
   }
 
-  const pills = [
-    "bg-[#3B82F6]",
-    "bg-[#14B8A6]",
-    "bg-[#22C55E]",
-    "bg-[#F97316]",
-    "bg-[#EC4899]",
-    "bg-[#8B5CF6]",
-  ];
+  if (variant === "guidelines") {
+    const pills = [
+      "bg-[#3B82F6]",
+      "bg-[#14B8A6]",
+      "bg-[#22C55E]",
+      "bg-[#F97316]",
+      "bg-[#EC4899]",
+      "bg-[#8B5CF6]",
+    ];
+
+    return (
+      <motion.div
+        whileHover={hoverMotion}
+        transition={{ type: "spring", stiffness: 320, damping: 26 }}
+        className="relative aspect-[16/9] w-[205px] overflow-hidden rounded-[6px] bg-gradient-to-br from-[#4338CA] via-[#2563EB] to-[#06B6D4] p-[4px] sm:w-[218px]"
+        aria-hidden="true"
+      >
+        <div className="flex h-full w-full flex-col justify-between rounded-[3px] bg-white p-2.5 text-[#0F172A]">
+          <div className="flex flex-col gap-0.5">
+            <span className="text-[10px] leading-[1.1] font-semibold tracking-[-0.02em] text-[#4338CA]">
+              How does
+              <br />
+              Canva move?
+            </span>
+            <span className="mt-1 h-[2px] w-10 rounded-full bg-slate-200" />
+            <span className="h-[2px] w-7 rounded-full bg-slate-200" />
+          </div>
+          <div className="flex flex-col items-end gap-[2px]">
+            {pills.map((pillColor, idx) => (
+              <motion.span
+                key={pillColor}
+                className={cn("h-[6px] w-5 rounded-full", pillColor)}
+                style={{ marginRight: `${(pills.length - 1 - idx) * 9}px` }}
+                animate={
+                  animate
+                    ? {
+                        x: [0, 4, 0],
+                      }
+                    : undefined
+                }
+                transition={
+                  animate
+                    ? {
+                        duration: 2.8,
+                        delay: idx * 0.12,
+                        repeat: Infinity,
+                        ease: EDITORIAL_EASE,
+                      }
+                    : undefined
+                }
+              />
+            ))}
+          </div>
+        </div>
+      </motion.div>
+    );
+  }
+
+  if (variant === "toolkits") {
+    return (
+      <motion.div
+        whileHover={hoverMotion}
+        transition={{ type: "spring", stiffness: 320, damping: 26 }}
+        className="relative flex aspect-[16/9] w-[205px] flex-col justify-between overflow-hidden rounded-[6px] border border-black/15 bg-[#111114] p-3 text-white sm:w-[218px] dark:border-white/15"
+        aria-hidden="true"
+      >
+        <div className="flex items-center justify-between text-[9px] font-medium tracking-tight text-zinc-400">
+          <span>ease.editorial</span>
+          <span className="rounded bg-white/10 px-1.5 py-0.5 text-[8px] text-zinc-200">
+            0.65s
+          </span>
+        </div>
+
+        <svg viewBox="0 0 160 52" className="h-12 w-full overflow-visible">
+          <path
+            d="M4 46 C 36 46, 48 6, 156 6"
+            fill="none"
+            stroke="rgba(255,255,255,0.16)"
+            strokeWidth="1.5"
+          />
+          <motion.path
+            d="M4 46 C 36 46, 48 6, 156 6"
+            fill="none"
+            stroke="#A3E635"
+            strokeWidth="2"
+            strokeLinecap="round"
+            initial={{ pathLength: 0.25 }}
+            animate={
+              animate
+                ? { pathLength: [0.15, 1, 0.15] }
+                : { pathLength: 1 }
+            }
+            transition={
+              animate
+                ? { duration: 3.8, repeat: Infinity, ease: EDITORIAL_EASE }
+                : undefined
+            }
+          />
+          <motion.circle
+            r="3.5"
+            fill="#FFFFFF"
+            cx="4"
+            cy="46"
+            animate={
+              animate
+                ? {
+                    cx: [4, 54, 156, 4],
+                    cy: [46, 14, 6, 46],
+                  }
+                : { cx: 156, cy: 6 }
+            }
+            transition={
+              animate
+                ? { duration: 3.8, repeat: Infinity, ease: EDITORIAL_EASE }
+                : undefined
+            }
+          />
+        </svg>
+
+        <div className="flex items-center gap-1.5">
+          <span className="h-1.5 w-1.5 rounded-full bg-[#A3E635]" />
+          <span className="text-[9px] text-zinc-400">
+            cubic-bezier(0.16, 1, 0.3, 1)
+          </span>
+        </div>
+      </motion.div>
+    );
+  }
 
   return (
-    <div
-      className="relative aspect-[16/9] w-[205px] overflow-hidden rounded-[6px] bg-gradient-to-br from-[#4338CA] via-[#2563EB] to-[#06B6D4] p-[4px] sm:w-[218px]"
+    <motion.div
+      whileHover={hoverMotion}
+      transition={{ type: "spring", stiffness: 320, damping: 26 }}
+      className="relative flex aspect-[16/9] w-[205px] flex-col justify-between overflow-hidden rounded-[6px] border border-black/15 bg-[#18181B] p-3 text-white sm:w-[218px] dark:border-white/15"
       aria-hidden="true"
     >
-      <div className="flex h-full w-full flex-col justify-between rounded-[3px] bg-white p-2.5 text-[#0F172A]">
-        <div className="flex flex-col gap-0.5">
-          <span className="text-[10px] leading-[1.1] font-semibold tracking-[-0.02em] text-[#4338CA]">
-            How does
-            <br />
-            Canva move?
-          </span>
-          <span className="mt-1 h-[2px] w-10 rounded-full bg-slate-200" />
-          <span className="h-[2px] w-7 rounded-full bg-slate-200" />
-        </div>
-        <div className="flex flex-col items-end gap-[2px]">
-          {pills.map((pillColor, idx) => (
-            <motion.span
-              key={pillColor}
-              className={cn("h-[6px] w-5 rounded-full", pillColor)}
-              style={{ marginRight: `${(pills.length - 1 - idx) * 9}px` }}
-              animate={
-                animate
-                  ? {
-                      x: [0, 4, 0],
-                    }
-                  : undefined
-              }
-              transition={
-                animate
-                  ? {
-                      duration: 2.8,
-                      delay: idx * 0.12,
-                      repeat: Infinity,
-                      ease: EDITORIAL_EASE,
-                    }
-                  : undefined
-              }
-            />
-          ))}
-        </div>
+      <div className="flex items-center justify-between text-[9px] tracking-wider text-zinc-400 uppercase">
+        <span className="flex items-center gap-1.5">
+          <motion.span
+            className="h-1.5 w-1.5 rounded-full bg-rose-500"
+            animate={animate ? { opacity: [1, 0.25, 1] } : undefined}
+            transition={
+              animate ? { duration: 1.4, repeat: Infinity } : undefined
+            }
+          />
+          REEL 05
+        </span>
+        <span className="font-mono text-[9px] text-zinc-300">00:14:08</span>
       </div>
-    </div>
+
+      <div className="flex items-center justify-center">
+        <span className="text-[15px] font-semibold tracking-[-0.03em] text-white">
+          Brand Film
+        </span>
+      </div>
+
+      <div className="relative h-1 w-full overflow-hidden rounded-full bg-white/15">
+        <motion.div
+          className="h-full rounded-full bg-white"
+          animate={
+            animate ? { width: ["12%", "88%", "12%"] } : { width: "64%" }
+          }
+          transition={
+            animate
+              ? { duration: 4.5, repeat: Infinity, ease: "easeInOut" }
+              : undefined
+          }
+        />
+      </div>
+    </motion.div>
   );
 }
 
@@ -337,23 +491,29 @@ function StickyServiceCard({
   });
 
   const smoothProgress = useSpring(scrollYProgress, {
-    stiffness: 180,
-    damping: 32,
-    mass: 0.25,
+    stiffness: 140,
+    damping: 28,
+    mass: 0.2,
   });
 
   const shouldDim = enableStackDimming && !prefersReducedMotion && !isLast;
 
   const overlayOpacity = useTransform(
     smoothProgress,
-    [0.12, 0.85],
+    [0.1, 0.85],
     shouldDim ? [0, 1] : [0, 0]
   );
 
   const cardScale = useTransform(
     smoothProgress,
-    [0.12, 0.9],
+    [0.1, 0.9],
     shouldDim ? [1, 0.986] : [1, 1]
+  );
+
+  const cardY = useTransform(
+    smoothProgress,
+    [0.1, 0.9],
+    shouldDim ? [0, -8] : [0, 0]
   );
 
   const surfaceClasses = isDarkForced
@@ -371,8 +531,8 @@ function StickyServiceCard({
   const dimOverlayClasses = isDarkForced
     ? "bg-black/45"
     : isLightForced
-      ? "bg-[#ECECEE]/70"
-      : "bg-[#ECECEE]/70 dark:bg-black/45";
+      ? "bg-[#ECECEE]/72"
+      : "bg-[#ECECEE]/72 dark:bg-black/45";
 
   return (
     <li
@@ -382,7 +542,11 @@ function StickyServiceCard({
     >
       <motion.article
         aria-labelledby={headingId}
-        style={{ scale: cardScale, transformOrigin: "top center" }}
+        style={{
+          scale: cardScale,
+          y: cardY,
+          transformOrigin: "top center",
+        }}
         className={cn(
           "relative w-full border-t will-change-transform",
           index > 0 && "shadow-[0_-6px_24px_rgba(0,0,0,0.025)]",
@@ -403,7 +567,7 @@ function StickyServiceCard({
             <motion.span
               initial={prefersReducedMotion ? false : { y: "35%", opacity: 0 }}
               whileInView={{ y: "0%", opacity: 1 }}
-              viewport={{ once: true, amount: 0.25 }}
+              viewport={{ once: true, amount: 0.12 }}
               transition={{ duration: 0.65, ease: EDITORIAL_EASE }}
               className="block text-[4.5rem] leading-[0.84] font-medium tracking-[-0.05em] tabular-nums select-none sm:text-[6.5rem] lg:text-[8.75rem]"
               aria-hidden="true"
@@ -416,7 +580,7 @@ function StickyServiceCard({
             <motion.span
               initial={prefersReducedMotion ? false : { y: "100%", opacity: 0 }}
               whileInView={{ y: "0%", opacity: 1 }}
-              viewport={{ once: true, amount: 0.25 }}
+              viewport={{ once: true, amount: 0.12 }}
               transition={{
                 duration: 0.55,
                 delay: 0.05,
@@ -436,7 +600,7 @@ function StickyServiceCard({
                   prefersReducedMotion ? false : { y: "28%", opacity: 0 }
                 }
                 whileInView={{ y: "0%", opacity: 1 }}
-                viewport={{ once: true, amount: 0.25 }}
+                viewport={{ once: true, amount: 0.12 }}
                 transition={{
                   duration: 0.68,
                   delay: 0.08,
@@ -453,7 +617,7 @@ function StickyServiceCard({
                 prefersReducedMotion ? false : { y: 14, opacity: 0 }
               }
               whileInView={{ y: 0, opacity: 1 }}
-              viewport={{ once: true, amount: 0.25 }}
+              viewport={{ once: true, amount: 0.12 }}
               transition={{
                 duration: 0.6,
                 delay: 0.14,
@@ -467,6 +631,7 @@ function StickyServiceCard({
                 <ServicePreviewMedia
                   variant={item.previewVariant ?? "identities"}
                   animate={animatePreviews && !prefersReducedMotion}
+                  prefersReducedMotion={prefersReducedMotion}
                 />
               )}
             </motion.div>
@@ -476,7 +641,7 @@ function StickyServiceCard({
                 prefersReducedMotion ? false : { y: 12, opacity: 0 }
               }
               whileInView={{ y: 0, opacity: 1 }}
-              viewport={{ once: true, amount: 0.25 }}
+              viewport={{ once: true, amount: 0.12 }}
               transition={{
                 duration: 0.6,
                 delay: 0.18,
@@ -508,6 +673,7 @@ export const StickyServicesStack = React.forwardRef<
       ctaHref = "#contact",
       onCtaClick,
       items = DEFAULT_SERVICE_ITEMS,
+      cardCount,
       theme = "auto",
       enableStackDimming = true,
       animatePreviews = true,
@@ -528,7 +694,12 @@ export const StickyServicesStack = React.forwardRef<
         ? "bg-white text-zinc-950"
         : "bg-white text-zinc-950 dark:bg-[#09090B] dark:text-zinc-50";
 
-    const safeItems = items.length > 0 ? items : DEFAULT_SERVICE_ITEMS;
+    const baseItems = items.length > 0 ? items : DEFAULT_SERVICE_ITEMS;
+    const clampedCount =
+      typeof cardCount === "number" && Number.isFinite(cardCount)
+        ? Math.max(1, Math.min(baseItems.length, Math.round(cardCount)))
+        : baseItems.length;
+    const visibleItems = baseItems.slice(0, clampedCount);
 
     return (
       <section
@@ -582,12 +753,12 @@ export const StickyServicesStack = React.forwardRef<
         </header>
 
         <ol className="relative m-0 flex flex-col p-0">
-          {safeItems.map((item, idx) => (
+          {visibleItems.map((item, idx) => (
             <StickyServiceCard
               key={item.id}
               item={item}
               index={idx}
-              total={safeItems.length}
+              total={visibleItems.length}
               enableStackDimming={enableStackDimming}
               animatePreviews={animatePreviews}
               prefersReducedMotion={prefersReducedMotion}
