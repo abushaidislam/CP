@@ -5,6 +5,7 @@ import {
   motion,
   useReducedMotion,
   useScroll,
+  useSpring,
   useTransform,
 } from "framer-motion";
 
@@ -69,35 +70,91 @@ export const DEFAULT_SERVICE_ITEMS: ServiceStackItem[] = [
   },
 ];
 
+const EDITORIAL_EASE: [number, number, number, number] = [0.16, 1, 0.3, 1];
+
 interface PreviewMediaProps {
   variant: ServicePreviewVariant;
   animate: boolean;
 }
 
 function ServicePreviewMedia({ variant, animate }: PreviewMediaProps) {
-  const shouldAnimate = animate;
-
   if (variant === "identities") {
     return (
       <div
-        className="relative flex aspect-[16/9] w-[208px] items-center justify-center overflow-hidden rounded-[6px] border border-black/10 bg-[#E2FF65] text-[#09090B] shadow-xs sm:w-[224px]"
+        className="relative flex aspect-[16/9] w-[205px] items-center justify-center overflow-hidden rounded-[6px] border border-black/10 bg-[#E2FF65] text-[#09090B] sm:w-[218px]"
         aria-hidden="true"
       >
+        {/* Cobalt blue beat wipe matching the reference reel */}
         <motion.div
-          className="flex items-center gap-2.5 px-4"
+          className="pointer-events-none absolute inset-0 bg-[#0B33FF]"
           animate={
-            shouldAnimate
+            animate
               ? {
-                  x: [0, -6, 0],
+                  opacity: [0, 0, 1, 1, 0],
+                }
+              : { opacity: 0 }
+          }
+          transition={
+            animate
+              ? {
+                  duration: 6,
+                  times: [0, 0.62, 0.68, 0.9, 0.96],
+                  repeat: Infinity,
+                  ease: EDITORIAL_EASE,
                 }
               : undefined
           }
-          transition={
-            shouldAnimate
+        />
+
+        {/* Phase 1: Bold double chevron mark */}
+        <motion.div
+          className="absolute inset-0 flex items-center justify-start px-5"
+          animate={
+            animate
               ? {
-                  duration: 3.6,
+                  opacity: [1, 1, 0, 0, 1],
+                  x: [0, 12, 24, -12, 0],
+                }
+              : { opacity: 0 }
+          }
+          transition={
+            animate
+              ? {
+                  duration: 6,
+                  times: [0, 0.25, 0.34, 0.92, 1],
                   repeat: Infinity,
-                  ease: [0.22, 1, 0.36, 1],
+                  ease: EDITORIAL_EASE,
+                }
+              : undefined
+          }
+        >
+          <svg
+            viewBox="0 0 48 32"
+            className="h-9 w-12 text-[#09090B]"
+            fill="currentColor"
+          >
+            <path d="M4 4h7l9 12-9 12H4l9-12L4 4zm17 0h8l9 12-9 12h-8l9-12-9-12z" />
+          </svg>
+        </motion.div>
+
+        {/* Phase 2: Back Market wordmark + badge */}
+        <motion.div
+          className="relative z-10 flex items-center gap-2.5 px-4"
+          animate={
+            animate
+              ? {
+                  opacity: [0, 0, 1, 1, 0, 0],
+                  y: [8, 8, 0, 0, -6, 8],
+                }
+              : { opacity: 1, y: 0 }
+          }
+          transition={
+            animate
+              ? {
+                  duration: 6,
+                  times: [0, 0.26, 0.36, 0.6, 0.68, 1],
+                  repeat: Infinity,
+                  ease: EDITORIAL_EASE,
                 }
               : undefined
           }
@@ -108,7 +165,7 @@ function ServicePreviewMedia({ variant, animate }: PreviewMediaProps) {
               className="h-4 w-4"
               fill="none"
               stroke="currentColor"
-              strokeWidth="2.5"
+              strokeWidth="2.6"
               strokeLinecap="round"
               strokeLinejoin="round"
             >
@@ -116,7 +173,7 @@ function ServicePreviewMedia({ variant, animate }: PreviewMediaProps) {
               <path d="M18 17l-5-5 5-5" />
             </svg>
           </div>
-          <div className="flex flex-col leading-[0.95] font-semibold tracking-[-0.03em]">
+          <div className="flex flex-col leading-[0.94] font-semibold tracking-[-0.03em] text-[#09090B]">
             <span className="text-[17px]">Back</span>
             <span className="text-[17px]">Market</span>
           </div>
@@ -139,7 +196,7 @@ function ServicePreviewMedia({ variant, animate }: PreviewMediaProps) {
 
     return (
       <div
-        className="relative grid aspect-[16/9] w-[208px] grid-cols-4 grid-rows-2 gap-1 overflow-hidden rounded-[6px] border border-black/15 bg-[#09090B] p-1.5 shadow-xs sm:w-[224px] dark:border-white/15"
+        className="relative grid aspect-[16/9] w-[205px] grid-cols-4 grid-rows-2 gap-1 overflow-hidden rounded-[6px] border border-black/15 bg-[#09090B] p-1.5 sm:w-[218px] dark:border-white/15"
         aria-hidden="true"
       >
         {tiles.map((tile, idx) => (
@@ -150,18 +207,18 @@ function ServicePreviewMedia({ variant, animate }: PreviewMediaProps) {
               tile.bg
             )}
             animate={
-              shouldAnimate
+              animate
                 ? {
-                    opacity: [0.88, 1, 0.88],
-                    scale: [1, 1.02, 1],
+                    opacity: [0.86, 1, 0.86],
+                    scale: [1, 1.025, 1],
                   }
                 : undefined
             }
             transition={
-              shouldAnimate
+              animate
                 ? {
-                    duration: 3.2,
-                    delay: idx * 0.18,
+                    duration: 3.4,
+                    delay: idx * 0.16,
                     repeat: Infinity,
                     ease: "easeInOut",
                   }
@@ -187,9 +244,7 @@ function ServicePreviewMedia({ variant, animate }: PreviewMediaProps) {
             {tile.shape === "orb" && (
               <div className="h-5 w-5 rounded-full bg-gradient-to-tr from-[#22C55E] via-[#0EA5E9] to-[#A855F7]" />
             )}
-            {tile.label && (
-              <span className={tile.accent}>{tile.label}</span>
-            )}
+            {tile.label && <span className={tile.accent}>{tile.label}</span>}
           </motion.div>
         ))}
       </div>
@@ -207,7 +262,7 @@ function ServicePreviewMedia({ variant, animate }: PreviewMediaProps) {
 
   return (
     <div
-      className="relative aspect-[16/9] w-[208px] overflow-hidden rounded-[6px] bg-gradient-to-br from-[#4338CA] via-[#2563EB] to-[#06B6D4] p-[4px] shadow-xs sm:w-[224px]"
+      className="relative aspect-[16/9] w-[205px] overflow-hidden rounded-[6px] bg-gradient-to-br from-[#4338CA] via-[#2563EB] to-[#06B6D4] p-[4px] sm:w-[218px]"
       aria-hidden="true"
     >
       <div className="flex h-full w-full flex-col justify-between rounded-[3px] bg-white p-2.5 text-[#0F172A]">
@@ -227,19 +282,19 @@ function ServicePreviewMedia({ variant, animate }: PreviewMediaProps) {
               className={cn("h-[6px] w-5 rounded-full", pillColor)}
               style={{ marginRight: `${(pills.length - 1 - idx) * 9}px` }}
               animate={
-                shouldAnimate
+                animate
                   ? {
-                      x: [0, 3, 0],
+                      x: [0, 4, 0],
                     }
                   : undefined
               }
               transition={
-                shouldAnimate
+                animate
                   ? {
-                      duration: 2.6,
-                      delay: idx * 0.14,
+                      duration: 2.8,
+                      delay: idx * 0.12,
                       repeat: Infinity,
-                      ease: "easeInOut",
+                      ease: EDITORIAL_EASE,
                     }
                   : undefined
               }
@@ -272,7 +327,7 @@ function StickyServiceCard({
   isDarkForced,
   isLightForced,
 }: StickyServiceCardProps) {
-  const cardRef = useRef<HTMLDivElement>(null);
+  const cardRef = useRef<HTMLLIElement>(null);
   const headingId = useId();
   const isLast = index === total - 1;
 
@@ -281,18 +336,24 @@ function StickyServiceCard({
     offset: ["start start", "end start"],
   });
 
+  const smoothProgress = useSpring(scrollYProgress, {
+    stiffness: 180,
+    damping: 32,
+    mass: 0.25,
+  });
+
   const shouldDim = enableStackDimming && !prefersReducedMotion && !isLast;
 
   const overlayOpacity = useTransform(
-    scrollYProgress,
-    [0.15, 0.85],
+    smoothProgress,
+    [0.12, 0.85],
     shouldDim ? [0, 1] : [0, 0]
   );
 
   const cardScale = useTransform(
-    scrollYProgress,
-    [0.15, 0.9],
-    shouldDim ? [1, 0.985] : [1, 1]
+    smoothProgress,
+    [0.12, 0.9],
+    shouldDim ? [1, 0.986] : [1, 1]
   );
 
   const surfaceClasses = isDarkForced
@@ -310,8 +371,8 @@ function StickyServiceCard({
   const dimOverlayClasses = isDarkForced
     ? "bg-black/45"
     : isLightForced
-      ? "bg-zinc-200/55"
-      : "bg-zinc-200/55 dark:bg-black/45";
+      ? "bg-[#ECECEE]/70"
+      : "bg-[#ECECEE]/70 dark:bg-black/45";
 
   return (
     <li
@@ -323,8 +384,8 @@ function StickyServiceCard({
         aria-labelledby={headingId}
         style={{ scale: cardScale, transformOrigin: "top center" }}
         className={cn(
-          "relative w-full border-t transition-colors duration-200",
-          index > 0 && "shadow-[0_-12px_32px_rgba(0,0,0,0.035)]",
+          "relative w-full border-t will-change-transform",
+          index > 0 && "shadow-[0_-6px_24px_rgba(0,0,0,0.025)]",
           surfaceClasses
         )}
       >
@@ -337,31 +398,69 @@ function StickyServiceCard({
           )}
         />
 
-        <div className="relative z-10 mx-auto grid w-full max-w-[1440px] grid-cols-1 gap-y-6 px-5 pt-8 pb-16 sm:px-8 sm:pt-10 sm:pb-24 md:grid-cols-12 md:gap-x-6">
-          <div className="md:col-span-3">
-            <span
-              className="block text-[4.5rem] leading-[0.86] font-normal tracking-[-0.05em] tabular-nums select-none sm:text-[6.5rem] lg:text-[8.75rem]"
+        <div className="relative z-10 mx-auto grid w-full max-w-[1440px] grid-cols-1 gap-y-6 px-6 pt-8 pb-16 sm:px-10 sm:pt-10 sm:pb-24 md:grid-cols-12 md:gap-x-6">
+          <div className="overflow-hidden md:col-span-3">
+            <motion.span
+              initial={prefersReducedMotion ? false : { y: "35%", opacity: 0 }}
+              whileInView={{ y: "0%", opacity: 1 }}
+              viewport={{ once: true, amount: 0.25 }}
+              transition={{ duration: 0.65, ease: EDITORIAL_EASE }}
+              className="block text-[4.5rem] leading-[0.84] font-medium tracking-[-0.05em] tabular-nums select-none sm:text-[6.5rem] lg:text-[8.75rem]"
               aria-hidden="true"
             >
               {item.indexLabel ?? String(index + 1)}
-            </span>
+            </motion.span>
           </div>
 
-          <div className="md:col-span-2 md:pt-1">
-            <span className="inline-block text-[12px] font-medium tracking-[-0.01em] sm:text-[13px]">
+          <div className="overflow-hidden md:col-span-2 md:pt-1">
+            <motion.span
+              initial={prefersReducedMotion ? false : { y: "100%", opacity: 0 }}
+              whileInView={{ y: "0%", opacity: 1 }}
+              viewport={{ once: true, amount: 0.25 }}
+              transition={{
+                duration: 0.55,
+                delay: 0.05,
+                ease: EDITORIAL_EASE,
+              }}
+              className="inline-block text-[12px] font-medium tracking-[-0.01em] sm:text-[13px]"
+            >
               {item.category}
-            </span>
+            </motion.span>
           </div>
 
           <div className="flex flex-col md:col-span-7">
-            <h3
-              id={headingId}
-              className="max-w-[540px] text-[1.625rem] leading-[1.08] font-medium tracking-[-0.03em] sm:text-[2.125rem] lg:text-[2.5rem]"
-            >
-              {item.headline}
-            </h3>
+            <div className="overflow-hidden">
+              <motion.h3
+                id={headingId}
+                initial={
+                  prefersReducedMotion ? false : { y: "28%", opacity: 0 }
+                }
+                whileInView={{ y: "0%", opacity: 1 }}
+                viewport={{ once: true, amount: 0.25 }}
+                transition={{
+                  duration: 0.68,
+                  delay: 0.08,
+                  ease: EDITORIAL_EASE,
+                }}
+                className="max-w-[540px] text-[1.625rem] leading-[1.08] font-medium tracking-[-0.03em] sm:text-[2.125rem] lg:text-[2.5rem]"
+              >
+                {item.headline}
+              </motion.h3>
+            </div>
 
-            <div className="mt-7 mb-7">
+            <motion.div
+              initial={
+                prefersReducedMotion ? false : { y: 14, opacity: 0 }
+              }
+              whileInView={{ y: 0, opacity: 1 }}
+              viewport={{ once: true, amount: 0.25 }}
+              transition={{
+                duration: 0.6,
+                delay: 0.14,
+                ease: EDITORIAL_EASE,
+              }}
+              className="mt-8 mb-8"
+            >
               {item.customPreview ? (
                 item.customPreview
               ) : (
@@ -370,16 +469,26 @@ function StickyServiceCard({
                   animate={animatePreviews && !prefersReducedMotion}
                 />
               )}
-            </div>
+            </motion.div>
 
-            <p
+            <motion.p
+              initial={
+                prefersReducedMotion ? false : { y: 12, opacity: 0 }
+              }
+              whileInView={{ y: 0, opacity: 1 }}
+              viewport={{ once: true, amount: 0.25 }}
+              transition={{
+                duration: 0.6,
+                delay: 0.18,
+                ease: EDITORIAL_EASE,
+              }}
               className={cn(
-                "max-w-[500px] text-[13px] leading-[1.55] font-normal",
+                "max-w-[490px] text-[12.5px] leading-[1.5] font-normal sm:text-[13px]",
                 mutedTextClasses
               )}
             >
               {item.description}
-            </p>
+            </motion.p>
           </div>
         </div>
       </motion.article>
@@ -436,7 +545,7 @@ export const StickyServicesStack = React.forwardRef<
         }}
         {...rest}
       >
-        <header className="mx-auto grid w-full max-w-[1440px] grid-cols-1 gap-y-4 px-5 pt-10 pb-14 sm:px-8 sm:pt-12 sm:pb-20 md:grid-cols-12 md:items-start md:gap-x-6">
+        <header className="mx-auto grid w-full max-w-[1440px] grid-cols-1 gap-y-4 px-6 pt-10 pb-14 sm:px-10 sm:pt-12 sm:pb-20 md:grid-cols-12 md:items-start md:gap-x-6">
           <div className="md:col-span-5">
             <h2
               id={sectionTitleId}
