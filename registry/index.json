@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-19T11:28:37.155Z",
+  "updatedAt": "2026-11-19T11:32:42.817Z",
   "totalComponents": 54,
   "components": [
     {
@@ -10,16 +10,22 @@
       "description": "A sleek social brand profile card with an atmospheric mesh-gradient banner, overlapping emblem avatar, social links, and an animated Follow button with live follower count updates.",
       "category": "Custom",
       "isBuiltIn": false,
-      "updatedAt": 1795087707114,
-      "lastRepoSyncAt": 1795087717048,
+      "updatedAt": 1795087951250,
+      "lastRepoSyncAt": 1795087962490,
       "path": "registry/components/brand-profile-card",
       "files": [
         "component.tsx",
         "default.tsx",
         "index.css",
-        "manifest.json"
+        "manifest.json",
+        "preview.png"
       ],
-      "dependencies": []
+      "dependencies": [
+        "framer-motion",
+        "lucide-react",
+        "clsx",
+        "tailwind-merge"
+      ]
     },
     {
       "id": "comp-1795086871704-ydhci",
