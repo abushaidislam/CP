@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-19T10:14:27.387Z",
+  "updatedAt": "2026-11-19T10:14:51.860Z",
   "totalComponents": 52,
   "components": [
     {
@@ -10,8 +10,8 @@
       "description": "An interactive fanned card deck that continuously flings the front card out to the bottom-left and tucks it smoothly behind the stack, with click, drag-to-flick, and keyboard navigation.",
       "category": "Cards",
       "isBuiltIn": false,
-      "updatedAt": 1795083257778,
-      "lastRepoSyncAt": 1795083267327,
+      "updatedAt": 1795083281859,
+      "lastRepoSyncAt": 1795083291803,
       "path": "registry/components/card-shuffle-deck",
       "files": [
         "component.tsx",
