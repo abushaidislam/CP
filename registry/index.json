@@ -1,8 +1,27 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-19T07:40:18.095Z",
+  "updatedAt": "2026-11-19T08:27:51.004Z",
   "totalComponents": 51,
   "components": [
+    {
+      "id": "comp-1795005545986-6n5cr",
+      "slug": "aurora-search-bar",
+      "name": "Aurora Search Bar",
+      "description": "An expandable circular-to-pill search bar with critically-damped spring morphing and an iridescent bottom-edge aurora shimmer.",
+      "category": "Custom",
+      "isBuiltIn": false,
+      "updatedAt": 1795076861413,
+      "lastRepoSyncAt": 1795076870964,
+      "path": "registry/components/aurora-search-bar",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "index.css",
+        "manifest.json",
+        "preview.png"
+      ],
+      "dependencies": []
+    },
     {
       "id": "comp-1795072783869-qjna8",
       "slug": "card-shuffle-deck",
@@ -61,24 +80,6 @@
         "index.css",
         "manifest.json",
         "preview.png"
-      ],
-      "dependencies": []
-    },
-    {
-      "id": "comp-1795005545986-6n5cr",
-      "slug": "aurora-search-bar",
-      "name": "Aurora Search Bar",
-      "description": "An expandable circular-to-pill search bar with critically-damped spring morphing and an iridescent bottom-edge aurora shimmer.",
-      "category": "Custom",
-      "isBuiltIn": false,
-      "updatedAt": 1795005774602,
-      "lastRepoSyncAt": 1795005784153,
-      "path": "registry/components/aurora-search-bar",
-      "files": [
-        "component.tsx",
-        "default.tsx",
-        "index.css",
-        "manifest.json"
       ],
       "dependencies": []
     },
