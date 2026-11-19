@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-19T11:15:05.745Z",
+  "updatedAt": "2026-11-19T11:15:15.944Z",
   "totalComponents": 53,
   "components": [
     {
@@ -10,8 +10,8 @@
       "description": "A sleek, detaching accordion where the active item smoothly splits away from adjacent rows into an elevated rounded card while collapsed neighbors seamlessly re-merge.",
       "category": "Custom",
       "isBuiltIn": false,
-      "updatedAt": 1795086897681,
-      "lastRepoSyncAt": 1795086905696,
+      "updatedAt": 1795086906181,
+      "lastRepoSyncAt": 1795086915892,
       "path": "registry/components/split-accordion",
       "files": [
         "component.tsx",
