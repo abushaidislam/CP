@@ -495,7 +495,7 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
 
   useEffect(() => {
     function handleMessage(event: MessageEvent) {
-      if (iframeRef.current && event.source !== iframeRef.current.contentWindow) {
+      if (!iframeRef.current || event.source !== iframeRef.current.contentWindow) {
         return;
       }
       if (event.data) {

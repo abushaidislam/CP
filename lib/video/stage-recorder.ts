@@ -547,15 +547,28 @@ async function startDirectStageCapture(
     throw new Error("Unable to initialize 2D compositor canvas.");
   }
   ctx.imageSmoothingEnabled = true;
-  ctx.imageSmoothingQuality = "medium";
+  ctx.imageSmoothingQuality = "high";
+
+  // Dedicated backing frame buffer so SVG foreignObject blobs are rasterized ONCE while their
+  // object URL is still valid (never revoked prematurely!) and blitted at 60fps in <0.1ms.
+  const frameBufferCanvas = document.createElement("canvas");
+  frameBufferCanvas.width = width;
+  frameBufferCanvas.height = height;
+  const frameBufferCtx = frameBufferCanvas.getContext("2d", { alpha: false });
+  if (frameBufferCtx) {
+    frameBufferCtx.fillStyle = isDark ? "#09090b" : "#ffffff";
+    frameBufferCtx.fillRect(0, 0, width, height);
+    frameBufferCtx.imageSmoothingEnabled = true;
+    frameBufferCtx.imageSmoothingQuality = "high";
+  }
 
   let active = true;
   let rafId = 0;
   let frameReqId = 0;
   let inFlightFrame = false;
+  let hasDrawnFrame = false;
   let nextPollTimer: ReturnType<typeof setTimeout> | null = null;
   let safetyTimer: ReturnType<typeof setTimeout> | null = null;
-  let latestFrameSource: HTMLImageElement | ImageBitmap | null = null;
 
   let cursorTelemetry: CursorTelemetryState = options.initialCursorTelemetry
     ? {
@@ -573,7 +586,7 @@ async function startDirectStageCapture(
         ripples: [],
       };
 
-  const closeBitmapIfNeeded = (src: HTMLImageElement | ImageBitmap | null) => {
+  const closeBitmapIfNeeded = (src: ImageBitmap | null) => {
     if (src && typeof ImageBitmap !== "undefined" && src instanceof ImageBitmap) {
       try {
         src.close();
@@ -586,8 +599,7 @@ async function startDirectStageCapture(
   const scheduleNextCapture = (lastCaptureMs = 16) => {
     if (!active) return;
     if (nextPollTimer) clearTimeout(nextPollTimer);
-    // Adaptive budget: guarantee >= 70% main-thread headroom so live interactions never stutter
-    const delay = Math.max(45, Math.min(200, Math.round(lastCaptureMs * 2.2)));
+    const delay = Math.max(28, Math.min(90, Math.round(lastCaptureMs * 1.45)));
     nextPollTimer = setTimeout(requestSandboxFrame, delay);
   };
 
@@ -603,28 +615,18 @@ async function startDirectStageCapture(
     safetyTimer = setTimeout(() => {
       if (!active) return;
       inFlightFrame = false;
-      scheduleNextCapture(40);
-    }, 320);
+      scheduleNextCapture(35);
+    }, 260);
   };
-
-  // Seed initial frame before starting recorder
-  requestSandboxFrame();
-  await new Promise((r) => setTimeout(r, 110));
 
   const drawFrame = () => {
     if (!active) return;
 
-    ctx.fillStyle = isDark ? "#09090b" : "#ffffff";
-    ctx.fillRect(0, 0, width, height);
-
-    if (latestFrameSource) {
-      const ready =
-        typeof ImageBitmap !== "undefined" && latestFrameSource instanceof ImageBitmap
-          ? latestFrameSource.width > 0
-          : (latestFrameSource as HTMLImageElement).naturalWidth > 0;
-      if (ready) {
-        ctx.drawImage(latestFrameSource, 0, 0, width, height);
-      }
+    if (hasDrawnFrame) {
+      ctx.drawImage(frameBufferCanvas, 0, 0, width, height);
+    } else {
+      ctx.fillStyle = isDark ? "#09090b" : "#ffffff";
+      ctx.fillRect(0, 0, width, height);
     }
 
     drawCanvasCursorOverlay(ctx, width, height, cursorTelemetry, isDark);
@@ -647,33 +649,46 @@ async function startDirectStageCapture(
   };
 
   const startedAt = performance.now();
-  recorder.start(250);
+  recorder.start(200);
+
+  // Trigger initial frame request on next tick so caller's recorderRef.current is guaranteed assigned
+  nextPollTimer = setTimeout(requestSandboxFrame, 0);
 
   const cleanup = () => {
     active = false;
     if (nextPollTimer) clearTimeout(nextPollTimer);
     if (safetyTimer) clearTimeout(safetyTimer);
     if (rafId) cancelAnimationFrame(rafId);
-    closeBitmapIfNeeded(latestFrameSource);
-    latestFrameSource = null;
     canvasStream.getTracks().forEach((t) => t.stop());
   };
 
   const loadImageUrlIntoFrame = (url: string, shouldRevoke: boolean, captureMs: number) => {
     const img = new Image();
-    img.decoding = "async";
     img.onload = () => {
-      if (shouldRevoke) URL.revokeObjectURL(url);
+      if (active && frameBufferCtx) {
+        try {
+          frameBufferCtx.fillStyle = isDark ? "#09090b" : "#ffffff";
+          frameBufferCtx.fillRect(0, 0, width, height);
+          frameBufferCtx.drawImage(img, 0, 0, width, height);
+          hasDrawnFrame = true;
+        } catch {
+          // Ignore transient draw error
+        }
+      }
+      // Revoke blob URL ONLY AFTER drawImage has rasterized the SVG onto frameBufferCanvas
+      if (shouldRevoke) {
+        URL.revokeObjectURL(url);
+      }
       if (active) {
-        closeBitmapIfNeeded(latestFrameSource);
-        latestFrameSource = img;
         scheduleNextCapture(captureMs);
       }
     };
     img.onerror = () => {
-      if (shouldRevoke) URL.revokeObjectURL(url);
+      if (shouldRevoke) {
+        URL.revokeObjectURL(url);
+      }
       if (active) {
-        scheduleNextCapture(Math.max(captureMs, 50));
+        scheduleNextCapture(Math.max(captureMs, 45));
       }
     };
     img.src = url;
@@ -691,15 +706,21 @@ async function startDirectStageCapture(
         closeBitmapIfNeeded(bitmap);
         return;
       }
-      if (bitmap) {
-        closeBitmapIfNeeded(latestFrameSource);
-        latestFrameSource = bitmap;
+      if (bitmap && frameBufferCtx) {
+        try {
+          frameBufferCtx.fillStyle = isDark ? "#09090b" : "#ffffff";
+          frameBufferCtx.fillRect(0, 0, width, height);
+          frameBufferCtx.drawImage(bitmap, 0, 0, width, height);
+          hasDrawnFrame = true;
+        } catch {
+          // Ignore
+        }
       }
-      // Canvas ImageBitmap transfer is near zero-cost — can sample briskly (~30fps)
+      closeBitmapIfNeeded(bitmap);
       if (nextPollTimer) clearTimeout(nextPollTimer);
       nextPollTimer = setTimeout(
         requestSandboxFrame,
-        Math.max(28, Math.min(90, Math.round(captureMs * 1.8)))
+        Math.max(24, Math.min(75, Math.round(captureMs * 1.5)))
       );
     },
     pushFrameBlob: (_requestId, blob, captureMs = 20) => {
@@ -762,6 +783,13 @@ async function startDirectStageCapture(
           cleanup();
           reject(new Error("Direct Stage recorder encountered an encoding error."));
         };
+        try {
+          if (recorder.state === "recording") {
+            recorder.requestData();
+          }
+        } catch {
+          // Ignore requestData if unsupported
+        }
         recorder.stop();
       }),
   };
@@ -769,6 +797,9 @@ async function startDirectStageCapture(
 
 /**
  * Starts 16:9 60fps stage recording using the preferred engine with automatic graceful fallback.
+ * - In "auto" mode or inside embedded preview iframes, uses the zero-permission Direct Stage Compositor
+ *   so recording starts immediately without browser screen-share permission dialogs or NotAllowedError failures.
+ * - In "native" ("Hardware") mode, attempts getDisplayMedia + CropTarget and falls back to Direct Stage if blocked by iframe policy.
  */
 export async function startStageRecording(
   options: StartRecorderOptions
@@ -780,28 +811,29 @@ export async function startStageRecording(
     );
   }
 
-  if (options.preferredEngine === "direct") {
+  // Zero-permission Direct Stage Compositor is used for "direct" and "auto" so clicking Record
+  // works 100% of the time without system screen-share popups or iframe permission failures.
+  if (
+    options.preferredEngine === "direct" ||
+    options.preferredEngine === "auto" ||
+    caps.isLikelyCrossOriginIframe ||
+    !caps.hasDisplayMedia
+  ) {
+    if (options.preferredEngine === "native" && caps.hasDisplayMedia) {
+      try {
+        return await startNativeRegionCapture(options);
+      } catch {
+        return startDirectStageCapture(options);
+      }
+    }
     return startDirectStageCapture(options);
   }
 
-  if (caps.hasDisplayMedia) {
-    try {
-      return await startNativeRegionCapture(options);
-    } catch (err) {
-      if (options.preferredEngine === "native") {
-        throw err;
-      }
-      const msg = err instanceof Error ? err.message : String(err);
-      const isPolicyOrUnsupported =
-        /disallowed by permissions policy|not allowed|not supported|SecurityError/i.test(msg);
-      if (isPolicyOrUnsupported) {
-        return startDirectStageCapture(options);
-      }
-      throw err;
-    }
+  try {
+    return await startNativeRegionCapture(options);
+  } catch {
+    return startDirectStageCapture(options);
   }
-
-  return startDirectStageCapture(options);
 }
 
 /**

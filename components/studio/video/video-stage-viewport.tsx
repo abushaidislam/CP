@@ -61,6 +61,8 @@ export interface VideoStageViewportProps {
   onReviewPlayPause: () => void;
   onReviewRestart: () => void;
   onReviewSeek: (time: number) => void;
+  onReviewPlayStateChange?: (playing: boolean) => void;
+  onStageIframeLoad?: () => void;
   onRecordWithDirectEngine: () => void;
   backdropClassName?: string;
 }
@@ -99,6 +101,8 @@ export function VideoStageViewport({
   onReviewPlayPause,
   onReviewRestart,
   onReviewSeek,
+  onReviewPlayStateChange,
+  onStageIframeLoad,
   onRecordWithDirectEngine,
   backdropClassName,
 }: VideoStageViewportProps) {
@@ -266,13 +270,19 @@ export function VideoStageViewport({
                 ref={reviewVideoRef}
                 src={previewVideoUrl}
                 autoPlay
+                muted
                 loop
                 playsInline
+                onPlay={() => onReviewPlayStateChange?.(true)}
+                onPause={() => onReviewPlayStateChange?.(false)}
                 onTimeUpdate={(e) =>
                   onReviewTimeUpdate(e.currentTarget.currentTime)
                 }
                 onLoadedMetadata={(e) => {
-                  if (Number.isFinite(e.currentTarget.duration)) {
+                  if (
+                    Number.isFinite(e.currentTarget.duration) &&
+                    e.currentTarget.duration > 0
+                  ) {
                     onReviewDurationLoaded(e.currentTarget.duration);
                   }
                 }}
@@ -306,6 +316,7 @@ export function VideoStageViewport({
                 ref={stageIframeRef}
                 key={`${stageReloadKey}-${currentTemplateId}`}
                 srcDoc={sandboxHtml}
+                onLoad={onStageIframeLoad}
                 title="16:9 Video Studio Live Stage"
                 sandbox="allow-scripts allow-modals"
                 className="w-full h-full border-none block"

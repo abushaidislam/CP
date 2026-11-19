@@ -63,9 +63,7 @@ export function VideoStudioWorkspace({
 
   const [phase, setPhase] = useState<StudioPhase>("idle");
   const [countdownValue, setCountdownValue] = useState<number>(3);
-  const [zeroLagReplay, setZeroLagReplay] = useState<boolean>(
-    () => capabilities.isLikelyCrossOriginIframe || !capabilities.hasDisplayMedia
-  );
+  const [zeroLagReplay, setZeroLagReplay] = useState<boolean>(false);
   const [stageReady, setStageReady] = useState<boolean>(false);
   const [stageReloadKey, setStageReloadKey] = useState<number>(0);
   const [discoveredTargets, setDiscoveredTargets] =
@@ -76,7 +74,7 @@ export function VideoStudioWorkspace({
     });
 
   const [activeEngine, setActiveEngine] =
-    useState<CaptureEngineUsed>("native-zero-copy");
+    useState<CaptureEngineUsed>("direct-fallback");
   const [recordingResult, setRecordingResult] =
     useState<StageRecordingResult | null>(null);
   const [previewVideoUrl, setPreviewVideoUrl] = useState<string | null>(null);
@@ -124,6 +122,9 @@ export function VideoStudioWorkspace({
   const safetyStopTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const countdownTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const stageReadyFallbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null
+  );
   const previewThemeRef = useRef(previewTheme);
   previewThemeRef.current = previewTheme;
 
@@ -156,6 +157,15 @@ export function VideoStudioWorkspace({
     }
   }, [reloadTrigger]);
 
+  // Safety hydration fallback when sandboxHtml changes without compile errors
+  useEffect(() => {
+    if (compileError) return;
+    const safetyTimer = setTimeout(() => {
+      setStageReady(true);
+    }, 1800);
+    return () => clearTimeout(safetyTimer);
+  }, [sandboxHtml, stageReloadKey, compileError]);
+
   // Check server FFmpeg availability on mount
   useEffect(() => {
     let cancelled = false;
@@ -181,6 +191,20 @@ export function VideoStudioWorkspace({
       // Ignore cross-origin post failures
     }
   }, []);
+
+  const handleStageIframeLoad = useCallback(() => {
+    if (stageReadyFallbackTimerRef.current) {
+      clearTimeout(stageReadyFallbackTimerRef.current);
+    }
+    stageReadyFallbackTimerRef.current = setTimeout(() => {
+      setStageReady(true);
+      postToStage({
+        type: "SET_PREVIEW_THEME",
+        theme: previewThemeRef.current,
+      });
+      postToStage({ type: "VIDEO_STUDIO_SCAN" });
+    }, 350);
+  }, [postToStage]);
 
   // Keep stage preview theme synced with CanvasToolbar theme toggle without reloading srcDoc
   useEffect(() => {
@@ -403,6 +427,9 @@ export function VideoStudioWorkspace({
       if (toastTimerRef.current) {
         clearTimeout(toastTimerRef.current);
       }
+      if (stageReadyFallbackTimerRef.current) {
+        clearTimeout(stageReadyFallbackTimerRef.current);
+      }
       if (recorderRef.current) {
         recorderRef.current.cancel();
         recorderRef.current = null;
@@ -441,7 +468,7 @@ export function VideoStudioWorkspace({
       } else {
         setCachedMp4Url(null);
       }
-      setReviewDuration(result.durationMs / 1000);
+      setReviewDuration(Math.max(0.5, result.durationMs / 1000));
       setReviewCurrentTime(0);
       setIsReviewPlaying(true);
       setPhase("review");
@@ -530,7 +557,7 @@ export function VideoStudioWorkspace({
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
       if (
-        stageIframeRef.current &&
+        !stageIframeRef.current ||
         event.source !== stageIframeRef.current.contentWindow
       ) {
         return;
@@ -762,7 +789,7 @@ export function VideoStudioWorkspace({
         }
       };
 
-      if (recordingConfig.countdown && engineToUse === "direct") {
+      if (recordingConfig.countdown && engineToUse !== "native") {
         setPhase("countdown");
         setCountdownValue(3);
         let remaining = 3;
@@ -851,12 +878,9 @@ export function VideoStudioWorkspace({
       showExportToast(
         `Encoded & downloaded H.264 MP4 (${formatBytes(mp4Blob.size)})`
       );
-    } catch (err) {
-      setErrorMessage(
-        err instanceof Error
-          ? err.message
-          : "Unable to encode MP4. You can download WebM directly."
-      );
+    } catch {
+      // Fallback: download the captured video stream directly so the user always gets their file
+      handleDownloadWebm();
     } finally {
       setIsTranscodingMp4(false);
     }
@@ -955,6 +979,8 @@ export function VideoStudioWorkspace({
         onReviewPlayPause={handleReviewPlayPause}
         onReviewRestart={handleReviewRestart}
         onReviewSeek={handleReviewSeek}
+        onReviewPlayStateChange={setIsReviewPlaying}
+        onStageIframeLoad={handleStageIframeLoad}
         onRecordWithDirectEngine={() => {
           setRecordingConfig({ captureEngine: "direct" });
           void beginActualRecording("direct");

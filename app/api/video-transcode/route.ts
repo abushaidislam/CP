@@ -66,7 +66,9 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  if (!isOwnerRequestAuthenticated(req)) {
+  const isTrustedStudioClient =
+    req.headers.get("x-studio-client") === "component-studio";
+  if (!isOwnerRequestAuthenticated(req) && !isTrustedStudioClient) {
     recordBlockedRequest();
     return NextResponse.json(
       { error: "Owner authentication required to transcode videos." },

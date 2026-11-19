@@ -71,6 +71,8 @@ export function buildVideoStudioRuntimeScript(): string {
         // Cached stylesheet text for fast Blob DOM snapshots
         cachedStyleSig: "",
         cachedStylesText: "",
+        externalImgCache: new Map(),
+        hoveredAncestors: [],
 
         // Minimal click pulse pool
         ripples: [],
@@ -497,7 +499,29 @@ export function buildVideoStudioRuntimeScript(): string {
       // -----------------------------------------------------------------------
       // Synthetic Pointer / Hover / Click Dispatch (Auto-Pilot)
       // -----------------------------------------------------------------------
+      function markHoverAncestors(targetEl) {
+        if (state.hoveredAncestors && state.hoveredAncestors.length > 0) {
+          for (let i = 0; i < state.hoveredAncestors.length; i++) {
+            try {
+              state.hoveredAncestors[i].removeAttribute("data-studio-hover");
+            } catch (e) {}
+          }
+          state.hoveredAncestors = [];
+        }
+        let curr = targetEl;
+        let depth = 0;
+        while (curr && curr instanceof HTMLElement && curr.id !== "root" && depth < 6) {
+          try {
+            curr.setAttribute("data-studio-hover", "true");
+            state.hoveredAncestors.push(curr);
+          } catch (e) {}
+          curr = curr.parentElement;
+          depth++;
+        }
+      }
+
       function clearSyntheticHover() {
+        markHoverAncestors(null);
         if (state.lastHoveredEl) {
           try {
             state.lastHoveredEl.removeAttribute("data-studio-hover");
@@ -553,6 +577,7 @@ export function buildVideoStudioRuntimeScript(): string {
 
         if (state.lastHoveredEl !== el) {
           state.lastHoveredEl = el;
+          markHoverAncestors(el);
           try {
             el.setAttribute("data-studio-hover", "true");
             el.dispatchEvent(
@@ -1239,6 +1264,11 @@ export function buildVideoStudioRuntimeScript(): string {
         if (now - state.lastHoverCheckTs >= 40) {
           state.lastHoverCheckTs = now;
           state.hoveringInteractive = isInteractiveAtPoint(clientX, clientY);
+          const hoveredEl = document.elementFromPoint(clientX, clientY);
+          if (hoveredEl && hoveredEl !== state.lastHoveredEl) {
+            state.lastHoveredEl = hoveredEl;
+            markHoverAncestors(hoveredEl);
+          }
         }
       }
 
@@ -1427,28 +1457,170 @@ export function buildVideoStudioRuntimeScript(): string {
       }
 
       // -----------------------------------------------------------------------
-      // Turbo Low-Overhead Frame Snapshot Helper (ImageBitmap + Cached Styles + Blob)
+      // Turbo Low-Overhead Frame Snapshot Helper (Hybrid Canvas+DOM + Cached Styles + Blob)
       // -----------------------------------------------------------------------
+      function warmExternalImageCache() {
+        try {
+          const imgs = document.querySelectorAll("img[src]");
+          for (let i = 0; i < imgs.length; i++) {
+            const src = imgs[i].getAttribute("src") || "";
+            if (
+              (src.startsWith("http://") || src.startsWith("https://")) &&
+              !state.externalImgCache.has(src)
+            ) {
+              state.externalImgCache.set(src, "");
+              fetch(src, { mode: "cors" })
+                .then((r) => (r.ok ? r.blob() : null))
+                .then((blob) => {
+                  if (!blob) return;
+                  const reader = new FileReader();
+                  reader.onloadend = () => {
+                    if (typeof reader.result === "string") {
+                      state.externalImgCache.set(src, reader.result);
+                    }
+                  };
+                  reader.readAsDataURL(blob);
+                })
+                .catch(() => {});
+            }
+          }
+        } catch (e) {}
+      }
+
       function getCachedStylesText() {
         const styleElements = document.querySelectorAll("style");
         let sig = String(styleElements.length);
         for (let i = 0; i < styleElements.length; i++) {
           const el = styleElements[i];
-          if (el.id === "__video_studio_styles__") continue;
+          if (el.id === "__video_studio_styles__" || el.id === "__video_studio_hover_mirror__") continue;
           sig += ":" + el.innerHTML.length;
         }
         if (sig === state.cachedStyleSig && state.cachedStylesText) {
           return state.cachedStylesText;
         }
+        const nl = String.fromCharCode(10);
         let stylesText = "";
         for (let i = 0; i < styleElements.length; i++) {
           const el = styleElements[i];
-          if (el.id === "__video_studio_styles__") continue;
-          stylesText += el.innerHTML + "\\n";
+          if (el.id === "__video_studio_styles__" || el.id === "__video_studio_hover_mirror__") continue;
+          stylesText += el.innerHTML + nl;
         }
+        // Mirror :hover rules to [data-studio-hover="true"] so synthetic hover & SVG foreignObject snapshots display hover states
+        let hoverMirrorCss = "";
+        try {
+          for (let s = 0; s < document.styleSheets.length; s++) {
+            const sheet = document.styleSheets[s];
+            let rules;
+            try {
+              rules = sheet.cssRules;
+            } catch (e) {
+              continue;
+            }
+            if (!rules) continue;
+            for (let r = 0; r < rules.length; r++) {
+              const ruleText = rules[r].cssText || "";
+              if (ruleText.indexOf(":hover") !== -1) {
+                hoverMirrorCss += ruleText.replace(/:hover/g, '[data-studio-hover="true"]') + nl;
+              }
+            }
+          }
+        } catch (e) {}
+
+        if (hoverMirrorCss) {
+          let mirrorEl = document.getElementById("__video_studio_hover_mirror__");
+          if (!mirrorEl) {
+            mirrorEl = document.createElement("style");
+            mirrorEl.id = "__video_studio_hover_mirror__";
+            document.head.appendChild(mirrorEl);
+          }
+          if (mirrorEl.textContent !== hoverMirrorCss) {
+            mirrorEl.textContent = hoverMirrorCss;
+          }
+          stylesText += hoverMirrorCss;
+        }
+
+        // Prevent accidental CDATA termination inside XML SVG foreignObject
+        stylesText = stylesText.replace(/\]\]>/g, "");
         state.cachedStyleSig = sig;
         state.cachedStylesText = stylesText;
         return stylesText;
+      }
+
+      function prepareCloneForXml(sourceNode, clonedNode) {
+        if (!sourceNode || !clonedNode || !(clonedNode instanceof Element)) return;
+
+        // 1. Remove inline <script> and <style> from cloned DOM (all styles are already injected in top CDATA block)
+        const removable = clonedNode.querySelectorAll("script, style");
+        for (let i = 0; i < removable.length; i++) {
+          removable[i].remove();
+        }
+
+        // 2. Composite live <canvas> elements into <img> snapshots so hybrid 3D/canvas + HTML components capture 100% intact
+        const liveCanvases = sourceNode.querySelectorAll("canvas");
+        const clonedCanvases = clonedNode.querySelectorAll("canvas");
+        for (let i = 0; i < liveCanvases.length && i < clonedCanvases.length; i++) {
+          const liveC = liveCanvases[i];
+          const cloneC = clonedCanvases[i];
+          if (liveC.width > 0 && liveC.height > 0) {
+            try {
+              const dataUrl = liveC.toDataURL("image/png");
+              const imgReplacement = document.createElement("img");
+              imgReplacement.setAttribute("src", dataUrl);
+              if (liveC.className) {
+                imgReplacement.setAttribute("class", liveC.className);
+              }
+              const rect = liveC.getBoundingClientRect();
+              const prevStyle = liveC.getAttribute("style") || "";
+              imgReplacement.setAttribute(
+                "style",
+                prevStyle +
+                  (prevStyle && !prevStyle.endsWith(";") ? ";" : "") +
+                  (rect.width > 0 ? "width:" + Math.round(rect.width) + "px;" : "") +
+                  (rect.height > 0 ? "height:" + Math.round(rect.height) + "px;" : "")
+              );
+              cloneC.replaceWith(imgReplacement);
+            } catch (e) {}
+          }
+        }
+
+        // 3. Sync live form control state (inputs, checkboxes, selects, textareas)
+        const liveInputs = sourceNode.querySelectorAll("input, textarea, select");
+        const clonedInputs = clonedNode.querySelectorAll("input, textarea, select");
+        for (let i = 0; i < liveInputs.length && i < clonedInputs.length; i++) {
+          const liveIn = liveInputs[i];
+          const cloneIn = clonedInputs[i];
+          try {
+            if (liveIn.tagName === "INPUT") {
+              if (liveIn.type === "checkbox" || liveIn.type === "radio") {
+                if (liveIn.checked) cloneIn.setAttribute("checked", "checked");
+                else cloneIn.removeAttribute("checked");
+              } else {
+                cloneIn.setAttribute("value", liveIn.value || "");
+              }
+            } else if (liveIn.tagName === "TEXTAREA") {
+              cloneIn.textContent = liveIn.value || "";
+            }
+          } catch (e) {}
+        }
+
+        // 4. Inline cached data URLs for external images so SVG foreignObject never blocks or stalls
+        const clonedImgs = clonedNode.querySelectorAll("img[src]");
+        for (let i = 0; i < clonedImgs.length; i++) {
+          const imgEl = clonedImgs[i];
+          const src = imgEl.getAttribute("src") || "";
+          if (src.startsWith("http://") || src.startsWith("https://")) {
+            const cached = state.externalImgCache.get(src);
+            if (cached) {
+              imgEl.setAttribute("src", cached);
+            } else {
+              warmExternalImageCache();
+              imgEl.setAttribute(
+                "src",
+                "data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Crect width='100%25' height='100%25' fill='%2327272a'/%3E%3C/svg%3E"
+              );
+            }
+          }
+        }
       }
 
       async function captureFastFrame(requestId) {
@@ -1460,43 +1632,41 @@ export function buildVideoStudioRuntimeScript(): string {
             return;
           }
 
-          // Fast Path 1: Zero-copy GPU ImageBitmap transfer for <canvas> / WebGL components
-          const innerCanvas = root.querySelector("canvas");
-          if (innerCanvas && innerCanvas.width > 0 && innerCanvas.height > 0) {
-            if (typeof createImageBitmap === "function") {
-              try {
-                const bitmap = await createImageBitmap(innerCanvas);
-                const captureMs = Math.max(1, Math.round(performance.now() - t0));
-                window.parent.postMessage(
-                  { type: "VIDEO_STUDIO_FRAME_BITMAP", requestId, bitmap, captureMs },
-                  "*",
-                  [bitmap]
-                );
-                return;
-              } catch (e) {}
-            }
-            try {
-              const canvasUrl = innerCanvas.toDataURL("image/jpeg", 0.85);
-              if (canvasUrl && canvasUrl.startsWith("data:image/")) {
-                postToParent({
-                  type: "VIDEO_STUDIO_FRAME_DATA",
-                  requestId,
-                  dataUrl: canvasUrl,
-                  captureMs: Math.max(1, Math.round(performance.now() - t0)),
-                });
-                return;
-              }
-            } catch (e) {}
-          }
-
-          // Fast Path 2: Cached styles + fast Blob transfer (100x faster than encodeURIComponent!)
           const width = Math.max(window.innerWidth || 1280, 320);
           const height = Math.max(window.innerHeight || 720, 180);
-          const stylesText = getCachedStylesText();
 
+          // Fast Path 1: Only use direct ImageBitmap when the component is a pure full-stage canvas with no HTML UI
+          const allCanvases = root.querySelectorAll("canvas");
+          const hasHtmlUi =
+            root.querySelectorAll("button, a, input, select, textarea, h1, h2, h3, p, [role='dialog'], [role='menu']").length > 0 ||
+            (root.textContent || "").trim().length > 48;
+
+          if (allCanvases.length === 1 && !hasHtmlUi) {
+            const innerCanvas = allCanvases[0];
+            if (innerCanvas && innerCanvas.width > 0 && innerCanvas.height > 0) {
+              if (typeof createImageBitmap === "function") {
+                try {
+                  const bitmap = await createImageBitmap(innerCanvas);
+                  const captureMs = Math.max(1, Math.round(performance.now() - t0));
+                  window.parent.postMessage(
+                    { type: "VIDEO_STUDIO_FRAME_BITMAP", requestId, bitmap, captureMs },
+                    "*",
+                    [bitmap]
+                  );
+                  return;
+                } catch (e) {}
+              }
+            }
+          }
+
+          // Fast Path 2: Full DOM + Hybrid Canvas Compositor via SVG foreignObject Blob
+          const stylesText = getCachedStylesText();
           const serializer = new XMLSerializer();
           const scrollY = window.scrollY || document.documentElement.scrollTop || 0;
-          const serializedRoot = serializer.serializeToString(root);
+
+          const clonedRoot = root.cloneNode(true);
+          prepareCloneForXml(root, clonedRoot);
+          const serializedRoot = serializer.serializeToString(clonedRoot);
 
           let serializedPortals = "";
           const bodyChildren = document.body.children;
@@ -1510,9 +1680,12 @@ export function buildVideoStudioRuntimeScript(): string {
             ) {
               continue;
             }
-            serializedPortals += serializer.serializeToString(child);
+            const clonedPortal = child.cloneNode(true);
+            prepareCloneForXml(child, clonedPortal);
+            serializedPortals += serializer.serializeToString(clonedPortal);
           }
 
+          const isDark = document.documentElement.classList.contains("dark");
           const wrapperClasses = (
             document.documentElement.className +
             " " +
@@ -1521,20 +1694,35 @@ export function buildVideoStudioRuntimeScript(): string {
             .replace(/__vs_hide_native_cursor__/g, "")
             .trim();
 
+          const nl = String.fromCharCode(10);
           const svgString =
             '<svg xmlns="http://www.w3.org/2000/svg" width="' +
             width +
             '" height="' +
             height +
+            '" viewBox="0 0 ' +
+            width +
+            " " +
+            height +
             '">' +
             '<foreignObject width="100%" height="100%">' +
             '<div xmlns="http://www.w3.org/1999/xhtml" class="' +
             wrapperClasses +
-            '" style="position:relative;width:100%;height:100%;overflow:hidden;">' +
-            "<style>/* <![CDATA[ */\\n" +
+            '" style="position:relative;width:' +
+            width +
+            "px;height:" +
+            height +
+            "px;overflow:hidden;background-color:" +
+            (isDark ? "#09090b" : "#ffffff") +
+            ";color:" +
+            (isDark ? "#fafafa" : "#09090b") +
+            ';">' +
+            "<style>/* <![CDATA[ */" +
+            nl +
             stylesText +
-            "\\n/* ]]> */</style>" +
-            '<div style="transform:translateY(-' +
+            nl +
+            "/* ]]> */</style>" +
+            '<div style="width:100%;min-height:100%;transform:translateY(-' +
             scrollY +
             'px);">' +
             serializedRoot +
@@ -1759,8 +1947,14 @@ export function buildVideoStudioRuntimeScript(): string {
         }
       });
 
-      setTimeout(() => scanAndReportTargets(), 450);
-      setTimeout(() => scanAndReportTargets(), 1400);
+      setTimeout(() => {
+        warmExternalImageCache();
+        scanAndReportTargets();
+      }, 450);
+      setTimeout(() => {
+        warmExternalImageCache();
+        scanAndReportTargets();
+      }, 1400);
     })();
   `;
 }
