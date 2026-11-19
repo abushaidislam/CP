@@ -84,7 +84,7 @@ export async function POST(req: NextRequest) {
     const arrayBuffer = await fileEntry.arrayBuffer();
     await writeFile(inputPath, Buffer.from(arrayBuffer));
 
-    const scaleFilter = `scale=${width}:${height}:force_original_aspect_ratio=decrease,pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2:black`;
+    const scaleFilter = `scale=${width}:${height}:flags=lanczos:force_original_aspect_ratio=decrease,pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2:black`;
 
     await execFileAsync(
       ffmpegPath,

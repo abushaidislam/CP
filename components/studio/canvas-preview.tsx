@@ -78,6 +78,7 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
     userComponents,
     activeVariantByTemplate,
     updateComponentPreview,
+    isRecordingModalOpen,
     setRecordingModalOpen,
   } = useStudioStore();
 
@@ -1411,25 +1412,36 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
                 </div>
               </div>
             )}
-            <iframe
-              ref={iframeRef}
-              key={reloadKey}
-              srcDoc={html}
-              onLoad={() => {
-                setHydrationStage((prev) =>
-                  prev === "compiling" ? "hydrating-deps" : prev
-                );
-              }}
-              title="21st.dev Live Component Preview"
-              sandbox="allow-scripts allow-same-origin allow-modals allow-popups"
-              className={cn(
-                "w-full h-full border-none bg-transparent transition-opacity duration-200",
-                isSandboxLoading && !error && hydrationMode === "cold"
-                  ? "opacity-0"
-                  : "opacity-100",
-                isResizing && "pointer-events-none"
-              )}
-            />
+            {isRecordingModalOpen ? (
+              <div className="w-full h-full flex flex-col items-center justify-center gap-2 bg-muted/20 text-muted-foreground font-sans text-xs px-6 text-center">
+                <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground/80">
+                  VIDEO STUDIO ACTIVE
+                </span>
+                <span>
+                  Background preview paused to dedicate full 60fps performance to your 16:9 recording stage.
+                </span>
+              </div>
+            ) : (
+              <iframe
+                ref={iframeRef}
+                key={reloadKey}
+                srcDoc={html}
+                onLoad={() => {
+                  setHydrationStage((prev) =>
+                    prev === "compiling" ? "hydrating-deps" : prev
+                  );
+                }}
+                title="21st.dev Live Component Preview"
+                sandbox="allow-scripts allow-same-origin allow-modals allow-popups"
+                className={cn(
+                  "w-full h-full border-none bg-transparent transition-opacity duration-200",
+                  isSandboxLoading && !error && hydrationMode === "cold"
+                    ? "opacity-0"
+                    : "opacity-100",
+                  isResizing && "pointer-events-none"
+                )}
+              />
+            )}
           </div>
 
           <div

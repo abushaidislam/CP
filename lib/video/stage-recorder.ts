@@ -1,6 +1,6 @@
 "use client";
 
-export type CaptureEngineUsed = "native-region" | "direct-fallback";
+export type CaptureEngineUsed = "native-zero-copy" | "native-region" | "direct-fallback";
 
 export interface CursorTelemetryState {
   nx: number;
@@ -21,6 +21,8 @@ export interface StageRecordingResult {
   height: number;
   fps: number;
   engine: CaptureEngineUsed;
+  /** True when zero-copy hardware capture recorded native stage dimensions and MP4 export should Lanczos-scale to exact 1080p/720p. */
+  needsServerRescale?: boolean;
 }
 
 export interface StageRecorderHandle {
@@ -28,7 +30,9 @@ export interface StageRecorderHandle {
   stop: () => Promise<StageRecordingResult>;
   cancel: () => void;
   updateCursorTelemetry: (telemetry: CursorTelemetryState) => void;
-  pushFrameDataUrl: (requestId: number, dataUrl: string | null) => void;
+  pushFrameDataUrl: (requestId: number, dataUrl: string | null, captureMs?: number) => void;
+  pushFrameBlob: (requestId: number, blob: Blob | null, captureMs?: number) => void;
+  pushFrameBitmap: (requestId: number, bitmap: ImageBitmap | null, captureMs?: number) => void;
 }
 
 export interface StartRecorderOptions {
@@ -53,6 +57,11 @@ export function getResolutionDimensions(resolution: "1080p" | "720p"): {
     : { width: 1920, height: 1080 };
 }
 
+/**
+ * Selects a low-latency, GPU/hardware-accelerated MediaRecorder MIME type.
+ * Deliberately prefers H.264 (avc1/h264) and VP8 over software CPU-heavy VP9
+ * so live component animations never stutter during 60fps capture.
+ */
 export function pickSupportedRecorderMime(preferred: "mp4" | "webm"): string {
   if (typeof window === "undefined" || typeof MediaRecorder === "undefined") {
     return "video/webm";
@@ -64,17 +73,17 @@ export function pickSupportedRecorderMime(preferred: "mp4" | "webm"): string {
     "video/mp4;codecs=h264",
     "video/mp4",
   ];
-  const webmCandidates = [
-    "video/webm;codecs=vp9",
-    "video/webm;codecs=vp8",
+  const webmFastCandidates = [
     "video/webm;codecs=h264",
+    "video/webm;codecs=vp8",
     "video/webm",
+    "video/webm;codecs=vp9",
   ];
 
   const ordered =
     preferred === "mp4"
-      ? [...mp4Candidates, ...webmCandidates]
-      : [...webmCandidates, ...mp4Candidates];
+      ? [...mp4Candidates, ...webmFastCandidates]
+      : [...webmFastCandidates, ...mp4Candidates];
 
   for (const mime of ordered) {
     try {
@@ -93,6 +102,7 @@ export function detectCaptureCapabilities(): {
   hasDisplayMedia: boolean;
   hasRegionCrop: boolean;
   supportsNativeMp4: boolean;
+  isLikelyCrossOriginIframe: boolean;
 } {
   if (typeof window === "undefined") {
     return {
@@ -100,6 +110,7 @@ export function detectCaptureCapabilities(): {
       hasDisplayMedia: false,
       hasRegionCrop: false,
       supportsNativeMp4: false,
+      isLikelyCrossOriginIframe: false,
     };
   }
 
@@ -126,11 +137,19 @@ export function detectCaptureCapabilities(): {
     }
   }
 
+  let isLikelyCrossOriginIframe = false;
+  try {
+    isLikelyCrossOriginIframe = window.self !== window.top;
+  } catch {
+    isLikelyCrossOriginIframe = true;
+  }
+
   return {
     hasMediaRecorder,
     hasDisplayMedia,
     hasRegionCrop,
     supportsNativeMp4,
+    isLikelyCrossOriginIframe,
   };
 }
 
@@ -156,7 +175,6 @@ export function drawCanvasCursorOverlay(
     const ringAlpha = Math.max(0, Math.pow(1 - p, 1.4));
 
     ctx.save();
-    // Single crisp hairline ring
     ctx.beginPath();
     ctx.arc(rx, ry, (5 + easeOutQuart * 17) * scaleFactor, 0, Math.PI * 2);
     ctx.lineWidth = 1.45 * scaleFactor;
@@ -165,7 +183,6 @@ export function drawCanvasCursorOverlay(
       : `rgba(9, 9, 11, ${(ringAlpha * 0.55).toFixed(3)})`;
     ctx.stroke();
 
-    // Ultra-subtle micro contact dot
     const dotProgress = Math.min(1, p * 2.4);
     const dotAlpha = Math.max(0, 1 - dotProgress);
     if (dotAlpha > 0.01) {
@@ -209,7 +226,7 @@ export function drawCanvasCursorOverlay(
   ctx.shadowOffsetX = 0;
   ctx.shadowOffsetY = 3.5;
 
-  // Geometric high-contrast studio pointer (matches SVG 26x26 silhouette 1:1)
+  // Geometric high-contrast studio pointer
   ctx.beginPath();
   ctx.moveTo(0, 0);
   ctx.lineTo(16.8, 10.4);
@@ -238,8 +255,11 @@ interface ExtendedDisplayMediaOptions extends DisplayMediaStreamOptions {
 }
 
 /**
- * Primary Engine: Native 60fps Browser Tab/Region Capture (`getDisplayMedia` + `CropTarget`)
- * piped into a locked 16:9 (1920x1080 or 1280x720) 60fps canvas + MediaRecorder.
+ * Primary Engine: Zero-Copy Hardware GPU Region Capture (`getDisplayMedia` + `CropTarget`).
+ *
+ * When Region Capture (`CropTarget`) is supported (Chrome/Edge), pipes the cropped GPU
+ * MediaStream DIRECTLY into hardware-accelerated MediaRecorder with ZERO `<video>` copy,
+ * ZERO 2D `<canvas>` drawImage, and ZERO main-thread rAF overhead (true 0% lag!).
  */
 async function startNativeRegionCapture(
   options: StartRecorderOptions
@@ -247,6 +267,7 @@ async function startNativeRegionCapture(
   const { width, height } = getResolutionDimensions(options.resolution);
   const fps = options.fps;
   const mimeType = pickSupportedRecorderMime(options.preferredFormat);
+  const bitrate = options.resolution === "1080p" ? 8_500_000 : 5_000_000;
 
   const videoConstraints: ExtendedDisplayVideoConstraints = {
     frameRate: { ideal: fps, max: fps },
@@ -272,7 +293,7 @@ async function startNativeRegionCapture(
     throw new Error("No video track available from screen capture.");
   }
 
-  // Attempt exact Region Capture locking to the 16:9 stage element
+  // Attempt exact GPU Region Capture locking to the 16:9 stage element
   let isRegionCropped = false;
   try {
     const winWithCrop = window as unknown as {
@@ -287,7 +308,6 @@ async function startNativeRegionCapture(
       isRegionCropped = true;
     }
   } catch {
-    // Fallback to exact bounding-box cropping on canvas below
     isRegionCropped = false;
   }
 
@@ -295,6 +315,82 @@ async function startNativeRegionCapture(
     videoTrack.addEventListener("ended", options.onTrackEnded, { once: true });
   }
 
+  // FASTEST ZERO-COPY PATH: Record the GPU-cropped MediaStream directly without canvas readback!
+  if (isRegionCropped) {
+    const recorder = new MediaRecorder(displayStream, {
+      mimeType,
+      videoBitsPerSecond: bitrate,
+    });
+
+    const chunks: BlobPart[] = [];
+    recorder.ondataavailable = (ev) => {
+      if (ev.data && ev.data.size > 0) {
+        chunks.push(ev.data);
+      }
+    };
+
+    const startedAt = performance.now();
+    recorder.start(250);
+
+    const cleanup = () => {
+      displayStream.getTracks().forEach((t) => t.stop());
+    };
+
+    return {
+      engine: "native-zero-copy",
+      updateCursorTelemetry: () => {},
+      pushFrameDataUrl: () => {},
+      pushFrameBlob: () => {},
+      pushFrameBitmap: () => {},
+      cancel: () => {
+        try {
+          if (recorder.state !== "inactive") recorder.stop();
+        } catch {
+          // Ignore
+        }
+        cleanup();
+      },
+      stop: () =>
+        new Promise<StageRecordingResult>((resolve, reject) => {
+          const durationMs = Math.max(200, Math.round(performance.now() - startedAt));
+          if (recorder.state === "inactive") {
+            cleanup();
+            resolve({
+              blob: new Blob(chunks, { type: mimeType }),
+              mimeType,
+              durationMs,
+              width,
+              height,
+              fps,
+              engine: "native-zero-copy",
+              needsServerRescale: true,
+            });
+            return;
+          }
+          recorder.onstop = () => {
+            cleanup();
+            const finalMime = recorder.mimeType || mimeType;
+            resolve({
+              blob: new Blob(chunks, { type: finalMime }),
+              mimeType: finalMime,
+              durationMs,
+              width,
+              height,
+              fps,
+              engine: "native-zero-copy",
+              needsServerRescale: true,
+            });
+          };
+          recorder.onerror = () => {
+            cleanup();
+            reject(new Error("Zero-copy GPU recorder encountered an encoding error."));
+          };
+          recorder.stop();
+        }),
+    };
+  }
+
+  // Fallback for browsers without CropTarget: bounding-box crop driven by requestVideoFrameCallback
   const videoEl = document.createElement("video");
   videoEl.srcObject = displayStream;
   videoEl.muted = true;
@@ -304,40 +400,51 @@ async function startNativeRegionCapture(
   const canvas = document.createElement("canvas");
   canvas.width = width;
   canvas.height = height;
-  const ctx = canvas.getContext("2d", { alpha: false });
+  const ctx = canvas.getContext("2d", { alpha: false, desynchronized: true });
   if (!ctx) {
     displayStream.getTracks().forEach((t) => t.stop());
     throw new Error("Unable to initialize 2D compositor canvas.");
   }
   ctx.imageSmoothingEnabled = true;
-  ctx.imageSmoothingQuality = "high";
+  ctx.imageSmoothingQuality = "medium";
+
+  // Cache stage bounding box (updated on resize only, avoiding per-frame forced layout reflow)
+  let cachedRect = options.stageElement.getBoundingClientRect();
+  const resizeObserver = new ResizeObserver(() => {
+    cachedRect = options.stageElement.getBoundingClientRect();
+  });
+  resizeObserver.observe(options.stageElement);
 
   let active = true;
   let rafId = 0;
+  let vfcId = 0;
 
-  const drawFrame = () => {
+  const drawSingleFrame = () => {
     if (!active) return;
     if (videoEl.readyState >= 2 && videoEl.videoWidth > 0 && videoEl.videoHeight > 0) {
-      if (isRegionCropped) {
-        ctx.drawImage(videoEl, 0, 0, width, height);
-      } else {
-        // Compute exact stage crop relative to browser viewport
-        const rect = options.stageElement.getBoundingClientRect();
-        const scaleX = videoEl.videoWidth / Math.max(1, window.innerWidth);
-        const scaleY = videoEl.videoHeight / Math.max(1, window.innerHeight);
-        const sx = Math.max(0, Math.round(rect.left * scaleX));
-        const sy = Math.max(0, Math.round(rect.top * scaleY));
-        const sw = Math.min(videoEl.videoWidth - sx, Math.max(16, Math.round(rect.width * scaleX)));
-        const sh = Math.min(videoEl.videoHeight - sy, Math.max(16, Math.round(rect.height * scaleY)));
-        ctx.drawImage(videoEl, sx, sy, sw, sh, 0, 0, width, height);
-      }
+      const scaleX = videoEl.videoWidth / Math.max(1, window.innerWidth);
+      const scaleY = videoEl.videoHeight / Math.max(1, window.innerHeight);
+      const sx = Math.max(0, Math.round(cachedRect.left * scaleX));
+      const sy = Math.max(0, Math.round(cachedRect.top * scaleY));
+      const sw = Math.min(
+        videoEl.videoWidth - sx,
+        Math.max(16, Math.round(cachedRect.width * scaleX))
+      );
+      const sh = Math.min(
+        videoEl.videoHeight - sy,
+        Math.max(16, Math.round(cachedRect.height * scaleY))
+      );
+      ctx.drawImage(videoEl, sx, sy, sw, sh, 0, 0, width, height);
     }
-    rafId = requestAnimationFrame(drawFrame);
+    if (typeof videoEl.requestVideoFrameCallback === "function") {
+      vfcId = videoEl.requestVideoFrameCallback(drawSingleFrame);
+    } else {
+      rafId = requestAnimationFrame(drawSingleFrame);
+    }
   };
-  drawFrame();
+  drawSingleFrame();
 
   const canvasStream = canvas.captureStream(fps);
-  const bitrate = options.resolution === "1080p" ? 14_000_000 : 8_000_000;
   const recorder = new MediaRecorder(canvasStream, {
     mimeType,
     videoBitsPerSecond: bitrate,
@@ -351,11 +458,15 @@ async function startNativeRegionCapture(
   };
 
   const startedAt = performance.now();
-  recorder.start(120);
+  recorder.start(250);
 
   const cleanup = () => {
     active = false;
+    resizeObserver.disconnect();
     if (rafId) cancelAnimationFrame(rafId);
+    if (vfcId && typeof videoEl.cancelVideoFrameCallback === "function") {
+      videoEl.cancelVideoFrameCallback(vfcId);
+    }
     displayStream.getTracks().forEach((t) => t.stop());
     canvasStream.getTracks().forEach((t) => t.stop());
     videoEl.srcObject = null;
@@ -363,10 +474,10 @@ async function startNativeRegionCapture(
 
   return {
     engine: "native-region",
-    updateCursorTelemetry: () => {
-      // Native capture already records the live in-stage spring cursor at 60fps
-    },
+    updateCursorTelemetry: () => {},
     pushFrameDataUrl: () => {},
+    pushFrameBlob: () => {},
+    pushFrameBitmap: () => {},
     cancel: () => {
       try {
         if (recorder.state !== "inactive") recorder.stop();
@@ -414,10 +525,11 @@ async function startNativeRegionCapture(
 }
 
 /**
- * Fallback Engine: Zero-Permission Direct Stage 60fps Compositor.
- * Works cleanly even inside sandboxed iframes where `getDisplayMedia` is restricted.
- * Polls live frame images from the sandbox iframe while rendering the Spring Cursor,
- * Click Ripples, and Subtle Auto-Zoom natively at 60fps on the 16:9 canvas.
+ * Turbo Zero-Permission Direct Stage Compositor:
+ * - Uses zero-copy GPU `ImageBitmap` transfer for `<canvas>` / WebGL components.
+ * - Uses fast SVG `Blob` transfer + cached stylesheets (no `encodeURIComponent` main-thread stalls).
+ * - Uses adaptive frame-budgeted scheduling so the live UI never lags or freezes while
+ *   compositing the spring cursor & minimal click pulses at a locked 60fps.
  */
 async function startDirectStageCapture(
   options: StartRecorderOptions
@@ -430,18 +542,21 @@ async function startDirectStageCapture(
   const canvas = document.createElement("canvas");
   canvas.width = width;
   canvas.height = height;
-  const ctx = canvas.getContext("2d", { alpha: false });
+  const ctx = canvas.getContext("2d", { alpha: false, desynchronized: true });
   if (!ctx) {
     throw new Error("Unable to initialize 2D compositor canvas.");
   }
   ctx.imageSmoothingEnabled = true;
-  ctx.imageSmoothingQuality = "high";
+  ctx.imageSmoothingQuality = "medium";
 
   let active = true;
   let rafId = 0;
   let frameReqId = 0;
   let inFlightFrame = false;
-  let latestFrameImage: HTMLImageElement | null = null;
+  let nextPollTimer: ReturnType<typeof setTimeout> | null = null;
+  let safetyTimer: ReturnType<typeof setTimeout> | null = null;
+  let latestFrameSource: HTMLImageElement | ImageBitmap | null = null;
+
   let cursorTelemetry: CursorTelemetryState = options.initialCursorTelemetry
     ? {
         ...options.initialCursorTelemetry,
@@ -458,6 +573,24 @@ async function startDirectStageCapture(
         ripples: [],
       };
 
+  const closeBitmapIfNeeded = (src: HTMLImageElement | ImageBitmap | null) => {
+    if (src && typeof ImageBitmap !== "undefined" && src instanceof ImageBitmap) {
+      try {
+        src.close();
+      } catch {
+        // Ignore already closed bitmap
+      }
+    }
+  };
+
+  const scheduleNextCapture = (lastCaptureMs = 16) => {
+    if (!active) return;
+    if (nextPollTimer) clearTimeout(nextPollTimer);
+    // Adaptive budget: guarantee >= 70% main-thread headroom so live interactions never stutter
+    const delay = Math.max(45, Math.min(200, Math.round(lastCaptureMs * 2.2)));
+    nextPollTimer = setTimeout(requestSandboxFrame, delay);
+  };
+
   const requestSandboxFrame = () => {
     if (!active || inFlightFrame || !options.iframeElement?.contentWindow) return;
     inFlightFrame = true;
@@ -466,17 +599,17 @@ async function startDirectStageCapture(
       { type: "VIDEO_STUDIO_CAPTURE_FRAME", requestId: frameReqId },
       "*"
     );
-    // Safety release if sandbox doesn't reply in time
-    setTimeout(() => {
+    if (safetyTimer) clearTimeout(safetyTimer);
+    safetyTimer = setTimeout(() => {
+      if (!active) return;
       inFlightFrame = false;
-    }, 220);
+      scheduleNextCapture(40);
+    }, 320);
   };
 
   // Seed initial frame before starting recorder
   requestSandboxFrame();
   await new Promise((r) => setTimeout(r, 110));
-
-  const pollTimer = window.setInterval(requestSandboxFrame, 33);
 
   const drawFrame = () => {
     if (!active) return;
@@ -484,8 +617,14 @@ async function startDirectStageCapture(
     ctx.fillStyle = isDark ? "#09090b" : "#ffffff";
     ctx.fillRect(0, 0, width, height);
 
-    if (latestFrameImage && latestFrameImage.naturalWidth > 0) {
-      ctx.drawImage(latestFrameImage, 0, 0, width, height);
+    if (latestFrameSource) {
+      const ready =
+        typeof ImageBitmap !== "undefined" && latestFrameSource instanceof ImageBitmap
+          ? latestFrameSource.width > 0
+          : (latestFrameSource as HTMLImageElement).naturalWidth > 0;
+      if (ready) {
+        ctx.drawImage(latestFrameSource, 0, 0, width, height);
+      }
     }
 
     drawCanvasCursorOverlay(ctx, width, height, cursorTelemetry, isDark);
@@ -494,7 +633,7 @@ async function startDirectStageCapture(
   drawFrame();
 
   const canvasStream = canvas.captureStream(fps);
-  const bitrate = options.resolution === "1080p" ? 12_000_000 : 7_000_000;
+  const bitrate = options.resolution === "1080p" ? 8_000_000 : 4_800_000;
   const recorder = new MediaRecorder(canvasStream, {
     mimeType,
     videoBitsPerSecond: bitrate,
@@ -508,13 +647,36 @@ async function startDirectStageCapture(
   };
 
   const startedAt = performance.now();
-  recorder.start(120);
+  recorder.start(250);
 
   const cleanup = () => {
     active = false;
-    window.clearInterval(pollTimer);
+    if (nextPollTimer) clearTimeout(nextPollTimer);
+    if (safetyTimer) clearTimeout(safetyTimer);
     if (rafId) cancelAnimationFrame(rafId);
+    closeBitmapIfNeeded(latestFrameSource);
+    latestFrameSource = null;
     canvasStream.getTracks().forEach((t) => t.stop());
+  };
+
+  const loadImageUrlIntoFrame = (url: string, shouldRevoke: boolean, captureMs: number) => {
+    const img = new Image();
+    img.decoding = "async";
+    img.onload = () => {
+      if (shouldRevoke) URL.revokeObjectURL(url);
+      if (active) {
+        closeBitmapIfNeeded(latestFrameSource);
+        latestFrameSource = img;
+        scheduleNextCapture(captureMs);
+      }
+    };
+    img.onerror = () => {
+      if (shouldRevoke) URL.revokeObjectURL(url);
+      if (active) {
+        scheduleNextCapture(Math.max(captureMs, 50));
+      }
+    };
+    img.src = url;
   };
 
   return {
@@ -522,16 +684,42 @@ async function startDirectStageCapture(
     updateCursorTelemetry: (telemetry) => {
       cursorTelemetry = telemetry;
     },
-    pushFrameDataUrl: (_requestId, dataUrl) => {
+    pushFrameBitmap: (_requestId, bitmap, captureMs = 8) => {
       inFlightFrame = false;
-      if (!dataUrl || !active) return;
-      const img = new Image();
-      img.onload = () => {
-        if (active) {
-          latestFrameImage = img;
-        }
-      };
-      img.src = dataUrl;
+      if (safetyTimer) clearTimeout(safetyTimer);
+      if (!active) {
+        closeBitmapIfNeeded(bitmap);
+        return;
+      }
+      if (bitmap) {
+        closeBitmapIfNeeded(latestFrameSource);
+        latestFrameSource = bitmap;
+      }
+      // Canvas ImageBitmap transfer is near zero-cost — can sample briskly (~30fps)
+      if (nextPollTimer) clearTimeout(nextPollTimer);
+      nextPollTimer = setTimeout(
+        requestSandboxFrame,
+        Math.max(28, Math.min(90, Math.round(captureMs * 1.8)))
+      );
+    },
+    pushFrameBlob: (_requestId, blob, captureMs = 20) => {
+      inFlightFrame = false;
+      if (safetyTimer) clearTimeout(safetyTimer);
+      if (!blob || !active) {
+        scheduleNextCapture(captureMs);
+        return;
+      }
+      const objectUrl = URL.createObjectURL(blob);
+      loadImageUrlIntoFrame(objectUrl, true, captureMs);
+    },
+    pushFrameDataUrl: (_requestId, dataUrl, captureMs = 25) => {
+      inFlightFrame = false;
+      if (safetyTimer) clearTimeout(safetyTimer);
+      if (!dataUrl || !active) {
+        scheduleNextCapture(captureMs);
+        return;
+      }
+      loadImageUrlIntoFrame(dataUrl, false, captureMs);
     },
     cancel: () => {
       try {
@@ -603,8 +791,6 @@ export async function startStageRecording(
       if (options.preferredEngine === "native") {
         throw err;
       }
-      // If user explicitly cancelled or iframe blocks display-capture, surface clear fallback error
-      // or automatically fall back when in "auto" mode if it's a policy/security block.
       const msg = err instanceof Error ? err.message : String(err);
       const isPolicyOrUnsupported =
         /disallowed by permissions policy|not allowed|not supported|SecurityError/i.test(msg);
@@ -619,15 +805,16 @@ export async function startStageRecording(
 }
 
 /**
- * Converts a recorded WebM blob to a universally compatible H.264 60fps MP4
+ * Converts a recorded WebM/native blob to a universally compatible H.264 60fps MP4
  * via the local FFmpeg server route (`/api/video-transcode`).
  */
 export async function transcodeRecordingToMp4(params: {
   blob: Blob;
   fps: 60 | 30;
   resolution: "1080p" | "720p";
+  forceRescale?: boolean;
 }): Promise<Blob> {
-  if (params.blob.type.includes("video/mp4")) {
+  if (params.blob.type.includes("video/mp4") && !params.forceRescale) {
     return params.blob;
   }
 

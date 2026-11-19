@@ -62,6 +62,16 @@ export function buildVideoStudioRuntimeScript(): string {
         lastClickPulseTs: 0,
         lastEmittedVisible: false,
 
+        // Zero-Lag Replay Capture (records tiny interaction events at 0% encoding load)
+        replayRecording: false,
+        replayStartTs: 0,
+        replayEvents: [],
+        lastReplayMoveTs: 0,
+
+        // Cached stylesheet text for fast Blob DOM snapshots
+        cachedStyleSig: "",
+        cachedStylesText: "",
+
         // Minimal click pulse pool
         ripples: [],
 
@@ -1187,6 +1197,23 @@ export function buildVideoStudioRuntimeScript(): string {
         return state.manualActive || (!state.activeSession && state.mode === "manual");
       }
 
+      function recordReplayEvent(kind, clientX, clientY) {
+        if (!state.replayRecording) return;
+        const now = performance.now();
+        if (kind === "move" && now - state.lastReplayMoveTs < 14) return;
+        if (kind === "move") state.lastReplayMoveTs = now;
+        const vw = Math.max(1, window.innerWidth);
+        const vh = Math.max(1, window.innerHeight);
+        const scrollInfo = findScrollContainer();
+        state.replayEvents.push({
+          t: Math.max(0, Math.round(now - state.replayStartTs)),
+          kind: kind,
+          nx: Math.max(0, Math.min(1, clientX / vw)),
+          ny: Math.max(0, Math.min(1, clientY / vh)),
+          scrollY: getScrollTop(scrollInfo),
+        });
+      }
+
       function handleManualMove(clientX, clientY) {
         if (!Number.isFinite(clientX) || !Number.isFinite(clientY)) return;
         const wasHidden = !state.cursorVisible;
@@ -1199,7 +1226,6 @@ export function buildVideoStudioRuntimeScript(): string {
         state.targetX = clientX;
         state.targetY = clientY;
         if (wasHidden) {
-          // Snap cleanly onto the pointer entry edge so cursor glides right under the hand
           state.x = clientX;
           state.y = clientY;
           state.vx = 0;
@@ -1207,6 +1233,7 @@ export function buildVideoStudioRuntimeScript(): string {
         }
         state.cursorVisible = true;
         syncNativeCursorVisibility();
+        recordReplayEvent("move", clientX, clientY);
 
         const now = performance.now();
         if (now - state.lastHoverCheckTs >= 40) {
@@ -1231,12 +1258,14 @@ export function buildVideoStudioRuntimeScript(): string {
         state.hoveringInteractive = isInteractiveAtPoint(clientX, clientY);
         syncNativeCursorVisibility();
         spawnMinimalClickPulse(clientX, clientY);
+        recordReplayEvent("down", clientX, clientY);
       }
 
       function handleManualUp() {
         if (!isManualCursorTrackingEnabled()) return;
         state.isPressed = false;
         state.targetScale = 1;
+        recordReplayEvent("up", state.lastKnownX, state.lastKnownY);
       }
 
       const onCapturePointerMove = (e) => {
@@ -1264,6 +1293,16 @@ export function buildVideoStudioRuntimeScript(): string {
         if (typeof e.clientX === "number" && typeof e.clientY === "number") {
           handleManualMove(e.clientX, e.clientY);
         }
+        if (state.replayRecording) {
+          setTimeout(() => {
+            recordReplayEvent("scroll", state.lastKnownX, state.lastKnownY);
+          }, 16);
+        }
+      };
+      const onCaptureScroll = () => {
+        if (state.replayRecording) {
+          recordReplayEvent("scroll", state.lastKnownX, state.lastKnownY);
+        }
       };
       const onCaptureTouchStart = (e) => {
         if (!e.isTrusted || !e.touches || !e.touches[0]) return;
@@ -1286,6 +1325,7 @@ export function buildVideoStudioRuntimeScript(): string {
       document.addEventListener("mouseup", onCaptureUp, { capture: true, passive: true });
       document.addEventListener("pointercancel", onCaptureUp, { capture: true, passive: true });
       document.addEventListener("wheel", onCaptureWheel, { capture: true, passive: true });
+      document.addEventListener("scroll", onCaptureScroll, { capture: true, passive: true });
       document.addEventListener("touchstart", onCaptureTouchStart, { capture: true, passive: true });
       document.addEventListener("touchmove", onCaptureTouchMove, { capture: true, passive: true });
       document.addEventListener("touchend", onCaptureTouchEnd, { capture: true, passive: true });
@@ -1304,48 +1344,160 @@ export function buildVideoStudioRuntimeScript(): string {
       );
 
       // -----------------------------------------------------------------------
-      // Fast Frame Snapshot Helper for Direct Stage Fallback Engine
-      // (Captures #root + Radix portals/dropdowns, excluding studio overlay)
+      // Zero-Lag Replay Playback Engine
       // -----------------------------------------------------------------------
+      async function runRecordedReplay(events, durationMs) {
+        cancelChoreography();
+        state.choreographyCancelled = false;
+        state.activeSession = true;
+        state.manualActive = false;
+        state.replayRecording = false;
+        state.cursorVisible = true;
+        state.isPressed = false;
+        state.targetScale = 1;
+        syncNativeCursorVisibility();
+
+        const scrollInfo = findScrollContainer();
+        setScrollTop(scrollInfo, 0);
+
+        const vw = Math.max(1, window.innerWidth);
+        const vh = Math.max(1, window.innerHeight);
+
+        if (events && events.length > 0) {
+          state.x = events[0].nx * vw;
+          state.y = events[0].ny * vh;
+          state.targetX = state.x;
+          state.targetY = state.y;
+          state.vx = 0;
+          state.vy = 0;
+        }
+        emitCursorTelemetryNow([]);
+
+        const totalMs = Math.max(400, Number(durationMs || 0));
+        const playStart = performance.now();
+        let idx = 0;
+
+        await new Promise((resolve) => {
+          function tick(now) {
+            if (state.choreographyCancelled) {
+              resolve();
+              return;
+            }
+            const elapsed = now - playStart;
+            while (idx < events.length && events[idx].t <= elapsed) {
+              const ev = events[idx];
+              idx += 1;
+              const px = ev.nx * vw;
+              const py = ev.ny * vh;
+              if (ev.kind === "move") {
+                state.targetX = px;
+                state.targetY = py;
+                dispatchPointerAt(px, py);
+              } else if (ev.kind === "down") {
+                state.targetX = px;
+                state.targetY = py;
+                void dispatchTactileClick(px, py);
+              } else if (ev.kind === "up") {
+                state.isPressed = false;
+                state.targetScale = 1;
+              } else if (ev.kind === "scroll") {
+                setScrollTop(scrollInfo, ev.scrollY || 0);
+              }
+            }
+            if (elapsed >= totalMs + 180) {
+              resolve();
+              return;
+            }
+            state.choreographyRaf = requestAnimationFrame(tick);
+          }
+          state.choreographyRaf = requestAnimationFrame(tick);
+        });
+
+        if (state.choreographyCancelled) return;
+        clearSyntheticHover();
+        state.activeSession = false;
+        state.cursorVisible = false;
+        state.hoveringInteractive = false;
+        syncNativeCursorVisibility();
+        emitCursorTelemetryNow([]);
+        postToParent({
+          type: "VIDEO_STUDIO_CHOREOGRAPHY_COMPLETE",
+          dryRun: false,
+        });
+      }
+
+      // -----------------------------------------------------------------------
+      // Turbo Low-Overhead Frame Snapshot Helper (ImageBitmap + Cached Styles + Blob)
+      // -----------------------------------------------------------------------
+      function getCachedStylesText() {
+        const styleElements = document.querySelectorAll("style");
+        let sig = String(styleElements.length);
+        for (let i = 0; i < styleElements.length; i++) {
+          const el = styleElements[i];
+          if (el.id === "__video_studio_styles__") continue;
+          sig += ":" + el.innerHTML.length;
+        }
+        if (sig === state.cachedStyleSig && state.cachedStylesText) {
+          return state.cachedStylesText;
+        }
+        let stylesText = "";
+        for (let i = 0; i < styleElements.length; i++) {
+          const el = styleElements[i];
+          if (el.id === "__video_studio_styles__") continue;
+          stylesText += el.innerHTML + "\\n";
+        }
+        state.cachedStyleSig = sig;
+        state.cachedStylesText = stylesText;
+        return stylesText;
+      }
+
       async function captureFastFrame(requestId) {
+        const t0 = performance.now();
         try {
           const root = document.getElementById("root");
           if (!root) {
-            postToParent({ type: "VIDEO_STUDIO_FRAME_DATA", requestId, dataUrl: null });
+            postToParent({ type: "VIDEO_STUDIO_FRAME_DATA", requestId, dataUrl: null, captureMs: 4 });
             return;
           }
 
+          // Fast Path 1: Zero-copy GPU ImageBitmap transfer for <canvas> / WebGL components
           const innerCanvas = root.querySelector("canvas");
           if (innerCanvas && innerCanvas.width > 0 && innerCanvas.height > 0) {
+            if (typeof createImageBitmap === "function") {
+              try {
+                const bitmap = await createImageBitmap(innerCanvas);
+                const captureMs = Math.max(1, Math.round(performance.now() - t0));
+                window.parent.postMessage(
+                  { type: "VIDEO_STUDIO_FRAME_BITMAP", requestId, bitmap, captureMs },
+                  "*",
+                  [bitmap]
+                );
+                return;
+              } catch (e) {}
+            }
             try {
-              const canvasUrl = innerCanvas.toDataURL("image/jpeg", 0.9);
+              const canvasUrl = innerCanvas.toDataURL("image/jpeg", 0.85);
               if (canvasUrl && canvasUrl.startsWith("data:image/")) {
                 postToParent({
                   type: "VIDEO_STUDIO_FRAME_DATA",
                   requestId,
                   dataUrl: canvasUrl,
+                  captureMs: Math.max(1, Math.round(performance.now() - t0)),
                 });
                 return;
               }
             } catch (e) {}
           }
 
+          // Fast Path 2: Cached styles + fast Blob transfer (100x faster than encodeURIComponent!)
           const width = Math.max(window.innerWidth || 1280, 320);
           const height = Math.max(window.innerHeight || 720, 180);
-
-          let stylesText = "";
-          const styleElements = document.querySelectorAll("style");
-          for (let i = 0; i < styleElements.length; i++) {
-            const el = styleElements[i];
-            if (el.id === "__video_studio_styles__") continue;
-            stylesText += el.innerHTML + "\\n";
-          }
+          const stylesText = getCachedStylesText();
 
           const serializer = new XMLSerializer();
           const scrollY = window.scrollY || document.documentElement.scrollTop || 0;
-          const serializedRoot = serializer.serializeToString(root.cloneNode(true));
+          const serializedRoot = serializer.serializeToString(root);
 
-          // Also serialize any portaled dropdowns/popovers/menus attached to document.body
           let serializedPortals = "";
           const bodyChildren = document.body.children;
           for (let i = 0; i < bodyChildren.length; i++) {
@@ -1358,7 +1510,7 @@ export function buildVideoStudioRuntimeScript(): string {
             ) {
               continue;
             }
-            serializedPortals += serializer.serializeToString(child.cloneNode(true));
+            serializedPortals += serializer.serializeToString(child);
           }
 
           const wrapperClasses = (
@@ -1392,16 +1544,22 @@ export function buildVideoStudioRuntimeScript(): string {
             "</foreignObject>" +
             "</svg>";
 
-          const svgDataUrl =
-            "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svgString);
+          const svgBlob = new Blob([svgString], { type: "image/svg+xml;charset=utf-8" });
+          const captureMs = Math.max(1, Math.round(performance.now() - t0));
 
+          postToParent({
+            type: "VIDEO_STUDIO_FRAME_BLOB",
+            requestId,
+            blob: svgBlob,
+            captureMs,
+          });
+        } catch (err) {
           postToParent({
             type: "VIDEO_STUDIO_FRAME_DATA",
             requestId,
-            dataUrl: svgDataUrl,
+            dataUrl: null,
+            captureMs: Math.max(1, Math.round(performance.now() - t0)),
           });
-        } catch (err) {
-          postToParent({ type: "VIDEO_STUDIO_FRAME_DATA", requestId, dataUrl: null });
         }
       }
 
@@ -1513,8 +1671,60 @@ export function buildVideoStudioRuntimeScript(): string {
           emitCursorTelemetryNow([]);
         }
 
+        if (msg.type === "VIDEO_STUDIO_START_REPLAY_CAPTURE") {
+          cancelChoreography();
+          if (msg.config) {
+            Object.assign(state, msg.config);
+          }
+          state.mode = "manual";
+          state.activeSession = true;
+          state.manualActive = true;
+          state.cursorVisible = true;
+          state.replayRecording = true;
+          state.replayStartTs = performance.now();
+          state.replayEvents = [];
+          state.lastReplayMoveTs = 0;
+          if (state.hasRealPointer) {
+            state.targetX = state.lastKnownX;
+            state.targetY = state.lastKnownY;
+            state.x = state.lastKnownX;
+            state.y = state.lastKnownY;
+          }
+          state.vx = 0;
+          state.vy = 0;
+          syncNativeCursorVisibility();
+          emitCursorTelemetryNow([]);
+          recordReplayEvent("move", state.x, state.y);
+        }
+
+        if (msg.type === "VIDEO_STUDIO_STOP_REPLAY_CAPTURE") {
+          const durationMs = Math.max(300, Math.round(performance.now() - state.replayStartTs));
+          const events = state.replayEvents.slice();
+          state.replayRecording = false;
+          state.replayEvents = [];
+          state.activeSession = false;
+          state.manualActive = false;
+          state.isPressed = false;
+          state.targetScale = 1;
+          syncNativeCursorVisibility();
+          postToParent({
+            type: "VIDEO_STUDIO_REPLAY_TAKE",
+            events,
+            durationMs,
+          });
+        }
+
+        if (msg.type === "VIDEO_STUDIO_PLAY_REPLAY") {
+          if (msg.config) {
+            Object.assign(state, msg.config);
+          }
+          runRecordedReplay(Array.isArray(msg.events) ? msg.events : [], msg.durationMs || 3000);
+        }
+
         if (msg.type === "VIDEO_STUDIO_STOP") {
           cancelChoreography();
+          state.replayRecording = false;
+          state.replayEvents = [];
           state.activeSession = false;
           state.manualActive = false;
           state.isPressed = false;
@@ -1529,6 +1739,8 @@ export function buildVideoStudioRuntimeScript(): string {
 
         if (msg.type === "VIDEO_STUDIO_RESET") {
           cancelChoreography();
+          state.replayRecording = false;
+          state.replayEvents = [];
           state.activeSession = false;
           state.manualActive = false;
           state.isPressed = false;

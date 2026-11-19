@@ -58,10 +58,20 @@ type StudioPhase =
   | "idle"
   | "previewing"
   | "countdown"
+  | "capturing-moves"
+  | "rendering-replay"
   | "recording"
   | "processing"
   | "review"
   | "error";
+
+interface ReplayEventItem {
+  t: number;
+  kind: "move" | "down" | "up" | "scroll";
+  nx: number;
+  ny: number;
+  scrollY: number;
+}
 
 interface DiscoveredTargetsInfo {
   interactiveCount: number;
@@ -108,9 +118,13 @@ export function VideoRecordingModal() {
     userComponents,
   } = useStudioStore();
 
+  const capabilities = useMemo(() => detectCaptureCapabilities(), []);
+
   const [phase, setPhase] = useState<StudioPhase>("idle");
   const [countdownValue, setCountdownValue] = useState<number>(3);
-  const [elapsedMs, setElapsedMs] = useState<number>(0);
+  const [zeroLagReplay, setZeroLagReplay] = useState<boolean>(
+    () => capabilities.isLikelyCrossOriginIframe || !capabilities.hasDisplayMedia
+  );
   const [stageReady, setStageReady] = useState<boolean>(false);
   const [stageReloadKey, setStageReloadKey] = useState<number>(0);
   const [discoveredTargets, setDiscoveredTargets] = useState<DiscoveredTargetsInfo>({
@@ -119,7 +133,7 @@ export function VideoRecordingModal() {
     hasCanvas: false,
   });
 
-  const [activeEngine, setActiveEngine] = useState<CaptureEngineUsed>("native-region");
+  const [activeEngine, setActiveEngine] = useState<CaptureEngineUsed>("native-zero-copy");
   const [recordingResult, setRecordingResult] = useState<StageRecordingResult | null>(null);
   const [previewVideoUrl, setPreviewVideoUrl] = useState<string | null>(null);
   const [cachedMp4Url, setCachedMp4Url] = useState<string | null>(null);
@@ -136,16 +150,27 @@ export function VideoRecordingModal() {
   const stageContainerRef = useRef<HTMLDivElement | null>(null);
   const stageIframeRef = useRef<HTMLIFrameElement | null>(null);
   const stageCursorCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const cursorCtxRef = useRef<CanvasRenderingContext2D | null>(null);
+  const stageRectRef = useRef<{ left: number; top: number; width: number; height: number }>({
+    left: 0,
+    top: 0,
+    width: 0,
+    height: 0,
+  });
   const lastCursorTelemetryRef = useRef<CursorTelemetryState | null>(null);
   const reviewVideoRef = useRef<HTMLVideoElement | null>(null);
   const recorderRef = useRef<StageRecorderHandle | null>(null);
-  const timerRafRef = useRef<number | null>(null);
+
+  // Imperative DOM refs for timecode & progress (0 React re-renders during recording!)
+  const timecodeTextRef = useRef<HTMLSpanElement | null>(null);
+  const stopBtnTimecodeRef = useRef<HTMLSpanElement | null>(null);
+  const progressBarRef = useRef<HTMLDivElement | null>(null);
+  const timerIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const recordStartTsRef = useRef<number>(0);
+  const pendingReplayEngineRef = useRef<"auto" | "native" | "direct">("auto");
   const safetyStopTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const countdownTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const capabilities = useMemo(() => detectCaptureCapabilities(), []);
 
   const currentComponentName = useMemo(() => {
     const userComp = userComponents?.[currentTemplateId];
@@ -196,11 +221,50 @@ export function VideoRecordingModal() {
     }
   }, []);
 
+  // Observe 16:9 stage dimensions once (zero per-frame getBoundingClientRect layout reflows!)
+  useEffect(() => {
+    if (!isRecordingModalOpen || phase === "review") return;
+    const container = stageContainerRef.current;
+    if (!container) return;
+
+    const updateCachedRect = () => {
+      const rect = container.getBoundingClientRect();
+      stageRectRef.current = {
+        left: rect.left,
+        top: rect.top,
+        width: rect.width,
+        height: rect.height,
+      };
+      const canvas = stageCursorCanvasRef.current;
+      if (canvas && rect.width >= 10 && rect.height >= 10) {
+        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+        const targetW = Math.round(rect.width * dpr);
+        const targetH = Math.round(rect.height * dpr);
+        if (canvas.width !== targetW || canvas.height !== targetH) {
+          canvas.width = targetW;
+          canvas.height = targetH;
+          cursorCtxRef.current = canvas.getContext("2d");
+        }
+      }
+    };
+
+    updateCachedRect();
+    const ro = new ResizeObserver(updateCachedRect);
+    ro.observe(container);
+    window.addEventListener("resize", updateCachedRect, { passive: true });
+    return () => {
+      ro.disconnect();
+      window.removeEventListener("resize", updateCachedRect);
+      cursorCtxRef.current = null;
+    };
+  }, [isRecordingModalOpen, phase, stageReloadKey]);
+
   const clearParentCursorCanvas = useCallback(() => {
     const canvas = stageCursorCanvasRef.current;
     if (!canvas) return;
-    const ctx = canvas.getContext("2d");
+    const ctx = cursorCtxRef.current || canvas.getContext("2d");
     if (ctx) {
+      cursorCtxRef.current = ctx;
       ctx.clearRect(0, 0, canvas.width, canvas.height);
     }
   }, []);
@@ -208,23 +272,25 @@ export function VideoRecordingModal() {
   const drawParentCursorCanvas = useCallback(
     (telemetry: CursorTelemetryState) => {
       const canvas = stageCursorCanvasRef.current;
-      const container = stageContainerRef.current;
-      if (!canvas || !container) return;
+      if (!canvas) return;
 
-      const rect = container.getBoundingClientRect();
-      if (rect.width < 10 || rect.height < 10) return;
-
-      const dpr = Math.min(window.devicePixelRatio || 1, 2);
-      const targetW = Math.round(rect.width * dpr);
-      const targetH = Math.round(rect.height * dpr);
-      if (canvas.width !== targetW || canvas.height !== targetH) {
-        canvas.width = targetW;
-        canvas.height = targetH;
+      let width = canvas.width;
+      let height = canvas.height;
+      if (width < 10 || height < 10) {
+        const rect = stageRectRef.current;
+        if (rect.width < 10 || rect.height < 10) return;
+        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+        width = Math.round(rect.width * dpr);
+        height = Math.round(rect.height * dpr);
+        canvas.width = width;
+        canvas.height = height;
+        cursorCtxRef.current = canvas.getContext("2d");
       }
 
-      const ctx = canvas.getContext("2d");
+      const ctx = cursorCtxRef.current || canvas.getContext("2d");
       if (!ctx) return;
-      ctx.clearRect(0, 0, targetW, targetH);
+      cursorCtxRef.current = ctx;
+      ctx.clearRect(0, 0, width, height);
 
       if (!telemetry.visible && (!telemetry.ripples || telemetry.ripples.length === 0)) {
         return;
@@ -232,8 +298,8 @@ export function VideoRecordingModal() {
 
       drawCanvasCursorOverlay(
         ctx,
-        targetW,
-        targetH,
+        width,
+        height,
         telemetry,
         previewTheme === "dark"
       );
@@ -247,9 +313,7 @@ export function VideoRecordingModal() {
       eventType: "move" | "down" | "up"
     ) => {
       if (recordingConfig.mode !== "manual" || !stageReady) return;
-      const container = stageContainerRef.current;
-      if (!container) return;
-      const rect = container.getBoundingClientRect();
+      const rect = stageRectRef.current;
       if (rect.width <= 0 || rect.height <= 0) return;
       const nx = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
       const ny = Math.max(0, Math.min(1, (e.clientY - rect.top) / rect.height));
@@ -301,9 +365,9 @@ export function VideoRecordingModal() {
   }, []);
 
   const stopTimers = useCallback(() => {
-    if (timerRafRef.current) {
-      cancelAnimationFrame(timerRafRef.current);
-      timerRafRef.current = null;
+    if (timerIntervalRef.current) {
+      clearInterval(timerIntervalRef.current);
+      timerIntervalRef.current = null;
     }
     if (safetyStopTimerRef.current) {
       clearTimeout(safetyStopTimerRef.current);
@@ -313,6 +377,39 @@ export function VideoRecordingModal() {
       clearInterval(countdownTimerRef.current);
       countdownTimerRef.current = null;
     }
+  }, []);
+
+  /**
+   * Updates recording timecode & progress bar directly via DOM refs at 10Hz
+   * so React performs ZERO re-renders during active video capture.
+   */
+  const startImperativeTimer = useCallback((targetTotalMs?: number) => {
+    if (timerIntervalRef.current) {
+      clearInterval(timerIntervalRef.current);
+    }
+    recordStartTsRef.current = performance.now();
+
+    const updateDom = () => {
+      const elapsed = Math.max(0, performance.now() - recordStartTsRef.current);
+      const formatted = formatTimecode(elapsed);
+      if (timecodeTextRef.current) {
+        timecodeTextRef.current.textContent = targetTotalMs
+          ? `${formatted} / ${formatTimecode(targetTotalMs)}`
+          : formatted;
+      }
+      if (stopBtnTimecodeRef.current) {
+        stopBtnTimecodeRef.current.textContent = `(${formatted})`;
+      }
+      if (progressBarRef.current) {
+        const pct = targetTotalMs
+          ? Math.min(100, (elapsed / targetTotalMs) * 100)
+          : 100;
+        progressBarRef.current.style.width = `${pct.toFixed(1)}%`;
+      }
+    };
+
+    updateDom();
+    timerIntervalRef.current = setInterval(updateDom, 100);
   }, []);
 
   const revokeMediaUrls = useCallback(() => {
@@ -344,7 +441,7 @@ export function VideoRecordingModal() {
       const url = URL.createObjectURL(result.blob);
       setRecordingResult(result);
       setPreviewVideoUrl(url);
-      if (result.mimeType.includes("video/mp4")) {
+      if (result.mimeType.includes("video/mp4") && !result.needsServerRescale) {
         setCachedMp4Url(url);
       } else {
         setCachedMp4Url(null);
@@ -360,6 +457,77 @@ export function VideoRecordingModal() {
       setPhase("error");
     }
   }, [postToStage, stopTimers]);
+
+  const startReplayRenderFromTake = useCallback(
+    async (events: ReplayEventItem[], durationMs: number) => {
+      if (!stageContainerRef.current) return;
+      stopTimers();
+      setPhase("rendering-replay");
+      postToStage({ type: "VIDEO_STUDIO_RESET" });
+      await new Promise((r) => setTimeout(r, 120));
+
+      try {
+        const handle = await startStageRecording({
+          stageElement: stageContainerRef.current,
+          iframeElement: stageIframeRef.current,
+          resolution: recordingConfig.resolution,
+          fps: recordingConfig.fps,
+          preferredFormat: recordingConfig.format,
+          preferredEngine: pendingReplayEngineRef.current,
+          previewTheme,
+          showCursor: recordingConfig.showCursor,
+          initialCursorTelemetry: lastCursorTelemetryRef.current,
+          onTrackEnded: () => {
+            if (recorderRef.current) {
+              void stopRecording();
+            }
+          },
+        });
+
+        recorderRef.current = handle;
+        setActiveEngine(handle.engine);
+        startImperativeTimer(durationMs);
+
+        postToStage({
+          type: "VIDEO_STUDIO_PLAY_REPLAY",
+          events,
+          durationMs,
+          config: {
+            showCursor: recordingConfig.showCursor,
+            clickRipples: recordingConfig.clickRipples,
+            renderInParentOverlay: true,
+          },
+        });
+
+        safetyStopTimerRef.current = setTimeout(() => {
+          if (recorderRef.current) {
+            void stopRecording();
+          }
+        }, durationMs + 1600);
+      } catch (err) {
+        stopTimers();
+        postToStage({ type: "VIDEO_STUDIO_STOP" });
+        const rawMsg = err instanceof Error ? err.message : String(err);
+        const friendly = /cancel|denied|NotAllowedError/i.test(rawMsg)
+          ? "Screen capture permission was declined or blocked in this preview frame. Switch Capture Engine to Direct or retry."
+          : rawMsg;
+        setErrorMessage(friendly);
+        setPhase("error");
+      }
+    },
+    [
+      recordingConfig.resolution,
+      recordingConfig.fps,
+      recordingConfig.format,
+      recordingConfig.showCursor,
+      recordingConfig.clickRipples,
+      previewTheme,
+      postToStage,
+      startImperativeTimer,
+      stopRecording,
+      stopTimers,
+    ]
+  );
 
   // Listen to messages from the 16:9 Video Studio sandbox iframe
   useEffect(() => {
@@ -396,11 +564,34 @@ export function VideoRecordingModal() {
         recorderRef.current?.updateCursorTelemetry(telemetry);
       }
 
+      if (data.type === "VIDEO_STUDIO_FRAME_BITMAP") {
+        recorderRef.current?.pushFrameBitmap(
+          Number(data.requestId || 0),
+          data.bitmap instanceof ImageBitmap ? data.bitmap : null,
+          Number(data.captureMs || 8)
+        );
+      }
+
+      if (data.type === "VIDEO_STUDIO_FRAME_BLOB") {
+        recorderRef.current?.pushFrameBlob(
+          Number(data.requestId || 0),
+          data.blob instanceof Blob ? data.blob : null,
+          Number(data.captureMs || 20)
+        );
+      }
+
       if (data.type === "VIDEO_STUDIO_FRAME_DATA") {
         recorderRef.current?.pushFrameDataUrl(
           Number(data.requestId || 0),
-          typeof data.dataUrl === "string" ? data.dataUrl : null
+          typeof data.dataUrl === "string" ? data.dataUrl : null,
+          Number(data.captureMs || 25)
         );
+      }
+
+      if (data.type === "VIDEO_STUDIO_REPLAY_TAKE") {
+        const events = Array.isArray(data.events) ? (data.events as ReplayEventItem[]) : [];
+        const durationMs = Math.max(400, Number(data.durationMs || 1500));
+        void startReplayRenderFromTake(events, durationMs);
       }
 
       if (data.type === "VIDEO_STUDIO_CHOREOGRAPHY_COMPLETE") {
@@ -414,7 +605,13 @@ export function VideoRecordingModal() {
 
     window.addEventListener("message", handleMessage);
     return () => window.removeEventListener("message", handleMessage);
-  }, [isRecordingModalOpen, postToStage, stopRecording, drawParentCursorCanvas]);
+  }, [
+    isRecordingModalOpen,
+    postToStage,
+    stopRecording,
+    drawParentCursorCanvas,
+    startReplayRenderFromTake,
+  ]);
 
   // Clean up active recording & object URLs when dialog closes
   useEffect(() => {
@@ -428,7 +625,6 @@ export function VideoRecordingModal() {
       clearParentCursorCanvas();
       setPhase("idle");
       setStageReady(false);
-      setElapsedMs(0);
       setErrorMessage(null);
       setExportToast(null);
       setIsTranscodingMp4(false);
@@ -462,11 +658,40 @@ export function VideoRecordingModal() {
     });
   };
 
+  const handleStopCaptureMoves = useCallback(() => {
+    stopTimers();
+    postToStage({ type: "VIDEO_STUDIO_STOP_REPLAY_CAPTURE" });
+  }, [postToStage, stopTimers]);
+
   const beginActualRecording = useCallback(
     async (engineOverride?: "auto" | "native" | "direct") => {
       if (!stageContainerRef.current) return;
       setErrorMessage(null);
       revokeMediaUrls();
+
+      const engineToUse = engineOverride || recordingConfig.captureEngine;
+
+      // ZERO-LAG REPLAY PATH (Manual Live): capture interactions at 0% encoding load,
+      // then automatically replay & render smoothly after pressing Stop!
+      if (recordingConfig.mode === "manual" && zeroLagReplay) {
+        pendingReplayEngineRef.current = engineToUse;
+        setPhase("capturing-moves");
+        startImperativeTimer();
+        try {
+          stageIframeRef.current?.contentWindow?.focus();
+        } catch {
+          // Ignore focus restriction
+        }
+        postToStage({
+          type: "VIDEO_STUDIO_START_REPLAY_CAPTURE",
+          config: {
+            showCursor: recordingConfig.showCursor,
+            clickRipples: recordingConfig.clickRipples,
+            renderInParentOverlay: true,
+          },
+        });
+        return;
+      }
 
       if (recordingConfig.mode === "manual") {
         postToStage({
@@ -480,8 +705,6 @@ export function VideoRecordingModal() {
       } else {
         postToStage({ type: "VIDEO_STUDIO_RESET" });
       }
-
-      const engineToUse = engineOverride || recordingConfig.captureEngine;
 
       const launchCapture = async () => {
         if (!stageContainerRef.current) return;
@@ -506,16 +729,11 @@ export function VideoRecordingModal() {
           recorderRef.current = handle;
           setActiveEngine(handle.engine);
           setPhase("recording");
-          recordStartTsRef.current = performance.now();
-          setElapsedMs(0);
-
-          // Live tabular timer loop
-          const tickTimer = () => {
-            if (!recorderRef.current) return;
-            setElapsedMs(performance.now() - recordStartTsRef.current);
-            timerRafRef.current = requestAnimationFrame(tickTimer);
-          };
-          timerRafRef.current = requestAnimationFrame(tickTimer);
+          startImperativeTimer(
+            recordingConfig.mode === "autopilot"
+              ? recordingConfig.duration * 1000
+              : undefined
+          );
 
           // Kick off sandbox choreography or manual spring tracking
           if (recordingConfig.mode === "autopilot") {
@@ -534,14 +752,12 @@ export function VideoRecordingModal() {
               },
             });
 
-            // Hard safety stop just past the timeline end
             safetyStopTimerRef.current = setTimeout(() => {
               if (recorderRef.current) {
                 void stopRecording();
               }
             }, recordingConfig.duration * 1000 + 1400);
           } else {
-            // Focus stage iframe immediately so live pointer, clicks, and wheel scroll respond right away
             try {
               stageIframeRef.current?.contentWindow?.focus();
             } catch {
@@ -568,8 +784,6 @@ export function VideoRecordingModal() {
         }
       };
 
-      // Run optional 3-2-1 countdown BEFORE acquiring/starting in Direct mode,
-      // or right after quick setup so the countdown never enters the 16:9 frame.
       if (recordingConfig.countdown && engineToUse === "direct") {
         setPhase("countdown");
         setCountdownValue(3);
@@ -592,9 +806,11 @@ export function VideoRecordingModal() {
     },
     [
       recordingConfig,
+      zeroLagReplay,
       previewTheme,
       postToStage,
       revokeMediaUrls,
+      startImperativeTimer,
       stopRecording,
       stopTimers,
     ]
@@ -636,6 +852,7 @@ export function VideoRecordingModal() {
         blob: recordingResult.blob,
         fps: recordingConfig.fps,
         resolution: recordingConfig.resolution,
+        forceRescale: Boolean(recordingResult.needsServerRescale && serverFfmpegReady),
       });
       const mp4Url = URL.createObjectURL(mp4Blob);
       setCachedMp4Url(mp4Url);
@@ -664,7 +881,6 @@ export function VideoRecordingModal() {
     revokeMediaUrls();
     setErrorMessage(null);
     setExportToast(null);
-    setElapsedMs(0);
     setPhase("idle");
     postToStage({ type: "VIDEO_STUDIO_RESET" });
   };
@@ -694,21 +910,26 @@ export function VideoRecordingModal() {
   );
 
   const isBusy =
-    phase === "recording" || phase === "countdown" || phase === "processing";
+    phase === "recording" ||
+    phase === "capturing-moves" ||
+    phase === "rendering-replay" ||
+    phase === "countdown" ||
+    phase === "processing";
 
-  const recordingProgressPct =
-    recordingConfig.mode === "autopilot"
-      ? Math.min(100, (elapsedMs / (recordingConfig.duration * 1000)) * 100)
-      : 100;
+  const isActiveCapturePhase =
+    phase === "recording" ||
+    phase === "capturing-moves" ||
+    phase === "rendering-replay";
 
   return (
     <Dialog
       open={isRecordingModalOpen}
       onOpenChange={(open) => {
-        if (!open && phase === "recording") {
+        if (!open && isActiveCapturePhase) {
           recorderRef.current?.cancel();
           recorderRef.current = null;
           stopTimers();
+          postToStage({ type: "VIDEO_STUDIO_STOP" });
         }
         setRecordingModalOpen(open);
       }}
@@ -716,7 +937,7 @@ export function VideoRecordingModal() {
       <DialogContent
         onFocusOutside={(e) => e.preventDefault()}
         onInteractOutside={(e) => {
-          if (phase === "recording") {
+          if (isActiveCapturePhase) {
             e.preventDefault();
           }
         }}
@@ -820,26 +1041,34 @@ export function VideoRecordingModal() {
             {/* External Telemetry Bar (Always OUTSIDE the 16:9 captured crop region!) */}
             <div className="flex items-center justify-between gap-3 text-xs font-sans shrink-0">
               <div className="flex items-center gap-2 min-w-0 text-muted-foreground">
-                {phase === "recording" ? (
+                {phase === "recording" || phase === "capturing-moves" || phase === "rendering-replay" ? (
                   <>
                     <span className="inline-block size-2 rounded-full bg-destructive animate-pulse shrink-0" />
                     <span className="font-medium text-foreground">
-                      Recording 16:9 Stage
+                      {phase === "capturing-moves"
+                        ? "Zero-Lag Live Input"
+                        : phase === "rendering-replay"
+                          ? "Rendering 60fps Replay"
+                          : "Recording 16:9 Stage"}
                     </span>
                     <span aria-hidden="true">·</span>
-                    <span className="font-mono text-[11px] tabular-nums text-foreground">
-                      {formatTimecode(elapsedMs)}
-                      {recordingConfig.mode === "autopilot"
-                        ? ` / ${formatTimecode(recordingConfig.duration * 1000)}`
-                        : ""}
+                    <span
+                      ref={timecodeTextRef}
+                      className="font-mono text-[11px] tabular-nums text-foreground"
+                    >
+                      00:00.00
                     </span>
                     <span aria-hidden="true" className="hidden sm:inline">
                       ·
                     </span>
                     <span className="hidden sm:inline text-[11px]">
-                      {activeEngine === "native-region"
-                        ? "Native 60fps Region Capture"
-                        : "Direct Stage Compositor"}
+                      {phase === "capturing-moves"
+                        ? "Zero encoding overhead"
+                        : activeEngine === "native-zero-copy"
+                          ? "Zero-Copy GPU 60fps"
+                          : activeEngine === "native-region"
+                            ? "Hardware Region Capture"
+                            : "Turbo Direct Compositor"}
                     </span>
                   </>
                 ) : phase === "countdown" ? (
@@ -901,7 +1130,19 @@ export function VideoRecordingModal() {
 
               {/* Live progress / quick action outside the crop frame */}
               <div className="flex items-center gap-2 shrink-0">
-                {phase === "recording" && (
+                {phase === "capturing-moves" && (
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    size="sm"
+                    onClick={handleStopCaptureMoves}
+                    className="h-7 rounded-none px-3 text-xs font-sans gap-1.5"
+                  >
+                    <Square className="size-3 fill-current" />
+                    <span>Finish & Render</span>
+                  </Button>
+                )}
+                {(phase === "recording" || phase === "rendering-replay") && (
                   <Button
                     type="button"
                     variant="destructive"
@@ -928,15 +1169,18 @@ export function VideoRecordingModal() {
               </div>
             </div>
 
-            {/* Recording Progress Bar (Strictly Outside Captured Region) */}
-            {phase === "recording" && (
+            {/* Recording Progress Bar (Strictly Outside Captured Region, Imperatively Updated) */}
+            {isActiveCapturePhase && (
               <div className="h-1 w-full bg-muted overflow-hidden shrink-0">
                 <div
+                  ref={progressBarRef}
                   className={cn(
                     "h-full bg-destructive transition-[width] duration-100 ease-linear",
-                    recordingConfig.mode === "manual" && "animate-pulse"
+                    (phase === "capturing-moves" ||
+                      (phase === "recording" && recordingConfig.mode === "manual")) &&
+                      "animate-pulse"
                   )}
-                  style={{ width: `${recordingProgressPct}%` }}
+                  style={{ width: "0%" }}
                 />
               </div>
             )}
@@ -1310,17 +1554,32 @@ export function VideoRecordingModal() {
                       variant="outline"
                       className="rounded-none text-[10px] font-sans font-normal px-1.5 py-0 h-5"
                     >
-                      {recordingConfig.showCursor ? "Cursor Live" : "Cursor Hidden"}
+                      {zeroLagReplay ? "Zero-Lag Replay" : "Live Encode"}
                     </Badge>
                   </div>
-                  <div className="border border-border bg-muted/30 p-3 text-xs text-muted-foreground leading-relaxed space-y-2">
-                    <p className="text-foreground font-medium">
-                      Live spring cursor preview active
-                    </p>
-                    <p>
-                      Move your pointer over the 16:9 stage now to test the spring virtual cursor and minimal click pulse. Hit Record when ready to capture your live clicks, dropdowns, and scrolling at 60fps.
-                    </p>
+
+                  {/* Zero-Lag Replay Toggle */}
+                  <div className="flex items-center justify-between gap-3 border border-border bg-muted/30 p-3">
+                    <div className="min-w-0">
+                      <div className="text-xs font-medium text-foreground">
+                        Zero-Lag Replay Mode
+                      </div>
+                      <div className="text-[11px] text-muted-foreground leading-relaxed mt-0.5">
+                        Interact at full native speed with 0% capture lag; auto-replays and encodes your take after Stop.
+                      </div>
+                    </div>
+                    <Switch
+                      checked={zeroLagReplay}
+                      disabled={isBusy}
+                      onCheckedChange={setZeroLagReplay}
+                      aria-label="Toggle zero-lag replay mode"
+                    />
                   </div>
+
+                  <p className="text-[11px] text-muted-foreground leading-relaxed">
+                    Hover the 16:9 stage now to preview the spring virtual cursor and minimal click pulse before recording.
+                  </p>
+
                   <Button
                     type="button"
                     variant="outline"
@@ -1477,15 +1736,15 @@ export function VideoRecordingModal() {
                     <span className="text-muted-foreground">Capture Engine</span>
                     <span className="text-[10px] text-muted-foreground">
                       {recordingConfig.captureEngine === "direct"
-                        ? "Zero prompt"
-                        : "True GPU 60fps"}
+                        ? "Turbo Direct"
+                        : "Zero-Copy GPU"}
                     </span>
                   </div>
                   <div className="grid grid-cols-3 gap-1">
                     {(
                       [
                         { id: "auto", label: "Auto" },
-                        { id: "native", label: "Native" },
+                        { id: "native", label: "Hardware" },
                         { id: "direct", label: "Direct" },
                       ] as const
                     ).map((eng) => (
@@ -1606,7 +1865,21 @@ export function VideoRecordingModal() {
                     </Button>
                   </div>
                 </>
-              ) : phase === "recording" ? (
+              ) : phase === "capturing-moves" ? (
+                <Button
+                  type="button"
+                  variant="destructive"
+                  size="sm"
+                  onClick={handleStopCaptureMoves}
+                  className="w-full h-9 rounded-none text-xs font-sans font-medium gap-2"
+                >
+                  <Square className="size-3.5 fill-current" />
+                  <span>Finish & Render Replay</span>
+                  <span ref={stopBtnTimecodeRef} className="font-mono tabular-nums">
+                    (00:00.00)
+                  </span>
+                </Button>
+              ) : phase === "recording" || phase === "rendering-replay" ? (
                 <Button
                   type="button"
                   variant="destructive"
@@ -1615,7 +1888,14 @@ export function VideoRecordingModal() {
                   className="w-full h-9 rounded-none text-xs font-sans font-medium gap-2"
                 >
                   <Square className="size-3.5 fill-current" />
-                  <span>Stop Recording ({formatTimecode(elapsedMs)})</span>
+                  <span>
+                    {phase === "rendering-replay"
+                      ? "Cancel Replay Render"
+                      : "Stop Recording"}
+                  </span>
+                  <span ref={stopBtnTimecodeRef} className="font-mono tabular-nums">
+                    (00:00.00)
+                  </span>
                 </Button>
               ) : (
                 <Button
@@ -1639,7 +1919,9 @@ export function VideoRecordingModal() {
                     <>
                       <Video className="size-3.5" />
                       <span>
-                        Record 16:9 Video ({recordingConfig.fps}fps)
+                        {recordingConfig.mode === "manual" && zeroLagReplay
+                          ? `Start Zero-Lag Capture (${recordingConfig.fps}fps)`
+                          : `Record 16:9 Video (${recordingConfig.fps}fps)`}
                       </span>
                     </>
                   )}
