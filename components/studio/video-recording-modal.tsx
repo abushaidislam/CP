@@ -6,6 +6,7 @@ import { compileSandboxHtml } from "@/lib/sandbox/sandbox-compiler";
 import { DEFAULT_TEMPLATES } from "@/lib/sandbox/default-templates";
 import {
   detectCaptureCapabilities,
+  drawCanvasCursorOverlay,
   getResolutionDimensions,
   startStageRecording,
   transcodeRecordingToMp4,
@@ -43,7 +44,6 @@ import {
   Hand,
   MousePointer2,
   ArrowDownUp,
-  ZoomIn,
   RefreshCw,
   Loader2,
   Check,
@@ -135,6 +135,8 @@ export function VideoRecordingModal() {
 
   const stageContainerRef = useRef<HTMLDivElement | null>(null);
   const stageIframeRef = useRef<HTMLIFrameElement | null>(null);
+  const stageCursorCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const lastCursorTelemetryRef = useRef<CursorTelemetryState | null>(null);
   const reviewVideoRef = useRef<HTMLVideoElement | null>(null);
   const recorderRef = useRef<StageRecorderHandle | null>(null);
   const timerRafRef = useRef<number | null>(null);
@@ -194,6 +196,73 @@ export function VideoRecordingModal() {
     }
   }, []);
 
+  const clearParentCursorCanvas = useCallback(() => {
+    const canvas = stageCursorCanvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (ctx) {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
+  }, []);
+
+  const drawParentCursorCanvas = useCallback(
+    (telemetry: CursorTelemetryState) => {
+      const canvas = stageCursorCanvasRef.current;
+      const container = stageContainerRef.current;
+      if (!canvas || !container) return;
+
+      const rect = container.getBoundingClientRect();
+      if (rect.width < 10 || rect.height < 10) return;
+
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const targetW = Math.round(rect.width * dpr);
+      const targetH = Math.round(rect.height * dpr);
+      if (canvas.width !== targetW || canvas.height !== targetH) {
+        canvas.width = targetW;
+        canvas.height = targetH;
+      }
+
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
+      ctx.clearRect(0, 0, targetW, targetH);
+
+      if (!telemetry.visible && (!telemetry.ripples || telemetry.ripples.length === 0)) {
+        return;
+      }
+
+      drawCanvasCursorOverlay(
+        ctx,
+        targetW,
+        targetH,
+        telemetry,
+        previewTheme === "dark"
+      );
+    },
+    [previewTheme]
+  );
+
+  const forwardBoundaryPointerToStage = useCallback(
+    (
+      e: React.PointerEvent<HTMLDivElement>,
+      eventType: "move" | "down" | "up"
+    ) => {
+      if (recordingConfig.mode !== "manual" || !stageReady) return;
+      const container = stageContainerRef.current;
+      if (!container) return;
+      const rect = container.getBoundingClientRect();
+      if (rect.width <= 0 || rect.height <= 0) return;
+      const nx = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+      const ny = Math.max(0, Math.min(1, (e.clientY - rect.top) / rect.height));
+      postToStage({
+        type: "VIDEO_STUDIO_EXTERNAL_POINTER",
+        nx,
+        ny,
+        eventType,
+      });
+    },
+    [recordingConfig.mode, stageReady, postToStage]
+  );
+
   // Push live configuration changes into the stage iframe
   useEffect(() => {
     if (!isRecordingModalOpen || !stageReady) return;
@@ -207,10 +276,21 @@ export function VideoRecordingModal() {
       loopReturnToTop: recordingConfig.loopReturnToTop,
       showCursor: recordingConfig.showCursor,
       clickRipples: recordingConfig.clickRipples,
-      autoZoom: recordingConfig.autoZoom,
-      zoomIntensity: recordingConfig.zoomIntensity,
+      renderInParentOverlay: true,
     });
-  }, [isRecordingModalOpen, stageReady, recordingConfig, postToStage]);
+    if (!recordingConfig.showCursor || recordingConfig.mode !== "manual") {
+      if (phase === "idle") {
+        clearParentCursorCanvas();
+      }
+    }
+  }, [
+    isRecordingModalOpen,
+    stageReady,
+    recordingConfig,
+    phase,
+    postToStage,
+    clearParentCursorCanvas,
+  ]);
 
   const showExportToast = useCallback((msg: string) => {
     setExportToast(msg);
@@ -310,7 +390,10 @@ export function VideoRecordingModal() {
       }
 
       if (data.type === "VIDEO_STUDIO_CURSOR_STATE") {
-        recorderRef.current?.updateCursorTelemetry(data as CursorTelemetryState);
+        const telemetry = data as CursorTelemetryState;
+        lastCursorTelemetryRef.current = telemetry;
+        drawParentCursorCanvas(telemetry);
+        recorderRef.current?.updateCursorTelemetry(telemetry);
       }
 
       if (data.type === "VIDEO_STUDIO_FRAME_DATA") {
@@ -331,7 +414,7 @@ export function VideoRecordingModal() {
 
     window.addEventListener("message", handleMessage);
     return () => window.removeEventListener("message", handleMessage);
-  }, [isRecordingModalOpen, postToStage, stopRecording]);
+  }, [isRecordingModalOpen, postToStage, stopRecording, drawParentCursorCanvas]);
 
   // Clean up active recording & object URLs when dialog closes
   useEffect(() => {
@@ -341,6 +424,8 @@ export function VideoRecordingModal() {
         recorderRef.current.cancel();
         recorderRef.current = null;
       }
+      lastCursorTelemetryRef.current = null;
+      clearParentCursorCanvas();
       setPhase("idle");
       setStageReady(false);
       setElapsedMs(0);
@@ -355,6 +440,7 @@ export function VideoRecordingModal() {
   const handleTogglePreviewRun = () => {
     if (phase === "previewing") {
       postToStage({ type: "VIDEO_STUDIO_RESET" });
+      clearParentCursorCanvas();
       setPhase("idle");
       return;
     }
@@ -371,8 +457,7 @@ export function VideoRecordingModal() {
         loopReturnToTop: recordingConfig.loopReturnToTop,
         showCursor: recordingConfig.showCursor,
         clickRipples: recordingConfig.clickRipples,
-        autoZoom: recordingConfig.autoZoom,
-        zoomIntensity: recordingConfig.zoomIntensity,
+        renderInParentOverlay: true,
       },
     });
   };
@@ -382,7 +467,19 @@ export function VideoRecordingModal() {
       if (!stageContainerRef.current) return;
       setErrorMessage(null);
       revokeMediaUrls();
-      postToStage({ type: "VIDEO_STUDIO_RESET" });
+
+      if (recordingConfig.mode === "manual") {
+        postToStage({
+          type: "VIDEO_STUDIO_PREPARE_MANUAL",
+          config: {
+            showCursor: recordingConfig.showCursor,
+            clickRipples: recordingConfig.clickRipples,
+            renderInParentOverlay: true,
+          },
+        });
+      } else {
+        postToStage({ type: "VIDEO_STUDIO_RESET" });
+      }
 
       const engineToUse = engineOverride || recordingConfig.captureEngine;
 
@@ -397,6 +494,8 @@ export function VideoRecordingModal() {
             preferredFormat: recordingConfig.format,
             preferredEngine: engineToUse,
             previewTheme,
+            showCursor: recordingConfig.showCursor,
+            initialCursorTelemetry: lastCursorTelemetryRef.current,
             onTrackEnded: () => {
               if (recorderRef.current) {
                 void stopRecording();
@@ -431,8 +530,7 @@ export function VideoRecordingModal() {
                 loopReturnToTop: recordingConfig.loopReturnToTop,
                 showCursor: recordingConfig.showCursor,
                 clickRipples: recordingConfig.clickRipples,
-                autoZoom: recordingConfig.autoZoom,
-                zoomIntensity: recordingConfig.zoomIntensity,
+                renderInParentOverlay: true,
               },
             });
 
@@ -443,13 +541,18 @@ export function VideoRecordingModal() {
               }
             }, recordingConfig.duration * 1000 + 1400);
           } else {
+            // Focus stage iframe immediately so live pointer, clicks, and wheel scroll respond right away
+            try {
+              stageIframeRef.current?.contentWindow?.focus();
+            } catch {
+              // Ignore focus restriction
+            }
             postToStage({
               type: "VIDEO_STUDIO_START_MANUAL",
               config: {
                 showCursor: recordingConfig.showCursor,
                 clickRipples: recordingConfig.clickRipples,
-                autoZoom: recordingConfig.autoZoom,
-                zoomIntensity: recordingConfig.zoomIntensity,
+                renderInParentOverlay: true,
               },
             });
           }
@@ -610,7 +713,15 @@ export function VideoRecordingModal() {
         setRecordingModalOpen(open);
       }}
     >
-      <DialogContent className="max-w-[1360px] w-[calc(100vw-2rem)] max-h-[90vh] flex flex-col overflow-hidden p-0 gap-0 rounded-none border border-border bg-card font-sans">
+      <DialogContent
+        onFocusOutside={(e) => e.preventDefault()}
+        onInteractOutside={(e) => {
+          if (phase === "recording") {
+            e.preventDefault();
+          }
+        }}
+        className="max-w-[1360px] w-[calc(100vw-2rem)] max-h-[90vh] flex flex-col overflow-hidden p-0 gap-0 rounded-none border border-border bg-card font-sans"
+      >
         {/* Top Studio Header Bar */}
         <DialogHeader className="studio-toolbar-surface flex-row items-center justify-between gap-4 border-b border-border px-5 py-3.5 pr-14 shrink-0 space-y-0">
           <div className="flex items-center gap-3 min-w-0">
@@ -858,9 +969,21 @@ export function VideoRecordingModal() {
                   <div
                     ref={stageContainerRef}
                     data-testid="video-studio-16x9-stage"
+                    onPointerMoveCapture={(e) =>
+                      forwardBoundaryPointerToStage(e, "move")
+                    }
+                    onPointerDownCapture={(e) =>
+                      forwardBoundaryPointerToStage(e, "down")
+                    }
+                    onPointerUpCapture={(e) =>
+                      forwardBoundaryPointerToStage(e, "up")
+                    }
                     className={cn(
                       "relative w-full aspect-video border border-border overflow-hidden",
-                      previewTheme === "dark" ? "bg-zinc-950" : "bg-white"
+                      previewTheme === "dark" ? "bg-zinc-950" : "bg-white",
+                      recordingConfig.mode === "manual" &&
+                        recordingConfig.showCursor &&
+                        "cursor-none"
                     )}
                   >
                     {!stageReady && !compileError && (
@@ -877,6 +1000,13 @@ export function VideoRecordingModal() {
                       title="16:9 Video Studio Live Stage"
                       sandbox="allow-scripts allow-same-origin allow-modals"
                       className="w-full h-full border-none block"
+                    />
+
+                    {/* Top-Layer 60fps Virtual Cursor & Minimal Click Pulse Canvas (Guaranteed visible in Native & Manual Live capture) */}
+                    <canvas
+                      ref={stageCursorCanvasRef}
+                      aria-hidden="true"
+                      className="pointer-events-none absolute inset-0 z-30 w-full h-full block"
                     />
                   </div>
                 )}
@@ -963,8 +1093,8 @@ export function VideoRecordingModal() {
             <div className="flex items-center justify-between gap-2 text-[11px] text-muted-foreground font-sans shrink-0">
               <span>
                 {recordingConfig.mode === "autopilot"
-                  ? "Auto-Pilot glides a spring cursor across interactive elements, triggers clicks with subtle zoom, and auto-scrolls smoothly."
-                  : "Manual Live mode replaces your OS pointer with a spring-smoothed virtual cursor and captures live clicks and scroll."}
+                  ? "Auto-Pilot detects interactive buttons, opens & clicks dropdown menus, runs multi-click sequences, and auto-scrolls smoothly."
+                  : "Manual Live mode replaces your OS pointer with a spring-smoothed virtual cursor and minimal click feedback."}
               </span>
               <span className="hidden xl:inline font-mono text-[10px] shrink-0">
                 16:9 EDGE-TO-EDGE
@@ -1093,10 +1223,10 @@ export function VideoRecordingModal() {
                     <div className="flex items-center justify-between gap-3">
                       <div className="min-w-0">
                         <div className="text-xs font-medium text-foreground">
-                          Auto-Click Interactions
+                          Smart Click & Dropdowns
                         </div>
                         <div className="text-[11px] text-muted-foreground">
-                          Click buttons, tabs, and toggles along path
+                          Opens dropdowns, clicks sub-items & multi-click controls
                         </div>
                       </div>
                       <Switch
@@ -1105,7 +1235,7 @@ export function VideoRecordingModal() {
                         onCheckedChange={(checked) =>
                           setRecordingConfig({ autoClick: checked })
                         }
-                        aria-label="Toggle auto-click interactions"
+                        aria-label="Toggle smart click and dropdown interactions"
                       />
                     </div>
 
@@ -1172,15 +1302,23 @@ export function VideoRecordingModal() {
                 </section>
               ) : (
                 <section className="space-y-3">
-                  <span className="font-mono text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-                    MANUAL LIVE CAPTURE
-                  </span>
+                  <div className="flex items-center justify-between">
+                    <span className="font-mono text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                      MANUAL LIVE CAPTURE
+                    </span>
+                    <Badge
+                      variant="outline"
+                      className="rounded-none text-[10px] font-sans font-normal px-1.5 py-0 h-5"
+                    >
+                      {recordingConfig.showCursor ? "Cursor Live" : "Cursor Hidden"}
+                    </Badge>
+                  </div>
                   <div className="border border-border bg-muted/30 p-3 text-xs text-muted-foreground leading-relaxed space-y-2">
                     <p className="text-foreground font-medium">
-                      You drive the 16:9 stage live
+                      Live spring cursor preview active
                     </p>
                     <p>
-                      Click Record, then move your pointer, click buttons, and scroll directly inside the 16:9 canvas. Your motion is automatically smoothed by the 60fps spring cursor.
+                      Move your pointer over the 16:9 stage now to test the spring virtual cursor and minimal click pulse. Hit Record when ready to capture your live clicks, dropdowns, and scrolling at 60fps.
                     </p>
                   </div>
                   <Button
@@ -1199,10 +1337,10 @@ export function VideoRecordingModal() {
 
               <Separator />
 
-              {/* Cursor & Camera Section */}
+              {/* Cursor & Feedback Section */}
               <section className="space-y-3">
                 <span className="font-mono text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-                  CURSOR & CAMERA
+                  CURSOR & FEEDBACK
                 </span>
 
                 <div className="flex items-center justify-between gap-3">
@@ -1212,7 +1350,7 @@ export function VideoRecordingModal() {
                       <span>Spring Virtual Cursor</span>
                     </div>
                     <div className="text-[11px] text-muted-foreground">
-                      Critically damped 60fps cursor with tilt
+                      Minimal 60fps spring pointer with subtle tilt
                     </div>
                   </div>
                   <Switch
@@ -1228,10 +1366,10 @@ export function VideoRecordingModal() {
                 <div className="flex items-center justify-between gap-3">
                   <div className="min-w-0">
                     <div className="text-xs font-medium text-foreground">
-                      Click Ripples
+                      Minimal Click Pulse
                     </div>
                     <div className="text-[11px] text-muted-foreground">
-                      Dual-ring tactile ripple on every click
+                      Crisp hairline click ring with subtle press feedback
                     </div>
                   </div>
                   <Switch
@@ -1240,51 +1378,9 @@ export function VideoRecordingModal() {
                     onCheckedChange={(checked) =>
                       setRecordingConfig({ clickRipples: checked })
                     }
-                    aria-label="Toggle click ripples"
+                    aria-label="Toggle minimal click pulse"
                   />
                 </div>
-
-                <div className="flex items-center justify-between gap-3">
-                  <div className="min-w-0">
-                    <div className="text-xs font-medium text-foreground flex items-center gap-1.5">
-                      <ZoomIn className="size-3 text-muted-foreground" />
-                      <span>Subtle Auto-Zoom</span>
-                    </div>
-                    <div className="text-[11px] text-muted-foreground">
-                      Smooth camera focus on click interactions
-                    </div>
-                  </div>
-                  <Switch
-                    checked={recordingConfig.autoZoom}
-                    disabled={isBusy}
-                    onCheckedChange={(checked) =>
-                      setRecordingConfig({ autoZoom: checked })
-                    }
-                    aria-label="Toggle subtle auto-zoom"
-                  />
-                </div>
-
-                {recordingConfig.autoZoom && (
-                  <div className="space-y-2 pt-1 pl-3 border-l border-border">
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="text-muted-foreground">Zoom Intensity</span>
-                      <span className="font-mono text-[11px] text-foreground tabular-nums">
-                        {recordingConfig.zoomIntensity.toFixed(2)}×
-                      </span>
-                    </div>
-                    <Slider
-                      value={[recordingConfig.zoomIntensity]}
-                      min={1.08}
-                      max={1.3}
-                      step={0.02}
-                      disabled={isBusy}
-                      onValueChange={([val]) =>
-                        setRecordingConfig({ zoomIntensity: val })
-                      }
-                      aria-label="Auto-zoom intensity"
-                    />
-                  </div>
-                )}
               </section>
 
               <Separator />

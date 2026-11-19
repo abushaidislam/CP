@@ -1,14 +1,27 @@
 /**
- * In-sandbox 60fps Interaction Choreography, Spring Physics Virtual Cursor,
- * Click Ripple Pool, and Subtle Auto-Zoom Camera Runtime.
+ * In-sandbox 60fps Interaction Choreography & Minimal Spring Virtual Cursor Runtime.
  *
- * Injected into the compiled sandbox iframe ONLY when `videoStudio: true`
- * so the standard Component Studio preview remains zero-overhead.
+ * Features:
+ * - Zero camera zoom-in/zoom-out (rock-steady edge-to-edge 16:9 framing).
+ * - Refined minimal precision cursor with 60fps critically-damped spring physics.
+ * - Ultra-minimal single hairline click pulse + micro contact point.
+ * - Rock-solid Manual Live tracking:
+ *   - Capture-phase document listeners for pointer/mouse/touch/wheel events so no
+ *     component calling stopPropagation() or setPointerCapture() can drop tracking.
+ *   - Live manual cursor preview on stage hover even before pressing Record.
+ *   - Subtle interactive hover-target detection + zero-jump recording handoff.
+ * - Smart Live-DOM Choreography:
+ *   - Detects hover-revealed menus (mega-menus, hover cards) and traverses into them.
+ *   - Detects click-revealed dropdowns, popovers, accordions, and nested menus, then
+ *     smoothly hovers and clicks through the revealed sub-items.
+ *   - Supports natural multi-click interactions for stateful buttons, carousels, card
+ *     decks, switches, steppers, and segmented tab groups.
+ *   - Smooth eased auto-scroll + optional return-to-top loop.
  */
 export function buildVideoStudioRuntimeScript(): string {
   return `
     // =========================================================================
-    // VIDEO STUDIO 60FPS CHOREOGRAPHY, SPRING CURSOR & AUTO-ZOOM RUNTIME
+    // VIDEO STUDIO 60FPS SMART CHOREOGRAPHY & MINIMAL SPRING CURSOR RUNTIME
     // =========================================================================
     (function initVideoStudioRuntime() {
       if (window.__VIDEO_STUDIO_RUNTIME_LOADED__) return;
@@ -23,56 +36,50 @@ export function buildVideoStudioRuntimeScript(): string {
         loopReturnToTop: true,
         showCursor: true,
         clickRipples: true,
-        autoZoom: true,
-        zoomIntensity: 1.18,
-        activeSession: false, // true during dryRun or recording
+        renderInParentOverlay: false,
+        activeSession: false,
         manualActive: false,
         cursorVisible: false,
 
-        // Cursor spring physics (viewport coordinates in px)
+        // Cursor spring physics (viewport px)
         targetX: window.innerWidth * 0.5,
         targetY: window.innerHeight * 0.5,
-        x: window.innerWidth * 0.85,
-        y: window.innerHeight * 0.85,
+        x: window.innerWidth * 0.5,
+        y: window.innerHeight * 0.5,
         vx: 0,
         vy: 0,
         scale: 1,
         targetScale: 1,
         tilt: 0,
         isPressed: false,
+        hoveringInteractive: false,
 
-        // Subtle camera auto-zoom spring
-        zoom: 1,
-        targetZoom: 1,
-        zoomOriginX: window.innerWidth * 0.5,
-        zoomOriginY: window.innerHeight * 0.5,
-        currentOriginX: window.innerWidth * 0.5,
-        currentOriginY: window.innerHeight * 0.5,
-        zoomResetTimer: null,
+        // Manual pointer memory & deduplication
+        hasRealPointer: false,
+        lastKnownX: window.innerWidth * 0.5,
+        lastKnownY: window.innerHeight * 0.5,
+        lastHoverCheckTs: 0,
+        lastClickPulseTs: 0,
+        lastEmittedVisible: false,
 
-        // Active ripples
+        // Minimal click pulse pool
         ripples: [],
 
         // Choreography runner
         choreographyRaf: null,
         choreographyCancelled: false,
         lastHoveredEl: null,
-        lastTelemetryTs: 0,
         masterRaf: null,
         lastFrameTs: performance.now(),
       };
 
-      // Inject crisp helper styles for cursor, ripples, and synthetic hover
+      // Refined minimal cursor & hairline pulse styles (no camera zoom transforms)
       const styleEl = document.createElement("style");
       styleEl.id = "__video_studio_styles__";
       styleEl.textContent = \`
         html.__vs_hide_native_cursor__,
         html.__vs_hide_native_cursor__ * {
           cursor: none !important;
-        }
-        #root {
-          transform-origin: 0 0;
-          will-change: transform;
         }
         #__video_studio_overlay__ {
           position: fixed;
@@ -85,17 +92,32 @@ export function buildVideoStudioRuntimeScript(): string {
           position: fixed;
           top: 0;
           left: 0;
-          width: 30px;
-          height: 30px;
+          width: 26px;
+          height: 26px;
           margin-left: -3px;
           margin-top: -2px;
           pointer-events: none;
           will-change: transform, opacity;
           opacity: 0;
-          transition: opacity 180ms cubic-bezier(0.22, 1, 0.36, 1);
-          filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.38)) drop-shadow(0 2px 4px rgba(0, 0, 0, 0.28));
+          transition: opacity 130ms cubic-bezier(0.22, 1, 0.36, 1);
+          filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.36)) drop-shadow(0 1px 2px rgba(0, 0, 0, 0.28));
         }
-        .__vs_ripple__ {
+        #__video_studio_hover_halo__ {
+          position: fixed;
+          top: 0;
+          left: 0;
+          width: 24px;
+          height: 24px;
+          margin-left: -12px;
+          margin-top: -12px;
+          border-radius: 9999px;
+          pointer-events: none;
+          will-change: transform, opacity;
+          opacity: 0;
+          transition: opacity 150ms cubic-bezier(0.22, 1, 0.36, 1);
+        }
+        .__vs_pulse_ring__,
+        .__vs_pulse_dot__ {
           position: fixed;
           top: 0;
           left: 0;
@@ -103,25 +125,41 @@ export function buildVideoStudioRuntimeScript(): string {
           border-radius: 9999px;
           will-change: transform, opacity;
         }
-        [data-studio-hover="true"] {
-          transition: transform 180ms cubic-bezier(0.22, 1, 0.36, 1), filter 180ms ease;
-        }
       \`;
       document.head.appendChild(styleEl);
 
-      // Build overlay DOM for Spring Cursor + Ripples
+      // Build in-iframe overlay DOM (auto-hidden when parent top-layer overlay is active)
       const overlay = document.createElement("div");
       overlay.id = "__video_studio_overlay__";
+
+      const hoverHaloEl = document.createElement("div");
+      hoverHaloEl.id = "__video_studio_hover_halo__";
+      overlay.appendChild(hoverHaloEl);
 
       const cursorEl = document.createElement("div");
       cursorEl.id = "__video_studio_cursor__";
       cursorEl.innerHTML = \`
-        <svg width="30" height="30" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M5.5 3.2L22.4 13.8C23.3 14.35 23.02 15.72 21.97 15.9L14.85 17.12L11.72 23.58C11.24 24.56 9.81 24.42 9.53 23.36L4.28 4.42C4.04 3.55 4.74 2.72 5.5 3.2Z" fill="#09090B" stroke="#FFFFFF" stroke-width="1.8" stroke-linejoin="round"/>
+        <svg width="26" height="26" viewBox="0 0 26 26" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M4.2 2.6L20.4 12.6C21.15 13.06 20.92 14.22 20.04 14.38L13.3 15.55L10.35 21.65C9.95 22.48 8.74 22.36 8.5 21.46L3.25 3.62C3.05 2.9 3.6 2.23 4.2 2.6Z" fill="#09090B" stroke="#FFFFFF" stroke-width="1.75" stroke-linejoin="round"/>
         </svg>
       \`;
       overlay.appendChild(cursorEl);
-      document.body.appendChild(overlay);
+      if (document.body) {
+        document.body.appendChild(overlay);
+      }
+
+      function syncNativeCursorVisibility() {
+        const shouldHideOsCursor =
+          state.showCursor &&
+          (state.activeSession ||
+            state.manualActive ||
+            (state.mode === "manual" && state.cursorVisible));
+        if (shouldHideOsCursor) {
+          document.documentElement.classList.add("__vs_hide_native_cursor__");
+        } else {
+          document.documentElement.classList.remove("__vs_hide_native_cursor__");
+        }
+      }
 
       function postToParent(payload) {
         try {
@@ -130,8 +168,41 @@ export function buildVideoStudioRuntimeScript(): string {
       }
 
       // -----------------------------------------------------------------------
-      // Scroll Container & Interactive Target Discovery
+      // Scroll Container & Smart Interactive Target Discovery
       // -----------------------------------------------------------------------
+      const INTERACTIVE_SELECTOR = [
+        "button:not([disabled])",
+        "[role='button']:not([aria-disabled='true'])",
+        "[role='tab']",
+        "[role='switch']",
+        "[role='menuitem']",
+        "[role='option']",
+        "[role='checkbox']",
+        "[role='radio']",
+        "[role='slider']",
+        "summary",
+        "input:not([type='hidden']):not([disabled])",
+        "select:not([disabled])",
+        "a[href]",
+        "[data-interactive]",
+        "[aria-haspopup]",
+        "[aria-expanded]",
+      ].join(",");
+
+      function isInteractiveAtPoint(x, y) {
+        try {
+          const el = document.elementFromPoint(x, y);
+          if (!el || !(el instanceof HTMLElement)) return false;
+          if (el.closest && el.closest("#__video_studio_overlay__")) return false;
+          if (el.matches && el.matches(INTERACTIVE_SELECTOR)) return true;
+          if (el.closest && el.closest(INTERACTIVE_SELECTOR)) return true;
+          const style = window.getComputedStyle(el);
+          return style.cursor === "pointer";
+        } catch (e) {
+          return false;
+        }
+      }
+
       function findScrollContainer() {
         const docEl = document.scrollingElement || document.documentElement;
         const docScrollable = Math.max(0, docEl.scrollHeight - window.innerHeight);
@@ -180,8 +251,9 @@ export function buildVideoStudioRuntimeScript(): string {
         return container.el ? container.el.scrollTop : 0;
       }
 
-      function isVisibleElement(el) {
+      function isVisibleInViewport(el) {
         if (!el || !(el instanceof HTMLElement)) return false;
+        if (el.closest && el.closest("#__video_studio_overlay__")) return false;
         const style = window.getComputedStyle(el);
         if (
           style.display === "none" ||
@@ -192,99 +264,142 @@ export function buildVideoStudioRuntimeScript(): string {
           return false;
         }
         const rect = el.getBoundingClientRect();
-        if (rect.width < 16 || rect.height < 14) return false;
+        if (rect.width < 14 || rect.height < 14) return false;
         if (rect.width > window.innerWidth * 0.96 && rect.height > window.innerHeight * 0.96) {
+          return false;
+        }
+        const cx = rect.left + rect.width / 2;
+        const cy = rect.top + rect.height / 2;
+        if (cx < 6 || cx > window.innerWidth - 6 || cy < 6 || cy > window.innerHeight - 6) {
           return false;
         }
         return true;
       }
 
-      function discoverInteractiveTargets() {
-        const root = document.getElementById("root");
-        if (!root) return [];
-
-        const primarySelector = [
-          "button:not([disabled])",
-          "[role='button']",
-          "[role='tab']",
-          "[role='switch']",
-          "[role='slider']",
-          "input:not([type='hidden']):not([disabled])",
-          "select:not([disabled])",
-          "a[href]",
-          "[data-interactive]",
-        ].join(",");
-
-        const candidates = [];
+      function getAllVisibleInteractiveElements() {
+        const list = [];
         const seen = new Set();
 
-        const primaryEls = root.querySelectorAll(primarySelector);
-        primaryEls.forEach((el) => {
-          if (isVisibleElement(el) && !seen.has(el)) {
+        const primaryEls = document.body.querySelectorAll(INTERACTIVE_SELECTOR);
+        for (let i = 0; i < primaryEls.length; i++) {
+          const el = primaryEls[i];
+          if (isVisibleInViewport(el) && !seen.has(el)) {
             seen.add(el);
-            candidates.push({ el, clickable: true, priority: 3 });
-          }
-        });
-
-        // Also find hoverable interactive cards / cursor-pointer elements
-        const allEls = root.querySelectorAll("div, section, article, li, label");
-        for (let i = 0; i < allEls.length && candidates.length < 24; i++) {
-          const el = allEls[i];
-          if (seen.has(el) || !isVisibleElement(el)) continue;
-          const style = window.getComputedStyle(el);
-          const rect = el.getBoundingClientRect();
-          const hasPointer = style.cursor === "pointer";
-          const isReasonableCard =
-            rect.width >= 60 &&
-            rect.height >= 40 &&
-            rect.width <= window.innerWidth * 0.82 &&
-            rect.height <= window.innerHeight * 0.72;
-          if (hasPointer && isReasonableCard) {
-            seen.add(el);
-            candidates.push({ el, clickable: true, priority: 2 });
+            list.push(el);
           }
         }
 
-        // Filter to elements currently within or near the initial viewport, deduplicating close centers
-        const filtered = [];
-        for (const item of candidates) {
-          const rect = item.el.getBoundingClientRect();
+        const extraEls = document.body.querySelectorAll("div, li, label, article");
+        for (let i = 0; i < extraEls.length && list.length < 48; i++) {
+          const el = extraEls[i];
+          if (seen.has(el) || !isVisibleInViewport(el)) continue;
+          const style = window.getComputedStyle(el);
+          if (style.cursor !== "pointer") continue;
+          const rect = el.getBoundingClientRect();
+          if (
+            rect.width >= 36 &&
+            rect.height >= 24 &&
+            rect.width <= window.innerWidth * 0.78 &&
+            rect.height <= window.innerHeight * 0.65
+          ) {
+            if (!el.querySelector("button, a[href], [role='menuitem'], [role='option']")) {
+              seen.add(el);
+              list.push(el);
+            }
+          }
+        }
+
+        return list;
+      }
+
+      function isLikelyDropdownTrigger(el) {
+        if (!el || !(el instanceof HTMLElement)) return false;
+        if (
+          el.hasAttribute("aria-haspopup") ||
+          el.hasAttribute("aria-expanded") ||
+          el.hasAttribute("aria-controls")
+        ) {
+          return true;
+        }
+        const txt = (el.textContent || "").toLowerCase();
+        const aria = (el.getAttribute("aria-label") || "").toLowerCase();
+        return /menu|dropdown|select|filter|sort|more|options|category|product|resource|solution|company/.test(
+          txt + " " + aria
+        );
+      }
+
+      function isLikelyMultiClickControl(el) {
+        if (!el || !(el instanceof HTMLElement)) return false;
+        const role = (el.getAttribute("role") || "").toLowerCase();
+        if (role === "switch" || role === "checkbox") return true;
+        const text = ((el.textContent || "") + " " + (el.getAttribute("aria-label") || "")).toLowerCase();
+        return /next|prev|shuffle|swap|increment|plus|\\+|add|toggle|switch|cycle|play|step|like|heart|upvote|count/.test(
+          text
+        );
+      }
+
+      function deduplicateTargets(elements, minDistance) {
+        const results = [];
+        for (let i = 0; i < elements.length; i++) {
+          const el = elements[i];
+          const rect = el.getBoundingClientRect();
           const cx = rect.left + rect.width / 2;
           const cy = rect.top + rect.height / 2;
-          if (cx < 8 || cx > window.innerWidth - 8 || cy < 8 || cy > window.innerHeight - 8) {
-            continue;
-          }
-          const tooClose = filtered.some((other) => {
-            const dx = other.cx - cx;
-            const dy = other.cy - cy;
-            return Math.hypot(dx, dy) < 42;
-          });
+          const tooClose = results.some(
+            (other) => Math.hypot(other.cx - cx, other.cy - cy) < (minDistance || 34)
+          );
           if (!tooClose) {
-            filtered.push({
-              el: item.el,
-              clickable: item.clickable,
-              priority: item.priority,
-              cx,
-              cy,
-              rect,
-            });
+            results.push({ el, cx, cy, rect });
           }
         }
+        return results;
+      }
 
-        // Sort naturally in visual reading order (bands of 90px vertically, then left-to-right)
-        filtered.sort((a, b) => {
-          const bandA = Math.floor(a.cy / 90);
-          const bandB = Math.floor(b.cy / 90);
+      function discoverPrimaryTargets() {
+        const all = getAllVisibleInteractiveElements();
+        const deduped = deduplicateTargets(all, 38);
+
+        deduped.sort((a, b) => {
+          const bandA = Math.floor(a.cy / 85);
+          const bandB = Math.floor(b.cy / 85);
           if (bandA !== bandB) return bandA - bandB;
           return a.cx - b.cx;
         });
 
-        return filtered.slice(0, 7);
+        return deduped.slice(0, 8);
+      }
+
+      function findNewlyRevealedTargets(beforeSet, triggerEl) {
+        const nowVisible = getAllVisibleInteractiveElements();
+        const fresh = [];
+        for (let i = 0; i < nowVisible.length; i++) {
+          const el = nowVisible[i];
+          if (beforeSet.has(el) || el === triggerEl) continue;
+          if (triggerEl && triggerEl.contains(el)) continue;
+          fresh.push(el);
+        }
+
+        fresh.sort((a, b) => {
+          const score = (node) => {
+            const role = node.getAttribute("role") || "";
+            if (role === "menuitem" || role === "option") return 4;
+            if (node.tagName === "BUTTON" || node.tagName === "A") return 3;
+            return 1;
+          };
+          const diff = score(b) - score(a);
+          if (diff !== 0) return diff;
+          const ra = a.getBoundingClientRect();
+          const rb = b.getBoundingClientRect();
+          if (Math.abs(ra.top - rb.top) > 12) return ra.top - rb.top;
+          return ra.left - rb.left;
+        });
+
+        return deduplicateTargets(fresh, 22).slice(0, 5);
       }
 
       function scanAndReportTargets() {
         const root = document.getElementById("root");
-        const targets = discoverInteractiveTargets();
+        const targets = discoverPrimaryTargets();
         const scrollInfo = findScrollContainer();
         const hasCanvas = !!(root && root.querySelector("canvas"));
 
@@ -301,73 +416,76 @@ export function buildVideoStudioRuntimeScript(): string {
       }
 
       // -----------------------------------------------------------------------
-      // Click Ripples & Camera Zoom Helpers
+      // Minimal Editorial Click Pulse Effect (Single Hairline + Micro Dot)
       // -----------------------------------------------------------------------
-      function spawnRipple(x, y) {
+      function spawnMinimalClickPulse(x, y) {
         if (!state.clickRipples) return;
         const createdAt = performance.now();
-        const isDark = document.documentElement.classList.contains("dark");
+        if (createdAt - state.lastClickPulseTs < 45) return;
+        state.lastClickPulseTs = createdAt;
 
-        const outer = document.createElement("div");
-        outer.className = "__vs_ripple__";
-        outer.style.width = "48px";
-        outer.style.height = "48px";
-        outer.style.marginLeft = "-24px";
-        outer.style.marginTop = "-24px";
-        outer.style.border = isDark
-          ? "2px solid rgba(255, 255, 255, 0.85)"
-          : "2px solid rgba(9, 9, 11, 0.72)";
-        outer.style.background = isDark
-          ? "rgba(255, 255, 255, 0.14)"
-          : "rgba(9, 9, 11, 0.08)";
-        overlay.appendChild(outer);
+        let ring = null;
+        let dot = null;
 
-        const inner = document.createElement("div");
-        inner.className = "__vs_ripple__";
-        inner.style.width = "22px";
-        inner.style.height = "22px";
-        inner.style.marginLeft = "-11px";
-        inner.style.marginTop = "-11px";
-        inner.style.border = isDark
-          ? "1.5px solid rgba(56, 189, 248, 0.9)"
-          : "1.5px solid rgba(37, 99, 235, 0.85)";
-        overlay.appendChild(inner);
+        if (!state.renderInParentOverlay) {
+          const isDark = document.documentElement.classList.contains("dark");
+          ring = document.createElement("div");
+          ring.className = "__vs_pulse_ring__";
+          ring.style.width = "34px";
+          ring.style.height = "34px";
+          ring.style.marginLeft = "-17px";
+          ring.style.marginTop = "-17px";
+          ring.style.border = isDark
+            ? "1.35px solid rgba(255, 255, 255, 0.65)"
+            : "1.35px solid rgba(9, 9, 11, 0.55)";
+          ring.style.background = "transparent";
+          overlay.appendChild(ring);
+
+          dot = document.createElement("div");
+          dot.className = "__vs_pulse_dot__";
+          dot.style.width = "6px";
+          dot.style.height = "6px";
+          dot.style.marginLeft = "-3px";
+          dot.style.marginTop = "-3px";
+          dot.style.background = isDark
+            ? "rgba(255, 255, 255, 0.48)"
+            : "rgba(9, 9, 11, 0.36)";
+          overlay.appendChild(dot);
+        }
 
         state.ripples.push({
           x,
           y,
           createdAt,
-          duration: 560,
-          outer,
-          inner,
+          duration: 420,
+          ring,
+          dot,
         });
       }
 
-      function triggerSubtleZoom(x, y, holdMs) {
-        if (!state.autoZoom) return;
-        const intensity = Math.max(1.04, Math.min(1.32, state.zoomIntensity || 1.18));
-        state.targetZoom = intensity;
-        state.zoomOriginX = x;
-        state.zoomOriginY = y;
-
-        if (state.zoomResetTimer) clearTimeout(state.zoomResetTimer);
-        state.zoomResetTimer = setTimeout(() => {
-          state.targetZoom = 1;
-        }, holdMs || 1150);
-      }
-
-      function resetCameraZoomImmediate() {
-        if (state.zoomResetTimer) clearTimeout(state.zoomResetTimer);
-        state.zoom = 1;
-        state.targetZoom = 1;
-        const root = document.getElementById("root");
-        if (root) {
-          root.style.transform = "";
-        }
+      // -----------------------------------------------------------------------
+      // Telemetry Snapshot Helper (Synchronous + 60fps Continuous)
+      // -----------------------------------------------------------------------
+      function emitCursorTelemetryNow(activeRippleTelemetry) {
+        const vw = Math.max(1, window.innerWidth);
+        const vh = Math.max(1, window.innerHeight);
+        const shouldShowCursor = state.showCursor && state.cursorVisible;
+        state.lastEmittedVisible = shouldShowCursor;
+        postToParent({
+          type: "VIDEO_STUDIO_CURSOR_STATE",
+          nx: Math.max(0, Math.min(1, state.x / vw)),
+          ny: Math.max(0, Math.min(1, state.y / vh)),
+          visible: shouldShowCursor,
+          scale: state.scale,
+          tilt: state.tilt,
+          hoveringInteractive: state.hoveringInteractive,
+          isPressed: state.isPressed,
+          ripples: activeRippleTelemetry || [],
+        });
       }
 
       // -----------------------------------------------------------------------
-      // Synthetic Pointer / Hover / Click Dispatch
+      // Synthetic Pointer / Hover / Click Dispatch (Auto-Pilot)
       // -----------------------------------------------------------------------
       function clearSyntheticHover() {
         if (state.lastHoveredEl) {
@@ -390,6 +508,7 @@ export function buildVideoStudioRuntimeScript(): string {
       function dispatchPointerAt(x, y) {
         const el = document.elementFromPoint(x, y);
         if (!el) return null;
+        state.hoveringInteractive = isInteractiveAtPoint(x, y);
 
         if (state.lastHoveredEl && state.lastHoveredEl !== el) {
           try {
@@ -489,67 +608,74 @@ export function buildVideoStudioRuntimeScript(): string {
       function dispatchTactileClick(x, y, targetOverride) {
         const el = targetOverride || document.elementFromPoint(x, y);
         state.isPressed = true;
-        state.targetScale = 0.82;
-        spawnRipple(x, y);
-        triggerSubtleZoom(x, y, 1050);
+        state.targetScale = 0.86;
+        spawnMinimalClickPulse(x, y);
 
-        if (el) {
-          // Guard external link navigation so component demos never leave the sandbox
-          const anchor = el.closest ? el.closest("a[href]") : null;
-          const prevHref = anchor ? anchor.getAttribute("href") : null;
-          const isExternalLink =
-            prevHref &&
-            !prevHref.startsWith("#") &&
-            !prevHref.startsWith("javascript:");
+        return new Promise((resolve) => {
+          if (el) {
+            const anchor = el.closest ? el.closest("a[href]") : null;
+            const prevHref = anchor ? anchor.getAttribute("href") : null;
+            const isExternalLink =
+              prevHref &&
+              !prevHref.startsWith("#") &&
+              !prevHref.startsWith("javascript:");
 
-          try {
-            el.dispatchEvent(
-              new PointerEvent("pointerdown", {
-                bubbles: true,
-                cancelable: true,
-                clientX: x,
-                clientY: y,
-                button: 0,
-                buttons: 1,
-                pointerType: "mouse",
-              })
-            );
-            el.dispatchEvent(
-              new MouseEvent("mousedown", {
-                bubbles: true,
-                cancelable: true,
-                clientX: x,
-                clientY: y,
-                button: 0,
-                buttons: 1,
-              })
-            );
-          } catch (e) {}
+            const preventNav = (ev) => {
+              if (isExternalLink) {
+                ev.preventDefault();
+              }
+            };
+            if (anchor && isExternalLink) {
+              anchor.addEventListener("click", preventNav, { capture: true, once: true });
+            }
 
-          setTimeout(() => {
-            state.isPressed = false;
-            state.targetScale = 1;
             try {
               el.dispatchEvent(
-                new PointerEvent("pointerup", {
+                new PointerEvent("pointerdown", {
                   bubbles: true,
                   cancelable: true,
                   clientX: x,
                   clientY: y,
                   button: 0,
+                  buttons: 1,
                   pointerType: "mouse",
                 })
               );
               el.dispatchEvent(
-                new MouseEvent("mouseup", {
+                new MouseEvent("mousedown", {
                   bubbles: true,
                   cancelable: true,
                   clientX: x,
                   clientY: y,
                   button: 0,
+                  buttons: 1,
                 })
               );
-              if (!isExternalLink) {
+            } catch (e) {}
+
+            setTimeout(() => {
+              state.isPressed = false;
+              state.targetScale = 1;
+              try {
+                el.dispatchEvent(
+                  new PointerEvent("pointerup", {
+                    bubbles: true,
+                    cancelable: true,
+                    clientX: x,
+                    clientY: y,
+                    button: 0,
+                    pointerType: "mouse",
+                  })
+                );
+                el.dispatchEvent(
+                  new MouseEvent("mouseup", {
+                    bubbles: true,
+                    cancelable: true,
+                    clientX: x,
+                    clientY: y,
+                    button: 0,
+                  })
+                );
                 el.dispatchEvent(
                   new MouseEvent("click", {
                     bubbles: true,
@@ -559,27 +685,37 @@ export function buildVideoStudioRuntimeScript(): string {
                     button: 0,
                   })
                 );
+              } catch (e) {}
+              if (anchor && isExternalLink) {
+                anchor.removeEventListener("click", preventNav, { capture: true });
               }
-            } catch (e) {}
-          }, 95);
-        } else {
-          setTimeout(() => {
-            state.isPressed = false;
-            state.targetScale = 1;
-          }, 95);
-        }
+              resolve();
+            }, 85);
+          } else {
+            setTimeout(() => {
+              state.isPressed = false;
+              state.targetScale = 1;
+              resolve();
+            }, 85);
+          }
+        });
       }
 
       // -----------------------------------------------------------------------
-      // Master 60fps Spring Physics & Camera Zoom Loop
+      // Master 60fps Spring Physics & Minimal Pulse Loop (Zero Camera Zoom)
       // -----------------------------------------------------------------------
       function stepPhysics(now) {
         const dt = Math.min(0.04, Math.max(0.004, (now - state.lastFrameTs) / 1000));
         state.lastFrameTs = now;
 
-        // Critically damped cursor spring
-        const stiffness = state.manualActive ? 340 : 250;
-        const damping = state.manualActive ? 32 : 27;
+        // Guard: keep overlay connected if DOM was mutated
+        if (!overlay.isConnected && document.body) {
+          document.body.appendChild(overlay);
+        }
+
+        const isManualDriving = state.manualActive || state.mode === "manual";
+        const stiffness = isManualDriving ? 440 : 265;
+        const damping = isManualDriving ? 37 : 28;
 
         const ax = (state.targetX - state.x) * stiffness - state.vx * damping;
         const ay = (state.targetY - state.y) * stiffness - state.vy * damping;
@@ -588,107 +724,112 @@ export function buildVideoStudioRuntimeScript(): string {
         state.x += state.vx * dt;
         state.y += state.vy * dt;
 
-        // Press micro-scale easing
-        state.scale += (state.targetScale - state.scale) * Math.min(1, dt * 24);
+        // Crisp subtle press & hover scale
+        const desiredScale = state.isPressed
+          ? 0.86
+          : state.hoveringInteractive
+            ? 1.04
+            : state.targetScale;
+        state.scale += (desiredScale - state.scale) * Math.min(1, dt * 26);
 
-        // Velocity-proportional subtle tilt
-        const targetTilt = Math.max(-9, Math.min(9, state.vx * 0.009));
+        // Gentle velocity-based tilt (minimal & organic)
+        const targetTilt = Math.max(-5.5, Math.min(5.5, state.vx * 0.0055));
         state.tilt += (targetTilt - state.tilt) * Math.min(1, dt * 16);
 
-        // Apply cursor transform
         const shouldShowCursor = state.showCursor && state.cursorVisible;
-        cursorEl.style.opacity = shouldShowCursor ? "1" : "0";
-        cursorEl.style.transform =
-          "translate3d(" +
-          state.x.toFixed(2) +
-          "px, " +
-          state.y.toFixed(2) +
-          "px, 0) rotate(" +
-          state.tilt.toFixed(2) +
-          "deg) scale(" +
-          state.scale.toFixed(3) +
-          ")";
+        const showInnerDom = !state.renderInParentOverlay;
+        overlay.style.display = showInnerDom ? "block" : "none";
 
-        // Smooth camera auto-zoom with edge clamping (edge-to-edge zero gutters!)
-        const zoomTarget = state.autoZoom ? state.targetZoom : 1;
-        state.zoom += (zoomTarget - state.zoom) * Math.min(1, dt * 6.5);
-        state.currentOriginX +=
-          (state.zoomOriginX - state.currentOriginX) * Math.min(1, dt * 7);
-        state.currentOriginY +=
-          (state.zoomOriginY - state.currentOriginY) * Math.min(1, dt * 7);
+        if (showInnerDom) {
+          const isDark = document.documentElement.classList.contains("dark");
+          cursorEl.style.opacity = shouldShowCursor ? "1" : "0";
+          cursorEl.style.transform =
+            "translate3d(" +
+            state.x.toFixed(2) +
+            "px, " +
+            state.y.toFixed(2) +
+            "px, 0) rotate(" +
+            state.tilt.toFixed(2) +
+            "deg) scale(" +
+            state.scale.toFixed(3) +
+            ")";
 
-        const root = document.getElementById("root");
-        if (root) {
-          if (Math.abs(state.zoom - 1) > 0.0015) {
-            const vw = window.innerWidth;
-            const vh = window.innerHeight;
-            const z = state.zoom;
-            // Compute translation that keeps focal point centered while clamping to [vw*(1-z), 0]
-            let tx = state.currentOriginX * (1 - z);
-            let ty = state.currentOriginY * (1 - z);
-            tx = Math.min(0, Math.max(vw * (1 - z), tx));
-            ty = Math.min(0, Math.max(vh * (1 - z), ty));
-            root.style.transform =
-              "translate3d(" +
-              tx.toFixed(2) +
-              "px, " +
-              ty.toFixed(2) +
-              "px, 0) scale(" +
-              z.toFixed(4) +
-              ")";
-          } else if (root.style.transform) {
-            root.style.transform = "";
-          }
+          hoverHaloEl.style.border = isDark
+            ? "1px solid rgba(255, 255, 255, 0.28)"
+            : "1px solid rgba(9, 9, 11, 0.22)";
+          hoverHaloEl.style.opacity =
+            shouldShowCursor && state.hoveringInteractive && !state.isPressed ? "1" : "0";
+          hoverHaloEl.style.transform =
+            "translate3d(" +
+            state.x.toFixed(2) +
+            "px, " +
+            state.y.toFixed(2) +
+            "px, 0) scale(" +
+            (state.hoveringInteractive ? "1" : "0.75") +
+            ")";
         }
 
-        // Update active click ripples
+        // Update minimal hairline click pulses
         const activeRippleTelemetry = [];
+        const vw = Math.max(1, window.innerWidth);
+        const vh = Math.max(1, window.innerHeight);
+
         for (let i = state.ripples.length - 1; i >= 0; i--) {
           const r = state.ripples[i];
           const p = (now - r.createdAt) / r.duration;
           if (p >= 1) {
-            r.outer.remove();
-            r.inner.remove();
+            if (r.ring) r.ring.remove();
+            if (r.dot) r.dot.remove();
             state.ripples.splice(i, 1);
             continue;
           }
-          const easeOut = 1 - Math.pow(1 - p, 3);
-          const outerScale = 0.25 + easeOut * 1.45;
-          const innerScale = 0.3 + easeOut * 1.1;
-          const alpha = Math.max(0, 1 - p);
 
-          r.outer.style.transform =
-            "translate3d(" + r.x.toFixed(1) + "px, " + r.y.toFixed(1) + "px, 0) scale(" + outerScale.toFixed(3) + ")";
-          r.outer.style.opacity = alpha.toFixed(3);
+          if (showInnerDom && r.ring && r.dot) {
+            const easeOutQuart = 1 - Math.pow(1 - p, 4);
+            const ringScale = 0.28 + easeOutQuart * 0.88;
+            const ringAlpha = Math.max(0, Math.pow(1 - p, 1.4));
+            const dotProgress = Math.min(1, p * 2.4);
+            const dotScale = 1 - dotProgress * 0.45;
+            const dotAlpha = Math.max(0, 1 - dotProgress);
 
-          r.inner.style.transform =
-            "translate3d(" + r.x.toFixed(1) + "px, " + r.y.toFixed(1) + "px, 0) scale(" + innerScale.toFixed(3) + ")";
-          r.inner.style.opacity = (alpha * 0.85).toFixed(3);
+            r.ring.style.transform =
+              "translate3d(" +
+              r.x.toFixed(1) +
+              "px, " +
+              r.y.toFixed(1) +
+              "px, 0) scale(" +
+              ringScale.toFixed(3) +
+              ")";
+            r.ring.style.opacity = ringAlpha.toFixed(3);
+
+            r.dot.style.transform =
+              "translate3d(" +
+              r.x.toFixed(1) +
+              "px, " +
+              r.y.toFixed(1) +
+              "px, 0) scale(" +
+              dotScale.toFixed(3) +
+              ")";
+            r.dot.style.opacity = dotAlpha.toFixed(3);
+          }
 
           activeRippleTelemetry.push({
-            nx: r.x / Math.max(1, window.innerWidth),
-            ny: r.y / Math.max(1, window.innerHeight),
+            nx: Math.max(0, Math.min(1, r.x / vw)),
+            ny: Math.max(0, Math.min(1, r.y / vh)),
             progress: p,
           });
         }
 
-        // Emit cursor/camera telemetry at ~60fps when session is active (for Direct Stage Fallback)
-        if (state.activeSession && now - state.lastTelemetryTs >= 15) {
-          state.lastTelemetryTs = now;
-          const vw = Math.max(1, window.innerWidth);
-          const vh = Math.max(1, window.innerHeight);
-          postToParent({
-            type: "VIDEO_STUDIO_CURSOR_STATE",
-            nx: state.x / vw,
-            ny: state.y / vh,
-            visible: shouldShowCursor,
-            scale: state.scale,
-            tilt: state.tilt,
-            zoom: state.zoom,
-            originNx: state.currentOriginX / vw,
-            originNy: state.currentOriginY / vh,
-            ripples: activeRippleTelemetry,
-          });
+        // Emit 60fps cursor telemetry to parent top-layer overlay & Direct Stage compositor
+        const shouldEmit =
+          state.activeSession ||
+          state.manualActive ||
+          shouldShowCursor ||
+          state.lastEmittedVisible ||
+          activeRippleTelemetry.length > 0;
+
+        if (shouldEmit) {
+          emitCursorTelemetryNow(activeRippleTelemetry);
         }
 
         state.masterRaf = requestAnimationFrame(stepPhysics);
@@ -696,7 +837,7 @@ export function buildVideoStudioRuntimeScript(): string {
       state.masterRaf = requestAnimationFrame(stepPhysics);
 
       // -----------------------------------------------------------------------
-      // Cubic Bézier Glide & Auto-Pilot Choreography Runner
+      // Curved Bézier Glide, Dropdown Traversal & Multi-Click Choreography
       // -----------------------------------------------------------------------
       function easeInOutCubic(t) {
         return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
@@ -737,13 +878,12 @@ export function buildVideoStudioRuntimeScript(): string {
         return new Promise((resolve) => {
           const startX = state.targetX;
           const startY = state.targetY;
-          // Natural curved Bézier control point
           const midX = (startX + destX) / 2;
           const midY = (startY + destY) / 2;
           const dx = destX - startX;
           const dy = destY - startY;
           const dist = Math.hypot(dx, dy);
-          const curveOffset = Math.min(90, dist * 0.22) * (dx >= 0 ? -1 : 1);
+          const curveOffset = Math.min(72, dist * 0.18) * (dx >= 0 ? -1 : 1);
           const ctrlX = midX - (dy / Math.max(1, dist)) * curveOffset;
           const ctrlY = midY + (dx / Math.max(1, dist)) * curveOffset;
 
@@ -797,7 +937,6 @@ export function buildVideoStudioRuntimeScript(): string {
             const eased = easeInOutSine(raw);
             setScrollTop(scrollContainer, startY + delta * eased);
 
-            // Gently drift cursor vertically during scroll for organic reading feel
             if (state.autoHover) {
               dispatchPointerAt(state.x, state.y);
             }
@@ -812,90 +951,186 @@ export function buildVideoStudioRuntimeScript(): string {
         });
       }
 
+      async function exploreRevealedLayer(revealedItems, deadlineTs, depth) {
+        if (!revealedItems || revealedItems.length === 0 || depth > 2) return;
+        const maxHoverItems = Math.min(revealedItems.length, 3);
+
+        for (let i = 0; i < maxHoverItems; i++) {
+          if (state.choreographyCancelled || performance.now() > deadlineTs - 240) return;
+          const item = revealedItems[i];
+          if (!document.contains(item.el) || !isVisibleInViewport(item.el)) continue;
+
+          const r = item.el.getBoundingClientRect();
+          const ix = r.left + r.width / 2;
+          const iy = r.top + r.height / 2;
+
+          await glideTo(ix, iy, 280, state.autoHover);
+          if (state.choreographyCancelled) return;
+          await waitMs(170);
+
+          const shouldClickItem =
+            state.autoClick &&
+            (i === maxHoverItems - 1 || (maxHoverItems >= 2 && i === 1));
+
+          if (shouldClickItem) {
+            const subBefore = new Set(getAllVisibleInteractiveElements());
+            await dispatchTactileClick(ix, iy, item.el);
+            await waitMs(280);
+            if (state.choreographyCancelled) return;
+
+            const nestedRevealed = findNewlyRevealedTargets(subBefore, item.el);
+            if (nestedRevealed.length > 0 && performance.now() < deadlineTs - 450) {
+              await exploreRevealedLayer(nestedRevealed, deadlineTs, depth + 1);
+            }
+            break;
+          }
+        }
+      }
+
       async function runAutoPilotChoreography(config) {
         cancelChoreography();
         state.choreographyCancelled = false;
         state.activeSession = true;
         state.manualActive = false;
-        document.documentElement.classList.add("__vs_hide_native_cursor__");
+        state.hoveringInteractive = false;
+        syncNativeCursorVisibility();
 
         const totalMs = Math.max(3000, (config.durationSec || state.durationSec || 8) * 1000);
+        const startTime = performance.now();
         const scrollInfo = findScrollContainer();
         setScrollTop(scrollInfo, 0);
-        resetCameraZoomImmediate();
 
         const vw = window.innerWidth;
         const vh = window.innerHeight;
 
-        // Position cursor subtly near bottom-right entrance
-        state.x = vw * 0.86;
-        state.y = vh * 0.84;
+        state.x = vw * 0.84;
+        state.y = vh * 0.82;
         state.targetX = state.x;
         state.targetY = state.y;
         state.vx = 0;
         state.vy = 0;
         state.cursorVisible = true;
+        emitCursorTelemetryNow([]);
 
         const { targets } = scanAndReportTargets();
         const shouldScroll = state.autoScroll && scrollInfo.maxScroll > 36;
 
-        // Allocate timeline budget cleanly
-        const entryMs = Math.round(totalMs * 0.1);
-        const scrollDownMs = shouldScroll ? Math.round(totalMs * 0.28) : 0;
-        const scrollReturnMs = shouldScroll && state.loopReturnToTop ? Math.round(totalMs * 0.14) : 0;
-        const settleMs = Math.round(totalMs * 0.06);
+        const entryMs = Math.round(totalMs * 0.08);
+        const scrollDownMs = shouldScroll ? Math.round(totalMs * 0.26) : 0;
+        const scrollReturnMs = shouldScroll && state.loopReturnToTop ? Math.round(totalMs * 0.13) : 0;
+        const settleMs = Math.round(totalMs * 0.05);
         const interactionBudgetMs = Math.max(
-          1400,
+          1600,
           totalMs - entryMs - scrollDownMs - scrollReturnMs - settleMs
         );
+        const interactionDeadline = startTime + entryMs + interactionBudgetMs;
 
-        // Beat 1: Organic Entry Glide
         if (targets.length > 0) {
           await glideTo(targets[0].cx, targets[0].cy, entryMs, state.autoHover);
         } else {
-          await glideTo(vw * 0.36, vh * 0.44, entryMs, state.autoHover);
+          await glideTo(vw * 0.35, vh * 0.42, entryMs, state.autoHover);
         }
         if (state.choreographyCancelled) return;
 
-        // Beat 2: Hover Sweeps & Tactile Clicks on discovered targets
         if (targets.length > 0 && (state.autoHover || state.autoClick)) {
-          const maxVisits = Math.min(targets.length, totalMs >= 10000 ? 6 : 4);
-          const perTargetMs = Math.floor(interactionBudgetMs / maxVisits);
+          const singleOrPairControls = targets.length <= 2;
+          const maxVisits = Math.min(targets.length, totalMs >= 10000 ? 6 : 5);
 
           for (let i = 0; i < maxVisits; i++) {
-            if (state.choreographyCancelled) return;
+            if (state.choreographyCancelled || performance.now() > interactionDeadline - 220) {
+              break;
+            }
             const t = targets[i];
-            // Re-measure target rect in case previous click opened a panel/tab
-            const freshRect = t.el.getBoundingClientRect();
-            const tx =
-              freshRect.width > 0
-                ? freshRect.left + freshRect.width / 2
-                : t.cx;
-            const ty =
-              freshRect.height > 0
-                ? freshRect.top + freshRect.height / 2
-                : t.cy;
+            if (!document.contains(t.el) || !isVisibleInViewport(t.el)) continue;
 
-            const moveMs = Math.round(perTargetMs * 0.48);
-            const dwellMs = Math.round(perTargetMs * 0.52);
+            const freshRect = t.el.getBoundingClientRect();
+            const tx = freshRect.left + freshRect.width / 2;
+            const ty = freshRect.top + freshRect.height / 2;
+
+            const beforeHoverSet = new Set(getAllVisibleInteractiveElements());
+
+            const remainingTargets = Math.max(1, maxVisits - i);
+            const remainingBudget = Math.max(480, interactionDeadline - performance.now());
+            const slotMs = Math.min(1800, Math.floor(remainingBudget / remainingTargets));
+            const moveMs = Math.max(240, Math.min(540, Math.round(slotMs * 0.38)));
 
             await glideTo(tx, ty, moveMs, state.autoHover);
             if (state.choreographyCancelled) return;
+            await waitMs(180);
+            if (state.choreographyCancelled) return;
 
-            if (state.autoClick && t.clickable) {
-              await waitMs(Math.min(180, dwellMs * 0.25));
+            const hoverRevealed = findNewlyRevealedTargets(beforeHoverSet, t.el);
+            if (hoverRevealed.length > 0) {
+              await exploreRevealedLayer(hoverRevealed, interactionDeadline, 1);
               if (state.choreographyCancelled) return;
-              dispatchTactileClick(tx, ty, t.el);
-              await waitMs(Math.max(240, dwellMs * 0.75));
+              continue;
+            }
+
+            if (state.autoClick) {
+              const beforeClickSet = new Set(getAllVisibleInteractiveElements());
+              await dispatchTactileClick(tx, ty, t.el);
+              await waitMs(280);
+              if (state.choreographyCancelled) return;
+
+              const clickRevealed = findNewlyRevealedTargets(beforeClickSet, t.el);
+              if (clickRevealed.length > 0) {
+                await exploreRevealedLayer(clickRevealed, interactionDeadline, 1);
+                if (state.choreographyCancelled) return;
+                await waitMs(160);
+                continue;
+              }
+
+              const wantsMultiClick =
+                !isLikelyDropdownTrigger(t.el) &&
+                (singleOrPairControls || isLikelyMultiClickControl(t.el));
+
+              if (wantsMultiClick && performance.now() < interactionDeadline - 650) {
+                const extraClicks = singleOrPairControls ? 2 : 1;
+                for (let c = 0; c < extraClicks; c++) {
+                  if (
+                    state.choreographyCancelled ||
+                    performance.now() > interactionDeadline - 380 ||
+                    !document.contains(t.el) ||
+                    !isVisibleInViewport(t.el)
+                  ) {
+                    break;
+                  }
+                  await waitMs(420);
+                  if (state.choreographyCancelled) return;
+                  const updatedRect = t.el.getBoundingClientRect();
+                  const ux = updatedRect.left + updatedRect.width / 2;
+                  const uy = updatedRect.top + updatedRect.height / 2;
+                  await glideTo(ux, uy, 140, state.autoHover);
+                  await dispatchTactileClick(ux, uy, t.el);
+                  await waitMs(260);
+                }
+              } else {
+                await waitMs(Math.max(160, Math.min(360, slotMs * 0.25)));
+              }
             } else {
-              // Subtle hover micro-orbit inside the target for spotlight / tilt effects
-              const orbitOffset = Math.min(28, (freshRect.width || 60) * 0.25);
-              await glideTo(tx + orbitOffset, ty - 6, dwellMs * 0.5, state.autoHover);
-              await glideTo(tx - orbitOffset * 0.6, ty + 6, dwellMs * 0.5, state.autoHover);
+              const orbit = Math.min(26, freshRect.width * 0.24);
+              await glideTo(tx + orbit, ty - 5, 280, true);
+              await glideTo(tx - orbit * 0.6, ty + 5, 280, true);
+            }
+          }
+
+          if (
+            !state.choreographyCancelled &&
+            targets.length >= 2 &&
+            performance.now() < interactionDeadline - 700
+          ) {
+            const freshList = discoverPrimaryTargets();
+            const revisit = freshList[0];
+            if (revisit && document.contains(revisit.el) && isVisibleInViewport(revisit.el)) {
+              const r = revisit.el.getBoundingClientRect();
+              await glideTo(r.left + r.width / 2, r.top + r.height / 2, 360, state.autoHover);
+              if (state.autoClick && !state.choreographyCancelled) {
+                await waitMs(120);
+                await dispatchTactileClick(r.left + r.width / 2, r.top + r.height / 2, revisit.el);
+              }
             }
           }
         } else if (state.autoHover) {
-          // Pure motion/shader/spotlight component: graceful figure-8 hover showcase
           const waypoints = [
             [vw * 0.28, vh * 0.36],
             [vw * 0.68, vh * 0.32],
@@ -908,7 +1143,7 @@ export function buildVideoStudioRuntimeScript(): string {
             if (state.choreographyCancelled) return;
             await glideTo(waypoints[i][0], waypoints[i][1], segMs, true);
             if (state.autoClick && i === 2) {
-              dispatchTactileClick(waypoints[i][0], waypoints[i][1]);
+              await dispatchTactileClick(waypoints[i][0], waypoints[i][1]);
             }
           }
         } else {
@@ -916,15 +1151,12 @@ export function buildVideoStudioRuntimeScript(): string {
         }
         if (state.choreographyCancelled) return;
 
-        // Beat 3: Smooth Auto-Scroll Showcase
         if (shouldScroll) {
-          state.targetZoom = 1;
-          await glideTo(vw * 0.76, vh * 0.52, 320, state.autoHover);
+          await glideTo(vw * 0.78, vh * 0.52, 280, state.autoHover);
           if (state.choreographyCancelled) return;
           await smoothScrollTo(scrollInfo, scrollInfo.maxScroll, scrollDownMs);
           if (state.choreographyCancelled) return;
 
-          // Beat 4: Seamless Return to Top Loop
           if (state.loopReturnToTop) {
             await waitMs(220);
             if (state.choreographyCancelled) return;
@@ -932,14 +1164,15 @@ export function buildVideoStudioRuntimeScript(): string {
           }
         }
 
-        // Gentle resting finish
-        state.targetZoom = 1;
         await waitMs(settleMs);
         if (state.choreographyCancelled) return;
 
         clearSyntheticHover();
         state.activeSession = false;
-        document.documentElement.classList.remove("__vs_hide_native_cursor__");
+        state.cursorVisible = false;
+        state.hoveringInteractive = false;
+        syncNativeCursorVisibility();
+        emitCursorTelemetryNow([]);
         postToParent({
           type: "VIDEO_STUDIO_CHOREOGRAPHY_COMPLETE",
           dryRun: !!config.dryRun,
@@ -947,49 +1180,124 @@ export function buildVideoStudioRuntimeScript(): string {
       }
 
       // -----------------------------------------------------------------------
-      // Manual Live Record Pointer Tracking
+      // Rock-Solid Capture-Phase Manual Live Pointer Tracking
+      // (Works even if components call stopPropagation() or setPointerCapture())
       // -----------------------------------------------------------------------
-      window.addEventListener(
-        "pointermove",
-        (e) => {
-          if (!state.manualActive) return;
-          state.cursorVisible = true;
-          state.targetX = e.clientX;
-          state.targetY = e.clientY;
-        },
-        { passive: true }
-      );
+      function isManualCursorTrackingEnabled() {
+        return state.manualActive || (!state.activeSession && state.mode === "manual");
+      }
 
-      window.addEventListener(
-        "pointerdown",
-        (e) => {
-          if (!state.manualActive) return;
-          state.cursorVisible = true;
-          state.targetX = e.clientX;
-          state.targetY = e.clientY;
-          state.isPressed = true;
-          state.targetScale = 0.82;
-          spawnRipple(e.clientX, e.clientY);
-          triggerSubtleZoom(e.clientX, e.clientY, 1200);
-        },
-        { passive: true }
-      );
+      function handleManualMove(clientX, clientY) {
+        if (!Number.isFinite(clientX) || !Number.isFinite(clientY)) return;
+        const wasHidden = !state.cursorVisible;
+        state.hasRealPointer = true;
+        state.lastKnownX = clientX;
+        state.lastKnownY = clientY;
 
-      window.addEventListener(
-        "pointerup",
+        if (!isManualCursorTrackingEnabled()) return;
+
+        state.targetX = clientX;
+        state.targetY = clientY;
+        if (wasHidden) {
+          // Snap cleanly onto the pointer entry edge so cursor glides right under the hand
+          state.x = clientX;
+          state.y = clientY;
+          state.vx = 0;
+          state.vy = 0;
+        }
+        state.cursorVisible = true;
+        syncNativeCursorVisibility();
+
+        const now = performance.now();
+        if (now - state.lastHoverCheckTs >= 40) {
+          state.lastHoverCheckTs = now;
+          state.hoveringInteractive = isInteractiveAtPoint(clientX, clientY);
+        }
+      }
+
+      function handleManualDown(clientX, clientY) {
+        if (!Number.isFinite(clientX) || !Number.isFinite(clientY)) return;
+        state.hasRealPointer = true;
+        state.lastKnownX = clientX;
+        state.lastKnownY = clientY;
+
+        if (!isManualCursorTrackingEnabled()) return;
+
+        state.cursorVisible = true;
+        state.targetX = clientX;
+        state.targetY = clientY;
+        state.isPressed = true;
+        state.targetScale = 0.86;
+        state.hoveringInteractive = isInteractiveAtPoint(clientX, clientY);
+        syncNativeCursorVisibility();
+        spawnMinimalClickPulse(clientX, clientY);
+      }
+
+      function handleManualUp() {
+        if (!isManualCursorTrackingEnabled()) return;
+        state.isPressed = false;
+        state.targetScale = 1;
+      }
+
+      const onCapturePointerMove = (e) => {
+        if (!e.isTrusted) return;
+        handleManualMove(e.clientX, e.clientY);
+      };
+      const onCaptureMouseMove = (e) => {
+        if (!e.isTrusted) return;
+        handleManualMove(e.clientX, e.clientY);
+      };
+      const onCapturePointerDown = (e) => {
+        if (!e.isTrusted) return;
+        handleManualDown(e.clientX, e.clientY);
+      };
+      const onCaptureMouseDown = (e) => {
+        if (!e.isTrusted) return;
+        handleManualDown(e.clientX, e.clientY);
+      };
+      const onCaptureUp = (e) => {
+        if (!e.isTrusted) return;
+        handleManualUp();
+      };
+      const onCaptureWheel = (e) => {
+        if (!e.isTrusted) return;
+        if (typeof e.clientX === "number" && typeof e.clientY === "number") {
+          handleManualMove(e.clientX, e.clientY);
+        }
+      };
+      const onCaptureTouchStart = (e) => {
+        if (!e.isTrusted || !e.touches || !e.touches[0]) return;
+        handleManualDown(e.touches[0].clientX, e.touches[0].clientY);
+      };
+      const onCaptureTouchMove = (e) => {
+        if (!e.isTrusted || !e.touches || !e.touches[0]) return;
+        handleManualMove(e.touches[0].clientX, e.touches[0].clientY);
+      };
+      const onCaptureTouchEnd = (e) => {
+        if (!e.isTrusted) return;
+        handleManualUp();
+      };
+
+      document.addEventListener("pointermove", onCapturePointerMove, { capture: true, passive: true });
+      document.addEventListener("mousemove", onCaptureMouseMove, { capture: true, passive: true });
+      document.addEventListener("pointerdown", onCapturePointerDown, { capture: true, passive: true });
+      document.addEventListener("mousedown", onCaptureMouseDown, { capture: true, passive: true });
+      document.addEventListener("pointerup", onCaptureUp, { capture: true, passive: true });
+      document.addEventListener("mouseup", onCaptureUp, { capture: true, passive: true });
+      document.addEventListener("pointercancel", onCaptureUp, { capture: true, passive: true });
+      document.addEventListener("wheel", onCaptureWheel, { capture: true, passive: true });
+      document.addEventListener("touchstart", onCaptureTouchStart, { capture: true, passive: true });
+      document.addEventListener("touchmove", onCaptureTouchMove, { capture: true, passive: true });
+      document.addEventListener("touchend", onCaptureTouchEnd, { capture: true, passive: true });
+
+      document.documentElement.addEventListener(
+        "mouseleave",
         () => {
-          if (!state.manualActive) return;
-          state.isPressed = false;
-          state.targetScale = 1;
-        },
-        { passive: true }
-      );
-
-      window.addEventListener(
-        "wheel",
-        () => {
-          if (state.manualActive && state.targetZoom > 1) {
-            state.targetZoom = 1;
+          if (!state.activeSession && state.mode === "manual") {
+            state.cursorVisible = false;
+            state.isPressed = false;
+            state.hoveringInteractive = false;
+            syncNativeCursorVisibility();
           }
         },
         { passive: true }
@@ -997,6 +1305,7 @@ export function buildVideoStudioRuntimeScript(): string {
 
       // -----------------------------------------------------------------------
       // Fast Frame Snapshot Helper for Direct Stage Fallback Engine
+      // (Captures #root + Radix portals/dropdowns, excluding studio overlay)
       // -----------------------------------------------------------------------
       async function captureFastFrame(requestId) {
         try {
@@ -1006,11 +1315,10 @@ export function buildVideoStudioRuntimeScript(): string {
             return;
           }
 
-          // Fast path: if component renders a live WebGL/2D canvas, capture directly
           const innerCanvas = root.querySelector("canvas");
           if (innerCanvas && innerCanvas.width > 0 && innerCanvas.height > 0) {
             try {
-              const canvasUrl = innerCanvas.toDataURL("image/jpeg", 0.88);
+              const canvasUrl = innerCanvas.toDataURL("image/jpeg", 0.9);
               if (canvasUrl && canvasUrl.startsWith("data:image/")) {
                 postToParent({
                   type: "VIDEO_STUDIO_FRAME_DATA",
@@ -1022,7 +1330,6 @@ export function buildVideoStudioRuntimeScript(): string {
             } catch (e) {}
           }
 
-          // SVG foreignObject rasterization of visible viewport
           const width = Math.max(window.innerWidth || 1280, 320);
           const height = Math.max(window.innerHeight || 720, 180);
 
@@ -1034,12 +1341,26 @@ export function buildVideoStudioRuntimeScript(): string {
             stylesText += el.innerHTML + "\\n";
           }
 
-          const clonedRoot = root.cloneNode(true);
-          if (clonedRoot instanceof HTMLElement) {
-            clonedRoot.style.transform = "";
-          }
+          const serializer = new XMLSerializer();
           const scrollY = window.scrollY || document.documentElement.scrollTop || 0;
-          const serializedHtml = new XMLSerializer().serializeToString(clonedRoot);
+          const serializedRoot = serializer.serializeToString(root.cloneNode(true));
+
+          // Also serialize any portaled dropdowns/popovers/menus attached to document.body
+          let serializedPortals = "";
+          const bodyChildren = document.body.children;
+          for (let i = 0; i < bodyChildren.length; i++) {
+            const child = bodyChildren[i];
+            if (
+              child.id === "root" ||
+              child.id === "__video_studio_overlay__" ||
+              child.tagName === "SCRIPT" ||
+              child.tagName === "STYLE"
+            ) {
+              continue;
+            }
+            serializedPortals += serializer.serializeToString(child.cloneNode(true));
+          }
+
           const wrapperClasses = (
             document.documentElement.className +
             " " +
@@ -1057,15 +1378,16 @@ export function buildVideoStudioRuntimeScript(): string {
             '<foreignObject width="100%" height="100%">' +
             '<div xmlns="http://www.w3.org/1999/xhtml" class="' +
             wrapperClasses +
-            '" style="width:100%;height:100%;overflow:hidden;">' +
+            '" style="position:relative;width:100%;height:100%;overflow:hidden;">' +
             "<style>/* <![CDATA[ */\\n" +
             stylesText +
             "\\n/* ]]> */</style>" +
             '<div style="transform:translateY(-' +
             scrollY +
             'px);">' +
-            serializedHtml +
+            serializedRoot +
             "</div>" +
+            serializedPortals +
             "</div>" +
             "</foreignObject>" +
             "</svg>";
@@ -1099,12 +1421,33 @@ export function buildVideoStudioRuntimeScript(): string {
           if (typeof msg.loopReturnToTop === "boolean") state.loopReturnToTop = msg.loopReturnToTop;
           if (typeof msg.showCursor === "boolean") state.showCursor = msg.showCursor;
           if (typeof msg.clickRipples === "boolean") state.clickRipples = msg.clickRipples;
-          if (typeof msg.autoZoom === "boolean") state.autoZoom = msg.autoZoom;
-          if (typeof msg.zoomIntensity === "number") state.zoomIntensity = msg.zoomIntensity;
+          if (typeof msg.renderInParentOverlay === "boolean") {
+            state.renderInParentOverlay = msg.renderInParentOverlay;
+          }
+          if (!state.activeSession && state.mode !== "manual") {
+            state.cursorVisible = false;
+            state.hoveringInteractive = false;
+          }
+          syncNativeCursorVisibility();
         }
 
         if (msg.type === "VIDEO_STUDIO_SCAN") {
           scanAndReportTargets();
+        }
+
+        if (msg.type === "VIDEO_STUDIO_EXTERNAL_POINTER") {
+          if (!isManualCursorTrackingEnabled()) return;
+          const vw = Math.max(1, window.innerWidth);
+          const vh = Math.max(1, window.innerHeight);
+          const px = Math.max(0, Math.min(1, Number(msg.nx || 0))) * vw;
+          const py = Math.max(0, Math.min(1, Number(msg.ny || 0))) * vh;
+          if (msg.eventType === "down") {
+            handleManualDown(px, py);
+          } else if (msg.eventType === "up") {
+            handleManualUp();
+          } else {
+            handleManualMove(px, py);
+          }
         }
 
         if (msg.type === "VIDEO_STUDIO_START_AUTOPILOT") {
@@ -1117,39 +1460,85 @@ export function buildVideoStudioRuntimeScript(): string {
           });
         }
 
+        if (msg.type === "VIDEO_STUDIO_PREPARE_MANUAL") {
+          cancelChoreography();
+          if (msg.config) {
+            Object.assign(state, msg.config);
+          }
+          state.mode = "manual";
+          state.manualActive = true;
+          state.cursorVisible = true;
+          if (state.hasRealPointer) {
+            state.targetX = state.lastKnownX;
+            state.targetY = state.lastKnownY;
+            state.x = state.lastKnownX;
+            state.y = state.lastKnownY;
+          } else {
+            state.targetX = window.innerWidth * 0.5;
+            state.targetY = window.innerHeight * 0.5;
+            state.x = state.targetX;
+            state.y = state.targetY;
+          }
+          state.vx = 0;
+          state.vy = 0;
+          syncNativeCursorVisibility();
+          emitCursorTelemetryNow([]);
+        }
+
         if (msg.type === "VIDEO_STUDIO_START_MANUAL") {
           cancelChoreography();
           if (msg.config) {
             Object.assign(state, msg.config);
           }
+          state.mode = "manual";
           state.activeSession = true;
           state.manualActive = true;
           state.cursorVisible = true;
-          state.targetX = window.innerWidth * 0.5;
-          state.targetY = window.innerHeight * 0.5;
-          state.x = state.targetX;
-          state.y = state.targetY;
-          document.documentElement.classList.add("__vs_hide_native_cursor__");
+          state.isPressed = false;
+          state.targetScale = 1;
+          if (state.hasRealPointer) {
+            state.targetX = state.lastKnownX;
+            state.targetY = state.lastKnownY;
+            state.x = state.lastKnownX;
+            state.y = state.lastKnownY;
+          } else {
+            state.targetX = window.innerWidth * 0.5;
+            state.targetY = window.innerHeight * 0.5;
+            state.x = state.targetX;
+            state.y = state.targetY;
+          }
+          state.vx = 0;
+          state.vy = 0;
+          syncNativeCursorVisibility();
+          emitCursorTelemetryNow([]);
         }
 
         if (msg.type === "VIDEO_STUDIO_STOP") {
           cancelChoreography();
           state.activeSession = false;
           state.manualActive = false;
-          state.cursorVisible = false;
-          state.targetZoom = 1;
-          document.documentElement.classList.remove("__vs_hide_native_cursor__");
+          state.isPressed = false;
+          state.targetScale = 1;
+          if (state.mode !== "manual") {
+            state.cursorVisible = false;
+            state.hoveringInteractive = false;
+          }
+          syncNativeCursorVisibility();
+          emitCursorTelemetryNow([]);
         }
 
         if (msg.type === "VIDEO_STUDIO_RESET") {
           cancelChoreography();
           state.activeSession = false;
           state.manualActive = false;
+          state.isPressed = false;
+          state.targetScale = 1;
           state.cursorVisible = false;
-          resetCameraZoomImmediate();
+          state.hoveringInteractive = false;
           const scrollInfo = findScrollContainer();
           setScrollTop(scrollInfo, 0);
-          document.documentElement.classList.remove("__vs_hide_native_cursor__");
+          syncNativeCursorVisibility();
+          emitCursorTelemetryNow([]);
           scanAndReportTargets();
         }
 
@@ -1158,7 +1547,6 @@ export function buildVideoStudioRuntimeScript(): string {
         }
       });
 
-      // Auto-scan once component mounts and settles
       setTimeout(() => scanAndReportTargets(), 450);
       setTimeout(() => scanAndReportTargets(), 1400);
     })();

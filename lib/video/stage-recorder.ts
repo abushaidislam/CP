@@ -8,9 +8,8 @@ export interface CursorTelemetryState {
   visible: boolean;
   scale: number;
   tilt: number;
-  zoom: number;
-  originNx: number;
-  originNy: number;
+  hoveringInteractive?: boolean;
+  isPressed?: boolean;
   ripples: Array<{ nx: number; ny: number; progress: number }>;
 }
 
@@ -40,6 +39,8 @@ export interface StartRecorderOptions {
   preferredFormat: "mp4" | "webm";
   preferredEngine: "auto" | "native" | "direct";
   previewTheme: "dark" | "light";
+  showCursor?: boolean;
+  initialCursorTelemetry?: CursorTelemetryState | null;
   onTrackEnded?: () => void;
 }
 
@@ -134,46 +135,47 @@ export function detectCaptureCapabilities(): {
 }
 
 /**
- * Draws the crisp Spring Studio cursor and dual-ring click ripples onto a 2D canvas.
- * Used by the Direct Stage Fallback engine to maintain silky 60fps cursor motion.
+ * Draws the refined minimal studio cursor, subtle interactive hover halo, and whisper-quiet hairline click pulse onto a 2D canvas.
+ * Shared by both the live top-layer stage overlay and the Direct Stage 60fps compositor for 1:1 visual parity.
  */
-function drawCanvasCursorOverlay(
+export function drawCanvasCursorOverlay(
   ctx: CanvasRenderingContext2D,
   width: number,
   height: number,
   telemetry: CursorTelemetryState,
   isDark: boolean
 ) {
-  // Draw expanding click ripples
+  const scaleFactor = (width / 1280) * 1.25;
+
+  // Draw minimal hairline click pulses
   for (const ripple of telemetry.ripples) {
     const rx = ripple.nx * width;
     const ry = ripple.ny * height;
     const p = Math.max(0, Math.min(1, ripple.progress));
-    const easeOut = 1 - Math.pow(1 - p, 3);
-    const alpha = Math.max(0, 1 - p);
+    const easeOutQuart = 1 - Math.pow(1 - p, 4);
+    const ringAlpha = Math.max(0, Math.pow(1 - p, 1.4));
 
     ctx.save();
-    // Outer ring
+    // Single crisp hairline ring
     ctx.beginPath();
-    ctx.arc(rx, ry, 10 + easeOut * 44, 0, Math.PI * 2);
-    ctx.fillStyle = isDark
-      ? `rgba(255, 255, 255, ${(alpha * 0.14).toFixed(3)})`
-      : `rgba(9, 9, 11, ${(alpha * 0.08).toFixed(3)})`;
-    ctx.fill();
-    ctx.lineWidth = 2.5;
+    ctx.arc(rx, ry, (5 + easeOutQuart * 17) * scaleFactor, 0, Math.PI * 2);
+    ctx.lineWidth = 1.45 * scaleFactor;
     ctx.strokeStyle = isDark
-      ? `rgba(255, 255, 255, ${(alpha * 0.85).toFixed(3)})`
-      : `rgba(9, 9, 11, ${(alpha * 0.72).toFixed(3)})`;
+      ? `rgba(255, 255, 255, ${(ringAlpha * 0.65).toFixed(3)})`
+      : `rgba(9, 9, 11, ${(ringAlpha * 0.55).toFixed(3)})`;
     ctx.stroke();
 
-    // Inner accent ring
-    ctx.beginPath();
-    ctx.arc(rx, ry, 6 + easeOut * 22, 0, Math.PI * 2);
-    ctx.lineWidth = 2;
-    ctx.strokeStyle = isDark
-      ? `rgba(56, 189, 248, ${(alpha * 0.85).toFixed(3)})`
-      : `rgba(37, 99, 235, ${(alpha * 0.82).toFixed(3)})`;
-    ctx.stroke();
+    // Ultra-subtle micro contact dot
+    const dotProgress = Math.min(1, p * 2.4);
+    const dotAlpha = Math.max(0, 1 - dotProgress);
+    if (dotAlpha > 0.01) {
+      ctx.beginPath();
+      ctx.arc(rx, ry, (3.2 - dotProgress * 1.3) * scaleFactor, 0, Math.PI * 2);
+      ctx.fillStyle = isDark
+        ? `rgba(255, 255, 255, ${(dotAlpha * 0.48).toFixed(3)})`
+        : `rgba(9, 9, 11, ${(dotAlpha * 0.36).toFixed(3)})`;
+      ctx.fill();
+    }
     ctx.restore();
   }
 
@@ -181,33 +183,58 @@ function drawCanvasCursorOverlay(
 
   const cx = telemetry.nx * width;
   const cy = telemetry.ny * height;
-  const pointerScale = (width / 1280) * telemetry.scale;
+  const pointerScale = scaleFactor * telemetry.scale;
+
+  // Whisper-subtle interactive hover halo around cursor tip
+  if (telemetry.hoveringInteractive && !telemetry.isPressed) {
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(cx, cy, 12 * scaleFactor, 0, Math.PI * 2);
+    ctx.lineWidth = 1.15 * scaleFactor;
+    ctx.strokeStyle = isDark
+      ? "rgba(255, 255, 255, 0.28)"
+      : "rgba(9, 9, 11, 0.22)";
+    ctx.stroke();
+    ctx.restore();
+  }
 
   ctx.save();
   ctx.translate(cx, cy);
   ctx.rotate((telemetry.tilt * Math.PI) / 180);
   ctx.scale(pointerScale, pointerScale);
 
-  // Soft studio drop shadow
-  ctx.shadowColor = "rgba(0, 0, 0, 0.36)";
-  ctx.shadowBlur = 12;
+  // Refined studio drop shadow for crisp visibility on both light & dark components
+  ctx.shadowColor = "rgba(0, 0, 0, 0.4)";
+  ctx.shadowBlur = 10;
   ctx.shadowOffsetX = 0;
-  ctx.shadowOffsetY = 5;
+  ctx.shadowOffsetY = 3.5;
 
+  // Geometric high-contrast studio pointer (matches SVG 26x26 silhouette 1:1)
   ctx.beginPath();
   ctx.moveTo(0, 0);
-  ctx.lineTo(18.5, 11.4);
-  ctx.lineTo(10.5, 13.0);
-  ctx.lineTo(6.8, 20.6);
+  ctx.lineTo(16.8, 10.4);
+  ctx.lineTo(9.4, 11.7);
+  ctx.lineTo(6.2, 18.6);
   ctx.closePath();
 
   ctx.fillStyle = "#09090b";
   ctx.fill();
-  ctx.lineWidth = 2;
+  ctx.lineWidth = 1.85;
   ctx.lineJoin = "round";
   ctx.strokeStyle = "#ffffff";
   ctx.stroke();
   ctx.restore();
+}
+
+interface ExtendedDisplayVideoConstraints extends MediaTrackConstraints {
+  displaySurface?: string;
+  cursor?: "always" | "motion" | "never";
+}
+
+interface ExtendedDisplayMediaOptions extends DisplayMediaStreamOptions {
+  preferCurrentTab?: boolean;
+  selfBrowserSurface?: "include" | "exclude";
+  surfaceSwitching?: "include" | "exclude";
 }
 
 /**
@@ -221,18 +248,23 @@ async function startNativeRegionCapture(
   const fps = options.fps;
   const mimeType = pickSupportedRecorderMime(options.preferredFormat);
 
-  const displayStream = await navigator.mediaDevices.getDisplayMedia({
-    video: {
-      frameRate: { ideal: fps, max: fps },
-      width: { ideal: width },
-      height: { ideal: height },
-      displaySurface: "browser",
-    } as MediaTrackConstraints,
+  const videoConstraints: ExtendedDisplayVideoConstraints = {
+    frameRate: { ideal: fps, max: fps },
+    width: { ideal: width },
+    height: { ideal: height },
+    displaySurface: "browser",
+    cursor: "never",
+  };
+
+  const displayOptions: ExtendedDisplayMediaOptions = {
+    video: videoConstraints,
     audio: false,
     preferCurrentTab: true,
     selfBrowserSurface: "include",
     surfaceSwitching: "exclude",
-  } as DisplayMediaStreamOptions);
+  };
+
+  const displayStream = await navigator.mediaDevices.getDisplayMedia(displayOptions);
 
   const videoTrack = displayStream.getVideoTracks()[0];
   if (!videoTrack) {
@@ -410,17 +442,21 @@ async function startDirectStageCapture(
   let frameReqId = 0;
   let inFlightFrame = false;
   let latestFrameImage: HTMLImageElement | null = null;
-  let cursorTelemetry: CursorTelemetryState = {
-    nx: 0.5,
-    ny: 0.5,
-    visible: false,
-    scale: 1,
-    tilt: 0,
-    zoom: 1,
-    originNx: 0.5,
-    originNy: 0.5,
-    ripples: [],
-  };
+  let cursorTelemetry: CursorTelemetryState = options.initialCursorTelemetry
+    ? {
+        ...options.initialCursorTelemetry,
+        visible: options.showCursor !== false,
+      }
+    : {
+        nx: 0.5,
+        ny: 0.5,
+        visible: options.showCursor !== false,
+        scale: 1,
+        tilt: 0,
+        hoveringInteractive: false,
+        isPressed: false,
+        ripples: [],
+      };
 
   const requestSandboxFrame = () => {
     if (!active || inFlightFrame || !options.iframeElement?.contentWindow) return;
@@ -433,14 +469,14 @@ async function startDirectStageCapture(
     // Safety release if sandbox doesn't reply in time
     setTimeout(() => {
       inFlightFrame = false;
-    }, 350);
+    }, 220);
   };
 
   // Seed initial frame before starting recorder
   requestSandboxFrame();
-  await new Promise((r) => setTimeout(r, 140));
+  await new Promise((r) => setTimeout(r, 110));
 
-  const pollTimer = window.setInterval(requestSandboxFrame, 75);
+  const pollTimer = window.setInterval(requestSandboxFrame, 33);
 
   const drawFrame = () => {
     if (!active) return;
@@ -449,20 +485,7 @@ async function startDirectStageCapture(
     ctx.fillRect(0, 0, width, height);
 
     if (latestFrameImage && latestFrameImage.naturalWidth > 0) {
-      ctx.save();
-      const z = Math.max(1, cursorTelemetry.zoom || 1);
-      if (z > 1.002) {
-        const ox = cursorTelemetry.originNx * width;
-        const oy = cursorTelemetry.originNy * height;
-        let tx = ox * (1 - z);
-        let ty = oy * (1 - z);
-        tx = Math.min(0, Math.max(width * (1 - z), tx));
-        ty = Math.min(0, Math.max(height * (1 - z), ty));
-        ctx.translate(tx, ty);
-        ctx.scale(z, z);
-      }
       ctx.drawImage(latestFrameImage, 0, 0, width, height);
-      ctx.restore();
     }
 
     drawCanvasCursorOverlay(ctx, width, height, cursorTelemetry, isDark);
