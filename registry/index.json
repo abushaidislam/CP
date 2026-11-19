@@ -1,8 +1,27 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-19T12:18:16.584Z",
+  "updatedAt": "2026-11-19T13:22:56.655Z",
   "totalComponents": 55,
   "components": [
+    {
+      "id": "comp-1794635799526-1ellv",
+      "slug": "retro-hardware-handheld-clock",
+      "name": "Retro Hardware Handheld Clock",
+      "description": "",
+      "category": "Cards",
+      "isBuiltIn": false,
+      "updatedAt": 1795094565023,
+      "lastRepoSyncAt": 1795094576521,
+      "path": "registry/components/retro-hardware-handheld-clock",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "index.css",
+        "manifest.json",
+        "preview.png"
+      ],
+      "dependencies": []
+    },
     {
       "id": "comp-1795089925039-noo1w",
       "slug": "thermal-receipt",
@@ -572,25 +591,6 @@
       "dependencies": []
     },
     {
-      "id": "comp-1794635799526-1ellv",
-      "slug": "retro-hardware-handheld-clock",
-      "name": "Retro Hardware Handheld Clock",
-      "description": "",
-      "category": "Cards",
-      "isBuiltIn": false,
-      "updatedAt": 1794663782134,
-      "lastRepoSyncAt": 1794678944924,
-      "path": "registry/components/retro-hardware-handheld-clock",
-      "files": [
-        "component.tsx",
-        "default.tsx",
-        "index.css",
-        "manifest.json",
-        "preview.png"
-      ],
-      "dependencies": []
-    },
-    {
       "id": "comp-1794633759466-efzax",
       "slug": "fmradiotuner",
       "name": "Fmradiotuner",
@@ -928,7 +928,7 @@
       "category": "Heroes",
       "isBuiltIn": true,
       "updatedAt": 1700000000000,
-      "lastRepoSyncAt": 1795085620808,
+      "lastRepoSyncAt": 1795094111908,
       "path": "registry/components/aurora-ambient-hero",
       "files": [
         "component.tsx",
@@ -948,7 +948,7 @@
       "category": "Cards",
       "isBuiltIn": true,
       "updatedAt": 1700000000000,
-      "lastRepoSyncAt": 1795085620808,
+      "lastRepoSyncAt": 1795094111908,
       "path": "registry/components/bento-metric-grid",
       "files": [
         "component.tsx",
@@ -968,7 +968,7 @@
       "category": "Heroes",
       "isBuiltIn": true,
       "updatedAt": 1700000000000,
-      "lastRepoSyncAt": 1795085620808,
+      "lastRepoSyncAt": 1795094111908,
       "path": "registry/components/ink-orbit-hero",
       "files": [
         "component.tsx",
@@ -986,7 +986,7 @@
       "category": "Badges",
       "isBuiltIn": true,
       "updatedAt": 1700000000000,
-      "lastRepoSyncAt": 1795085620808,
+      "lastRepoSyncAt": 1795094111908,
       "path": "registry/components/live-ping-status-pill",
       "files": [
         "component.tsx",
@@ -1006,7 +1006,7 @@
       "category": "Badges",
       "isBuiltIn": true,
       "updatedAt": 1700000000000,
-      "lastRepoSyncAt": 1795085620808,
+      "lastRepoSyncAt": 1795094111908,
       "path": "registry/components/metric-badge",
       "files": [
         "component.tsx",
@@ -1026,7 +1026,7 @@
       "category": "Buttons",
       "isBuiltIn": true,
       "updatedAt": 1700000000000,
-      "lastRepoSyncAt": 1795085544853,
+      "lastRepoSyncAt": 1795094111908,
       "path": "registry/components/neon-glow-button",
       "files": [
         "component.tsx",
@@ -1046,7 +1046,7 @@
       "category": "Buttons",
       "isBuiltIn": true,
       "updatedAt": 1700000000000,
-      "lastRepoSyncAt": 1795085620808,
+      "lastRepoSyncAt": 1795094111908,
       "path": "registry/components/shimmer-button",
       "files": [
         "component.tsx",
@@ -1067,7 +1067,7 @@
       "category": "Cards",
       "isBuiltIn": true,
       "updatedAt": 1700000000000,
-      "lastRepoSyncAt": 1795085620808,
+      "lastRepoSyncAt": 1795094111908,
       "path": "registry/components/spotlight-card",
       "files": [
         "component.tsx",
