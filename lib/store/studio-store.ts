@@ -194,11 +194,22 @@ export interface AiChatMessage {
 }
 
 export interface RecordingConfig {
-  duration: 3 | 5 | 8;
+  mode: "autopilot" | "manual";
+  duration: 5 | 8 | 12 | 15;
   fps: 30 | 60;
-  format: "webm" | "mp4";
+  format: "mp4" | "webm";
   simulateHover: boolean;
-  resolution: "1080p" | "720p" | "square";
+  resolution: "1080p" | "720p";
+  autoHover: boolean;
+  autoClick: boolean;
+  autoScroll: boolean;
+  loopReturnToTop: boolean;
+  showCursor: boolean;
+  clickRipples: boolean;
+  autoZoom: boolean;
+  zoomIntensity: number;
+  countdown: boolean;
+  captureEngine: "auto" | "native" | "direct";
 }
 
 export type AiChatRole = "copilot" | "architect" | "designer" | "auditor" | "optimizer";
@@ -1106,11 +1117,31 @@ export function studioPersistMerge(
     }));
   }
 
+  const legacyRec = (persisted.recordingConfig || {}) as Partial<RecordingConfig> & {
+    duration?: number;
+    resolution?: string;
+  };
+  const validDuration: 5 | 8 | 12 | 15 =
+    legacyRec.duration === 5 ||
+    legacyRec.duration === 8 ||
+    legacyRec.duration === 12 ||
+    legacyRec.duration === 15
+      ? legacyRec.duration
+      : 8;
+  const validResolution: "1080p" | "720p" =
+    legacyRec.resolution === "720p" ? "720p" : "1080p";
+
   return {
     ...currentState,
     ...persisted,
     aiModel: persistedModel,
     files: mergedFiles,
+    recordingConfig: {
+      ...currentState.recordingConfig,
+      ...legacyRec,
+      duration: validDuration,
+      resolution: validResolution,
+    },
     userComponents: {
       ...initialComponents,
       ...normalizedPersistedComponents,
@@ -1167,11 +1198,22 @@ export const useStudioStore = create<StudioState>()(
       isSaveCheckpointDialogOpen: false,
 
       recordingConfig: {
-        duration: 5,
+        mode: "autopilot",
+        duration: 8,
         fps: 60,
-        format: "webm",
+        format: "mp4",
         simulateHover: true,
         resolution: "1080p",
+        autoHover: true,
+        autoClick: true,
+        autoScroll: true,
+        loopReturnToTop: true,
+        showCursor: true,
+        clickRipples: true,
+        autoZoom: true,
+        zoomIntensity: 1.18,
+        countdown: true,
+        captureEngine: "auto",
       },
 
       isCompiling: false,

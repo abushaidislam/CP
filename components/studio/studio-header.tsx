@@ -46,6 +46,7 @@ import {
   ShieldCheck,
   Lock,
   FolderGit2,
+  Video,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -77,6 +78,7 @@ export function StudioHeader() {
     setHistorySheetOpen,
     isOwnerAuthenticated,
     setSecurityModalOpen,
+    setRecordingModalOpen,
   } = useStudioStore();
 
   const [isDark, setIsDark] = useState(true);
@@ -847,6 +849,18 @@ export function StudioHeader() {
                 <span className="flex-1">
                   {capturedSuccess ? "Snapshot Saved!" : isCapturing ? "Capturing..." : "Capture Preview"}
                 </span>
+              </DropdownMenuItem>
+
+              {/* Record 16:9 60fps Video */}
+              <DropdownMenuItem
+                onClick={() => setRecordingModalOpen(true)}
+                className="gap-2.5 cursor-pointer rounded-none font-sans text-xs"
+              >
+                <Video className="size-3.5 text-primary" />
+                <span className="flex-1">Record 16:9 Video</span>
+                <kbd className="px-1 py-0.2 rounded-none bg-muted-foreground/10 text-[9px] font-mono text-muted-foreground">
+                  ⇧E
+                </kbd>
               </DropdownMenuItem>
 
               {/* Version History */}

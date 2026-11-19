@@ -14,6 +14,7 @@ import { TerminalPanel } from "./terminal-panel";
 import { KeyboardShortcutsDialog } from "./keyboard-shortcuts-dialog";
 import { SecurityShieldModal } from "./security-shield-modal";
 import { RepoSyncModal } from "./repo-sync-modal";
+import { VideoRecordingModal } from "./video-recording-modal";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Code, Eye, Sparkles } from "lucide-react";
 import { useStudioStore } from "@/lib/store/studio-store";
@@ -36,6 +37,7 @@ export function StudioContainer({ componentId: _componentId }: StudioContainerPr
     currentTemplateId,
     hydrateFromProjectRepo,
     saveComponentToProjectRepo,
+    setRecordingModalOpen,
   } = useStudioStore();
 
   useEffect(() => {
@@ -93,17 +95,22 @@ export function StudioContainer({ componentId: _componentId }: StudioContainerPr
     };
   }, []);
 
-  // Global shortcut to toggle AI Copilot (Ctrl+I or Cmd+I)
+  // Global shortcuts: Ctrl/Cmd+I for AI Copilot, Ctrl/Cmd+Shift+E for 16:9 Video Studio
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "i") {
         e.preventDefault();
         toggleAiPanel();
+        return;
+      }
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === "e") {
+        e.preventDefault();
+        setRecordingModalOpen(true);
       }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [toggleAiPanel]);
+  }, [toggleAiPanel, setRecordingModalOpen]);
 
   // Synchronize mobile tab with layoutMode
   useEffect(() => {
@@ -287,6 +294,7 @@ export function StudioContainer({ componentId: _componentId }: StudioContainerPr
 
       {/* Modals & Dialogs */}
       <RepoSyncModal />
+      <VideoRecordingModal />
       <DependencyModal />
       <SaveCheckpointDialog />
       <CreateVariantDialog />

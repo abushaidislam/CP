@@ -35,6 +35,7 @@ import {
   Camera,
   Download,
   Copy,
+  Video,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -77,6 +78,7 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
     userComponents,
     activeVariantByTemplate,
     updateComponentPreview,
+    setRecordingModalOpen,
   } = useStudioStore();
 
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -873,6 +875,25 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
             </DropdownMenuContent>
           </DropdownMenu>
 
+          {/* 16:9 60fps Interaction Video Studio Trigger */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="outline"
+                size="icon-sm"
+                onClick={() => setRecordingModalOpen(true)}
+                aria-label="Open 16:9 60fps Video Studio"
+                className="studio-icon-btn size-7 rounded-none border-border/80 bg-background/70 text-muted-foreground hover:text-foreground"
+              >
+                <Video className="size-3.5" />
+                <span className="sr-only">Record 16:9 Video</span>
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="font-sans text-xs">
+              Record 16:9 60fps Interaction Video (Ctrl+Shift+E)
+            </TooltipContent>
+          </Tooltip>
+
           {/* Fullscreen Toggle */}
           <Tooltip>
             <TooltipTrigger asChild>
@@ -957,6 +978,13 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
               >
                 <Copy className="size-3.5" />
                 <span>Copy image to clipboard</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => setRecordingModalOpen(true)}
+                className="flex items-center gap-2 rounded-none text-xs cursor-pointer font-sans"
+              >
+                <Video className="size-3.5 text-primary" />
+                <span>Record 16:9 60fps Video...</span>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuLabel className="text-[10px] uppercase font-sans text-muted-foreground">

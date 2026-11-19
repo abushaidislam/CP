@@ -1,5 +1,10 @@
 import { transform } from "sucrase";
 import { extractCodeImports } from "@/lib/sandbox/package-utils";
+import { buildVideoStudioRuntimeScript } from "@/lib/sandbox/video-choreography-runtime";
+
+export interface CompileSandboxOptions {
+  videoStudio?: boolean;
+}
 
 export interface CompileResult {
   html: string;
@@ -50,9 +55,11 @@ export function compileSandboxHtml(
   cssCode: string,
   dependencies: string[],
   canvasBg: string = "dark",
-  previewTheme: "dark" | "light" = "dark"
+  previewTheme: "dark" | "light" = "dark",
+  options?: CompileSandboxOptions
 ): CompileResult {
   const isDark = previewTheme === "dark";
+  const isVideoStudio = Boolean(options?.videoStudio);
 
   // Transpile component.tsx
   const compTranspiled = transpileTsx(componentCode);
@@ -311,6 +318,7 @@ export function compileSandboxHtml(
       display: flex;
       flex-direction: column;
     }
+    ${isVideoStudio ? "html, body { overflow-x: hidden; }" : ""}
 
     /* Clean scrollbars */
     ::-webkit-scrollbar {
@@ -834,6 +842,7 @@ export function compileSandboxHtml(
         }
       }, interval);
     }
+    ${isVideoStudio ? buildVideoStudioRuntimeScript() : ""}
   </script>
 </body>
 </html>`;
