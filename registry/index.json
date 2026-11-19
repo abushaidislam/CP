@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-19T12:17:13.684Z",
+  "updatedAt": "2026-11-19T12:18:01.942Z",
   "totalComponents": 55,
   "components": [
     {
@@ -10,14 +10,15 @@
       "description": "An interactive thermal receipt printer card that feeds order line items one by one with live print progress, serrated tear edges, a scan-to-pay QR reveal, and a tactile tear-off reset.",
       "category": "Cards",
       "isBuiltIn": false,
-      "updatedAt": 1795090623025,
-      "lastRepoSyncAt": 1795090633631,
+      "updatedAt": 1795090671385,
+      "lastRepoSyncAt": 1795090681893,
       "path": "registry/components/thermal-receipt",
       "files": [
         "component.tsx",
         "default.tsx",
         "index.css",
-        "manifest.json"
+        "manifest.json",
+        "preview.png"
       ],
       "dependencies": []
     },
