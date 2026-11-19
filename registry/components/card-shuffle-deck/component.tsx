@@ -325,7 +325,7 @@ export const CardShuffleDeck = forwardRef<HTMLDivElement, CardShuffleDeckProps>(
     orderRef.current = order;
 
     const seqRef = useRef(0);
-    const cardTimersRef = useRef>(new Map());
+    const cardTimersRef = useRef(new Map<number, number[]>());
     const didDragRef = useRef(false);
     const lastNotifiedIndexRef = useRef<number | null>(null);
 
