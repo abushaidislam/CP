@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-19T08:40:36.656Z",
+  "updatedAt": "2026-11-19T08:40:53.328Z",
   "totalComponents": 52,
   "components": [
     {
@@ -10,8 +10,8 @@
       "description": "A compact pill-shaped recurrence selector that morphs into an inline segmented picker with blur-dissolve transitions and an expandable weekday row when Weekly is chosen.",
       "category": "Custom",
       "isBuiltIn": false,
-      "updatedAt": 1795077627588,
-      "lastRepoSyncAt": 1795077636604,
+      "updatedAt": 1795077643399,
+      "lastRepoSyncAt": 1795077653233,
       "path": "registry/components/frequency-selector",
       "files": [
         "component.tsx",
