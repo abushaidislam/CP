@@ -2,7 +2,7 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
-import { useStudioStore, type RecordingConfig } from "@/lib/store/studio-store";
+import { useStudioStore } from "@/lib/store/studio-store";
 import { compileSandboxHtml } from "@/lib/sandbox/sandbox-compiler";
 import { DEFAULT_TEMPLATES } from "@/lib/sandbox/default-templates";
 import {
@@ -24,85 +24,22 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Switch } from "@/components/ui/switch";
-import { Slider } from "@/components/ui/slider";
-import { Separator } from "@/components/ui/separator";
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { Check, Film, Moon, RefreshCw, Sun } from "lucide-react";
 import {
-  Video,
-  Square,
-  Play,
-  Pause,
-  RotateCcw,
-  Download,
-  Sparkles,
-  Hand,
-  MousePointer2,
-  ArrowDownUp,
-  RefreshCw,
-  Loader2,
-  Check,
-  AlertTriangle,
-  Sun,
-  Moon,
-  Film,
-} from "lucide-react";
-import { cn } from "@/lib/utils";
-
-type StudioPhase =
-  | "idle"
-  | "previewing"
-  | "countdown"
-  | "capturing-moves"
-  | "rendering-replay"
-  | "recording"
-  | "processing"
-  | "review"
-  | "error";
-
-interface ReplayEventItem {
-  t: number;
-  kind: "move" | "down" | "up" | "scroll";
-  nx: number;
-  ny: number;
-  scrollY: number;
-}
-
-interface DiscoveredTargetsInfo {
-  interactiveCount: number;
-  scrollableDistance: number;
-  hasCanvas: boolean;
-}
-
-function formatTimecode(ms: number): string {
-  const safe = Math.max(0, ms);
-  const totalSec = Math.floor(safe / 1000);
-  const mins = Math.floor(totalSec / 60);
-  const secs = totalSec % 60;
-  const centis = Math.floor((safe % 1000) / 10);
-  return `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}.${String(centis).padStart(2, "0")}`;
-}
-
-function formatBytes(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
-}
-
-function slugifyFilename(name: string): string {
-  return (
-    name
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-+|-+$/g, "") || "component"
-  );
-}
+  formatBytes,
+  formatTimecode,
+  slugifyFilename,
+  type DiscoveredTargetsInfo,
+  type ReplayEventItem,
+  type StudioPhase,
+} from "./video/video-studio-types";
+import { VideoStageViewport } from "./video/video-stage-viewport";
+import { VideoDirectorSidebar } from "./video/video-director-sidebar";
 
 export function VideoRecordingModal() {
   const {
@@ -142,14 +79,17 @@ export function VideoRecordingModal() {
   );
   const [stageReady, setStageReady] = useState<boolean>(false);
   const [stageReloadKey, setStageReloadKey] = useState<number>(0);
-  const [discoveredTargets, setDiscoveredTargets] = useState<DiscoveredTargetsInfo>({
-    interactiveCount: 0,
-    scrollableDistance: 0,
-    hasCanvas: false,
-  });
+  const [discoveredTargets, setDiscoveredTargets] =
+    useState<DiscoveredTargetsInfo>({
+      interactiveCount: 0,
+      scrollableDistance: 0,
+      hasCanvas: false,
+    });
 
-  const [activeEngine, setActiveEngine] = useState<CaptureEngineUsed>("native-zero-copy");
-  const [recordingResult, setRecordingResult] = useState<StageRecordingResult | null>(null);
+  const [activeEngine, setActiveEngine] =
+    useState<CaptureEngineUsed>("native-zero-copy");
+  const [recordingResult, setRecordingResult] =
+    useState<StageRecordingResult | null>(null);
   const [previewVideoUrl, setPreviewVideoUrl] = useState<string | null>(null);
   const [cachedMp4Url, setCachedMp4Url] = useState<string | null>(null);
   const [isTranscodingMp4, setIsTranscodingMp4] = useState<boolean>(false);
@@ -166,7 +106,12 @@ export function VideoRecordingModal() {
   const stageIframeRef = useRef<HTMLIFrameElement | null>(null);
   const stageCursorCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const cursorCtxRef = useRef<CanvasRenderingContext2D | null>(null);
-  const stageRectRef = useRef<{ left: number; top: number; width: number; height: number }>({
+  const stageRectRef = useRef<{
+    left: number;
+    top: number;
+    width: number;
+    height: number;
+  }>({
     left: 0,
     top: 0,
     width: 0,
@@ -307,7 +252,10 @@ export function VideoRecordingModal() {
       cursorCtxRef.current = ctx;
       ctx.clearRect(0, 0, width, height);
 
-      if (!telemetry.visible && (!telemetry.ripples || telemetry.ripples.length === 0)) {
+      if (
+        !telemetry.visible &&
+        (!telemetry.ripples || telemetry.ripples.length === 0)
+      ) {
         return;
       }
 
@@ -467,7 +415,9 @@ export function VideoRecordingModal() {
       setPhase("review");
     } catch (err) {
       setErrorMessage(
-        err instanceof Error ? err.message : "Failed to finalize video recording."
+        err instanceof Error
+          ? err.message
+          : "Failed to finalize video recording."
       );
       setPhase("error");
     }
@@ -604,7 +554,9 @@ export function VideoRecordingModal() {
       }
 
       if (data.type === "VIDEO_STUDIO_REPLAY_TAKE") {
-        const events = Array.isArray(data.events) ? (data.events as ReplayEventItem[]) : [];
+        const events = Array.isArray(data.events)
+          ? (data.events as ReplayEventItem[])
+          : [];
         const durationMs = Math.max(400, Number(data.durationMs || 1500));
         void startReplayRenderFromTake(events, durationMs);
       }
@@ -841,7 +793,9 @@ export function VideoRecordingModal() {
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
-    showExportToast(`Downloaded ${ext.toUpperCase()} (${recordingConfig.resolution} · ${recordingConfig.fps}fps)`);
+    showExportToast(
+      `Downloaded ${ext.toUpperCase()} (${recordingConfig.resolution} · ${recordingConfig.fps}fps)`
+    );
   };
 
   const handleDownloadMp4 = async () => {
@@ -856,7 +810,9 @@ export function VideoRecordingModal() {
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
-      showExportToast(`Downloaded MP4 (${recordingConfig.resolution} · ${recordingConfig.fps}fps)`);
+      showExportToast(
+        `Downloaded MP4 (${recordingConfig.resolution} · ${recordingConfig.fps}fps)`
+      );
       return;
     }
 
@@ -867,7 +823,9 @@ export function VideoRecordingModal() {
         blob: recordingResult.blob,
         fps: recordingConfig.fps,
         resolution: recordingConfig.resolution,
-        forceRescale: Boolean(recordingResult.needsServerRescale && serverFfmpegReady),
+        forceRescale: Boolean(
+          recordingResult.needsServerRescale && serverFfmpegReady
+        ),
         ownerSessionToken: useStudioStore.getState().ownerSessionToken,
       });
       const mp4Url = URL.createObjectURL(mp4Blob);
@@ -921,6 +879,13 @@ export function VideoRecordingModal() {
     setIsReviewPlaying(true);
   };
 
+  const handleReviewSeek = (val: number) => {
+    setReviewCurrentTime(val);
+    if (reviewVideoRef.current) {
+      reviewVideoRef.current.currentTime = val;
+    }
+  };
+
   const { width: targetWidth, height: targetHeight } = getResolutionDimensions(
     recordingConfig.resolution
   );
@@ -970,7 +935,10 @@ export function VideoRecordingModal() {
                 <span className="font-mono text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
                   VIDEO STUDIO
                 </span>
-                <span aria-hidden="true" className="text-muted-foreground/50 text-xs">
+                <span
+                  aria-hidden="true"
+                  className="text-muted-foreground/50 text-xs"
+                >
                   ·
                 </span>
                 <span className="font-mono text-[10px] text-muted-foreground tabular-nums">
@@ -981,7 +949,9 @@ export function VideoRecordingModal() {
                 {currentComponentName}
               </DialogTitle>
               <DialogDescription className="sr-only">
-                Record a smooth 16:9 60fps interaction showcase video of your live component with Auto-Pilot choreography or Manual Live capture.
+                Record a smooth 16:9 60fps interaction showcase video of your
+                live component with Auto-Pilot choreography or Manual Live
+                capture.
               </DialogDescription>
             </div>
           </div>
@@ -1052,899 +1022,74 @@ export function VideoRecordingModal() {
 
         {/* Main Workspace Split: Primary 16:9 Stage (Left) + Director Inspector (Right) */}
         <div className="flex flex-1 min-h-0 flex-col lg:flex-row overflow-y-auto lg:overflow-hidden">
-          {/* LEFT: Edge-to-Edge 16:9 Stage Viewport */}
-          <div className="flex flex-1 flex-col min-w-0 bg-muted/20 dark:bg-black/40 p-4 sm:p-5 gap-3 justify-between overflow-hidden">
-            {/* External Telemetry Bar (Always OUTSIDE the 16:9 captured crop region!) */}
-            <div className="flex items-center justify-between gap-3 text-xs font-sans shrink-0">
-              <div className="flex items-center gap-2 min-w-0 text-muted-foreground">
-                {phase === "recording" || phase === "capturing-moves" || phase === "rendering-replay" ? (
-                  <>
-                    <span className="inline-block size-2 rounded-full bg-destructive animate-pulse shrink-0" />
-                    <span className="font-medium text-foreground">
-                      {phase === "capturing-moves"
-                        ? "Zero-Lag Live Input"
-                        : phase === "rendering-replay"
-                          ? "Rendering 60fps Replay"
-                          : "Recording 16:9 Stage"}
-                    </span>
-                    <span aria-hidden="true">·</span>
-                    <span
-                      ref={timecodeTextRef}
-                      className="font-mono text-[11px] tabular-nums text-foreground"
-                    >
-                      00:00.00
-                    </span>
-                    <span aria-hidden="true" className="hidden sm:inline">
-                      ·
-                    </span>
-                    <span className="hidden sm:inline text-[11px]">
-                      {phase === "capturing-moves"
-                        ? "Zero encoding overhead"
-                        : activeEngine === "native-zero-copy"
-                          ? "Zero-Copy GPU 60fps"
-                          : activeEngine === "native-region"
-                            ? "Hardware Region Capture"
-                            : "Turbo Direct Compositor"}
-                    </span>
-                  </>
-                ) : phase === "countdown" ? (
-                  <span className="font-medium text-foreground">
-                    Starting capture in{" "}
-                    <span className="font-mono tabular-nums text-primary font-semibold">
-                      {countdownValue}
-                    </span>
-                    ...
-                  </span>
-                ) : phase === "previewing" ? (
-                  <span className="font-medium text-foreground">
-                    Previewing Auto-Pilot choreography (dry run)
-                  </span>
-                ) : phase === "processing" ? (
-                  <div className="flex items-center gap-2 text-foreground">
-                    <Loader2 className="size-3.5 animate-spin text-primary" />
-                    <span>Finalizing 60fps stream...</span>
-                  </div>
-                ) : phase === "review" && recordingResult ? (
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-medium text-foreground">
-                      Capture Ready
-                    </span>
-                    <span aria-hidden="true">·</span>
-                    <span className="font-mono text-[11px] tabular-nums">
-                      {recordingResult.width}×{recordingResult.height}
-                    </span>
-                    <span aria-hidden="true">·</span>
-                    <span className="font-mono text-[11px] tabular-nums">
-                      {recordingResult.fps} FPS
-                    </span>
-                    <span aria-hidden="true">·</span>
-                    <span className="font-mono text-[11px] tabular-nums">
-                      {(recordingResult.durationMs / 1000).toFixed(1)}s
-                    </span>
-                    <span aria-hidden="true">·</span>
-                    <span className="font-mono text-[11px] tabular-nums">
-                      {formatBytes(recordingResult.blob.size)}
-                    </span>
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-2 truncate">
-                    <span className="font-medium text-foreground">
-                      Edge-to-Edge 16:9 Stage
-                    </span>
-                    <span aria-hidden="true">·</span>
-                    <span className="truncate">
-                      {discoveredTargets.interactiveCount > 0
-                        ? `${discoveredTargets.interactiveCount} interactive targets`
-                        : "Surface hover sweep ready"}
-                      {discoveredTargets.scrollableDistance > 36
-                        ? ` · ${discoveredTargets.scrollableDistance}px scrollable`
-                        : ""}
-                    </span>
-                  </div>
-                )}
-              </div>
+          <VideoStageViewport
+            phase={phase}
+            isActiveCapturePhase={isActiveCapturePhase}
+            countdownValue={countdownValue}
+            activeEngine={activeEngine}
+            recordingConfig={recordingConfig}
+            recordingResult={recordingResult}
+            discoveredTargets={discoveredTargets}
+            previewTheme={previewTheme}
+            previewVideoUrl={previewVideoUrl}
+            stageReady={stageReady}
+            stageReloadKey={stageReloadKey}
+            currentTemplateId={currentTemplateId}
+            sandboxHtml={sandboxHtml}
+            compileError={compileError}
+            errorMessage={errorMessage}
+            isReviewPlaying={isReviewPlaying}
+            reviewCurrentTime={reviewCurrentTime}
+            reviewDuration={reviewDuration}
+            timecodeTextRef={timecodeTextRef}
+            progressBarRef={progressBarRef}
+            stageContainerRef={stageContainerRef}
+            stageIframeRef={stageIframeRef}
+            stageCursorCanvasRef={stageCursorCanvasRef}
+            reviewVideoRef={reviewVideoRef}
+            onStopCaptureMoves={handleStopCaptureMoves}
+            onStopRecording={() => void stopRecording()}
+            onTogglePreviewRun={handleTogglePreviewRun}
+            onForwardBoundaryPointer={forwardBoundaryPointerToStage}
+            onReviewTimeUpdate={setReviewCurrentTime}
+            onReviewDurationLoaded={setReviewDuration}
+            onReviewPlayPause={handleReviewPlayPause}
+            onReviewRestart={handleReviewRestart}
+            onReviewSeek={handleReviewSeek}
+            onRecordWithDirectEngine={() => {
+              setRecordingConfig({ captureEngine: "direct" });
+              void beginActualRecording("direct");
+            }}
+          />
 
-              {/* Live progress / quick action outside the crop frame */}
-              <div className="flex items-center gap-2 shrink-0">
-                {phase === "capturing-moves" && (
-                  <Button
-                    type="button"
-                    variant="destructive"
-                    size="sm"
-                    onClick={handleStopCaptureMoves}
-                    className="h-7 rounded-none px-3 text-xs font-sans gap-1.5"
-                  >
-                    <Square className="size-3 fill-current" />
-                    <span>Finish & Render</span>
-                  </Button>
-                )}
-                {(phase === "recording" || phase === "rendering-replay") && (
-                  <Button
-                    type="button"
-                    variant="destructive"
-                    size="sm"
-                    onClick={() => void stopRecording()}
-                    className="h-7 rounded-none px-3 text-xs font-sans gap-1.5"
-                  >
-                    <Square className="size-3 fill-current" />
-                    <span>Stop</span>
-                  </Button>
-                )}
-                {phase === "previewing" && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={handleTogglePreviewRun}
-                    className="h-7 rounded-none px-2.5 text-xs font-sans gap-1.5"
-                  >
-                    <Square className="size-3" />
-                    <span>Stop Preview</span>
-                  </Button>
-                )}
-              </div>
-            </div>
-
-            {/* Recording Progress Bar (Strictly Outside Captured Region, Imperatively Updated) */}
-            {isActiveCapturePhase && (
-              <div className="h-1 w-full bg-muted overflow-hidden shrink-0">
-                <div
-                  ref={progressBarRef}
-                  className={cn(
-                    "h-full bg-destructive transition-[width] duration-100 ease-linear",
-                    (phase === "capturing-moves" ||
-                      (phase === "recording" && recordingConfig.mode === "manual")) &&
-                      "animate-pulse"
-                  )}
-                  style={{ width: "0%" }}
-                />
-              </div>
-            )}
-
-            {/* Centered 16:9 Stage Wrapper */}
-            <div className="flex-1 flex items-center justify-center min-h-[260px] w-full overflow-hidden">
-              <div className="w-full max-w-[920px] flex flex-col gap-2">
-                {phase === "review" && previewVideoUrl ? (
-                  /* Post-Capture Review Player */
-                  <div className="relative w-full aspect-video border border-border bg-black overflow-hidden">
-                    <video
-                      ref={reviewVideoRef}
-                      src={previewVideoUrl}
-                      autoPlay
-                      loop
-                      playsInline
-                      onTimeUpdate={(e) =>
-                        setReviewCurrentTime(e.currentTarget.currentTime)
-                      }
-                      onLoadedMetadata={(e) => {
-                        if (Number.isFinite(e.currentTarget.duration)) {
-                          setReviewDuration(e.currentTarget.duration);
-                        }
-                      }}
-                      className="w-full h-full object-contain bg-black"
-                    />
-                  </div>
-                ) : (
-                  /* LIVE EDGE-TO-EDGE 16:9 RECORDING STAGE (Exact Crop Target) */
-                  <div
-                    ref={stageContainerRef}
-                    data-testid="video-studio-16x9-stage"
-                    onPointerMoveCapture={(e) =>
-                      forwardBoundaryPointerToStage(e, "move")
-                    }
-                    onPointerDownCapture={(e) =>
-                      forwardBoundaryPointerToStage(e, "down")
-                    }
-                    onPointerUpCapture={(e) =>
-                      forwardBoundaryPointerToStage(e, "up")
-                    }
-                    className={cn(
-                      "relative w-full aspect-video border border-border overflow-hidden",
-                      previewTheme === "dark" ? "bg-zinc-950" : "bg-white",
-                      recordingConfig.mode === "manual" &&
-                        recordingConfig.showCursor &&
-                        "cursor-none"
-                    )}
-                  >
-                    {!stageReady && !compileError && (
-                      <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-2.5 bg-background/95 text-muted-foreground font-sans text-xs">
-                        <Loader2 className="size-5 animate-spin text-primary" />
-                        <span>Hydrating 16:9 component stage...</span>
-                      </div>
-                    )}
-
-                    <iframe
-                      ref={stageIframeRef}
-                      key={`${stageReloadKey}-${currentTemplateId}`}
-                      srcDoc={sandboxHtml}
-                      title="16:9 Video Studio Live Stage"
-                      sandbox="allow-scripts allow-modals"
-                      className="w-full h-full border-none block"
-                    />
-
-                    {/* Top-Layer 60fps Virtual Cursor & Minimal Click Pulse Canvas (Guaranteed visible in Native & Manual Live capture) */}
-                    <canvas
-                      ref={stageCursorCanvasRef}
-                      aria-hidden="true"
-                      className="pointer-events-none absolute inset-0 z-30 w-full h-full block"
-                    />
-                  </div>
-                )}
-
-                {/* Inline Review Scrubber Bar */}
-                {phase === "review" && previewVideoUrl && (
-                  <div className="flex items-center gap-3 border border-border bg-card px-3 py-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="icon-sm"
-                      onClick={handleReviewPlayPause}
-                      aria-label={isReviewPlaying ? "Pause video" : "Play video"}
-                      className="size-7 rounded-none shrink-0"
-                    >
-                      {isReviewPlaying ? (
-                        <Pause className="size-3.5" />
-                      ) : (
-                        <Play className="size-3.5" />
-                      )}
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="icon-sm"
-                      onClick={handleReviewRestart}
-                      aria-label="Restart video"
-                      className="size-7 rounded-none shrink-0"
-                    >
-                      <RotateCcw className="size-3.5" />
-                    </Button>
-
-                    <div className="flex-1 px-1">
-                      <Slider
-                        value={[reviewCurrentTime]}
-                        min={0}
-                        max={Math.max(0.1, reviewDuration)}
-                        step={0.05}
-                        onValueChange={([val]) => {
-                          setReviewCurrentTime(val);
-                          if (reviewVideoRef.current) {
-                            reviewVideoRef.current.currentTime = val;
-                          }
-                        }}
-                        aria-label="Video playback position"
-                      />
-                    </div>
-
-                    <span className="font-mono text-[11px] text-muted-foreground tabular-nums shrink-0">
-                      {formatTimecode(reviewCurrentTime * 1000)} /{" "}
-                      {formatTimecode(reviewDuration * 1000)}
-                    </span>
-                  </div>
-                )}
-
-                {/* Actionable Error / Iframe Permission Fallback Recovery */}
-                {errorMessage && (
-                  <div
-                    role="alert"
-                    className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border border-destructive/40 bg-destructive/10 px-3.5 py-2.5 text-xs font-sans"
-                  >
-                    <div className="flex items-start gap-2 min-w-0 text-destructive">
-                      <AlertTriangle className="size-4 shrink-0 mt-0.5" />
-                      <span className="leading-relaxed">{errorMessage}</span>
-                    </div>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        setRecordingConfig({ captureEngine: "direct" });
-                        void beginActualRecording("direct");
-                      }}
-                      className="h-7 rounded-none text-xs shrink-0 bg-background"
-                    >
-                      Record with Direct Stage
-                    </Button>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Subtle Footer Hint Outside Stage */}
-            <div className="flex items-center justify-between gap-2 text-[11px] text-muted-foreground font-sans shrink-0">
-              <span>
-                {recordingConfig.mode === "autopilot"
-                  ? "Auto-Pilot detects interactive buttons, opens & clicks dropdown menus, runs multi-click sequences, and auto-scrolls smoothly."
-                  : "Manual Live mode replaces your OS pointer with a spring-smoothed virtual cursor and minimal click feedback."}
-              </span>
-              <span className="hidden xl:inline font-mono text-[10px] shrink-0">
-                16:9 EDGE-TO-EDGE
-              </span>
-            </div>
-          </div>
-
-          {/* RIGHT: Director Inspector Sidebar */}
-          <aside className="w-full lg:w-[320px] xl:w-[340px] shrink-0 border-t lg:border-t-0 lg:border-l border-border bg-card flex flex-col min-h-0">
-            <div className="flex-1 overflow-y-auto px-4 py-4 space-y-5">
-              {/* Mode Selector */}
-              <section className="space-y-2.5">
-                <div className="flex items-center justify-between">
-                  <span className="font-mono text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-                    INTERACTION MODE
-                  </span>
-                  <Badge
-                    variant="outline"
-                    className="rounded-none text-[10px] font-sans font-normal px-1.5 py-0 h-5"
-                  >
-                    {recordingConfig.mode === "autopilot" ? "Automated" : "Live Input"}
-                  </Badge>
-                </div>
-
-                <Tabs
-                  value={recordingConfig.mode}
-                  onValueChange={(val) =>
-                    setRecordingConfig({
-                      mode: val as RecordingConfig["mode"],
-                    })
-                  }
-                >
-                  <TabsList className="grid grid-cols-2 w-full h-8 rounded-none bg-muted/60 p-0.5 border border-border">
-                    <TabsTrigger
-                      value="autopilot"
-                      disabled={isBusy}
-                      className="rounded-none text-xs font-sans gap-1.5 h-7"
-                    >
-                      <Sparkles className="size-3.5" />
-                      <span>Auto-Pilot</span>
-                    </TabsTrigger>
-                    <TabsTrigger
-                      value="manual"
-                      disabled={isBusy}
-                      className="rounded-none text-xs font-sans gap-1.5 h-7"
-                    >
-                      <Hand className="size-3.5" />
-                      <span>Manual Live</span>
-                    </TabsTrigger>
-                  </TabsList>
-                </Tabs>
-              </section>
-
-              <Separator />
-
-              {/* Auto-Pilot Choreography Settings OR Manual Live Guide */}
-              {recordingConfig.mode === "autopilot" ? (
-                <section className="space-y-3.5">
-                  <div className="flex items-center justify-between">
-                    <span className="font-mono text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-                      CHOREOGRAPHY
-                    </span>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      disabled={isBusy || !stageReady}
-                      onClick={() => postToStage({ type: "VIDEO_STUDIO_SCAN" })}
-                      className="h-6 px-2 rounded-none text-[11px] text-muted-foreground hover:text-foreground font-sans"
-                    >
-                      Rescan DOM
-                    </Button>
-                  </div>
-
-                  {/* Duration Presets */}
-                  <div className="space-y-1.5">
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="text-foreground font-medium">Duration</span>
-                      <span className="font-mono text-[11px] text-muted-foreground tabular-nums">
-                        {recordingConfig.duration}s clip
-                      </span>
-                    </div>
-                    <div className="grid grid-cols-4 gap-1">
-                      {([5, 8, 12, 15] as const).map((sec) => (
-                        <Button
-                          key={sec}
-                          type="button"
-                          variant={
-                            recordingConfig.duration === sec ? "default" : "outline"
-                          }
-                          size="sm"
-                          disabled={isBusy}
-                          onClick={() => setRecordingConfig({ duration: sec })}
-                          className="h-7 rounded-none text-xs font-mono tabular-nums"
-                        >
-                          {sec}s
-                        </Button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Choreography Toggles */}
-                  <div className="space-y-2.5 pt-1">
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="min-w-0">
-                        <div className="text-xs font-medium text-foreground">
-                          Auto-Hover Sweep
-                        </div>
-                        <div className="text-[11px] text-muted-foreground">
-                          Glide cursor over interactive cards & controls
-                        </div>
-                      </div>
-                      <Switch
-                        checked={recordingConfig.autoHover}
-                        disabled={isBusy}
-                        onCheckedChange={(checked) =>
-                          setRecordingConfig({
-                            autoHover: checked,
-                            simulateHover: checked,
-                          })
-                        }
-                        aria-label="Toggle auto-hover sweep"
-                      />
-                    </div>
-
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="min-w-0">
-                        <div className="text-xs font-medium text-foreground">
-                          Smart Click & Dropdowns
-                        </div>
-                        <div className="text-[11px] text-muted-foreground">
-                          Opens dropdowns, clicks sub-items & multi-click controls
-                        </div>
-                      </div>
-                      <Switch
-                        checked={recordingConfig.autoClick}
-                        disabled={isBusy}
-                        onCheckedChange={(checked) =>
-                          setRecordingConfig({ autoClick: checked })
-                        }
-                        aria-label="Toggle smart click and dropdown interactions"
-                      />
-                    </div>
-
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="min-w-0">
-                        <div className="text-xs font-medium text-foreground flex items-center gap-1.5">
-                          <ArrowDownUp className="size-3 text-muted-foreground" />
-                          <span>Smooth Auto-Scroll</span>
-                        </div>
-                        <div className="text-[11px] text-muted-foreground">
-                          {discoveredTargets.scrollableDistance > 36
-                            ? `Scrolls ${discoveredTargets.scrollableDistance}px smoothly`
-                            : "Triggers if component overflows viewport"}
-                        </div>
-                      </div>
-                      <Switch
-                        checked={recordingConfig.autoScroll}
-                        disabled={isBusy}
-                        onCheckedChange={(checked) =>
-                          setRecordingConfig({ autoScroll: checked })
-                        }
-                        aria-label="Toggle smooth auto-scroll"
-                      />
-                    </div>
-
-                    {recordingConfig.autoScroll && (
-                      <div className="flex items-center justify-between gap-3 pl-3 border-l border-border">
-                        <div className="text-xs text-muted-foreground">
-                          Return smoothly to top for loop
-                        </div>
-                        <Switch
-                          checked={recordingConfig.loopReturnToTop}
-                          disabled={isBusy}
-                          onCheckedChange={(checked) =>
-                            setRecordingConfig({ loopReturnToTop: checked })
-                          }
-                          aria-label="Toggle return to top loop"
-                        />
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Dry-Run Preview Button */}
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    disabled={isBusy || !stageReady || phase === "review"}
-                    onClick={handleTogglePreviewRun}
-                    className="w-full h-8 rounded-none text-xs font-sans gap-1.5"
-                  >
-                    {phase === "previewing" ? (
-                      <>
-                        <Square className="size-3" />
-                        <span>Stop Dry Run</span>
-                      </>
-                    ) : (
-                      <>
-                        <Play className="size-3" />
-                        <span>Preview Choreography</span>
-                      </>
-                    )}
-                  </Button>
-                </section>
-              ) : (
-                <section className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="font-mono text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-                      MANUAL LIVE CAPTURE
-                    </span>
-                    <Badge
-                      variant="outline"
-                      className="rounded-none text-[10px] font-sans font-normal px-1.5 py-0 h-5"
-                    >
-                      {zeroLagReplay ? "Zero-Lag Replay" : "Live Encode"}
-                    </Badge>
-                  </div>
-
-                  {/* Zero-Lag Replay Toggle */}
-                  <div className="flex items-center justify-between gap-3 border border-border bg-muted/30 p-3">
-                    <div className="min-w-0">
-                      <div className="text-xs font-medium text-foreground">
-                        Zero-Lag Replay Mode
-                      </div>
-                      <div className="text-[11px] text-muted-foreground leading-relaxed mt-0.5">
-                        Interact at full native speed with 0% capture lag; auto-replays and encodes your take after Stop.
-                      </div>
-                    </div>
-                    <Switch
-                      checked={zeroLagReplay}
-                      disabled={isBusy}
-                      onCheckedChange={setZeroLagReplay}
-                      aria-label="Toggle zero-lag replay mode"
-                    />
-                  </div>
-
-                  <p className="text-[11px] text-muted-foreground leading-relaxed">
-                    Hover the 16:9 stage now to preview the spring virtual cursor and minimal click pulse before recording.
-                  </p>
-
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    disabled={isBusy || !stageReady}
-                    onClick={() => postToStage({ type: "VIDEO_STUDIO_RESET" })}
-                    className="w-full h-8 rounded-none text-xs font-sans gap-1.5"
-                  >
-                    <RotateCcw className="size-3" />
-                    <span>Reset Stage Position</span>
-                  </Button>
-                </section>
-              )}
-
-              <Separator />
-
-              {/* Cursor & Feedback Section */}
-              <section className="space-y-3">
-                <span className="font-mono text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-                  CURSOR & FEEDBACK
-                </span>
-
-                <div className="flex items-center justify-between gap-3">
-                  <div className="min-w-0">
-                    <div className="text-xs font-medium text-foreground flex items-center gap-1.5">
-                      <MousePointer2 className="size-3 text-muted-foreground" />
-                      <span>Spring Virtual Cursor</span>
-                    </div>
-                    <div className="text-[11px] text-muted-foreground">
-                      Minimal 60fps spring pointer with subtle tilt
-                    </div>
-                  </div>
-                  <Switch
-                    checked={recordingConfig.showCursor}
-                    disabled={isBusy}
-                    onCheckedChange={(checked) =>
-                      setRecordingConfig({ showCursor: checked })
-                    }
-                    aria-label="Toggle spring virtual cursor"
-                  />
-                </div>
-
-                <div className="flex items-center justify-between gap-3">
-                  <div className="min-w-0">
-                    <div className="text-xs font-medium text-foreground">
-                      Minimal Click Pulse
-                    </div>
-                    <div className="text-[11px] text-muted-foreground">
-                      Crisp hairline click ring with subtle press feedback
-                    </div>
-                  </div>
-                  <Switch
-                    checked={recordingConfig.clickRipples}
-                    disabled={isBusy}
-                    onCheckedChange={(checked) =>
-                      setRecordingConfig({ clickRipples: checked })
-                    }
-                    aria-label="Toggle minimal click pulse"
-                  />
-                </div>
-              </section>
-
-              <Separator />
-
-              {/* Output & Capture Settings */}
-              <section className="space-y-3">
-                <span className="font-mono text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-                  EXPORT & CAPTURE
-                </span>
-
-                {/* Resolution & FPS */}
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="space-y-1">
-                    <span className="text-[11px] text-muted-foreground">
-                      Resolution (16:9)
-                    </span>
-                    <div className="grid grid-cols-2 gap-1">
-                      {(["1080p", "720p"] as const).map((res) => (
-                        <Button
-                          key={res}
-                          type="button"
-                          variant={
-                            recordingConfig.resolution === res
-                              ? "default"
-                              : "outline"
-                          }
-                          size="sm"
-                          disabled={isBusy}
-                          onClick={() => setRecordingConfig({ resolution: res })}
-                          className="h-7 rounded-none text-[11px] font-mono"
-                        >
-                          {res}
-                        </Button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="space-y-1">
-                    <span className="text-[11px] text-muted-foreground">
-                      Frame Rate
-                    </span>
-                    <div className="grid grid-cols-2 gap-1">
-                      {([60, 30] as const).map((fpsVal) => (
-                        <Button
-                          key={fpsVal}
-                          type="button"
-                          variant={
-                            recordingConfig.fps === fpsVal ? "default" : "outline"
-                          }
-                          size="sm"
-                          disabled={isBusy}
-                          onClick={() => setRecordingConfig({ fps: fpsVal })}
-                          className="h-7 rounded-none text-[11px] font-mono tabular-nums"
-                        >
-                          {fpsVal}
-                        </Button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Default Format */}
-                <div className="space-y-1">
-                  <div className="flex items-center justify-between text-[11px]">
-                    <span className="text-muted-foreground">Preferred Format</span>
-                    <span className="font-mono text-[10px] text-muted-foreground">
-                      {serverFfmpegReady || capabilities.supportsNativeMp4
-                        ? "H.264 MP4 Ready"
-                        : "WebM Direct"}
-                    </span>
-                  </div>
-                  <div className="grid grid-cols-2 gap-1">
-                    {(["mp4", "webm"] as const).map((fmt) => (
-                      <Button
-                        key={fmt}
-                        type="button"
-                        variant={
-                          recordingConfig.format === fmt ? "default" : "outline"
-                        }
-                        size="sm"
-                        disabled={isBusy}
-                        onClick={() => setRecordingConfig({ format: fmt })}
-                        className="h-7 rounded-none text-[11px] font-mono uppercase"
-                      >
-                        {fmt}
-                      </Button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Capture Engine Selector */}
-                <div className="space-y-1">
-                  <div className="flex items-center justify-between text-[11px]">
-                    <span className="text-muted-foreground">Capture Engine</span>
-                    <span className="text-[10px] text-muted-foreground">
-                      {recordingConfig.captureEngine === "direct"
-                        ? "Turbo Direct"
-                        : "Zero-Copy GPU"}
-                    </span>
-                  </div>
-                  <div className="grid grid-cols-3 gap-1">
-                    {(
-                      [
-                        { id: "auto", label: "Auto" },
-                        { id: "native", label: "Hardware" },
-                        { id: "direct", label: "Direct" },
-                      ] as const
-                    ).map((eng) => (
-                      <Button
-                        key={eng.id}
-                        type="button"
-                        variant={
-                          recordingConfig.captureEngine === eng.id
-                            ? "default"
-                            : "outline"
-                        }
-                        size="sm"
-                        disabled={isBusy}
-                        onClick={() =>
-                          setRecordingConfig({ captureEngine: eng.id })
-                        }
-                        className="h-7 rounded-none text-[11px] font-sans"
-                      >
-                        {eng.label}
-                      </Button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Optional 3-2-1 Countdown */}
-                <div className="flex items-center justify-between gap-3 pt-1">
-                  <div className="min-w-0">
-                    <div className="text-xs font-medium text-foreground">
-                      3-2-1 Countdown
-                    </div>
-                    <div className="text-[11px] text-muted-foreground">
-                      Brief cue before Direct capture begins
-                    </div>
-                  </div>
-                  <Switch
-                    checked={recordingConfig.countdown}
-                    disabled={isBusy}
-                    onCheckedChange={(checked) =>
-                      setRecordingConfig({ countdown: checked })
-                    }
-                    aria-label="Toggle 3-2-1 recording countdown"
-                  />
-                </div>
-              </section>
-            </div>
-
-            {/* Pinned Bottom Primary Action Bar */}
-            <div className="studio-toolbar-surface border-t border-border p-4 space-y-2 shrink-0">
-              {phase === "review" && recordingResult ? (
-                <>
-                  <Button
-                    type="button"
-                    variant="default"
-                    size="sm"
-                    disabled={isTranscodingMp4}
-                    onClick={() => {
-                      if (
-                        recordingConfig.format === "mp4" &&
-                        (serverFfmpegReady || capabilities.supportsNativeMp4)
-                      ) {
-                        void handleDownloadMp4();
-                      } else {
-                        handleDownloadWebm();
-                      }
-                    }}
-                    className="w-full h-9 rounded-none text-xs font-sans font-medium gap-2"
-                  >
-                    {isTranscodingMp4 ? (
-                      <>
-                        <Loader2 className="size-3.5 animate-spin" />
-                        <span>Encoding H.264 60fps MP4...</span>
-                      </>
-                    ) : (
-                      <>
-                        <Download className="size-3.5" />
-                        <span>
-                          Download{" "}
-                          {recordingConfig.format === "mp4" &&
-                          (serverFfmpegReady || capabilities.supportsNativeMp4)
-                            ? "MP4"
-                            : "WebM"}{" "}
-                          ({recordingConfig.resolution} · {recordingConfig.fps}fps)
-                        </span>
-                      </>
-                    )}
-                  </Button>
-
-                  <div className="grid grid-cols-2 gap-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      disabled={isTranscodingMp4}
-                      onClick={
-                        recordingConfig.format === "mp4"
-                          ? handleDownloadWebm
-                          : () => void handleDownloadMp4()
-                      }
-                      className="h-8 rounded-none text-xs font-sans gap-1.5"
-                    >
-                      <Download className="size-3" />
-                      <span>
-                        {recordingConfig.format === "mp4"
-                          ? "Save WebM"
-                          : "Save MP4"}
-                      </span>
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      disabled={isTranscodingMp4}
-                      onClick={handleNewTake}
-                      className="h-8 rounded-none text-xs font-sans gap-1.5"
-                    >
-                      <RotateCcw className="size-3" />
-                      <span>New Take</span>
-                    </Button>
-                  </div>
-                </>
-              ) : phase === "capturing-moves" ? (
-                <Button
-                  type="button"
-                  variant="destructive"
-                  size="sm"
-                  onClick={handleStopCaptureMoves}
-                  className="w-full h-9 rounded-none text-xs font-sans font-medium gap-2"
-                >
-                  <Square className="size-3.5 fill-current" />
-                  <span>Finish & Render Replay</span>
-                  <span ref={stopBtnTimecodeRef} className="font-mono tabular-nums">
-                    (00:00.00)
-                  </span>
-                </Button>
-              ) : phase === "recording" || phase === "rendering-replay" ? (
-                <Button
-                  type="button"
-                  variant="destructive"
-                  size="sm"
-                  onClick={() => void stopRecording()}
-                  className="w-full h-9 rounded-none text-xs font-sans font-medium gap-2"
-                >
-                  <Square className="size-3.5 fill-current" />
-                  <span>
-                    {phase === "rendering-replay"
-                      ? "Cancel Replay Render"
-                      : "Stop Recording"}
-                  </span>
-                  <span ref={stopBtnTimecodeRef} className="font-mono tabular-nums">
-                    (00:00.00)
-                  </span>
-                </Button>
-              ) : (
-                <Button
-                  type="button"
-                  variant="default"
-                  size="sm"
-                  disabled={!stageReady || isBusy || Boolean(compileError)}
-                  onClick={() => void beginActualRecording()}
-                  className="w-full h-9 rounded-none text-xs font-sans font-medium gap-2"
-                >
-                  {phase === "countdown" || phase === "processing" ? (
-                    <>
-                      <Loader2 className="size-3.5 animate-spin" />
-                      <span>
-                        {phase === "countdown"
-                          ? `Starting in ${countdownValue}...`
-                          : "Finalizing video..."}
-                      </span>
-                    </>
-                  ) : (
-                    <>
-                      <Video className="size-3.5" />
-                      <span>
-                        {recordingConfig.mode === "manual" && zeroLagReplay
-                          ? `Start Zero-Lag Capture (${recordingConfig.fps}fps)`
-                          : `Record 16:9 Video (${recordingConfig.fps}fps)`}
-                      </span>
-                    </>
-                  )}
-                </Button>
-              )}
-            </div>
-          </aside>
+          <VideoDirectorSidebar
+            phase={phase}
+            isBusy={isBusy}
+            stageReady={stageReady}
+            compileError={compileError}
+            recordingConfig={recordingConfig}
+            recordingResult={recordingResult}
+            discoveredTargets={discoveredTargets}
+            zeroLagReplay={zeroLagReplay}
+            serverFfmpegReady={serverFfmpegReady}
+            supportsNativeMp4={capabilities.supportsNativeMp4}
+            isTranscodingMp4={isTranscodingMp4}
+            countdownValue={countdownValue}
+            stopBtnTimecodeRef={stopBtnTimecodeRef}
+            onUpdateConfig={setRecordingConfig}
+            onSetZeroLagReplay={setZeroLagReplay}
+            onRescanDom={() => postToStage({ type: "VIDEO_STUDIO_SCAN" })}
+            onResetStagePosition={() =>
+              postToStage({ type: "VIDEO_STUDIO_RESET" })
+            }
+            onTogglePreviewRun={handleTogglePreviewRun}
+            onDownloadMp4={() => void handleDownloadMp4()}
+            onDownloadWebm={handleDownloadWebm}
+            onNewTake={handleNewTake}
+            onStopCaptureMoves={handleStopCaptureMoves}
+            onStopRecording={() => void stopRecording()}
+            onBeginRecording={() => void beginActualRecording()}
+          />
         </div>
       </DialogContent>
     </Dialog>

@@ -81,6 +81,7 @@ function ComponentCardInner({
   onDeleteDialogOpenChange,
 }: ComponentCardProps) {
   const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
+  const [failedPreviewSrc, setFailedPreviewSrc] = useState<string | null>(null);
 
   const isDeleteDialogOpen = controlledOpen !== undefined ? controlledOpen : uncontrolledOpen;
   const setIsDeleteDialogOpen = (open: boolean) => {
@@ -131,7 +132,9 @@ function ComponentCardInner({
     : component.previewImage;
 
   const hasValidPreviewImage = Boolean(
-    effectivePreviewImage && effectivePreviewImage !== "./preview.png"
+    effectivePreviewImage &&
+      effectivePreviewImage !== "./preview.png" &&
+      failedPreviewSrc !== effectivePreviewImage
   );
 
   return (
@@ -165,6 +168,7 @@ function ComponentCardInner({
               alt={component.name}
               loading={priority ? "eager" : "lazy"}
               decoding="async"
+              onError={() => setFailedPreviewSrc(effectivePreviewImage || null)}
               className="relative z-10 w-full h-full object-contain p-5 pointer-events-none select-none transition-transform duration-300 group-hover:scale-105 drop-shadow-md opacity-100"
             />
           ) : (

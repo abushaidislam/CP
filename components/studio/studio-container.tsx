@@ -49,7 +49,8 @@ export interface StudioContainerProps {
   componentId?: string;
 }
 
-export function StudioContainer({ componentId: _componentId }: StudioContainerProps = {}) {
+export function StudioContainer(props: StudioContainerProps = {}) {
+  void props.componentId;
   const {
     isAiPanelOpen,
     toggleAiPanel,

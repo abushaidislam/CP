@@ -439,7 +439,7 @@ export function TerminalPanel() {
                   key={tab.id}
                   type="button"
                   aria-pressed={isActive}
-                  onClick={() => setTerminalFilter(tab.id as any)}
+                  onClick={() => setTerminalFilter(tab.id)}
                   className={cn(
                     "relative z-10 flex h-6 items-center gap-1 px-2 py-0.5 rounded text-[11px] font-sans font-medium transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
                     isActive ? "text-white" : "text-zinc-400 hover:text-zinc-200"

@@ -355,7 +355,7 @@ export function VersionHistorySheet() {
                 ) : (
                   /* Scrollable timeline list */
                   <div className="flex-1 overflow-y-auto p-4 space-y-3">
-                    {checkpoints.map((cp, idx) => {
+                    {checkpoints.map((cp) => {
                       const isConfirmingRestore = confirmRestoreId === cp.id;
                       const isForking = forkingId === cp.id;
 

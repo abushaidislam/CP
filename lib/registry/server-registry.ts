@@ -96,10 +96,10 @@ export function buildPreviewImageUrl(slug: string, version?: number): string {
   return `/api/repo-sync/preview/${safeSlug}?v=${v}`;
 }
 
-async function fileExists(filePath: string): Promise<boolean> {
+async function hasNonEmptyFile(filePath: string): Promise<boolean> {
   try {
-    await fs.access(filePath);
-    return true;
+    const stat = await fs.stat(filePath);
+    return stat.isFile() && stat.size > 0;
   } catch {
     return false;
   }
@@ -203,7 +203,7 @@ export async function readSingleRepoComponent(
             () =>
               "@tailwind base;\n@tailwind components;\n@tailwind utilities;\n"
           ),
-        fileExists(previewPngPath),
+        hasNonEmptyFile(previewPngPath),
       ]);
 
     const manifest = JSON.parse(manifestRaw) as RepoComponentManifest;
