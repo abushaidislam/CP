@@ -1,8 +1,26 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-18T12:43:04.239Z",
-  "totalComponents": 48,
+  "updatedAt": "2026-11-19T06:48:22.926Z",
+  "totalComponents": 49,
   "components": [
+    {
+      "id": "comp-1795070872332-xpn9o",
+      "slug": "service-category-grid",
+      "name": "ServiceCategoryGrid",
+      "description": "A pastel-accented 2x2 service category card grid with capability pill tags, crisp white action footers, and reduced-motion-aware hover transitions.",
+      "category": "Custom",
+      "isBuiltIn": false,
+      "updatedAt": 1795070892467,
+      "lastRepoSyncAt": 1795070902849,
+      "path": "registry/components/service-category-grid",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "index.css",
+        "manifest.json"
+      ],
+      "dependencies": []
+    },
     {
       "id": "comp-1795005545986-6n5cr",
       "slug": "aurora-search-bar",
