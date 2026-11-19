@@ -1,8 +1,26 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-19T08:27:51.004Z",
-  "totalComponents": 51,
+  "updatedAt": "2026-11-19T08:40:36.656Z",
+  "totalComponents": 52,
   "components": [
+    {
+      "id": "comp-1795077612417-mgl7x",
+      "slug": "frequency-selector",
+      "name": "Frequency Selector",
+      "description": "A compact pill-shaped recurrence selector that morphs into an inline segmented picker with blur-dissolve transitions and an expandable weekday row when Weekly is chosen.",
+      "category": "Custom",
+      "isBuiltIn": false,
+      "updatedAt": 1795077627588,
+      "lastRepoSyncAt": 1795077636604,
+      "path": "registry/components/frequency-selector",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "index.css",
+        "manifest.json"
+      ],
+      "dependencies": []
+    },
     {
       "id": "comp-1795005545986-6n5cr",
       "slug": "aurora-search-bar",
