@@ -1,8 +1,26 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-19T10:44:24.779Z",
-  "totalComponents": 52,
+  "updatedAt": "2026-11-19T11:15:05.745Z",
+  "totalComponents": 53,
   "components": [
+    {
+      "id": "comp-1795086871704-ydhci",
+      "slug": "split-accordion",
+      "name": "Split Accordion",
+      "description": "A sleek, detaching accordion where the active item smoothly splits away from adjacent rows into an elevated rounded card while collapsed neighbors seamlessly re-merge.",
+      "category": "Custom",
+      "isBuiltIn": false,
+      "updatedAt": 1795086897681,
+      "lastRepoSyncAt": 1795086905696,
+      "path": "registry/components/split-accordion",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "index.css",
+        "manifest.json"
+      ],
+      "dependencies": []
+    },
     {
       "id": "comp-1795072783869-qjna8",
       "slug": "card-shuffle-deck",
@@ -866,7 +884,7 @@
       "category": "Heroes",
       "isBuiltIn": true,
       "updatedAt": 1700000000000,
-      "lastRepoSyncAt": 1795084377774,
+      "lastRepoSyncAt": 1795085620808,
       "path": "registry/components/aurora-ambient-hero",
       "files": [
         "component.tsx",
@@ -886,7 +904,7 @@
       "category": "Cards",
       "isBuiltIn": true,
       "updatedAt": 1700000000000,
-      "lastRepoSyncAt": 1795084377774,
+      "lastRepoSyncAt": 1795085620808,
       "path": "registry/components/bento-metric-grid",
       "files": [
         "component.tsx",
@@ -906,7 +924,7 @@
       "category": "Heroes",
       "isBuiltIn": true,
       "updatedAt": 1700000000000,
-      "lastRepoSyncAt": 1795084377774,
+      "lastRepoSyncAt": 1795085620808,
       "path": "registry/components/ink-orbit-hero",
       "files": [
         "component.tsx",
@@ -924,7 +942,7 @@
       "category": "Badges",
       "isBuiltIn": true,
       "updatedAt": 1700000000000,
-      "lastRepoSyncAt": 1795084377774,
+      "lastRepoSyncAt": 1795085620808,
       "path": "registry/components/live-ping-status-pill",
       "files": [
         "component.tsx",
@@ -944,7 +962,7 @@
       "category": "Badges",
       "isBuiltIn": true,
       "updatedAt": 1700000000000,
-      "lastRepoSyncAt": 1795084377774,
+      "lastRepoSyncAt": 1795085620808,
       "path": "registry/components/metric-badge",
       "files": [
         "component.tsx",
@@ -964,7 +982,7 @@
       "category": "Buttons",
       "isBuiltIn": true,
       "updatedAt": 1700000000000,
-      "lastRepoSyncAt": 1795084377774,
+      "lastRepoSyncAt": 1795085544853,
       "path": "registry/components/neon-glow-button",
       "files": [
         "component.tsx",
@@ -984,7 +1002,7 @@
       "category": "Buttons",
       "isBuiltIn": true,
       "updatedAt": 1700000000000,
-      "lastRepoSyncAt": 1795084377774,
+      "lastRepoSyncAt": 1795085620808,
       "path": "registry/components/shimmer-button",
       "files": [
         "component.tsx",
@@ -1005,7 +1023,7 @@
       "category": "Cards",
       "isBuiltIn": true,
       "updatedAt": 1700000000000,
-      "lastRepoSyncAt": 1795084377774,
+      "lastRepoSyncAt": 1795085620808,
       "path": "registry/components/spotlight-card",
       "files": [
         "component.tsx",
