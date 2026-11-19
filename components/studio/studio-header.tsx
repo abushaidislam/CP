@@ -6,6 +6,7 @@ import { DEFAULT_TEMPLATES } from "@/lib/sandbox/default-templates";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { AppLogo } from "@/components/ui/app-logo";
 import {
   Tooltip,
   TooltipContent,
@@ -206,15 +207,8 @@ export function StudioHeader() {
           </TooltipContent>
         </Tooltip>
 
-        {/* Geometric Brand Mark */}
-        <div className="flex size-7 items-center justify-center rounded-none bg-foreground text-background shrink-0">
-          <svg
-            viewBox="0 0 24 24"
-            className="size-3.5 fill-current transform -translate-y-px"
-          >
-            <polygon points="12,2 22,20 2,20" />
-          </svg>
-        </div>
+        {/* Brand Mark */}
+        <AppLogo size="md" priority />
 
         {/* Unified Logical Breadcrumb Navigation */}
         <nav aria-label="Breadcrumb" className="flex items-center gap-1 sm:gap-1.5 text-xs font-sans min-w-0">

@@ -19,10 +19,39 @@ export const metadata: Metadata = {
   title: "Vercel / 21st Studio - Component Studio & Design Sandbox",
   description:
     "An implementation of Vercel's Geist design language. Author React & Tailwind components in real-time with AST analysis and publish directly to 21st.dev.",
+  manifest: "/manifest.webmanifest",
+  icons: {
+    icon: [
+      { url: "/favicon.ico", sizes: "any" },
+      { url: "/brand/favicon-16.png", sizes: "16x16", type: "image/png" },
+      { url: "/brand/favicon-32.png", sizes: "32x32", type: "image/png" },
+      { url: "/brand/app-icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/brand/app-icon-512.png", sizes: "512x512", type: "image/png" },
+    ],
+    shortcut: ["/favicon.ico"],
+    apple: [
+      { url: "/apple-icon.png", sizes: "180x180", type: "image/png" },
+    ],
+  },
   openGraph: {
     title: "Vercel / 21st Studio - Component Studio & Design Sandbox",
     description:
       "An implementation of Vercel's Geist design language. Author React & Tailwind components in real-time with AST analysis and publish directly to 21st.dev.",
+    images: [
+      {
+        url: "/brand/og-card.png",
+        width: 1200,
+        height: 630,
+        alt: "Component Studio",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Vercel / 21st Studio - Component Studio & Design Sandbox",
+    description:
+      "An implementation of Vercel's Geist design language. Author React & Tailwind components in real-time with AST analysis and publish directly to 21st.dev.",
+    images: ["/brand/og-card.png"],
   },
 };
 

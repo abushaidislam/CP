@@ -72,6 +72,10 @@ mock.module("next/navigation", () => ({
   usePathname: () => "/studio/ink-orbit-hero",
 }));
 
+mock.module("next/image", () => ({
+  default: ({ priority: _priority, ...props }: any) => <img {...props} />,
+}));
+
 // Registry to capture onClick handlers from rendered Buttons
 const buttonClickMap = new Map<string, () => void>();
 

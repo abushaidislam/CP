@@ -118,6 +118,10 @@ mock.module("next/navigation", () => ({
   usePathname: () => `/studio/${mockParams.id || ""}`,
 }));
 
+mock.module("next/image", () => ({
+  default: ({ priority: _priority, ...props }: any) => <img {...props} />,
+}));
+
 // Registry to capture onClick handlers from rendered Buttons
 const buttonClickMap = new Map<string, () => void>();
 

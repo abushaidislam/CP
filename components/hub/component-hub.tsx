@@ -8,6 +8,7 @@ import { QuickPreviewModal } from "./quick-preview-modal";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { AppLogo } from "@/components/ui/app-logo";
 import {
   Tooltip,
   TooltipContent,
@@ -315,18 +316,8 @@ export function ComponentHub({
         {/* 1. Top Navigation Bar with Pure Icon Action Buttons */}
         <header className="studio-glass-header sticky top-0 z-20 flex h-14 shrink-0 items-center justify-between border-b border-border px-4 sm:px-6 select-none">
           {/* Brand / Title & Workspace Eyebrow */}
-          <div className="flex items-center gap-3">
-            <div className="flex size-7 items-center justify-center rounded-none bg-foreground text-background">
-              <svg
-                width="14"
-                height="14"
-                viewBox="0 0 24 24"
-                fill="currentColor"
-                aria-hidden="true"
-              >
-                <polygon points="12,2 22,20 2,20" />
-              </svg>
-            </div>
+          <div className="flex items-center gap-2.5">
+            <AppLogo size="md" priority />
             <div className="flex items-center gap-2">
               <h1 className="font-sans font-semibold text-sm sm:text-base tracking-tight text-foreground m-0">
                 Component Studio

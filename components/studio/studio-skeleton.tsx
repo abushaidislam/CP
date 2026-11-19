@@ -1,5 +1,5 @@
 import React from "react";
-import { Monitor } from "lucide-react";
+import { AppLogo } from "@/components/ui/app-logo";
 
 export function StudioSkeleton() {
   return (
@@ -12,14 +12,7 @@ export function StudioSkeleton() {
       {/* Top Header Skeleton */}
       <header className="flex h-11 shrink-0 items-center justify-between border-b border-border bg-background px-3">
         <div className="flex items-center gap-2">
-          <div className="flex size-6 items-center justify-center rounded-md bg-foreground text-background shadow-2xs">
-            <svg
-              viewBox="0 0 24 24"
-              className="size-3 fill-current transform -translate-y-px"
-            >
-              <polygon points="12,2 22,20 2,20" />
-            </svg>
-          </div>
+          <AppLogo size="sm" />
 
           <div className="flex items-center gap-1.5">
             <span className="font-semibold text-xs tracking-tight text-foreground">
@@ -94,9 +87,7 @@ export function StudioSkeleton() {
               </div>
 
               <div className="flex-1 flex flex-col items-center justify-center gap-3 p-6">
-                <div className="flex size-10 items-center justify-center rounded-none border border-border bg-muted/60">
-                  <Monitor className="size-5 text-muted-foreground animate-pulse" />
-                </div>
+                <AppLogo size="xl" className="rounded-[8px] animate-pulse" />
                 <span className="font-sans text-xs font-medium text-foreground">
                   Initializing Sandbox Environment...
                 </span>
