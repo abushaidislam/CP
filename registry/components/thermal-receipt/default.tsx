@@ -6,7 +6,8 @@ import { ThermalReceipt } from "@/components/ui/component";
 const settings = {
   merchantName: "BLUE TOKAI COFFEE",
   orderNumber: "#4471",
-  printSpeed: 115,
+  printSpeed: 200,
+  typewriter: true,
   showQrCode: true,
   autoPrint: false,
 };
@@ -28,8 +29,13 @@ export default function ThermalReceiptDemo(
 
   const printSpeed =
     typeof config.printSpeed === "number" && Number.isFinite(config.printSpeed)
-      ? Math.max(40, Math.min(400, config.printSpeed))
+      ? Math.max(60, Math.min(500, config.printSpeed))
       : settings.printSpeed;
+
+  const typewriter =
+    typeof config.typewriter === "boolean"
+      ? config.typewriter
+      : settings.typewriter;
 
   const showQrCode =
     typeof config.showQrCode === "boolean"
@@ -47,6 +53,7 @@ export default function ThermalReceiptDemo(
         merchantName={merchantName}
         orderNumber={orderNumber}
         printSpeed={printSpeed}
+        typewriter={typewriter}
         showQrCode={showQrCode}
         autoPrint={autoPrint}
       />
