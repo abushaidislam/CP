@@ -11,6 +11,7 @@ const settings = {
   columns: 2,
   ctaLabel: "Explore",
   showTags: true,
+  showNoise: true,
   interactiveHover: true,
 };
 
@@ -44,6 +45,7 @@ export function ServiceCategoryGridDemo(props: Partial<typeof settings>) {
         columns={columns}
         ctaLabel={ctaLabel}
         showTags={Boolean(config.showTags)}
+        showNoise={Boolean(config.showNoise)}
         interactiveHover={Boolean(config.interactiveHover)}
       />
     </div>

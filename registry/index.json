@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-19T06:52:57.997Z",
+  "updatedAt": "2026-11-19T06:53:09.664Z",
   "totalComponents": 49,
   "components": [
     {
@@ -10,8 +10,8 @@
       "description": "A pastel-accented 2x2 service category card grid with capability pill tags, crisp white action footers, and reduced-motion-aware hover transitions.",
       "category": "Custom",
       "isBuiltIn": false,
-      "updatedAt": 1795071166689,
-      "lastRepoSyncAt": 1795071177694,
+      "updatedAt": 1795071180250,
+      "lastRepoSyncAt": 1795071189628,
       "path": "registry/components/service-category-grid",
       "files": [
         "component.tsx",
