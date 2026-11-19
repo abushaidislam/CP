@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect, useMemo, useCallback } from "react";
+import { useShallow } from "zustand/react/shallow";
 import {
   useStudioStore,
   AttachedImage,
@@ -190,7 +191,43 @@ export function AiAssistantPanel({ isMobile = false, onClose }: AiAssistantPanel
     saveCheckpoint,
     addTerminalLog,
     updateFile,
-  } = useStudioStore();
+  } = useStudioStore(
+    useShallow((state) => ({
+      files: state.files,
+      dependencies: state.dependencies,
+      isAiPanelOpen: state.isAiPanelOpen,
+      aiPanelWidth: state.aiPanelWidth,
+      aiModel: state.aiModel,
+      aiRole: state.aiRole,
+      preserveDesignSkill: state.preserveDesignSkill,
+      autoApplyAiChanges: state.autoApplyAiChanges,
+      aiChatMessages: state.aiChatMessages,
+      isAiThinking: state.isAiThinking,
+      compilerError: state.compilerError,
+      isOwnerAuthenticated: state.isOwnerAuthenticated,
+      securityTelemetry: state.securityTelemetry,
+      setSecurityModalOpen: state.setSecurityModalOpen,
+      setOwnerAuthenticated: state.setOwnerAuthenticated,
+      setSecurityTelemetry: state.setSecurityTelemetry,
+      setAiPanelOpen: state.setAiPanelOpen,
+      setAiPanelWidth: state.setAiPanelWidth,
+      setAiModel: state.setAiModel,
+      setAiRole: state.setAiRole,
+      togglePreserveDesignSkill: state.togglePreserveDesignSkill,
+      toggleAutoApplyAiChanges: state.toggleAutoApplyAiChanges,
+      addAiChatMessage: state.addAiChatMessage,
+      deleteAiChatMessage: state.deleteAiChatMessage,
+      approveAiMessageChanges: state.approveAiMessageChanges,
+      rejectAiMessageChanges: state.rejectAiMessageChanges,
+      revertAiMessageChanges: state.revertAiMessageChanges,
+      clearAiChat: state.clearAiChat,
+      setAiThinking: state.setAiThinking,
+      addDependencies: state.addDependencies,
+      saveCheckpoint: state.saveCheckpoint,
+      addTerminalLog: state.addTerminalLog,
+      updateFile: state.updateFile,
+    }))
+  );
 
   const [promptInput, setPromptInput] = useState("");
   const [attachedImages, setAttachedImages] = useState<AttachedImage[]>([]);

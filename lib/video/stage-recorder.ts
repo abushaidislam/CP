@@ -813,6 +813,7 @@ export async function transcodeRecordingToMp4(params: {
   fps: 60 | 30;
   resolution: "1080p" | "720p";
   forceRescale?: boolean;
+  ownerSessionToken?: string | null;
 }): Promise<Blob> {
   if (params.blob.type.includes("video/mp4") && !params.forceRescale) {
     return params.blob;
@@ -823,8 +824,17 @@ export async function transcodeRecordingToMp4(params: {
   formData.append("fps", String(params.fps));
   formData.append("resolution", params.resolution);
 
+  const headers: Record<string, string> = {
+    "X-Studio-Client": "component-studio",
+  };
+  if (params.ownerSessionToken) {
+    headers["X-Studio-Owner-Token"] = params.ownerSessionToken;
+  }
+
   const response = await fetch("/api/video-transcode", {
     method: "POST",
+    headers,
+    credentials: "same-origin",
     body: formData,
   });
 

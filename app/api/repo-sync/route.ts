@@ -4,54 +4,40 @@ import path from "path";
 import { execFile } from "child_process";
 import { promisify } from "util";
 import type { ComponentVariant, StudioFiles, UserComponent } from "@/lib/store/studio-store";
+import {
+  checkRateLimit,
+  getClientIp,
+  isOwnerRequestAuthenticated,
+  readJsonWithLimit,
+  recordBlockedRequest,
+  verifySameOriginRequest,
+} from "@/lib/security/api-guard";
+import {
+  buildPreviewImageUrl,
+  COMPONENTS_DIR_REL,
+  INDEX_FILE_REL,
+  readRegistrySummaries,
+  readSingleRepoComponent,
+  REGISTRY_ROOT_REL,
+  resolveSafeComponentDir,
+  toComponentSlug,
+  type RepoComponentManifest,
+  type RepoIndexEntry,
+} from "@/lib/registry/server-registry";
+
+export { toComponentSlug, type RepoComponentManifest, type RepoIndexEntry };
 
 const execFileAsync = promisify(execFile);
 
-const REGISTRY_ROOT_REL = "registry";
-const COMPONENTS_DIR_REL = "registry/components";
-const INDEX_FILE_REL = "registry/index.json";
+let repoWriteQueue: Promise<unknown> = Promise.resolve();
 
-export interface RepoComponentManifest {
-  id: string;
-  slug: string;
-  name: string;
-  description: string;
-  category: string;
-  isBuiltIn?: boolean;
-  createdAt: number;
-  updatedAt: number;
-  lastRepoSyncAt: number;
-  lastCommitSha?: string;
-  lastCommitUrl?: string;
-  dependencies: string[];
-  previewImage?: string;
-  variants?: ComponentVariant[];
-  activeVariantId?: string;
-}
-
-export interface RepoIndexEntry {
-  id: string;
-  slug: string;
-  name: string;
-  description: string;
-  category: string;
-  isBuiltIn?: boolean;
-  updatedAt: number;
-  lastRepoSyncAt: number;
-  path: string;
-  files: string[];
-  dependencies: string[];
-}
-
-export function toComponentSlug(nameOrId: string, fallbackId?: string): string {
-  const raw = (nameOrId || fallbackId || "component")
-    .replace(/([a-z0-9])([A-Z])/g, "$1-$2")
-    .replace(/([A-Z]+)([A-Z][a-z])/g, "$1-$2")
-    .toLowerCase()
-    .replace(/[^a-z0-9-]+/g, "-")
-    .replace(/-+/g, "-")
-    .replace(/^-|-$/g, "");
-  return raw || "custom-component";
+function withRepoWriteLock<T>(task: () => Promise<T>): Promise<T> {
+  const next = repoWriteQueue.then(task, task);
+  repoWriteQueue = next.then(
+    () => undefined,
+    () => undefined
+  );
+  return next;
 }
 
 async function getGitWorkspaceInfo(cwd: string): Promise<{
@@ -645,17 +631,27 @@ async function readAllRepoComponents(
             ]);
 
           const manifest = JSON.parse(manifestRaw) as RepoComponentManifest;
+          const previewPngPath = path.join(compDir, "preview.png");
+          let hasPreviewPng = false;
+          try {
+            await fs.access(previewPngPath);
+            hasPreviewPng = true;
+          } catch {
+            // No preview.png on disk
+          }
+
           if (
-            manifest.previewImage === "./preview.png" ||
-            !manifest.previewImage
+            hasPreviewPng &&
+            (!manifest.previewImage ||
+              manifest.previewImage === "./preview.png" ||
+              manifest.previewImage.startsWith("/api/repo-sync/preview/"))
           ) {
-            const previewPngPath = path.join(compDir, "preview.png");
-            try {
-              const pngBuf = await fs.readFile(previewPngPath);
-              manifest.previewImage = `data:image/png;base64,${pngBuf.toString("base64")}`;
-            } catch {
-              // No preview.png on disk
-            }
+            const versionStamp =
+              manifest.lastRepoSyncAt || manifest.updatedAt || 1;
+            manifest.previewImage = buildPreviewImageUrl(
+              manifest.slug || slug,
+              versionStamp
+            );
           }
 
           const files: StudioFiles = {
@@ -671,7 +667,10 @@ async function readAllRepoComponents(
             "index.css",
             "manifest.json",
           ];
-          if (manifest.previewImage?.startsWith("data:image/png;base64,")) {
+          if (
+            hasPreviewPng ||
+            manifest.previewImage?.startsWith("data:image/png;base64,")
+          ) {
             fileList.push("preview.png");
           }
 
@@ -712,9 +711,6 @@ async function readAllRepoComponents(
   return data;
 }
 
-// Pre-warm the server cache in the background on module initialization
-void readAllRepoComponents(process.cwd()).catch(() => {});
-
 async function writeRegistryIndexFile(
   cwd: string,
   indexEntries: RepoIndexEntry[]
@@ -733,21 +729,83 @@ async function writeRegistryIndexFile(
   return content;
 }
 
-export async function GET() {
+export async function GET(req?: NextRequest) {
   try {
     const cwd = process.cwd();
-    const [{ components, indexEntries }, gitInfo] = await Promise.all([
-      readAllRepoComponents(cwd),
-      getCachedGitWorkspaceInfo(cwd),
-    ]);
+    const searchParams = req ? req.nextUrl.searchParams : null;
+    const mode = searchParams?.get("mode") || "full";
+    const idParam = searchParams?.get("id")?.trim() || "";
+    const slugParam = searchParams?.get("slug")?.trim() || "";
 
     const envGithubRepo = process.env.GITHUB_REPO?.trim() || "";
     const envGithubBranch = process.env.GITHUB_BRANCH?.trim() || "main";
     const hasGithubToken = Boolean(process.env.GITHUB_TOKEN?.trim());
 
+    // Fast single-component read (~5 KB JSON) for Studio deep-links and lazy editing
+    if (idParam || slugParam) {
+      const single = await readSingleRepoComponent(idParam || slugParam, cwd);
+      if (!single) {
+        return NextResponse.json(
+          { success: false, error: "Component not found in repository." },
+          { status: 404 }
+        );
+      }
+      return NextResponse.json(
+        {
+          success: true,
+          mode: "single",
+          component: single.component,
+          manifest: single.manifest,
+          files: single.files,
+        },
+        {
+          headers: {
+            "Cache-Control": "private, max-age=15, stale-while-revalidate=120",
+          },
+        }
+      );
+    }
+
+    // Fast summary read (~30 KB JSON) for Hub grid — ZERO base64 PNGs, ZERO full source code
+    if (mode === "summary") {
+      const [{ summaries, indexEntries }, gitInfo] = await Promise.all([
+        readRegistrySummaries(cwd),
+        getCachedGitWorkspaceInfo(cwd),
+      ]);
+
+      return NextResponse.json(
+        {
+          success: true,
+          mode: "summary",
+          registryPath: COMPONENTS_DIR_REL,
+          totalComponents: summaries.length,
+          summaries,
+          indexEntries,
+          gitInfo: {
+            ...gitInfo,
+            envGithubRepo,
+            envGithubBranch,
+            hasGithubToken,
+          },
+        },
+        {
+          headers: {
+            "Cache-Control": "private, max-age=15, stale-while-revalidate=300",
+          },
+        }
+      );
+    }
+
+    // Full mode (uses lightweight preview URLs instead of 8MB inline base64 PNGs)
+    const [{ components, indexEntries }, gitInfo] = await Promise.all([
+      readAllRepoComponents(cwd),
+      getCachedGitWorkspaceInfo(cwd),
+    ]);
+
     return NextResponse.json(
       {
         success: true,
+        mode: "full",
         registryPath: COMPONENTS_DIR_REL,
         totalComponents: components.length,
         components,
@@ -784,87 +842,135 @@ interface SaveComponentInput {
 }
 
 export async function POST(req: NextRequest) {
-  try {
-    const cwd = process.cwd();
-    const body = (await req.json()) as {
-      action?: "save_component" | "sync_all";
-      component?: UserComponent;
-      variants?: ComponentVariant[];
-      activeVariantId?: string;
-      items?: SaveComponentInput[];
-      commitMessage?: string;
-      commitToGit?: boolean;
-      pushToGithub?: boolean;
-      githubConfig?: {
-        repo?: string;
-        branch?: string;
-        token?: string;
-      };
-    };
+  const originCheck = verifySameOriginRequest(req);
+  if (!originCheck.valid) {
+    return NextResponse.json(
+      {
+        success: false,
+        error: originCheck.reason || "Cross-origin request rejected.",
+      },
+      { status: 403 }
+    );
+  }
 
-    const itemsToSave: SaveComponentInput[] = [];
-    if (body.action === "sync_all" && Array.isArray(body.items)) {
-      itemsToSave.push(...body.items);
-    } else if (body.component) {
-      itemsToSave.push({
-        component: body.component,
-        variants: body.variants,
-        activeVariantId: body.activeVariantId,
-      });
-    }
+  if (!isOwnerRequestAuthenticated(req)) {
+    recordBlockedRequest();
+    return NextResponse.json(
+      {
+        success: false,
+        requiresOwnerAuth: true,
+        error: "Owner authentication required to save components to the repository.",
+      },
+      { status: 401 }
+    );
+  }
 
-    if (itemsToSave.length === 0) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "No component payload provided to save into the repository.",
-        },
-        { status: 400 }
-      );
-    }
-
-    const now = Date.now();
-    const writtenFilesForGithub: Array<{
-      path: string;
-      content: string;
-      encoding?: "utf-8" | "base64";
-    }> = [];
-    const savedRecords: Array<{
-      id: string;
-      slug: string;
-      repoPath: string;
-      lastRepoSyncAt: number;
-      writtenFiles: string[];
-    }> = [];
-    const inMemoryIndexEntries: RepoIndexEntry[] = [];
-    let localFsWriteError: string | null = null;
-
-    for (const item of itemsToSave) {
-      const comp = item.component;
-      const slug = toComponentSlug(
-        comp.repoSlug || (comp.isBuiltIn ? comp.id : comp.name),
-        comp.id
-      );
-      const compRelDir = `${COMPONENTS_DIR_REL}/${slug}`;
-      const compAbsDir = path.join(cwd, compRelDir);
-
-      const componentTsx = comp.files["component.tsx"] || "";
-      const defaultTsx =
-        comp.files["default.tsx"] ?? comp.files["demo.tsx"] ?? "";
-      const indexCss =
-        comp.files["index.css"] ||
-        "@tailwind base;\n@tailwind components;\n@tailwind utilities;\n";
-
-      let manifestPreviewRef = comp.previewImage;
-      let previewPngBuffer: Buffer | null = null;
-      let previewPngBase64: string | null = null;
-      if (comp.previewImage?.startsWith("data:image/png;base64,")) {
-        previewPngBase64 = comp.previewImage.slice(
-          "data:image/png;base64,".length
-        );
-        previewPngBuffer = Buffer.from(previewPngBase64, "base64");
-        manifestPreviewRef = "./preview.png";
+  const clientIp = getClientIp(req);
+  const rateCheck = checkRateLimit(clientIp, "repo-sync-write", 60, 60_000);
+  if (!rateCheck.allowed) {
+    return NextResponse.json(
+      {
+        success: false,
+        error: `Repository write rate limit reached. Try again in ${rateCheck.retryAfterSeconds}s.`,
+      },
+      {
+        status: 429,
+        headers: { "Retry-After": String(rateCheck.retryAfterSeconds) },
       }
+    );
+  }
+
+  const parsed = await readJsonWithLimit<{
+    action?: "save_component" | "sync_all";
+    component?: UserComponent;
+    variants?: ComponentVariant[];
+    activeVariantId?: string;
+    items?: SaveComponentInput[];
+    commitMessage?: string;
+    commitToGit?: boolean;
+    pushToGithub?: boolean;
+    githubConfig?: {
+      repo?: string;
+      branch?: string;
+      token?: string;
+    };
+  }>(req, 25 * 1024 * 1024);
+
+  if (!parsed.ok) {
+    return parsed.errorResponse;
+  }
+
+  const body = parsed.data;
+
+  return withRepoWriteLock(async () => {
+    try {
+      const cwd = process.cwd();
+
+      const itemsToSave: SaveComponentInput[] = [];
+      if (body.action === "sync_all" && Array.isArray(body.items)) {
+        itemsToSave.push(...body.items);
+      } else if (body.component) {
+        itemsToSave.push({
+          component: body.component,
+          variants: body.variants,
+          activeVariantId: body.activeVariantId,
+        });
+      }
+
+      if (itemsToSave.length === 0) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: "No component payload provided to save into the repository.",
+          },
+          { status: 400 }
+        );
+      }
+
+      const now = Date.now();
+      const writtenFilesForGithub: Array<{
+        path: string;
+        content: string;
+        encoding?: "utf-8" | "base64";
+      }> = [];
+      const savedRecords: Array<{
+        id: string;
+        slug: string;
+        repoPath: string;
+        lastRepoSyncAt: number;
+        writtenFiles: string[];
+      }> = [];
+      const inMemoryIndexEntries: RepoIndexEntry[] = [];
+      let localFsWriteError: string | null = null;
+
+      for (const item of itemsToSave) {
+        const comp = item.component;
+        const slug = toComponentSlug(
+          comp.repoSlug || (comp.isBuiltIn ? comp.id : comp.name),
+          comp.id
+        );
+        const compRelDir = `${COMPONENTS_DIR_REL}/${slug}`;
+        const compAbsDir = resolveSafeComponentDir(cwd, slug);
+
+        const componentTsx = comp.files["component.tsx"] || "";
+        const defaultTsx =
+          comp.files["default.tsx"] ?? comp.files["demo.tsx"] ?? "";
+        const indexCss =
+          comp.files["index.css"] ||
+          "@tailwind base;\n@tailwind components;\n@tailwind utilities;\n";
+
+        let manifestPreviewRef = comp.previewImage;
+        let previewPngBuffer: Buffer | null = null;
+        let previewPngBase64: string | null = null;
+        if (comp.previewImage?.startsWith("data:image/png;base64,")) {
+          previewPngBase64 = comp.previewImage.slice(
+            "data:image/png;base64,".length
+          );
+          previewPngBuffer = Buffer.from(previewPngBase64, "base64");
+          manifestPreviewRef = "./preview.png";
+        } else if (comp.previewImage?.startsWith("/api/repo-sync/preview/")) {
+          manifestPreviewRef = "./preview.png";
+        }
 
       // Only persist variants in manifest.json when there are multiple variants or saved checkpoints
       const hasMeaningfulVariants =
@@ -1103,64 +1209,105 @@ export async function POST(req: NextRequest) {
       commitUrl: finalCommitUrl,
       githubPush: githubPushResult,
     });
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : String(err);
-    return NextResponse.json(
-      {
-        success: false,
-        error: `Failed to save component to project repository: ${message}`,
-      },
-      { status: 500 }
-    );
-  }
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      return NextResponse.json(
+        {
+          success: false,
+          error: `Failed to save component to project repository: ${message}`,
+        },
+        { status: 500 }
+      );
+    }
+  });
 }
 
 export async function DELETE(req: NextRequest) {
-  try {
-    const cwd = process.cwd();
-    const { searchParams } = new URL(req.url);
-    const id = searchParams.get("id") || "";
-    const slugParam = searchParams.get("slug") || "";
-
-    const { components } = await readAllRepoComponents(cwd);
-    const target = components.find(
-      (c) =>
-        (id && c.manifest.id === id) ||
-        (slugParam && c.manifest.slug === slugParam)
-    );
-
-    if (!target) {
-      return NextResponse.json({
-        success: true,
-        removed: false,
-      });
-    }
-
-    const compAbsDir = path.join(cwd, COMPONENTS_DIR_REL, target.manifest.slug);
-    await fs.rm(compAbsDir, { recursive: true, force: true });
-
-    invalidateRepoReadCache();
-    const { indexEntries } = await readAllRepoComponents(cwd, true);
-    await writeRegistryIndexFile(cwd, indexEntries);
-    await tryLocalGitCommit(
-      cwd,
-      `chore(registry): remove ${target.manifest.name} from project repo`
-    );
-
-    return NextResponse.json({
-      success: true,
-      removed: true,
-      slug: target.manifest.slug,
-      totalRepoComponents: indexEntries.length,
-    });
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : String(err);
+  const originCheck = verifySameOriginRequest(req);
+  if (!originCheck.valid) {
     return NextResponse.json(
       {
         success: false,
-        error: `Failed to delete component from project repository: ${message}`,
+        error: originCheck.reason || "Cross-origin request rejected.",
       },
-      { status: 500 }
+      { status: 403 }
     );
   }
+
+  if (!isOwnerRequestAuthenticated(req)) {
+    recordBlockedRequest();
+    return NextResponse.json(
+      {
+        success: false,
+        requiresOwnerAuth: true,
+        error: "Owner authentication required to delete components from the repository.",
+      },
+      { status: 401 }
+    );
+  }
+
+  const clientIp = getClientIp(req);
+  const rateCheck = checkRateLimit(clientIp, "repo-sync-write", 60, 60_000);
+  if (!rateCheck.allowed) {
+    return NextResponse.json(
+      {
+        success: false,
+        error: `Repository write rate limit reached. Try again in ${rateCheck.retryAfterSeconds}s.`,
+      },
+      {
+        status: 429,
+        headers: { "Retry-After": String(rateCheck.retryAfterSeconds) },
+      }
+    );
+  }
+
+  return withRepoWriteLock(async () => {
+    try {
+      const cwd = process.cwd();
+      const { searchParams } = new URL(req.url);
+      const id = searchParams.get("id") || "";
+      const slugParam = searchParams.get("slug") || "";
+
+      const { components } = await readAllRepoComponents(cwd);
+      const target = components.find(
+        (c) =>
+          (id && c.manifest.id === id) ||
+          (slugParam && c.manifest.slug === slugParam)
+      );
+
+      if (!target) {
+        return NextResponse.json({
+          success: true,
+          removed: false,
+        });
+      }
+
+      const compAbsDir = resolveSafeComponentDir(cwd, target.manifest.slug);
+      await fs.rm(compAbsDir, { recursive: true, force: true });
+
+      invalidateRepoReadCache();
+      const { indexEntries } = await readAllRepoComponents(cwd, true);
+      await writeRegistryIndexFile(cwd, indexEntries);
+      await tryLocalGitCommit(
+        cwd,
+        `chore(registry): remove ${target.manifest.name} from project repo`
+      );
+
+      return NextResponse.json({
+        success: true,
+        removed: true,
+        slug: target.manifest.slug,
+        totalRepoComponents: indexEntries.length,
+      });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      return NextResponse.json(
+        {
+          success: false,
+          error: `Failed to delete component from project repository: ${message}`,
+        },
+        { status: 500 }
+      );
+    }
+  });
 }

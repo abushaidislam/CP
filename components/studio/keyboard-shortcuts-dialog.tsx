@@ -39,7 +39,9 @@ const SHORTCUT_GROUPS: ShortcutGroup[] = [
   {
     category: "Studio Workspace & Editor",
     items: [
-      { keys: ["Ctrl / ⌘", "S"], description: "Save version checkpoint snapshot (or format code in editor)" },
+      { keys: ["Ctrl / ⌘", "S"], description: "Save version checkpoint snapshot" },
+      { keys: ["Ctrl / ⌘", "Shift", "S"], description: "Save active component to project repository" },
+      { keys: ["Shift", "Alt", "F"], description: "Format active file with Prettier" },
       { keys: ["Ctrl / ⌘", "Shift", "E"], description: "Open 16:9 60fps Interaction Video Studio" },
       { keys: ["Ctrl / ⌘", "I"], description: "Toggle AI Copilot Assistant drawer" },
       { keys: ["Ctrl / ⌘", "`"], description: "Toggle bottom Terminal & Dev Console" },

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef, useState, useMemo, useCallback } from "react";
+import { useShallow } from "zustand/react/shallow";
 import {
   useStudioStore,
   StudioViewport,
@@ -92,7 +93,29 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
     updateComponentPreview,
     isRecordingModalOpen,
     setRecordingModalOpen,
-  } = useStudioStore();
+  } = useStudioStore(
+    useShallow((s) => ({
+      files: s.files,
+      viewport: s.viewport,
+      canvasBg: s.canvasBg,
+      previewTheme: s.previewTheme,
+      zoom: s.zoom,
+      dependencies: s.dependencies,
+      setViewport: s.setViewport,
+      setCanvasBg: s.setCanvasBg,
+      setPreviewTheme: s.setPreviewTheme,
+      setZoom: s.setZoom,
+      setCompilerState: s.setCompilerState,
+      addTerminalLog: s.addTerminalLog,
+      currentTemplateId: s.currentTemplateId,
+      userComponents: s.userComponents,
+      activeVariantByTemplate: s.activeVariantByTemplate,
+      updateFile: s.updateFile,
+      updateComponentPreview: s.updateComponentPreview,
+      isRecordingModalOpen: s.isRecordingModalOpen,
+      setRecordingModalOpen: s.setRecordingModalOpen,
+    }))
+  );
 
   const [isControlsOpen, setIsControlsOpen] = useState(false);
   const [hasAutoOpenedControls, setHasAutoOpenedControls] = useState<string | null>(null);
@@ -100,6 +123,10 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
   const [fitMode, setFitMode] = useState<PreviewFitMode>("normal");
   const controlOverridesRef = useRef<Record<string, DemoControlValue>>({});
   controlOverridesRef.current = controlOverrides;
+  const previewThemeRef = useRef<PreviewTheme>(previewTheme);
+  previewThemeRef.current = previewTheme;
+  const fitModeRef = useRef<PreviewFitMode>(fitMode);
+  fitModeRef.current = fitMode;
 
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isSimulatingHover, setIsSimulatingHover] = useState(false);
@@ -355,12 +382,31 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
       debouncedFiles["index.css"],
       dependencies,
       canvasBg,
-      previewTheme,
+      previewThemeRef.current,
       {
-        fitMode,
+        fitMode: fitModeRef.current,
       }
     );
-  }, [debouncedFiles, activeDemoSource, dependencies, canvasBg, previewTheme, fitMode]);
+  }, [debouncedFiles, activeDemoSource, dependencies, canvasBg]);
+
+  // Keep live iframe theme & fit mode synchronized via instant postMessage without reloading srcDoc
+  useEffect(() => {
+    if (iframeRef.current?.contentWindow) {
+      iframeRef.current.contentWindow.postMessage(
+        { type: "SET_PREVIEW_THEME", theme: previewTheme },
+        "*"
+      );
+    }
+  }, [previewTheme, iframeRef]);
+
+  useEffect(() => {
+    if (iframeRef.current?.contentWindow) {
+      iframeRef.current.contentWindow.postMessage(
+        { type: "SET_FIT_MODE", fitMode },
+        "*"
+      );
+    }
+  }, [fitMode, iframeRef]);
 
   const activeVariantId =
     activeVariantByTemplate?.[currentTemplateId] || "default";
@@ -454,6 +500,9 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
 
   useEffect(() => {
     function handleMessage(event: MessageEvent) {
+      if (iframeRef.current && event.source !== iframeRef.current.contentWindow) {
+        return;
+      }
       if (event.data) {
         if (event.data.type === "TRIGGER_SIMULATED_HOVER") {
           setIsSimulatingHover(true);
@@ -477,6 +526,16 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
           setHydrationStage("ready");
           setIsSandboxLoading(false);
           setIsHydrationSlow(false);
+          if (iframeRef.current?.contentWindow) {
+            iframeRef.current.contentWindow.postMessage(
+              { type: "SET_PREVIEW_THEME", theme: previewThemeRef.current },
+              "*"
+            );
+            iframeRef.current.contentWindow.postMessage(
+              { type: "SET_FIT_MODE", fitMode: fitModeRef.current },
+              "*"
+            );
+          }
           if (Object.keys(controlOverridesRef.current).length > 0) {
             pushDemoPropsToIframe(controlOverridesRef.current);
           }
@@ -1684,7 +1743,7 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
                   );
                 }}
                 title="21st.dev Live Component Preview"
-                sandbox="allow-scripts allow-same-origin allow-modals allow-popups"
+                sandbox="allow-scripts allow-modals allow-popups"
                 className={cn(
                   "w-full h-full border-none bg-transparent transition-opacity duration-200",
                   isSandboxLoading && !error && hydrationMode === "cold"

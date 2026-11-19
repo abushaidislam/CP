@@ -45,6 +45,7 @@ export interface ComponentCardProps {
   variantsCount?: number;
   checkpointsCount?: number;
   isRecent?: boolean;
+  priority?: boolean;
   onPreview?: (id: string) => void;
   onOpenStudio?: (id: string) => void;
   onDuplicate?: (id: string) => void;
@@ -69,8 +70,9 @@ function renderCategoryIcon(category?: string, customClassName?: string) {
   }
 }
 
-export function ComponentCard({
+function ComponentCardInner({
   component,
+  priority = false,
   onPreview,
   onOpenStudio,
   onDuplicate,
@@ -161,8 +163,8 @@ export function ComponentCard({
             <img
               src={effectivePreviewImage}
               alt={component.name}
-              loading="eager"
-              decoding="sync"
+              loading={priority ? "eager" : "lazy"}
+              decoding="async"
               className="relative z-10 w-full h-full object-contain p-5 pointer-events-none select-none transition-transform duration-300 group-hover:scale-105 drop-shadow-md opacity-100"
             />
           ) : (
@@ -335,3 +337,6 @@ export function ComponentCard({
     </>
   );
 }
+
+export const ComponentCard = React.memo(ComponentCardInner);
+ComponentCard.displayName = "ComponentCard";

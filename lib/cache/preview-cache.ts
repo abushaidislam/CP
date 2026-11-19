@@ -27,12 +27,17 @@ export function setCachedPreviewSync(
   memoryPreviewCache.set(componentId, previewImage);
 }
 
+let cachedDbPromise: Promise<IDBDatabase | null> | null = null;
+
 function openPreviewDatabase(): Promise<IDBDatabase | null> {
   if (typeof window === "undefined" || typeof window.indexedDB === "undefined") {
     return Promise.resolve(null);
   }
+  if (cachedDbPromise) {
+    return cachedDbPromise;
+  }
 
-  return new Promise((resolve) => {
+  cachedDbPromise = new Promise((resolve) => {
     try {
       const request = window.indexedDB.open(IDB_NAME, IDB_VERSION);
       request.onupgradeneeded = () => {
@@ -44,12 +49,28 @@ function openPreviewDatabase(): Promise<IDBDatabase | null> {
           db.createObjectStore(REGISTRY_STORE);
         }
       };
-      request.onsuccess = () => resolve(request.result);
-      request.onerror = () => resolve(null);
+      request.onsuccess = () => {
+        const db = request.result;
+        db.onclose = () => {
+          cachedDbPromise = null;
+        };
+        db.onversionchange = () => {
+          db.close();
+          cachedDbPromise = null;
+        };
+        resolve(db);
+      };
+      request.onerror = () => {
+        cachedDbPromise = null;
+        resolve(null);
+      };
     } catch {
+      cachedDbPromise = null;
       resolve(null);
     }
   });
+
+  return cachedDbPromise;
 }
 
 /**
@@ -63,6 +84,9 @@ export async function cacheComponentPreview(
   memoryPreviewCache.set(componentId, previewImage);
 
   if (typeof window === "undefined") return;
+
+  // Native HTTP preview URLs are cached directly by the browser HTTP cache via immutable ETag headers.
+  if (previewImage.startsWith("/api/repo-sync/preview/")) return;
 
   // 1. Save in IndexedDB
   try {

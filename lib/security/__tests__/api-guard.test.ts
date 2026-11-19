@@ -16,6 +16,7 @@ import {
   resetDailyQuotaCounter,
   verifySameOriginRequest,
   verifyPayloadSize,
+  readJsonWithLimit,
 } from "../api-guard";
 
 describe("API Guard & Credit Protection Security Suite", () => {
@@ -141,7 +142,28 @@ describe("API Guard & Credit Protection Security Suite", () => {
     expect(verifySameOriginRequest(evilReq).valid).toBe(false);
   });
 
-  it("blocks oversized request payloads via Content-Length check", () => {
+  it("blocks mismatched *.run.app origins and sec-fetch-site: cross-site requests", () => {
+    const crossRunAppReq = new NextRequest("https://my-studio.asia-southeast1.run.app/api/ai-assistant", {
+      method: "POST",
+      headers: {
+        host: "my-studio.asia-southeast1.run.app",
+        origin: "https://attacker-other-app.us-central1.run.app",
+      },
+    });
+    expect(verifySameOriginRequest(crossRunAppReq).valid).toBe(false);
+
+    const crossSiteFetchReq = new NextRequest("https://my-studio.asia-southeast1.run.app/api/ai-assistant", {
+      method: "POST",
+      headers: {
+        host: "my-studio.asia-southeast1.run.app",
+        origin: "https://my-studio.asia-southeast1.run.app",
+        "sec-fetch-site": "cross-site",
+      },
+    });
+    expect(verifySameOriginRequest(crossSiteFetchReq).valid).toBe(false);
+  });
+
+  it("blocks oversized request payloads via Content-Length and streaming readJsonWithLimit", async () => {
     const oversizedReq = new NextRequest("http://localhost:3000/api/format-code", {
       method: "POST",
       headers: {
@@ -150,5 +172,17 @@ describe("API Guard & Credit Protection Security Suite", () => {
     });
     const check = verifyPayloadSize(oversizedReq, 512 * 1024);
     expect(check.valid).toBe(false);
+
+    // Streaming enforcement even when Content-Length is omitted
+    const bigBody = JSON.stringify({ data: "x".repeat(4096) });
+    const streamReq = new NextRequest("http://localhost:3000/api/format-code", {
+      method: "POST",
+      body: bigBody,
+    });
+    const limitResult = await readJsonWithLimit(streamReq, 1024);
+    expect(limitResult.ok).toBe(false);
+    if (!limitResult.ok) {
+      expect(limitResult.errorResponse.status).toBe(413);
+    }
   });
 });

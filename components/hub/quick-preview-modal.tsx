@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useMemo, useEffect, useRef } from "react";
+import { useShallow } from "zustand/react/shallow";
 import { useStudioStore, PreviewTheme, StudioFileName } from "@/lib/store/studio-store";
 import { DEFAULT_TEMPLATES } from "@/lib/sandbox/default-templates";
 import { compileSandboxHtml } from "@/lib/sandbox/sandbox-compiler";
@@ -55,8 +56,20 @@ export function QuickPreviewModal({
     variantsByTemplate,
     activeVariantByTemplate,
     loadComponent,
+    ensureComponentFilesLoaded,
     previewTheme: globalPreviewTheme,
-  } = useStudioStore();
+  } = useStudioStore(
+    useShallow((s) => ({
+      quickPreviewComponentId: s.quickPreviewComponentId,
+      setQuickPreviewComponentId: s.setQuickPreviewComponentId,
+      userComponents: s.userComponents,
+      variantsByTemplate: s.variantsByTemplate,
+      activeVariantByTemplate: s.activeVariantByTemplate,
+      loadComponent: s.loadComponent,
+      ensureComponentFilesLoaded: s.ensureComponentFilesLoaded,
+      previewTheme: s.previewTheme,
+    }))
+  );
 
   const [activeTab, setActiveTab] = useState<"preview" | "code" | "history">(defaultTab);
   const [selectedCodeFile, setSelectedCodeFile] = useState<StudioFileName>(defaultCodeFile);
@@ -100,6 +113,15 @@ export function QuickPreviewModal({
     );
   }, [quickPreviewComponentId, userComponents]);
 
+  // Lazily hydrate full source files when opening Quick Preview on a summary-only repo component
+  useEffect(() => {
+    if (!quickPreviewComponentId) return;
+    const target = userComponents?.[quickPreviewComponentId];
+    if (target && (target.filesLoaded === false || !target.files?.["component.tsx"])) {
+      void ensureComponentFilesLoaded(quickPreviewComponentId);
+    }
+  }, [quickPreviewComponentId, userComponents, ensureComponentFilesLoaded]);
+
   const handleOpenStudio = () => {
     if (!component) return;
     loadComponent(component.id);
@@ -140,9 +162,14 @@ export function QuickPreviewModal({
     copyTimerRef.current = setTimeout(() => setCopiedCode(false), 2000);
   };
 
+  const cliSlug =
+    component && "repoSlug" in component && component.repoSlug
+      ? component.repoSlug
+      : component?.id || "";
+
   const handleCopyCli = async () => {
     if (!component) return;
-    const cli = `npx shadcn@latest add ${component.id}`;
+    const cli = `npx shadcn@latest add ${cliSlug}`;
     await copyText(cli);
     setCopiedCli(true);
     if (cliTimerRef.current) clearTimeout(cliTimerRef.current);
@@ -279,6 +306,9 @@ export function QuickPreviewModal({
       );
     }, 90);
     const handleMsg = (e: MessageEvent) => {
+      if (quickIframeRef.current && e.source !== quickIframeRef.current.contentWindow) {
+        return;
+      }
       if (
         e.data?.type === "SANDBOX_STAGE" &&
         (e.data.stage === "hydrating-deps" || e.data.stage === "mounting")
@@ -501,7 +531,7 @@ export function QuickPreviewModal({
                   key={`${component.id}-${reloadKey}-${previewTheme}`}
                   title={`${component.name} Preview`}
                   srcDoc={compiledHtml}
-                  sandbox="allow-scripts allow-same-origin allow-modals allow-popups"
+                  sandbox="allow-scripts allow-modals allow-popups"
                   className="w-full h-full border-0"
                 />
                 </div>
@@ -535,8 +565,8 @@ export function QuickPreviewModal({
                     <TabsTrigger value="component.tsx" className="rounded-none font-sans text-xs">
                       component.tsx
                     </TabsTrigger>
-                    <TabsTrigger value="demo.tsx" className="rounded-none font-sans text-xs">
-                      demo.tsx
+                    <TabsTrigger value="default.tsx" className="rounded-none font-sans text-xs">
+                      default.tsx
                     </TabsTrigger>
                     <TabsTrigger value="index.css" className="rounded-none font-sans text-xs">
                       index.css
@@ -561,7 +591,7 @@ export function QuickPreviewModal({
 
               {/* CLI Command Block */}
               <div className="flex items-center justify-between bg-muted/60 px-3 py-2 rounded-none font-mono text-xs border border-border">
-                <span className="truncate select-all">{`npx shadcn@latest add ${component.id}`}</span>
+                <span className="truncate select-all">{`npx shadcn@latest add ${cliSlug}`}</span>
                 <Button
                   variant="ghost"
                   size="icon"

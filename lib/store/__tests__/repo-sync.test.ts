@@ -3,6 +3,7 @@ import { NextRequest } from "next/server";
 import { GET, POST, toComponentSlug } from "@/app/api/repo-sync/route";
 import { DEFAULT_TEMPLATES } from "@/lib/sandbox/default-templates";
 import { DEFAULT_TEMPLATE_PREVIEWS } from "@/lib/store/studio-store";
+import { createOwnerSessionToken } from "@/lib/security/api-guard";
 
 describe("Project Repository & GitHub Component Persistence (/api/repo-sync)", () => {
   it("normalizes component names and IDs into clean repository slugs", () => {
@@ -12,7 +13,22 @@ describe("Project Repository & GitHub Component Persistence (/api/repo-sync)", (
     expect(toComponentSlug("InkOrbitHero")).toBe("ink-orbit-hero");
   });
 
-  it("saves all default workspace components into registry/components/ and reads them back via GET", async () => {
+  it("rejects cross-origin or unauthenticated POST writes to /api/repo-sync", async () => {
+    const evilPostReq = new NextRequest("http://localhost:3000/api/repo-sync", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        host: "localhost:3000",
+        origin: "https://evil-attacker.example.com",
+      },
+      body: JSON.stringify({ action: "sync_all", items: [] }),
+    });
+
+    const evilRes = await POST(evilPostReq);
+    expect(evilRes.status).toBe(403);
+  });
+
+  it("saves all default workspace components into registry/components/ and reads them back via summary, single, and full GET modes", async () => {
     const items = DEFAULT_TEMPLATES.map((t) => ({
       component: {
         id: t.id,
@@ -34,9 +50,16 @@ describe("Project Repository & GitHub Component Persistence (/api/repo-sync)", (
       variants: [],
     }));
 
+    const ownerToken = createOwnerSessionToken();
     const postReq = new NextRequest("http://localhost:3000/api/repo-sync", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        host: "localhost:3000",
+        origin: "http://localhost:3000",
+        "x-studio-client": "component-studio",
+        cookie: `studio_owner_session=${ownerToken}`,
+      },
       body: JSON.stringify({
         action: "sync_all",
         items,
@@ -60,7 +83,56 @@ describe("Project Repository & GitHub Component Persistence (/api/repo-sync)", (
       DEFAULT_TEMPLATES.length
     );
 
-    const getRes = await GET();
+    // 1. Summary mode (lightweight hub payload)
+    const summaryReq = new NextRequest(
+      "http://localhost:3000/api/repo-sync?mode=summary"
+    );
+    const summaryRes = await GET(summaryReq);
+    const summaryJson = (await summaryRes.json()) as {
+      success: boolean;
+      mode: string;
+      totalComponents: number;
+      summaries: Array<{ id: string; repoSlug: string; previewImage?: string }>;
+    };
+    expect(summaryRes.status).toBe(200);
+    expect(summaryJson.success).toBe(true);
+    expect(summaryJson.mode).toBe("summary");
+    expect(summaryJson.totalComponents).toBeGreaterThanOrEqual(
+      DEFAULT_TEMPLATES.length
+    );
+    const summaryInk = summaryJson.summaries.find(
+      (s) => s.id === "ink-orbit-hero"
+    );
+    expect(summaryInk).toBeDefined();
+    if (summaryInk?.previewImage) {
+      expect(summaryInk.previewImage.startsWith("data:image/png;base64,")).toBe(
+        false
+      );
+    }
+
+    // 2. Single-component mode (fast studio deep-link payload)
+    const singleReq = new NextRequest(
+      "http://localhost:3000/api/repo-sync?id=ink-orbit-hero"
+    );
+    const singleRes = await GET(singleReq);
+    const singleJson = (await singleRes.json()) as {
+      success: boolean;
+      mode: string;
+      component: {
+        id: string;
+        files: { "component.tsx": string; "default.tsx": string };
+      };
+    };
+    expect(singleRes.status).toBe(200);
+    expect(singleJson.success).toBe(true);
+    expect(singleJson.mode).toBe("single");
+    expect(singleJson.component.id).toBe("ink-orbit-hero");
+    expect(singleJson.component.files["component.tsx"].length).toBeGreaterThan(
+      50
+    );
+
+    // 3. Legacy full mode
+    const getRes = await GET(new NextRequest("http://localhost:3000/api/repo-sync"));
     const getJson = (await getRes.json()) as {
       success: boolean;
       totalComponents: number;

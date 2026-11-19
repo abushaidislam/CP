@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { useShallow } from "zustand/react/shallow";
 import { useStudioStore } from "@/lib/store/studio-store";
 import { DEFAULT_TEMPLATES } from "@/lib/sandbox/default-templates";
 import { Button } from "@/components/ui/button";
@@ -80,7 +81,35 @@ export function StudioHeader() {
     isOwnerAuthenticated,
     setSecurityModalOpen,
     setRecordingModalOpen,
-  } = useStudioStore();
+  } = useStudioStore(
+    useShallow((state) => ({
+      currentTemplateId: state.currentTemplateId,
+      userComponents: state.userComponents,
+      loadTemplate: state.loadTemplate,
+      loadComponent: state.loadComponent,
+      setRepoSyncModalOpen: state.setRepoSyncModalOpen,
+      repoSyncStatus: state.repoSyncStatus,
+      saveComponentToProjectRepo: state.saveComponentToProjectRepo,
+      isTerminalOpen: state.isTerminalOpen,
+      toggleTerminal: state.toggleTerminal,
+      terminalLogs: state.terminalLogs,
+      isAiPanelOpen: state.isAiPanelOpen,
+      toggleAiPanel: state.toggleAiPanel,
+      layoutMode: state.layoutMode,
+      setLayoutMode: state.setLayoutMode,
+      variantsByTemplate: state.variantsByTemplate,
+      activeVariantByTemplate: state.activeVariantByTemplate,
+      switchVariant: state.switchVariant,
+      deleteVariant: state.deleteVariant,
+      setCreateVariantDialogOpen: state.setCreateVariantDialogOpen,
+      setSaveCheckpointDialogOpen: state.setSaveCheckpointDialogOpen,
+      isHistorySheetOpen: state.isHistorySheetOpen,
+      setHistorySheetOpen: state.setHistorySheetOpen,
+      isOwnerAuthenticated: state.isOwnerAuthenticated,
+      setSecurityModalOpen: state.setSecurityModalOpen,
+      setRecordingModalOpen: state.setRecordingModalOpen,
+    }))
+  );
 
   const [isDark, setIsDark] = useState(true);
   const [isCapturing, setIsCapturing] = useState(false);

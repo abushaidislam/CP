@@ -32,7 +32,7 @@ function isHttpsRequest(req: NextRequest): boolean {
 function buildSessionPayload(
   req: NextRequest,
   authenticatedOverride?: boolean,
-  sessionToken?: string | null
+  options?: { exposeSessionToken?: string | null }
 ) {
   const ip = getClientIp(req);
   const configured = hasConfiguredPasscode();
@@ -43,17 +43,13 @@ function buildSessionPayload(
       : isOwnerRequestAuthenticated(req) || (!configured && !locked);
   const hasEnv = Boolean(getEnvPasscode());
   const limitPerMin = getConfiguredAiRateLimitPerMin();
-  const activeToken =
-    sessionToken !== undefined
-      ? sessionToken
-      : authenticated
-      ? createOwnerSessionToken()
-      : null;
 
   return {
     success: true,
     authenticated,
-    sessionToken: activeToken,
+    ...(options && "exposeSessionToken" in options
+      ? { sessionToken: options.exposeSessionToken ?? null }
+      : {}),
     hasEnvPasscode: hasEnv,
     hasCustomPasscode: configured && !hasEnv,
     requiresPasscodeSetup: !configured,
@@ -73,9 +69,10 @@ function buildSessionPayload(
 export async function GET(req: NextRequest) {
   const payload = buildSessionPayload(req);
   const res = NextResponse.json(payload);
-  if (payload.authenticated && payload.sessionToken) {
+  if (payload.authenticated && !req.cookies.get(OWNER_SESSION_COOKIE)?.value) {
     const https = isHttpsRequest(req);
-    res.cookies.set(OWNER_SESSION_COOKIE, payload.sessionToken, {
+    const token = createOwnerSessionToken();
+    res.cookies.set(OWNER_SESSION_COOKIE, token, {
       httpOnly: true,
       sameSite: https ? "none" : "lax",
       path: "/",
@@ -147,7 +144,9 @@ export async function POST(req: NextRequest) {
       }
 
       const activeToken = refreshedToken || createOwnerSessionToken();
-      const res = NextResponse.json(buildSessionPayload(req, true, activeToken));
+      const res = NextResponse.json(
+        buildSessionPayload(req, true, { exposeSessionToken: activeToken })
+      );
       res.cookies.set(OWNER_SESSION_COOKIE, activeToken, {
         httpOnly: true,
         sameSite: https ? "none" : "lax",
@@ -221,7 +220,9 @@ export async function POST(req: NextRequest) {
     setExplicitlyLocked(false);
     clearFailedPasscodeAttempts(ip);
     const token = createOwnerSessionToken();
-    const res = NextResponse.json(buildSessionPayload(req, true, token));
+    const res = NextResponse.json(
+      buildSessionPayload(req, true, { exposeSessionToken: token })
+    );
 
     res.cookies.set(OWNER_SESSION_COOKIE, token, {
       httpOnly: true,
@@ -257,7 +258,9 @@ export async function DELETE(req: NextRequest) {
 
   setExplicitlyLocked(true);
   const https = isHttpsRequest(req);
-  const res = NextResponse.json(buildSessionPayload(req, false, null));
+  const res = NextResponse.json(
+    buildSessionPayload(req, false, { exposeSessionToken: null })
+  );
   res.cookies.set(OWNER_SESSION_COOKIE, "", {
     httpOnly: true,
     sameSite: https ? "none" : "lax",

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
+import { useShallow } from "zustand/react/shallow";
 import { useStudioStore } from "@/lib/store/studio-store";
 import {
   Dialog,
@@ -46,7 +47,16 @@ export function SecurityShieldModal({
     ownerSessionToken,
     securityTelemetry,
     setSecurityTelemetry,
-  } = useStudioStore();
+  } = useStudioStore(
+    useShallow((state) => ({
+      isSecurityModalOpen: state.isSecurityModalOpen,
+      setSecurityModalOpen: state.setSecurityModalOpen,
+      isOwnerAuthenticated: state.isOwnerAuthenticated,
+      ownerSessionToken: state.ownerSessionToken,
+      securityTelemetry: state.securityTelemetry,
+      setSecurityTelemetry: state.setSecurityTelemetry,
+    }))
+  );
 
   const isOpen =
     controlledOpen !== undefined ? controlledOpen : isSecurityModalOpen;
@@ -82,6 +92,7 @@ export function SecurityShieldModal({
         method: "GET",
         headers,
         cache: "no-store",
+        credentials: "same-origin",
       });
       if (res.ok) {
         const data = await res.json();
@@ -119,6 +130,7 @@ export function SecurityShieldModal({
     try {
       const res = await fetch("/api/auth/session", {
         method: "POST",
+        credentials: "same-origin",
         headers: {
           "Content-Type": "application/json",
           "X-Studio-Client": "component-studio",
@@ -155,6 +167,7 @@ export function SecurityShieldModal({
     try {
       const res = await fetch("/api/auth/session", {
         method: "DELETE",
+        credentials: "same-origin",
         headers: {
           "X-Studio-Client": "component-studio",
           ...(ownerSessionToken ? { "X-Studio-Owner-Token": ownerSessionToken } : {}),
@@ -180,6 +193,7 @@ export function SecurityShieldModal({
     try {
       const res = await fetch("/api/auth/session", {
         method: "POST",
+        credentials: "same-origin",
         headers: {
           "Content-Type": "application/json",
           "X-Studio-Client": "component-studio",
@@ -208,6 +222,7 @@ export function SecurityShieldModal({
     try {
       const res = await fetch("/api/auth/session", {
         method: "POST",
+        credentials: "same-origin",
         headers: {
           "Content-Type": "application/json",
           "X-Studio-Client": "component-studio",

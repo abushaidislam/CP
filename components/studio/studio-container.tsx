@@ -1,23 +1,49 @@
 "use client";
 
 import React, { useRef, useState, useEffect } from "react";
+import dynamic from "next/dynamic";
 import { motion, AnimatePresence } from "framer-motion";
+import { useShallow } from "zustand/react/shallow";
 import { StudioHeader } from "./studio-header";
 import { EditorPanel } from "./editor-panel";
 import { CanvasPreview } from "./canvas-preview";
-import { AiAssistantPanel } from "./ai-assistant-panel";
-import { DependencyModal } from "./dependency-modal";
 import { SaveCheckpointDialog } from "./save-checkpoint-dialog";
 import { CreateVariantDialog } from "./create-variant-dialog";
-import { VersionHistorySheet } from "./version-history-sheet";
-import { TerminalPanel } from "./terminal-panel";
 import { KeyboardShortcutsDialog } from "./keyboard-shortcuts-dialog";
-import { SecurityShieldModal } from "./security-shield-modal";
-import { RepoSyncModal } from "./repo-sync-modal";
-import { VideoRecordingModal } from "./video-recording-modal";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Code, Eye, Sparkles } from "lucide-react";
 import { useStudioStore } from "@/lib/store/studio-store";
+import { useSyncSecuritySession } from "@/lib/hooks/use-sync-security-session";
+
+// Code-split heavy optional panels & modals so initial Studio workspace stays lightweight
+const AiAssistantPanel = dynamic(
+  () => import("./ai-assistant-panel").then((mod) => mod.AiAssistantPanel),
+  { ssr: false }
+);
+const TerminalPanel = dynamic(
+  () => import("./terminal-panel").then((mod) => mod.TerminalPanel),
+  { ssr: false }
+);
+const DependencyModal = dynamic(
+  () => import("./dependency-modal").then((mod) => mod.DependencyModal),
+  { ssr: false }
+);
+const VersionHistorySheet = dynamic(
+  () => import("./version-history-sheet").then((mod) => mod.VersionHistorySheet),
+  { ssr: false }
+);
+const SecurityShieldModal = dynamic(
+  () => import("./security-shield-modal").then((mod) => mod.SecurityShieldModal),
+  { ssr: false }
+);
+const RepoSyncModal = dynamic(
+  () => import("./repo-sync-modal").then((mod) => mod.RepoSyncModal),
+  { ssr: false }
+);
+const VideoRecordingModal = dynamic(
+  () => import("./video-recording-modal").then((mod) => mod.VideoRecordingModal),
+  { ssr: false }
+);
 
 export interface StudioContainerProps {
   componentId?: string;
@@ -32,13 +58,43 @@ export function StudioContainer({ componentId: _componentId }: StudioContainerPr
     isTerminalOpen,
     isHistorySheetOpen,
     isSaveCheckpointDialogOpen,
+    isCreateVariantDialogOpen,
+    isDependencyModalOpen,
+    isSecurityModalOpen,
+    isRepoSyncModalOpen,
+    isPublishModalOpen,
+    isRecordingModalOpen,
     autoSaveToRepo,
     repoSyncStatus,
     currentTemplateId,
     hydrateFromProjectRepo,
     saveComponentToProjectRepo,
     setRecordingModalOpen,
-  } = useStudioStore();
+  } = useStudioStore(
+    useShallow((state) => ({
+      isAiPanelOpen: state.isAiPanelOpen,
+      toggleAiPanel: state.toggleAiPanel,
+      setAiPanelOpen: state.setAiPanelOpen,
+      layoutMode: state.layoutMode,
+      isTerminalOpen: state.isTerminalOpen,
+      isHistorySheetOpen: state.isHistorySheetOpen,
+      isSaveCheckpointDialogOpen: state.isSaveCheckpointDialogOpen,
+      isCreateVariantDialogOpen: state.isCreateVariantDialogOpen,
+      isDependencyModalOpen: state.isDependencyModalOpen,
+      isSecurityModalOpen: state.isSecurityModalOpen,
+      isRepoSyncModalOpen: state.isRepoSyncModalOpen,
+      isPublishModalOpen: state.isPublishModalOpen,
+      isRecordingModalOpen: state.isRecordingModalOpen,
+      autoSaveToRepo: state.autoSaveToRepo,
+      repoSyncStatus: state.repoSyncStatus,
+      currentTemplateId: state.currentTemplateId,
+      hydrateFromProjectRepo: state.hydrateFromProjectRepo,
+      saveComponentToProjectRepo: state.saveComponentToProjectRepo,
+      setRecordingModalOpen: state.setRecordingModalOpen,
+    }))
+  );
+
+  useSyncSecuritySession();
 
   useEffect(() => {
     hydrateFromProjectRepo?.();
@@ -292,15 +348,15 @@ export function StudioContainer({ componentId: _componentId }: StudioContainerPr
         </AnimatePresence>
       </main>
 
-      {/* Modals & Dialogs */}
-      <RepoSyncModal />
-      <VideoRecordingModal />
-      <DependencyModal />
-      <SaveCheckpointDialog />
-      <CreateVariantDialog />
-      <VersionHistorySheet />
+      {/* Modals & Dialogs (Conditionally mounted & code-split when closed) */}
+      {(isRepoSyncModalOpen || isPublishModalOpen) && <RepoSyncModal />}
+      {isRecordingModalOpen && <VideoRecordingModal />}
+      {isDependencyModalOpen && <DependencyModal />}
+      {isSaveCheckpointDialogOpen && <SaveCheckpointDialog />}
+      {isCreateVariantDialogOpen && <CreateVariantDialog />}
+      {isHistorySheetOpen && <VersionHistorySheet />}
       <KeyboardShortcutsDialog />
-      <SecurityShieldModal />
+      {isSecurityModalOpen && <SecurityShieldModal />}
     </div>
   );
 }

@@ -2,6 +2,7 @@
 
 import React, { useState, useMemo, useEffect } from "react";
 import confetti from "canvas-confetti";
+import { useShallow } from "zustand/react/shallow";
 import { useStudioStore } from "@/lib/store/studio-store";
 import { parseComponentAST } from "@/lib/sandbox/ast-parser";
 import {
@@ -74,7 +75,28 @@ export function RepoSyncModal() {
     syncAllComponentsToProjectRepo,
     hydrateFromProjectRepo,
     importWorkspaceBundle,
-  } = useStudioStore();
+  } = useStudioStore(
+    useShallow((state) => ({
+      files: state.files,
+      dependencies: state.dependencies,
+      currentTemplateId: state.currentTemplateId,
+      userComponents: state.userComponents,
+      isRepoSyncModalOpen: state.isRepoSyncModalOpen,
+      isPublishModalOpen: state.isPublishModalOpen,
+      setRepoSyncModalOpen: state.setRepoSyncModalOpen,
+      repoSyncStatus: state.repoSyncStatus,
+      autoSaveToRepo: state.autoSaveToRepo,
+      setAutoSaveToRepo: state.setAutoSaveToRepo,
+      lastRepoSyncError: state.lastRepoSyncError,
+      repoGitInfo: state.repoGitInfo,
+      githubRepoConfig: state.githubRepoConfig,
+      setGithubRepoConfig: state.setGithubRepoConfig,
+      saveComponentToProjectRepo: state.saveComponentToProjectRepo,
+      syncAllComponentsToProjectRepo: state.syncAllComponentsToProjectRepo,
+      hydrateFromProjectRepo: state.hydrateFromProjectRepo,
+      importWorkspaceBundle: state.importWorkspaceBundle,
+    }))
+  );
 
   const isOpen = Boolean(isRepoSyncModalOpen || isPublishModalOpen);
 
@@ -175,17 +197,23 @@ export function RepoSyncModal() {
       : `./components/demo/${demoFilename}`;
   const hasDemo = demoCode.trim().length > 0;
 
+  const escapeCliArg = (val: string) =>
+    val.replace(/[\r\n]/g, " ").replace(/(["`$\\])/g, "\\$1");
+
   const publishCommand = useMemo(() => {
+    const safeName = escapeCliArg(activeName);
+    const safeSlug = escapeCliArg(derivedSlug);
+    const safeTags = customTags ? escapeCliArg(customTags) : "";
     const demoFlag = hasDemo ? ` --demo ${demoPath}` : "";
-    const tagsFlag = customTags ? ` --tags "${customTags}"` : "";
+    const tagsFlag = safeTags ? ` --tags "${safeTags}"` : "";
 
     if (cliFormat === "powershell") {
-      return `21st publish ${compPath}${hasDemo ? ` \`\n  --demo ${demoPath}` : ""} \`\n  --name "${activeName}" \`\n  --slug "${derivedSlug}" \`\n  --visibility ${visibility}${tagsFlag ? ` \`\n  ${tagsFlag}` : ""}`;
+      return `21st publish ${compPath}${hasDemo ? ` \`\n  --demo ${demoPath}` : ""} \`\n  --name "${safeName}" \`\n  --slug "${safeSlug}" \`\n  --visibility ${visibility}${tagsFlag ? ` \`\n  ${tagsFlag}` : ""}`;
     }
     if (cliFormat === "bash") {
-      return `21st publish ${compPath}${hasDemo ? ` \\\n  --demo ${demoPath}` : ""} \\\n  --name "${activeName}" \\\n  --slug "${derivedSlug}" \\\n  --visibility ${visibility}${tagsFlag ? ` \\\n  ${tagsFlag}` : ""}`;
+      return `21st publish ${compPath}${hasDemo ? ` \\\n  --demo ${demoPath}` : ""} \\\n  --name "${safeName}" \\\n  --slug "${safeSlug}" \\\n  --visibility ${visibility}${tagsFlag ? ` \\\n  ${tagsFlag}` : ""}`;
     }
-    return `21st publish ${compPath}${demoFlag} --name "${activeName}" --slug "${derivedSlug}" --visibility ${visibility}${tagsFlag}`;
+    return `21st publish ${compPath}${demoFlag} --name "${safeName}" --slug "${safeSlug}" --visibility ${visibility}${tagsFlag}`;
   }, [
     compPath,
     demoPath,
@@ -252,22 +280,21 @@ export function RepoSyncModal() {
   const fileInputRef = React.useRef<HTMLInputElement | null>(null);
 
   const handleExportWorkspaceJson = () => {
-    const rawStorage =
-      typeof window !== "undefined"
-        ? window.localStorage.getItem("21st-component-studio-storage-v3")
-        : null;
-    const payload =
-      rawStorage ||
-      JSON.stringify(
-        {
-          state: {
-            userComponents: userComponents || {},
-          },
-          version: 0,
+    // Export strictly sanitized component & variant data — never dump raw localStorage or credentials
+    const storeState = useStudioStore.getState();
+    const payload = JSON.stringify(
+      {
+        version: 1,
+        exportedAt: new Date().toISOString(),
+        state: {
+          userComponents: storeState.userComponents || {},
+          variantsByTemplate: storeState.variantsByTemplate || {},
+          activeVariantByTemplate: storeState.activeVariantByTemplate || {},
         },
-        null,
-        2
-      );
+      },
+      null,
+      2
+    );
     const blob = new Blob([payload], {
       type: "application/json;charset=utf-8",
     });
@@ -280,7 +307,7 @@ export function RepoSyncModal() {
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
     setBundleStatusMsg(
-      `Exported all ${allComponentsCount} components to backup .json`
+      `Exported all ${allComponentsCount} components to sanitized backup .json`
     );
     setTimeout(() => setBundleStatusMsg(null), 3500);
   };

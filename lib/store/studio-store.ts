@@ -3,7 +3,6 @@ import { persist, createJSONStorage, type StateStorage } from "zustand/middlewar
 import { DEFAULT_TEMPLATES } from "@/lib/sandbox/default-templates";
 import {
   cacheComponentPreview,
-  cacheComponentsBatch,
   getCachedPreviewSync,
   loadBrowserCachedPreviews,
   removeCachedComponentPreview,
@@ -246,10 +245,28 @@ export interface UserComponent {
   dependencies: string[];
   previewImage?: string;
   repoSlug?: string;
+  repoPath?: string;
   savedInRepo?: boolean;
   lastRepoSyncAt?: number;
   lastCommitSha?: string;
   lastCommitUrl?: string;
+  filesLoaded?: boolean;
+}
+
+export interface RepoSummaryInput {
+  id: string;
+  repoSlug: string;
+  repoPath?: string;
+  name: string;
+  description: string;
+  category: string;
+  isBuiltIn?: boolean;
+  createdAt: number;
+  updatedAt: number;
+  lastRepoSyncAt: number;
+  dependencies: string[];
+  previewImage?: string;
+  filesLoaded?: boolean;
 }
 
 export type RepoSyncStatus = "idle" | "syncing" | "synced" | "dirty" | "error";
@@ -469,6 +486,13 @@ export interface StudioState {
   ) => void;
   hydrateFromBrowserCache: () => Promise<void>;
   hydrateFromProjectRepo: () => Promise<void>;
+  seedRepoSummaries: (summaries: RepoSummaryInput[]) => void;
+  ensureComponentFilesLoaded: (id: string) => Promise<UserComponent | null>;
+  hydrateSingleComponentFromServer: (
+    component: UserComponent,
+    variants?: ComponentVariant[],
+    activeVariantId?: string
+  ) => void;
   saveComponentToProjectRepo: (options?: {
     componentId?: string;
     commitMessage?: string;
@@ -1997,6 +2021,14 @@ export const useStudioStore = create<StudioState>()(
           selectedCheckpointId: null,
           recentComponentIds: [target.id, ...(state.recentComponentIds || []).filter((cid) => cid !== target.id)].slice(0, 50),
         });
+
+        const loadedComp = nextUserComponents[target.id];
+        if (
+          loadedComp &&
+          (loadedComp.filesLoaded === false || !loadedComp.files?.["component.tsx"])
+        ) {
+          void get().ensureComponentFilesLoaded(target.id);
+        }
       },
 
       createComponent: (data) => {
@@ -2082,10 +2114,18 @@ export const useStudioStore = create<StudioState>()(
 
         if (typeof window !== "undefined" && typeof fetch === "function") {
           const slug = compToDelete?.repoSlug || "";
+          const token = get().ownerSessionToken;
           void removeCachedComponentPreview(id);
           fetch(
             `/api/repo-sync?id=${encodeURIComponent(id)}&slug=${encodeURIComponent(slug)}`,
-            { method: "DELETE" }
+            {
+              method: "DELETE",
+              credentials: "same-origin",
+              headers: {
+                "X-Studio-Client": "component-studio",
+                ...(token ? { "X-Studio-Owner-Token": token } : {}),
+              },
+            }
           ).catch(() => {});
         }
 
@@ -2268,10 +2308,11 @@ export const useStudioStore = create<StudioState>()(
         set((state) => ({
           securityTelemetry: telemetry,
           isOwnerAuthenticated: Boolean(telemetry?.authenticated),
-          ownerSessionToken:
-            telemetry?.sessionToken !== undefined
-              ? telemetry.sessionToken
-              : state.ownerSessionToken,
+          ownerSessionToken: !telemetry?.authenticated
+            ? null
+            : telemetry.sessionToken !== undefined
+            ? telemetry.sessionToken
+            : state.ownerSessionToken,
         })),
 
       addTerminalLog: ({ type, message }) =>
@@ -2624,147 +2665,276 @@ export const useStudioStore = create<StudioState>()(
         }
       },
 
+      seedRepoSummaries: (summaries) => {
+        if (!Array.isArray(summaries) || summaries.length === 0) return;
+        set((state) => {
+          const nextUserComponents = { ...(state.userComponents || {}) };
+          let changed = false;
+
+          for (const summary of summaries) {
+            const existing = nextUserComponents[summary.id];
+            const resolvedPreview =
+              summary.previewImage ||
+              getCachedPreviewSync(summary.id) ||
+              existing?.previewImage ||
+              DEFAULT_TEMPLATE_PREVIEWS[summary.id] ||
+              DEFAULT_TEMPLATE_PREVIEWS["blank"];
+
+            setCachedPreviewSync(summary.id, resolvedPreview);
+
+            if (!existing) {
+              nextUserComponents[summary.id] = {
+                id: summary.id,
+                name: summary.name,
+                description: summary.description,
+                category: summary.category,
+                isBuiltIn: summary.isBuiltIn,
+                createdAt: summary.createdAt || summary.updatedAt || Date.now(),
+                updatedAt: summary.updatedAt || Date.now(),
+                files: {
+                  "component.tsx": "",
+                  "default.tsx": "",
+                  "demo.tsx": "",
+                  "index.css": "",
+                },
+                dependencies: summary.dependencies || [],
+                previewImage: resolvedPreview,
+                repoSlug: summary.repoSlug,
+                repoPath: summary.repoPath,
+                savedInRepo: true,
+                lastRepoSyncAt: summary.lastRepoSyncAt,
+                filesLoaded: false,
+              };
+              changed = true;
+            } else {
+              const shouldUpdateMeta =
+                existing.savedInRepo !== false &&
+                (summary.updatedAt || 0) >= (existing.updatedAt || 0);
+              const needsPreviewUpgrade =
+                Boolean(summary.previewImage) &&
+                existing.previewImage !== summary.previewImage &&
+                !existing.previewImage?.startsWith("data:image/png;base64,");
+
+              if (shouldUpdateMeta || needsPreviewUpgrade || !existing.repoSlug) {
+                nextUserComponents[summary.id] = {
+                  ...existing,
+                  name: shouldUpdateMeta ? summary.name : existing.name,
+                  description: shouldUpdateMeta
+                    ? summary.description
+                    : existing.description,
+                  category: shouldUpdateMeta
+                    ? summary.category
+                    : existing.category,
+                  previewImage: needsPreviewUpgrade
+                    ? resolvedPreview
+                    : existing.previewImage || resolvedPreview,
+                  repoSlug: summary.repoSlug || existing.repoSlug,
+                  repoPath: summary.repoPath || existing.repoPath,
+                  savedInRepo: true,
+                  lastRepoSyncAt:
+                    summary.lastRepoSyncAt || existing.lastRepoSyncAt,
+                };
+                changed = true;
+              }
+            }
+          }
+
+          if (!changed) return state;
+          return { userComponents: nextUserComponents };
+        });
+      },
+
+      hydrateSingleComponentFromServer: (component, variants, activeVariantId) => {
+        if (!component?.id) return;
+        const normalizedFiles = normalizeStudioFiles(component.files);
+        set((state) => {
+          const existing = state.userComponents?.[component.id];
+          const isDirtyLocal =
+            existing &&
+            existing.savedInRepo === false &&
+            Boolean(existing.files?.["component.tsx"]) &&
+            (existing.updatedAt || 0) > (component.updatedAt || 0);
+
+          const resolvedComp: UserComponent = isDirtyLocal
+            ? {
+                ...existing,
+                repoSlug: component.repoSlug || existing.repoSlug,
+                repoPath: component.repoPath || existing.repoPath,
+                previewImage: existing.previewImage || component.previewImage,
+                filesLoaded: true,
+              }
+            : {
+                ...component,
+                files: normalizedFiles,
+                savedInRepo: true,
+                filesLoaded: true,
+              };
+
+          const existingVariants = state.variantsByTemplate?.[component.id] || [];
+          const nextVariants =
+            Array.isArray(variants) && variants.length > 0 && !isDirtyLocal
+              ? variants.map((v) => ({
+                  ...v,
+                  files: normalizeStudioFiles(v.files),
+                }))
+              : existingVariants.length > 0
+              ? existingVariants
+              : [
+                  createDefaultVariant(
+                    component.id,
+                    resolvedComp.files,
+                    resolvedComp.dependencies || []
+                  ),
+                ];
+
+          const resolvedActiveVariantId =
+            activeVariantId ||
+            state.activeVariantByTemplate?.[component.id] ||
+            nextVariants[0]?.id;
+
+          return {
+            userComponents: {
+              ...(state.userComponents || {}),
+              [component.id]: resolvedComp,
+            },
+            variantsByTemplate: {
+              ...(state.variantsByTemplate || {}),
+              [component.id]: nextVariants,
+            },
+            activeVariantByTemplate: {
+              ...(state.activeVariantByTemplate || {}),
+              [component.id]: resolvedActiveVariantId,
+            },
+            currentTemplateId: component.id,
+            files: resolvedComp.files,
+            dependencies: [...(resolvedComp.dependencies || [])],
+            compilerError: null,
+            recentComponentIds: [
+              component.id,
+              ...(state.recentComponentIds || []).filter((cid) => cid !== component.id),
+            ].slice(0, 50),
+          };
+        });
+      },
+
+      ensureComponentFilesLoaded: async (id) => {
+        if (!id || typeof window === "undefined") return null;
+        const current = get().userComponents?.[id];
+        if (current && current.filesLoaded !== false && current.files?.["component.tsx"]) {
+          return current;
+        }
+        try {
+          const res = await fetch(
+            `/api/repo-sync?id=${encodeURIComponent(id)}`,
+            {
+              method: "GET",
+              credentials: "same-origin",
+              headers: { Accept: "application/json" },
+            }
+          );
+          if (!res.ok) return current || null;
+          const data = (await res.json()) as {
+            success?: boolean;
+            component?: UserComponent;
+            manifest?: {
+              variants?: ComponentVariant[];
+              activeVariantId?: string;
+            };
+          };
+          if (!data.success || !data.component) return current || null;
+
+          const fetched = data.component;
+          const normalizedFiles = normalizeStudioFiles(fetched.files);
+          set((state) => {
+            const existing = state.userComponents?.[fetched.id];
+            const mergedComp: UserComponent = {
+              ...(existing || {}),
+              ...fetched,
+              files: normalizedFiles,
+              savedInRepo: true,
+              filesLoaded: true,
+            };
+            const isCurrentlyActive = state.currentTemplateId === fetched.id;
+            const existingVariants = state.variantsByTemplate?.[fetched.id] || [];
+            const nextVariants =
+              Array.isArray(data.manifest?.variants) &&
+              data.manifest.variants.length > 0
+                ? data.manifest.variants.map((v) => ({
+                    ...v,
+                    files: normalizeStudioFiles(v.files),
+                  }))
+                : existingVariants.length > 0
+                ? existingVariants
+                : [
+                    createDefaultVariant(
+                      fetched.id,
+                      normalizedFiles,
+                      fetched.dependencies || []
+                    ),
+                  ];
+
+            const nextActiveVariantId =
+              data.manifest?.activeVariantId ||
+              state.activeVariantByTemplate?.[fetched.id] ||
+              nextVariants[0]?.id;
+
+            return {
+              userComponents: {
+                ...(state.userComponents || {}),
+                [fetched.id]: mergedComp,
+              },
+              variantsByTemplate: {
+                ...(state.variantsByTemplate || {}),
+                [fetched.id]: nextVariants,
+              },
+              activeVariantByTemplate: {
+                ...(state.activeVariantByTemplate || {}),
+                [fetched.id]: nextActiveVariantId,
+              },
+              ...(isCurrentlyActive
+                ? {
+                    files: normalizedFiles,
+                    dependencies: [...(fetched.dependencies || [])],
+                    compilerError: null,
+                  }
+                : {}),
+            };
+          });
+          return get().userComponents?.[fetched.id] || fetched;
+        } catch {
+          return current || null;
+        }
+      },
+
       hydrateFromProjectRepo: async () => {
         if (typeof window === "undefined") return;
-        // 1. Immediately restore previews & components from Browser Cache (IndexedDB / CacheStorage)
-        // so cards display their preview images in milliseconds before the network call completes.
+        // 1. Immediately restore previews from Browser Cache (IndexedDB / CacheStorage)
         void get().hydrateFromBrowserCache();
 
         try {
-          const res = await fetch("/api/repo-sync", {
+          // 2. Fetch lightweight summary index (~30KB JSON, binary preview URLs — ZERO base64 PNG bloat)
+          const res = await fetch("/api/repo-sync?mode=summary", {
             method: "GET",
+            credentials: "same-origin",
             headers: { Accept: "application/json" },
           });
           if (!res.ok) return;
           const data = (await res.json()) as {
             success?: boolean;
             totalComponents?: number;
-            components?: Array<{
-              manifest: {
-                id: string;
-                slug: string;
-                name: string;
-                description: string;
-                category: string;
-                isBuiltIn?: boolean;
-                createdAt: number;
-                updatedAt: number;
-                lastRepoSyncAt: number;
-                lastCommitSha?: string;
-                lastCommitUrl?: string;
-                dependencies: string[];
-                previewImage?: string;
-                variants?: ComponentVariant[];
-                activeVariantId?: string;
-              };
-              files: StudioFiles;
-            }>;
+            summaries?: RepoSummaryInput[];
             gitInfo?: RepoGitInfo;
           };
 
           if (!data.success) return;
 
-          let resolvedComponentsForCache: Record<string, UserComponent> | null =
-            null;
+          if (Array.isArray(data.summaries) && data.summaries.length > 0) {
+            get().seedRepoSummaries(data.summaries);
+          }
 
           set((state) => {
-            const nextUserComponents = { ...(state.userComponents || {}) };
-            const nextVariants = { ...(state.variantsByTemplate || {}) };
-            const nextActiveVariants = { ...(state.activeVariantByTemplate || {}) };
-
-            let currentComponentReplacedFromRepo = false;
-
-            for (const entry of data.components || []) {
-              const m = entry.manifest;
-              const existing = nextUserComponents[m.id];
-              const normalizedRepoFiles = normalizeStudioFiles(entry.files);
-
-              // Only overwrite an existing local component if:
-              // 1) It doesn't exist locally yet, OR
-              // 2) It is an unmodified factory starter template (updatedAt === 1700000000000), OR
-              // 3) It was already synced with the repo and the repo version is at least as new.
-              const isUnmodifiedStarter = existing?.updatedAt === 1700000000000;
-              const shouldAcceptRepoCode =
-                !existing ||
-                isUnmodifiedStarter ||
-                (existing.savedInRepo !== false &&
-                  (m.updatedAt || 0) >= (existing.updatedAt || 0));
-
-              const resolvedPreviewImage =
-                (m.previewImage && m.previewImage !== "./preview.png"
-                  ? m.previewImage
-                  : undefined) ||
-                getCachedPreviewSync(m.id) ||
-                (existing?.previewImage &&
-                existing.previewImage !== "./preview.png" &&
-                existing.previewImage !== DEFAULT_TEMPLATE_PREVIEWS["blank"]
-                  ? existing.previewImage
-                  : undefined) ||
-                DEFAULT_TEMPLATE_PREVIEWS[m.id] ||
-                DEFAULT_TEMPLATE_PREVIEWS["blank"];
-
-              setCachedPreviewSync(m.id, resolvedPreviewImage);
-
-              if (shouldAcceptRepoCode) {
-                nextUserComponents[m.id] = {
-                  id: m.id,
-                  name: m.name,
-                  description: m.description,
-                  category: m.category,
-                  isBuiltIn: m.isBuiltIn ?? existing?.isBuiltIn,
-                  createdAt: m.createdAt || existing?.createdAt || Date.now(),
-                  updatedAt: m.updatedAt || Date.now(),
-                  files: normalizedRepoFiles,
-                  dependencies: m.dependencies || [],
-                  previewImage: resolvedPreviewImage,
-                  repoSlug: m.slug,
-                  savedInRepo: true,
-                  lastRepoSyncAt: m.lastRepoSyncAt,
-                  lastCommitSha: m.lastCommitSha,
-                  lastCommitUrl: m.lastCommitUrl,
-                };
-                if (Array.isArray(m.variants) && m.variants.length > 0) {
-                  nextVariants[m.id] = m.variants.map((v) => ({
-                    ...v,
-                    files: normalizeStudioFiles(v.files),
-                  }));
-                  if (m.activeVariantId) {
-                    nextActiveVariants[m.id] = m.activeVariantId;
-                  }
-                }
-                if (m.id === state.currentTemplateId) {
-                  currentComponentReplacedFromRepo = true;
-                }
-              } else if (existing) {
-                nextUserComponents[m.id] = {
-                  ...existing,
-                  files: normalizeStudioFiles(existing.files),
-                  previewImage: resolvedPreviewImage,
-                  repoSlug: m.slug,
-                  savedInRepo: true,
-                  lastRepoSyncAt: m.lastRepoSyncAt,
-                  lastCommitSha: m.lastCommitSha || existing.lastCommitSha,
-                  lastCommitUrl: m.lastCommitUrl || existing.lastCommitUrl,
-                };
-              }
-            }
-
-            resolvedComponentsForCache = nextUserComponents;
-
-            const activeComp = nextUserComponents[state.currentTemplateId];
-            const shouldRefreshActiveFiles =
-              currentComponentReplacedFromRepo &&
-              activeComp &&
-              state.repoSyncStatus !== "dirty";
-
+            const activeComp = state.userComponents?.[state.currentTemplateId];
             return {
-              userComponents: nextUserComponents,
-              variantsByTemplate: nextVariants,
-              activeVariantByTemplate: nextActiveVariants,
-              files: shouldRefreshActiveFiles ? activeComp.files : state.files,
-              dependencies: shouldRefreshActiveFiles
-                ? activeComp.dependencies
-                : state.dependencies,
               repoGitInfo: data.gitInfo
                 ? {
                     ...data.gitInfo,
@@ -2778,8 +2948,14 @@ export const useStudioStore = create<StudioState>()(
             };
           });
 
-          if (resolvedComponentsForCache) {
-            void cacheComponentsBatch(resolvedComponentsForCache);
+          // 3. Ensure active component's source files are hydrated if currently summary-only
+          const activeId = get().currentTemplateId;
+          const activeComp = get().userComponents?.[activeId];
+          if (
+            activeComp &&
+            (activeComp.filesLoaded === false || !activeComp.files?.["component.tsx"])
+          ) {
+            void get().ensureComponentFilesLoaded(activeId);
           }
         } catch {
           // Ignore network errors during initial background hydration
@@ -2839,9 +3015,17 @@ export const useStudioStore = create<StudioState>()(
         };
 
         try {
+          const authHeaders: Record<string, string> = {
+            "Content-Type": "application/json",
+            "X-Studio-Client": "component-studio",
+            ...(state.ownerSessionToken
+              ? { "X-Studio-Owner-Token": state.ownerSessionToken }
+              : {}),
+          };
           let res = await fetch("/api/repo-sync", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            credentials: "same-origin",
+            headers: authHeaders,
             body: JSON.stringify({
               action: "save_component",
               component: compToSave,
@@ -2885,7 +3069,8 @@ export const useStudioStore = create<StudioState>()(
             };
             res = await fetch("/api/repo-sync", {
               method: "POST",
-              headers: { "Content-Type": "application/json" },
+              credentials: "same-origin",
+              headers: authHeaders,
               body: JSON.stringify({
                 action: "save_component",
                 component: slimComp,
@@ -2969,7 +3154,13 @@ export const useStudioStore = create<StudioState>()(
 
       syncAllComponentsToProjectRepo: async (options = {}) => {
         const state = get();
-        const allComps = Object.values(state.userComponents || {});
+        // Only sync components whose source files are loaded (skip untouched summary-only repo entries so we never overwrite disk files with empty strings)
+        const allComps = Object.values(state.userComponents || {}).filter(
+          (c) =>
+            c &&
+            (c.id === state.currentTemplateId ||
+              (c.filesLoaded !== false && Boolean(c.files?.["component.tsx"])))
+        );
         if (allComps.length === 0) {
           return { success: false, error: "No components available to sync." };
         }
@@ -3082,9 +3273,18 @@ export const useStudioStore = create<StudioState>()(
                     `feat(registry): sync ${items.length} workspace components`
                   } (batch ${i + 1}/${chunks.length})`;
 
+            const authHeaders: Record<string, string> = {
+              "Content-Type": "application/json",
+              "X-Studio-Client": "component-studio",
+              ...(state.ownerSessionToken
+                ? { "X-Studio-Owner-Token": state.ownerSessionToken }
+                : {}),
+            };
+
             let res = await fetch("/api/repo-sync", {
               method: "POST",
-              headers: { "Content-Type": "application/json" },
+              credentials: "same-origin",
+              headers: authHeaders,
               body: JSON.stringify({
                 action: "sync_all",
                 items: chunk,
@@ -3135,7 +3335,8 @@ export const useStudioStore = create<StudioState>()(
 
               res = await fetch("/api/repo-sync", {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                credentials: "same-origin",
+                headers: authHeaders,
                 body: JSON.stringify({
                   action: "sync_all",
                   items: slimChunk,
@@ -3356,13 +3557,17 @@ export const useStudioStore = create<StudioState>()(
         aiRole: state.aiRole,
         preserveDesignSkill: state.preserveDesignSkill,
         autoApplyAiChanges: state.autoApplyAiChanges,
-        ownerSessionToken: state.ownerSessionToken,
         variantsByTemplate: state.variantsByTemplate,
         activeVariantByTemplate: state.activeVariantByTemplate,
         userComponents: state.userComponents,
         recentComponentIds: state.recentComponentIds,
         autoSaveToRepo: state.autoSaveToRepo,
-        githubRepoConfig: state.githubRepoConfig,
+        // Never persist GitHub Personal Access Tokens or session secrets to localStorage
+        githubRepoConfig: {
+          repo: state.githubRepoConfig?.repo || "",
+          branch: state.githubRepoConfig?.branch || "main",
+          token: "",
+        },
       }),
       merge: studioPersistMerge,
     }

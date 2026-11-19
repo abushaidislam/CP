@@ -1,10 +1,12 @@
-import { createHmac, createHash, timingSafeEqual } from "crypto";
+import { createHmac, createHash, randomBytes, timingSafeEqual } from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 
 export const OWNER_SESSION_COOKIE = "studio_owner_session";
 export const OWNER_SESSION_HEADER = "x-studio-owner-token";
 export const STUDIO_CLIENT_HEADER = "x-studio-client";
 export const STUDIO_CLIENT_HEADER_VALUE = "component-studio";
+
+const MAX_SECURITY_MAP_ENTRIES = 5000;
 
 interface RateLimitBucket {
   timestamps: number[];
@@ -29,6 +31,8 @@ interface GlobalSecurityStore {
   runtimePasscodeHash: string | null;
   blockedRequestsCount: number;
   explicitlyLocked: boolean;
+  ephemeralSigningSecret: string;
+  lastPrunedAt: number;
 }
 
 const globalForSecurity = globalThis as unknown as {
@@ -52,6 +56,8 @@ function getSecurityStore(): GlobalSecurityStore {
       runtimePasscodeHash: null,
       blockedRequestsCount: 0,
       explicitlyLocked: false,
+      ephemeralSigningSecret: randomBytes(32).toString("hex"),
+      lastPrunedAt: Date.now(),
     };
   }
   const store = globalForSecurity.__studioSecurityStore;
@@ -60,7 +66,58 @@ function getSecurityStore(): GlobalSecurityStore {
     store.dailyQuota.dateKey = today;
     store.dailyQuota.used = 0;
   }
+  if (!store.ephemeralSigningSecret) {
+    store.ephemeralSigningSecret = randomBytes(32).toString("hex");
+  }
   return store;
+}
+
+function pruneSecurityMapsIfNeeded(store: GlobalSecurityStore, now: number): void {
+  const shouldPruneByTime = now - (store.lastPrunedAt || 0) > 60_000;
+  const shouldPruneBySize =
+    store.rateLimits.size > MAX_SECURITY_MAP_ENTRIES ||
+    store.bruteForce.size > MAX_SECURITY_MAP_ENTRIES;
+
+  if (!shouldPruneByTime && !shouldPruneBySize) return;
+  store.lastPrunedAt = now;
+
+  // Prune rate limit buckets older than 5 minutes
+  const rateCutoff = now - 5 * 60_000;
+  for (const [key, bucket] of store.rateLimits.entries()) {
+    const active = bucket.timestamps.filter((ts) => ts > rateCutoff);
+    if (active.length === 0) {
+      store.rateLimits.delete(key);
+    } else if (active.length !== bucket.timestamps.length) {
+      bucket.timestamps = active;
+    }
+  }
+  if (store.rateLimits.size > MAX_SECURITY_MAP_ENTRIES) {
+    const excess = store.rateLimits.size - MAX_SECURITY_MAP_ENTRIES;
+    let removed = 0;
+    for (const key of store.rateLimits.keys()) {
+      store.rateLimits.delete(key);
+      removed += 1;
+      if (removed >= excess) break;
+    }
+  }
+
+  // Prune expired brute-force records
+  const bruteCutoff = now - 15 * 60_000;
+  for (const [ip, rec] of store.bruteForce.entries()) {
+    const lockExpired = !rec.lockedUntil || rec.lockedUntil <= now;
+    if (lockExpired && rec.firstFailedAt < bruteCutoff) {
+      store.bruteForce.delete(ip);
+    }
+  }
+  if (store.bruteForce.size > MAX_SECURITY_MAP_ENTRIES) {
+    const excess = store.bruteForce.size - MAX_SECURITY_MAP_ENTRIES;
+    let removed = 0;
+    for (const key of store.bruteForce.keys()) {
+      store.bruteForce.delete(key);
+      removed += 1;
+      if (removed >= excess) break;
+    }
+  }
 }
 
 export function sha256Hex(value: string): string {
@@ -71,8 +128,7 @@ function getSigningSecret(): string {
   return (
     process.env.STUDIO_SESSION_SECRET?.trim() ||
     process.env.STUDIO_ACCESS_CODE?.trim() ||
-    process.env.GEMINI_API_KEY?.trim() ||
-    "component-studio-personal-owner-hmac-key-2026"
+    getSecurityStore().ephemeralSigningSecret
   );
 }
 
@@ -210,11 +266,12 @@ export function isOwnerRequestAuthenticated(req: NextRequest): boolean {
   }
 
   // If no passcode has been configured via STUDIO_ACCESS_CODE or runtime setup,
-  // and the session has not been explicitly locked, allow same-origin Studio requests seamlessly.
+  // and the session has not been explicitly locked, allow verified same-origin Studio requests seamlessly.
   if (
     !hasConfiguredPasscode() &&
     !isExplicitlyLocked() &&
-    req.headers.get(STUDIO_CLIENT_HEADER) === STUDIO_CLIENT_HEADER_VALUE
+    req.headers.get(STUDIO_CLIENT_HEADER) === STUDIO_CLIENT_HEADER_VALUE &&
+    verifySameOriginRequest(req).valid
   ) {
     return true;
   }
@@ -223,11 +280,19 @@ export function isOwnerRequestAuthenticated(req: NextRequest): boolean {
 }
 
 export function getClientIp(req: NextRequest): string {
+  const realIp = req.headers.get("x-real-ip")?.trim();
+  if (realIp) return realIp;
   const forwarded = req.headers.get("x-forwarded-for");
   if (forwarded) {
-    return forwarded.split(",")[0].trim() || "127.0.0.1";
+    const hops = forwarded
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+    if (hops.length > 0) {
+      return hops[hops.length - 1];
+    }
   }
-  return req.headers.get("x-real-ip")?.trim() || "127.0.0.1";
+  return "127.0.0.1";
 }
 
 export function recordBlockedRequest(): void {
@@ -245,6 +310,7 @@ export function checkBruteForceLockout(ip: string): {
 } {
   const store = getSecurityStore();
   const now = Date.now();
+  pruneSecurityMapsIfNeeded(store, now);
   const windowMs = 15 * 60 * 1000;
   const maxAttempts = 5;
 
@@ -335,6 +401,7 @@ export function checkRateLimit(
   const store = getSecurityStore();
   const key = `${bucketName}:${ip}`;
   const now = Date.now();
+  pruneSecurityMapsIfNeeded(store, now);
   const cutoff = now - windowMs;
 
   const bucket = store.rateLimits.get(key) || { timestamps: [] };
@@ -461,28 +528,37 @@ export function getBlockedRequestsCount(): number {
 }
 
 /**
- * Verifies Same-Origin / Referer and custom CSRF client header on state-changing requests
+ * Verifies Same-Origin / Referer and Fetch Metadata on state-changing requests
  */
 export function verifySameOriginRequest(req: NextRequest): {
   valid: boolean;
   reason?: string;
 } {
+  const secFetchSite = req.headers.get("sec-fetch-site")?.toLowerCase();
+  if (secFetchSite === "cross-site") {
+    recordBlockedRequest();
+    return {
+      valid: false,
+      reason: "Cross-site request blocked by Fetch Metadata policy.",
+    };
+  }
+
   const origin = req.headers.get("origin");
   const referer = req.headers.get("referer");
-  const host =
-    req.headers.get("x-forwarded-host") || req.headers.get("host") || "";
+  const rawHost =
+    req.headers.get("x-forwarded-host") ||
+    req.headers.get("host") ||
+    req.nextUrl?.host ||
+    "";
+  const host = rawHost.split(",")[0].trim().toLowerCase();
 
   if (origin) {
     try {
       const originUrl = new URL(origin);
-      const isAllowedRunApp = originUrl.hostname.endsWith(".run.app");
-      const isLocal =
-        originUrl.hostname === "localhost" || originUrl.hostname === "127.0.0.1";
-      const matchesHost = host
-        ? originUrl.host === host || originUrl.hostname === host.split(":")[0]
-        : true;
+      const originHost = originUrl.host.toLowerCase();
+      const matchesHost = host ? originHost === host : false;
 
-      if (!matchesHost && !isAllowedRunApp && !isLocal) {
+      if (!matchesHost) {
         recordBlockedRequest();
         return {
           valid: false,
@@ -496,14 +572,10 @@ export function verifySameOriginRequest(req: NextRequest): {
   } else if (referer) {
     try {
       const refUrl = new URL(referer);
-      const isAllowedRunApp = refUrl.hostname.endsWith(".run.app");
-      const isLocal =
-        refUrl.hostname === "localhost" || refUrl.hostname === "127.0.0.1";
-      const matchesHost = host
-        ? refUrl.host === host || refUrl.hostname === host.split(":")[0]
-        : true;
+      const refHost = refUrl.host.toLowerCase();
+      const matchesHost = host ? refHost === host : false;
 
-      if (!matchesHost && !isAllowedRunApp && !isLocal) {
+      if (!matchesHost) {
         recordBlockedRequest();
         return {
           valid: false,
@@ -543,4 +615,83 @@ export function verifyPayloadSize(
     }
   }
   return { valid: true };
+}
+
+/**
+ * Streams and parses a JSON request body while strictly enforcing a real byte limit,
+ * preventing chunked Transfer-Encoding requests from bypassing Content-Length checks.
+ */
+export async function readJsonWithLimit<T>(
+  req: NextRequest,
+  maxBytes: number
+): Promise<
+  | { ok: true; data: T }
+  | { ok: false; errorResponse: NextResponse }
+> {
+  const headerCheck = verifyPayloadSize(req, maxBytes);
+  if (!headerCheck.valid && headerCheck.errorResponse) {
+    return { ok: false, errorResponse: headerCheck.errorResponse };
+  }
+
+  try {
+    const reader = req.body?.getReader();
+    let rawText = "";
+    if (!reader) {
+      rawText = await req.text();
+      if (Buffer.byteLength(rawText, "utf8") > maxBytes) {
+        recordBlockedRequest();
+        return {
+          ok: false,
+          errorResponse: NextResponse.json(
+            {
+              success: false,
+              error: `Request payload exceeds maximum allowed size (${Math.round(
+                maxBytes / 1024
+              )}KB).`,
+            },
+            { status: 413 }
+          ),
+        };
+      }
+    } else {
+      const chunks: Uint8Array[] = [];
+      let total = 0;
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        if (value) {
+          total += value.byteLength;
+          if (total > maxBytes) {
+            await reader.cancel().catch(() => {});
+            recordBlockedRequest();
+            return {
+              ok: false,
+              errorResponse: NextResponse.json(
+                {
+                  success: false,
+                  error: `Request payload exceeds maximum allowed size (${Math.round(
+                    maxBytes / 1024
+                  )}KB).`,
+                },
+                { status: 413 }
+              ),
+            };
+          }
+          chunks.push(value);
+        }
+      }
+      rawText = Buffer.concat(chunks).toString("utf8");
+    }
+
+    const data = JSON.parse(rawText) as T;
+    return { ok: true, data };
+  } catch {
+    return {
+      ok: false,
+      errorResponse: NextResponse.json(
+        { success: false, error: "Invalid JSON request payload." },
+        { status: 400 }
+      ),
+    };
+  }
 }

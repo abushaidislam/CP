@@ -13,10 +13,28 @@ import {
   getDailyQuotaSummary,
   incrementDailyAiQuota,
   isOwnerRequestAuthenticated,
+  readJsonWithLimit,
   recordBlockedRequest,
-  verifyPayloadSize,
   verifySameOriginRequest,
 } from "@/lib/security/api-guard";
+
+let cachedGeminiClient: { apiKey: string; client: GoogleGenAI } | null = null;
+
+function getGeminiClient(apiKey: string): GoogleGenAI {
+  if (cachedGeminiClient && cachedGeminiClient.apiKey === apiKey) {
+    return cachedGeminiClient.client;
+  }
+  const client = new GoogleGenAI({
+    apiKey,
+    httpOptions: {
+      headers: {
+        "User-Agent": "aistudio-build",
+      },
+    },
+  });
+  cachedGeminiClient = { apiKey, client };
+  return client;
+}
 
 interface ChatHistoryItem {
   role: "user" | "assistant" | "model" | "system";
@@ -295,13 +313,7 @@ function parseJsonResponseSafely(textOutput: string): {
 
 export async function POST(req: NextRequest) {
   try {
-    // 1. Enforce payload size cap (12MB max for multimodal image prompts)
-    const sizeCheck = verifyPayloadSize(req, 12 * 1024 * 1024);
-    if (!sizeCheck.valid && sizeCheck.errorResponse) {
-      return sizeCheck.errorResponse;
-    }
-
-    // 2. Enforce Same-Origin & CSRF verification
+    // 1. Enforce Same-Origin & CSRF verification
     const originCheck = verifySameOriginRequest(req);
     if (!originCheck.valid) {
       return NextResponse.json(
@@ -313,7 +325,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 3. Enforce Owner Session Authentication before allowing AI credit usage
+    // 2. Enforce Owner Session Authentication before allowing AI credit usage
     if (!isOwnerRequestAuthenticated(req)) {
       recordBlockedRequest();
       return NextResponse.json(
@@ -327,7 +339,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 4. Enforce Sliding-Window Per-IP Burst Rate Limit
+    // 3. Enforce Sliding-Window Per-IP Burst Rate Limit
     const clientIp = getClientIp(req);
     const limitPerMin = getConfiguredAiRateLimitPerMin();
     const rateCheck = checkRateLimit(clientIp, "ai-assistant", limitPerMin, 60_000);
@@ -348,7 +360,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 5. Enforce Daily AI Credit Quota Guard
+    // 4. Enforce Daily AI Credit Quota Guard
     const quotaCheck = checkDailyAiQuota();
     if (!quotaCheck.allowed) {
       return NextResponse.json(
@@ -362,7 +374,12 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const body: RequestBody = await req.json();
+    // 5. Enforce real streaming payload size cap (12MB max for multimodal image prompts)
+    const parsedBody = await readJsonWithLimit<RequestBody>(req, 12 * 1024 * 1024);
+    if (!parsedBody.ok) {
+      return parsedBody.errorResponse;
+    }
+    const body = parsedBody.data;
     const {
       prompt,
       action = "chat",
@@ -472,15 +489,8 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // Initialize official GoogleGenAI client on server-side only
-    const ai = new GoogleGenAI({
-      apiKey,
-      httpOptions: {
-        headers: {
-          "User-Agent": "aistudio-build",
-        },
-      },
-    });
+    // Reuse singleton GoogleGenAI client on server-side only
+    const ai = getGeminiClient(apiKey);
 
     const systemInstruction = `${MASTER_COPILOT_INSTRUCTION}
 
@@ -617,8 +627,7 @@ ${userPrompt}${designLockReminder}`;
       });
     }
 
-    // Invoke Gemini multi-turn generation and record daily credit consumption
-    const updatedQuota = incrementDailyAiQuota();
+    // Invoke Gemini multi-turn generation; deduct daily quota only after successful upstream call
     const response = await ai.models.generateContent({
       model: activeModel,
       contents,
@@ -628,6 +637,7 @@ ${userPrompt}${designLockReminder}`;
         responseSchema: COPILOT_RESPONSE_SCHEMA,
       },
     });
+    const updatedQuota = incrementDailyAiQuota();
 
     const textOutput = response.text || "";
     const parsedResult = parseJsonResponseSafely(textOutput);

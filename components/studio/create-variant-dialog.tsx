@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { useShallow } from "zustand/react/shallow";
 import { useStudioStore } from "@/lib/store/studio-store";
 import {
   Dialog,
@@ -21,7 +22,13 @@ export function CreateVariantDialog() {
     isCreateVariantDialogOpen,
     setCreateVariantDialogOpen,
     createVariant,
-  } = useStudioStore();
+  } = useStudioStore(
+    useShallow((state) => ({
+      isCreateVariantDialogOpen: state.isCreateVariantDialogOpen,
+      setCreateVariantDialogOpen: state.setCreateVariantDialogOpen,
+      createVariant: state.createVariant,
+    }))
+  );
 
   const [name, setName] = useState("");
   const [cloneFromActive, setCloneFromActive] = useState(true);

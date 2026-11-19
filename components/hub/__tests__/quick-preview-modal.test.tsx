@@ -157,10 +157,11 @@ describe("QuickPreviewModal", () => {
     expect(html).toContain("Code");
     expect(html).toContain("History");
 
-    // Preview tab default content (iframe)
+    // Preview tab default content (iframe with strict opaque sandbox — no allow-same-origin)
     expect(html).toContain("<iframe");
     expect(html).toContain("Test Interactive Card Preview");
-    expect(html).toContain('sandbox="allow-scripts allow-same-origin allow-modals allow-popups"');
+    expect(html).toContain('sandbox="allow-scripts allow-modals allow-popups"');
+    expect(html).not.toContain("allow-same-origin");
   });
 
   it("should handle 'Open in Studio' click and invoke loadComponent and onOpenStudio callback", () => {
@@ -226,7 +227,7 @@ describe("QuickPreviewModal", () => {
 
     // Code files subtabs
     expect(html).toContain("component.tsx");
-    expect(html).toContain("demo.tsx");
+    expect(html).toContain("default.tsx");
     expect(html).toContain("index.css");
 
     // Code snippet

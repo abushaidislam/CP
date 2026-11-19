@@ -6,11 +6,22 @@ import { constants as fsConstants } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { randomUUID } from "node:crypto";
+import {
+  checkRateLimit,
+  getClientIp,
+  isOwnerRequestAuthenticated,
+  recordBlockedRequest,
+  verifyPayloadSize,
+  verifySameOriginRequest,
+} from "@/lib/security/api-guard";
 
 export const runtime = "nodejs";
 
 const execFileAsync = promisify(execFile);
 const MAX_UPLOAD_BYTES = 150 * 1024 * 1024; // 150 MB guard
+const MAX_CONCURRENT_TRANSCODES = 2;
+
+let activeTranscodeJobs = 0;
 
 async function resolveFfmpegPath(): Promise<string | null> {
   const candidates = ["/usr/bin/ffmpeg", "/usr/local/bin/ffmpeg", "ffmpeg"];
@@ -42,6 +53,41 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
+  const sizeCheck = verifyPayloadSize(req, MAX_UPLOAD_BYTES);
+  if (!sizeCheck.valid && sizeCheck.errorResponse) {
+    return sizeCheck.errorResponse;
+  }
+
+  const originCheck = verifySameOriginRequest(req);
+  if (!originCheck.valid) {
+    return NextResponse.json(
+      { error: originCheck.reason || "Cross-origin request rejected." },
+      { status: 403 }
+    );
+  }
+
+  if (!isOwnerRequestAuthenticated(req)) {
+    recordBlockedRequest();
+    return NextResponse.json(
+      { error: "Owner authentication required to transcode videos." },
+      { status: 401 }
+    );
+  }
+
+  const clientIp = getClientIp(req);
+  const rateCheck = checkRateLimit(clientIp, "video-transcode", 10, 60_000);
+  if (!rateCheck.allowed) {
+    return NextResponse.json(
+      {
+        error: `Video transcode rate limit reached. Try again in ${rateCheck.retryAfterSeconds}s.`,
+      },
+      {
+        status: 429,
+        headers: { "Retry-After": String(rateCheck.retryAfterSeconds) },
+      }
+    );
+  }
+
   const ffmpegPath = await resolveFfmpegPath();
   if (!ffmpegPath) {
     return NextResponse.json(
@@ -50,6 +96,14 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  if (activeTranscodeJobs >= MAX_CONCURRENT_TRANSCODES) {
+    return NextResponse.json(
+      { error: "Video transcoder is currently busy. Please retry in a few seconds." },
+      { status: 503, headers: { "Retry-After": "10" } }
+    );
+  }
+
+  activeTranscodeJobs += 1;
   let inputPath: string | null = null;
   let outputPath: string | null = null;
 
@@ -126,6 +180,7 @@ export async function POST(req: NextRequest) {
     const message = err instanceof Error ? err.message : "Failed to transcode MP4 video.";
     return NextResponse.json({ error: message }, { status: 500 });
   } finally {
+    activeTranscodeJobs = Math.max(0, activeTranscodeJobs - 1);
     if (inputPath) {
       await unlink(inputPath).catch(() => {});
     }

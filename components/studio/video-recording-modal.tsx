@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useShallow } from "zustand/react/shallow";
 import { useStudioStore, type RecordingConfig } from "@/lib/store/studio-store";
 import { compileSandboxHtml } from "@/lib/sandbox/sandbox-compiler";
 import { DEFAULT_TEMPLATES } from "@/lib/sandbox/default-templates";
@@ -116,7 +117,21 @@ export function VideoRecordingModal() {
     setPreviewTheme,
     currentTemplateId,
     userComponents,
-  } = useStudioStore();
+  } = useStudioStore(
+    useShallow((state) => ({
+      isRecordingModalOpen: state.isRecordingModalOpen,
+      setRecordingModalOpen: state.setRecordingModalOpen,
+      recordingConfig: state.recordingConfig,
+      setRecordingConfig: state.setRecordingConfig,
+      files: state.files,
+      dependencies: state.dependencies,
+      canvasBg: state.canvasBg,
+      previewTheme: state.previewTheme,
+      setPreviewTheme: state.setPreviewTheme,
+      currentTemplateId: state.currentTemplateId,
+      userComponents: state.userComponents,
+    }))
+  );
 
   const capabilities = useMemo(() => detectCaptureCapabilities(), []);
 
@@ -853,6 +868,7 @@ export function VideoRecordingModal() {
         fps: recordingConfig.fps,
         resolution: recordingConfig.resolution,
         forceRescale: Boolean(recordingResult.needsServerRescale && serverFfmpegReady),
+        ownerSessionToken: useStudioStore.getState().ownerSessionToken,
       });
       const mp4Url = URL.createObjectURL(mp4Blob);
       setCachedMp4Url(mp4Url);
@@ -1242,7 +1258,7 @@ export function VideoRecordingModal() {
                       key={`${stageReloadKey}-${currentTemplateId}`}
                       srcDoc={sandboxHtml}
                       title="16:9 Video Studio Live Stage"
-                      sandbox="allow-scripts allow-same-origin allow-modals"
+                      sandbox="allow-scripts allow-modals"
                       className="w-full h-full border-none block"
                     />
 

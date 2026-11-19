@@ -2,6 +2,7 @@
 
 import React, { useState, useRef, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
+import { useShallow } from "zustand/react/shallow";
 import {
   useStudioStore,
   StudioViewport,
@@ -45,7 +46,26 @@ export function TerminalPanel() {
     setViewport,
     setZoom,
     resetCurrentTemplate,
-  } = useStudioStore();
+  } = useStudioStore(
+    useShallow((state) => ({
+      terminalLogs: state.terminalLogs,
+      isTerminalOpen: state.isTerminalOpen,
+      terminalHeight: state.terminalHeight,
+      terminalFilter: state.terminalFilter,
+      dependencies: state.dependencies,
+      clearTerminalLogs: state.clearTerminalLogs,
+      toggleTerminal: state.toggleTerminal,
+      setTerminalHeight: state.setTerminalHeight,
+      setTerminalFilter: state.setTerminalFilter,
+      addTerminalLog: state.addTerminalLog,
+      addDependency: state.addDependency,
+      removeDependency: state.removeDependency,
+      setPreviewTheme: state.setPreviewTheme,
+      setViewport: state.setViewport,
+      setZoom: state.setZoom,
+      resetCurrentTemplate: state.resetCurrentTemplate,
+    }))
+  );
 
   const [inputVal, setInputVal] = useState("");
   const [commandHistory, setCommandHistory] = useState<string[]>([]);
