@@ -109,16 +109,8 @@ export function ComponentHub({
     }))
   );
 
-  // Sync SSR registry summaries into the store immediately on first render
   const hasSeededSummariesRef = useRef(false);
-  if (
-    !hasSeededSummariesRef.current &&
-    initialSummaries &&
-    initialSummaries.length > 0
-  ) {
-    hasSeededSummariesRef.current = true;
-    seedRepoSummaries(initialSummaries);
-  }
+  const [hasHydratedSummaries, setHasHydratedSummaries] = useState(false);
 
   useSyncSecuritySession();
 
@@ -127,14 +119,20 @@ export function ComponentHub({
   const [isDark, setIsDark] = useState(true);
   const [isShortcutsOpen, setIsShortcutsOpen] = useState(false);
 
-  // Sync theme with document element & hydrate saved repo components when not SSR-seeded
+  // Sync theme with document element & seed/hydrate saved repo components post-render
   useEffect(() => {
     const root = document.documentElement;
     setIsDark(root.classList.contains("dark"));
-    if (!initialSummaries || initialSummaries.length === 0) {
+    if (initialSummaries && initialSummaries.length > 0) {
+      if (!hasSeededSummariesRef.current) {
+        hasSeededSummariesRef.current = true;
+        seedRepoSummaries(initialSummaries);
+        setHasHydratedSummaries(true);
+      }
+    } else {
       hydrateFromProjectRepo?.();
     }
-  }, [hydrateFromProjectRepo, initialSummaries]);
+  }, [hydrateFromProjectRepo, initialSummaries, seedRepoSummaries]);
 
   const toggleTheme = () => {
     const root = document.documentElement;
@@ -147,9 +145,49 @@ export function ComponentHub({
     }
   };
 
+  const effectiveUserComponents = useMemo<Record<string, UserComponent>>(() => {
+    const base = userComponents || {};
+    if (
+      hasHydratedSummaries ||
+      !initialSummaries ||
+      initialSummaries.length === 0
+    ) {
+      return base;
+    }
+    const merged: Record<string, UserComponent> = { ...base };
+    for (const s of initialSummaries) {
+      const existing = merged[s.id];
+      if (!existing) {
+        merged[s.id] = {
+          id: s.id,
+          name: s.name,
+          description: s.description,
+          category: s.category,
+          isBuiltIn: s.isBuiltIn,
+          createdAt: s.createdAt,
+          updatedAt: s.updatedAt,
+          files: {
+            "component.tsx": "",
+            "default.tsx": "",
+            "demo.tsx": "",
+            "index.css": "",
+          },
+          dependencies: s.dependencies || [],
+          previewImage: s.previewImage,
+          repoSlug: s.repoSlug,
+          repoPath: s.repoPath,
+          savedInRepo: true,
+          lastRepoSyncAt: s.lastRepoSyncAt,
+          filesLoaded: false,
+        };
+      }
+    }
+    return merged;
+  }, [userComponents, initialSummaries, hasHydratedSummaries]);
+
   const allComponents = useMemo(
-    () => Object.values(userComponents || {}),
-    [userComponents]
+    () => Object.values(effectiveUserComponents),
+    [effectiveUserComponents]
   );
 
   const recentCount = useMemo(() => {
@@ -209,7 +247,7 @@ export function ComponentHub({
     let list: UserComponent[] = [];
 
     if (selectedCategory === "Recent Work") {
-      const compMap = userComponents || {};
+      const compMap = effectiveUserComponents;
       list = (recentComponentIds || [])
         .map((id) => compMap[id])
         .filter((c): c is UserComponent => Boolean(c));
@@ -246,7 +284,7 @@ export function ComponentHub({
 
     return list;
   }, [
-    userComponents,
+    effectiveUserComponents,
     allComponents,
     newestComponents,
     popularComponents,

@@ -26,18 +26,6 @@ export function StudioRouteClient({
   const router = useRouter();
   const seededIdRef = useRef<string | null>(null);
 
-  // Synchronously seed server-loaded component into store before StudioContainer reads it
-  if (initialComponent && seededIdRef.current !== initialComponent.id) {
-    seededIdRef.current = initialComponent.id;
-    useStudioStore
-      .getState()
-      .hydrateSingleComponentFromServer(
-        initialComponent,
-        initialVariants,
-        initialActiveVariantId
-      );
-  }
-
   useEffect(() => {
     if (!id) return;
     let cancelled = false;
@@ -45,9 +33,16 @@ export function StudioRouteClient({
     const resolveRouteComponent = async () => {
       const store = useStudioStore.getState();
 
-      // If SSR already provided the exact component (even via slug), activate it cleanly
+      // Seed SSR-loaded component inside an effect so we never mutate store state during render
       if (initialComponent) {
-        if (store.currentTemplateId !== initialComponent.id) {
+        if (seededIdRef.current !== initialComponent.id) {
+          seededIdRef.current = initialComponent.id;
+          store.hydrateSingleComponentFromServer(
+            initialComponent,
+            initialVariants,
+            initialActiveVariantId
+          );
+        } else if (store.currentTemplateId !== initialComponent.id) {
           store.loadComponent(initialComponent.id);
         }
         return;
@@ -87,7 +82,7 @@ export function StudioRouteClient({
     return () => {
       cancelled = true;
     };
-  }, [id, initialComponent, router]);
+  }, [id, initialComponent, initialVariants, initialActiveVariantId, router]);
 
   return <StudioContainer componentId={initialComponent?.id || id} />;
 }
