@@ -1,8 +1,26 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-19T11:32:42.817Z",
-  "totalComponents": 54,
+  "updatedAt": "2026-11-19T12:05:59.278Z",
+  "totalComponents": 55,
   "components": [
+    {
+      "id": "comp-1795089925039-noo1w",
+      "slug": "thermal-receipt",
+      "name": "ThermalReceipt",
+      "description": "An interactive thermal receipt printer card that feeds order line items one by one with live print progress, serrated tear edges, a scan-to-pay QR reveal, and a tactile tear-off reset.",
+      "category": "Cards",
+      "isBuiltIn": false,
+      "updatedAt": 1795089949334,
+      "lastRepoSyncAt": 1795089959161,
+      "path": "registry/components/thermal-receipt",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "index.css",
+        "manifest.json"
+      ],
+      "dependencies": []
+    },
     {
       "id": "comp-1795087680744-pfft4",
       "slug": "brand-profile-card",
