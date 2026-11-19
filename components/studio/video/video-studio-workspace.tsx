@@ -349,14 +349,11 @@ export function VideoStudioWorkspace({
       renderInParentOverlay: true,
     });
     if (!recordingConfig.showCursor || recordingConfig.mode !== "manual") {
-      if (phase === "idle") {
-        clearParentCursorCanvas();
-      }
+      clearParentCursorCanvas();
     }
   }, [
     stageReady,
     recordingConfig,
-    phase,
     postToStage,
     clearParentCursorCanvas,
   ]);
@@ -697,6 +694,7 @@ export function VideoStudioWorkspace({
   const beginActualRecording = useCallback(
     async (engineOverride?: "auto" | "native" | "direct") => {
       if (!stageContainerRef.current) return;
+      stopTimers();
       setErrorMessage(null);
       revokeMediaUrls();
 

@@ -338,7 +338,7 @@ export function VideoStageViewport({
                   transform: `scale(${stageScale})`,
                   transformOrigin: "0 0",
                 }}
-                className="border-none block"
+                className="absolute top-0 left-0 border-none block"
               />
 
               {/* Top-Layer 60fps Virtual Cursor & Minimal Click Pulse Canvas (Guaranteed visible in Native & Manual Live capture) */}

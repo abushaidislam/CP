@@ -395,7 +395,7 @@ export function buildVideoStudioRuntimeScript(): string {
       function isCloseOrDismissButton(el) {
         if (!el || !(el instanceof Element)) return false;
         const desc = getElementDescriptorText(el);
-        if (/\b(close|dismiss|cancel|exit)\b/.test(desc)) return true;
+        if (/\\b(close|dismiss|cancel|exit)\\b/.test(desc)) return true;
         const trimmed = (el.textContent || "").trim();
         if (trimmed === "×" || trimmed === "✕" || trimmed === "✖") return true;
         const inDialog = el.closest && el.closest("[role='dialog'], [aria-modal='true']");
@@ -428,7 +428,7 @@ export function buildVideoStudioRuntimeScript(): string {
         const role = (el.getAttribute("role") || "").toLowerCase();
         if (role === "switch" || role === "checkbox") return true;
         const desc = getElementDescriptorText(el);
-        return /next|prev|shuffle|swap|increment|plus|\+|add|toggle|switch|cycle|step|like|heart|upvote|count|reforge/.test(
+        return /next|prev|shuffle|swap|increment|plus|\\+|add|toggle|switch|cycle|step|like|heart|upvote|count|reforge/.test(
           desc
         );
       }
@@ -436,19 +436,19 @@ export function buildVideoStudioRuntimeScript(): string {
       function isDecrementOrPrevControl(el) {
         if (!el || !(el instanceof Element)) return false;
         const desc = getElementDescriptorText(el);
-        return /\b(down|prev|previous|subtract|minus|decrement|back)\b/.test(desc);
+        return /\\b(down|prev|previous|subtract|minus|decrement|back)\\b/.test(desc);
       }
 
       function isIncrementOrNextControl(el) {
         if (!el || !(el instanceof Element)) return false;
         const desc = getElementDescriptorText(el);
-        return /\b(up|next|add|plus|increment|forward)\b/.test(desc);
+        return /\\b(up|next|add|plus|increment|forward)\\b/.test(desc);
       }
 
       function isPrimaryStartOrActionControl(el) {
         if (!el || !(el instanceof Element)) return false;
         const desc = getElementDescriptorText(el);
-        return /\b(start|play|run|launch|confirm|begin|watch demo|active|inactive)\b/.test(
+        return /\\b(start|play|run|launch|confirm|begin|watch demo|active|inactive)\\b/.test(
           desc
         );
       }
@@ -1850,7 +1850,7 @@ export function buildVideoStudioRuntimeScript(): string {
         }
 
         // Prevent accidental CDATA termination inside XML SVG foreignObject
-        stylesText = stylesText.replace(/\]\]>/g, "");
+        stylesText = stylesText.replace(/\\]\\]>/g, "");
         state.cachedStyleSig = sig;
         state.cachedStylesText = stylesText;
         return stylesText;
