@@ -48,7 +48,13 @@ export interface CardShuffleDeckProps
   theme?: CardShuffleTheme;
 }
 
-type ShufflePhase = "idle" | "fling" | "tuck" | "peek-back" | "land-front";
+type FlightPhase = "fling" | "tuck" | "peek-back" | "land-front";
+
+interface CardFlight {
+  phase: FlightPhase;
+  seq: number;
+  fast: boolean;
+}
 
 interface SlotTransform {
   x: number;
@@ -311,59 +317,54 @@ export const CardShuffleDeck = forwardRef<HTMLDivElement, CardShuffleDeckProps>(
     const [order, setOrder] = useState<number[]>(() =>
       buildInitialOrder(initialIndex, safeCount)
     );
-    const [phase, setPhase] = useState<ShufflePhase>("idle");
-    const [movingCardIdx, setMovingCardIdx] = useState<number | null>(null);
+    const [flights, setFlights] = useState<Record<number, CardFlight>>({});
     const [isHovered, setIsHovered] = useState(false);
     const [isKeyboardFocused, setIsKeyboardFocused] = useState(false);
 
     const orderRef = useRef<number[]>(order);
     orderRef.current = order;
 
-    const timersRef = useRef<number[]>([]);
-    const isAnimatingRef = useRef(false);
+    const seqRef = useRef(0);
+    const cardTimersRef = useRef>(new Map());
     const didDragRef = useRef(false);
-    const queuedDirRef = useRef<"next" | "prev" | null>(null);
     const lastNotifiedIndexRef = useRef<number | null>(null);
 
-    const clearPendingTimers = useCallback(() => {
-      timersRef.current.forEach((id) => window.clearTimeout(id));
-      timersRef.current = [];
+    const clearCardTimers = useCallback((cardIdx: number) => {
+      const existing = cardTimersRef.current.get(cardIdx);
+      if (existing) {
+        existing.forEach((id) => window.clearTimeout(id));
+        cardTimersRef.current.delete(cardIdx);
+      }
+    }, []);
+
+    const clearAllTimers = useCallback(() => {
+      cardTimersRef.current.forEach((ids) => {
+        ids.forEach((id) => window.clearTimeout(id));
+      });
+      cardTimersRef.current.clear();
     }, []);
 
     // Re-sync deck order only when card count or initialIndex changes
     useEffect(() => {
-      clearPendingTimers();
-      isAnimatingRef.current = false;
-      queuedDirRef.current = null;
+      clearAllTimers();
       const nextOrder = buildInitialOrder(initialIndex, safeCount);
       orderRef.current = nextOrder;
       setOrder(nextOrder);
-      setPhase("idle");
-      setMovingCardIdx(null);
-    }, [safeCount, initialIndex, clearPendingTimers]);
+      setFlights({});
+    }, [safeCount, initialIndex, clearAllTimers]);
 
     useEffect(() => {
       return () => {
-        clearPendingTimers();
+        clearAllTimers();
       };
-    }, [clearPendingTimers]);
+    }, [clearAllTimers]);
 
-    // Compute exact timings so total cycle matches `interval` cleanly
     const safeInterval = Number.isFinite(interval)
       ? Math.max(900, Math.min(interval, 10000))
       : 2100;
-    const flingDurationMs = Math.min(720, Math.round(safeInterval * 0.36));
-    const tuckDurationMs = Math.min(460, Math.round(safeInterval * 0.24));
-    const dwellMs = Math.max(240, safeInterval - flingDurationMs - tuckDurationMs);
 
-    // Visually active front card updates immediately as soon as the front card flings out
-    const displayedFrontPos =
-      safeCount > 1 && (phase === "fling" || phase === "tuck")
-        ? 1
-        : safeCount > 1 && phase === "land-front"
-          ? safeCount - 1
-          : 0;
-    const activeCardIndex = order[displayedFrontPos] ?? 0;
+    // Active front card is always order[0] immediately upon shuffle
+    const activeCardIndex = order[0] ?? 0;
 
     useEffect(() => {
       if (lastNotifiedIndexRef.current !== activeCardIndex) {
@@ -372,121 +373,140 @@ export const CardShuffleDeck = forwardRef<HTMLDivElement, CardShuffleDeckProps>(
       }
     }, [activeCardIndex, onActiveIndexChange]);
 
-    const runShuffleRef = useRef<(dir: "next" | "prev") => void>(() => {});
-
-    const runShuffle = useCallback(
-      (dir: "next" | "prev") => {
+    // Non-blocking per-card shuffle: rotates order IMMEDIATELY so rapid clicks never wait
+    const triggerShuffle = useCallback(
+      (dir: "next" | "prev", fast: boolean) => {
         if (safeCount < 2) return;
 
-        if (isAnimatingRef.current) {
-          // Queue at most one directional step so fast taps feel responsive
-          queuedDirRef.current = dir;
-          return;
-        }
-
-        if (prefersReducedMotion) {
-          setOrder((prev) => {
-            const next =
-              dir === "next"
-                ? [...prev.slice(1), prev[0]]
-                : [prev[prev.length - 1], ...prev.slice(0, -1)];
-            orderRef.current = next;
-            return next;
-          });
-          return;
-        }
-
-        isAnimatingRef.current = true;
         const currentOrder = orderRef.current;
 
+        if (prefersReducedMotion) {
+          const nextOrder =
+            dir === "next"
+              ? [...currentOrder.slice(1), currentOrder[0]]
+              : [
+                  currentOrder[currentOrder.length - 1],
+                  ...currentOrder.slice(0, -1),
+                ];
+          orderRef.current = nextOrder;
+          setOrder(nextOrder);
+          return;
+        }
+
+        const seq = ++seqRef.current;
+
         if (dir === "next") {
-          const frontIdx = currentOrder[0];
-          setMovingCardIdx(frontIdx);
-          setPhase("fling");
+          const flungCardIdx = currentOrder[0];
+          const nextOrder = [...currentOrder.slice(1), flungCardIdx];
+          orderRef.current = nextOrder;
+          setOrder(nextOrder);
+
+          clearCardTimers(flungCardIdx);
+
+          const flingMs = fast
+            ? 230
+            : Math.min(680, Math.round(safeInterval * 0.34));
+          const tuckMs = fast
+            ? 220
+            : Math.min(440, Math.round(safeInterval * 0.22));
+
+          setFlights((prev) => ({
+            ...prev,
+            [flungCardIdx]: { phase: "fling", seq, fast },
+          }));
 
           const t1 = window.setTimeout(() => {
-            setPhase("tuck");
-          }, flingDurationMs);
+            setFlights((prev) => {
+              if (prev[flungCardIdx]?.seq !== seq) return prev;
+              return {
+                ...prev,
+                [flungCardIdx]: { phase: "tuck", seq, fast },
+              };
+            });
+          }, flingMs);
 
           const t2 = window.setTimeout(() => {
-            setOrder((prev) => {
-              const rotated = [...prev.slice(1), prev[0]];
-              orderRef.current = rotated;
-              return rotated;
+            setFlights((prev) => {
+              if (prev[flungCardIdx]?.seq !== seq) return prev;
+              const next = { ...prev };
+              delete next[flungCardIdx];
+              return next;
             });
-            setMovingCardIdx(null);
-            setPhase("idle");
-            isAnimatingRef.current = false;
+            cardTimersRef.current.delete(flungCardIdx);
+          }, flingMs + tuckMs);
 
-            if (queuedDirRef.current) {
-              const queued = queuedDirRef.current;
-              queuedDirRef.current = null;
-              window.requestAnimationFrame(() => runShuffleRef.current(queued));
-            }
-          }, flingDurationMs + tuckDurationMs);
-
-          timersRef.current.push(t1, t2);
+          cardTimersRef.current.set(flungCardIdx, [t1, t2]);
         } else {
-          const backIdx = currentOrder[currentOrder.length - 1];
-          const peekMs = Math.round(tuckDurationMs * 0.85);
-          const landMs = Math.round(flingDurationMs * 0.75);
+          const prevCardIdx = currentOrder[currentOrder.length - 1];
+          const nextOrder = [prevCardIdx, ...currentOrder.slice(0, -1)];
+          orderRef.current = nextOrder;
+          setOrder(nextOrder);
 
-          setMovingCardIdx(backIdx);
-          setPhase("peek-back");
+          clearCardTimers(prevCardIdx);
+
+          const peekMs = fast ? 170 : 260;
+          const landMs = fast ? 220 : 340;
+
+          setFlights((prev) => ({
+            ...prev,
+            [prevCardIdx]: { phase: "peek-back", seq, fast },
+          }));
 
           const t1 = window.setTimeout(() => {
-            setPhase("land-front");
+            setFlights((prev) => {
+              if (prev[prevCardIdx]?.seq !== seq) return prev;
+              return {
+                ...prev,
+                [prevCardIdx]: { phase: "land-front", seq, fast },
+              };
+            });
           }, peekMs);
 
           const t2 = window.setTimeout(() => {
-            setOrder((prev) => {
-              const rotated = [prev[prev.length - 1], ...prev.slice(0, -1)];
-              orderRef.current = rotated;
-              return rotated;
+            setFlights((prev) => {
+              if (prev[prevCardIdx]?.seq !== seq) return prev;
+              const next = { ...prev };
+              delete next[prevCardIdx];
+              return next;
             });
-            setMovingCardIdx(null);
-            setPhase("idle");
-            isAnimatingRef.current = false;
-
-            if (queuedDirRef.current) {
-              const queued = queuedDirRef.current;
-              queuedDirRef.current = null;
-              window.requestAnimationFrame(() => runShuffleRef.current(queued));
-            }
+            cardTimersRef.current.delete(prevCardIdx);
           }, peekMs + landMs);
 
-          timersRef.current.push(t1, t2);
+          cardTimersRef.current.set(prevCardIdx, [t1, t2]);
         }
       },
-      [safeCount, prefersReducedMotion, flingDurationMs, tuckDurationMs]
+      [safeCount, prefersReducedMotion, safeInterval, clearCardTimers]
     );
 
-    runShuffleRef.current = runShuffle;
+    const shuffleNextManual = useCallback(
+      () => triggerShuffle("next", true),
+      [triggerShuffle]
+    );
+    const shufflePrevManual = useCallback(
+      () => triggerShuffle("prev", true),
+      [triggerShuffle]
+    );
 
-    const shuffleNext = useCallback(() => runShuffle("next"), [runShuffle]);
-    const shufflePrev = useCallback(() => runShuffle("prev"), [runShuffle]);
-
-    // Exact dwell scheduler: only schedules the next shuffle while idle,
-    // so total period = dwellMs + flingDurationMs + tuckDurationMs === safeInterval
+    // Drift-free autoplay timer: resets cleanly after each shuffle or manual interaction
     useEffect(() => {
       if (!autoPlay || prefersReducedMotion || safeCount < 2) return;
-      if (phase !== "idle") return;
       if (pauseOnHover && (isHovered || isKeyboardFocused)) return;
 
       const id = window.setTimeout(() => {
-        runShuffleRef.current("next");
-      }, dwellMs);
+        triggerShuffle("next", false);
+      }, safeInterval);
 
       return () => window.clearTimeout(id);
     }, [
       autoPlay,
       prefersReducedMotion,
       safeCount,
-      phase,
       pauseOnHover,
       isHovered,
       isKeyboardFocused,
-      dwellMs,
+      safeInterval,
+      order,
+      triggerShuffle,
     ]);
 
     const handleKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
@@ -498,15 +518,14 @@ export const CardShuffleDeck = forwardRef<HTMLDivElement, CardShuffleDeckProps>(
         event.key === "Enter"
       ) {
         event.preventDefault();
-        shuffleNext();
+        shuffleNextManual();
       } else if (event.key === "ArrowLeft" || event.key === "ArrowUp") {
         event.preventDefault();
-        shufflePrev();
+        shufflePrevManual();
       }
     };
 
     const handleFocus = (event: React.FocusEvent<HTMLDivElement>) => {
-      // Only pause autoplay on keyboard focus (:focus-visible), never on mouse click focus
       if (event.currentTarget.matches(":focus-visible")) {
         setIsKeyboardFocused(true);
       }
@@ -514,6 +533,10 @@ export const CardShuffleDeck = forwardRef<HTMLDivElement, CardShuffleDeckProps>(
 
     const handleBlur = () => {
       setIsKeyboardFocused(false);
+    };
+
+    const handlePointerDown = () => {
+      didDragRef.current = false;
     };
 
     const handleDragStart = () => {
@@ -524,26 +547,25 @@ export const CardShuffleDeck = forwardRef<HTMLDivElement, CardShuffleDeckProps>(
       _event: MouseEvent | TouchEvent | PointerEvent,
       info: PanInfo
     ) => {
-      // Clear drag flag after the browser's synthetic post-drag click window
       window.setTimeout(() => {
         didDragRef.current = false;
       }, 60);
 
       if (!interactive) return;
       if (
-        info.offset.x < -55 ||
-        info.offset.y > 55 ||
-        info.velocity.x < -300
+        info.offset.x < -50 ||
+        info.offset.y > 50 ||
+        info.velocity.x < -280
       ) {
-        shuffleNext();
-      } else if (info.offset.x > 70 || info.velocity.x > 350) {
-        shufflePrev();
+        shuffleNextManual();
+      } else if (info.offset.x > 65 || info.velocity.x > 320) {
+        shufflePrevManual();
       }
     };
 
     const handleCardClick = () => {
       if (!interactive || didDragRef.current) return;
-      shuffleNext();
+      shuffleNextManual();
     };
 
     const cardShadowClass =
@@ -588,56 +610,39 @@ export const CardShuffleDeck = forwardRef<HTMLDivElement, CardShuffleDeckProps>(
             const card = deckCards[cardIdx];
             if (!card) return null;
 
-            const isMoving = movingCardIdx === cardIdx;
-            const isVisualFront = posInOrder === displayedFrontPos;
+            const flight = flights[cardIdx];
+            const isFront = posInOrder === 0;
+            const isInFlight = Boolean(flight);
             const isFrontDraggable =
-              interactive &&
-              !prefersReducedMotion &&
-              posInOrder === 0 &&
-              phase === "idle";
+              interactive && !prefersReducedMotion && isFront && !isInFlight;
 
-            let target: SlotTransform;
-            let zIndex: number;
-            let transitionDuration = 0.5;
+            let target: SlotTransform = getSlotTransform(posInOrder);
+            let zIndex = 20 + (safeCount - posInOrder) * 10;
+            let transitionDuration = 0.34;
             let transitionEase: [number, number, number, number] = [
               0.22, 1, 0.36, 1,
             ];
 
-            if (isMoving && phase === "fling") {
+            if (flight?.phase === "fling") {
               target = { x: -156, y: 108, rotate: -40, scale: 0.96 };
-              zIndex = safeCount + 20;
-              transitionDuration = Math.max(0.36, flingDurationMs / 1000);
+              zIndex = 100 + (flight.seq % 1000);
+              transitionDuration = flight.fast ? 0.24 : 0.56;
               transitionEase = [0.16, 1, 0.3, 1];
-            } else if (isMoving && phase === "tuck") {
-              target = getSlotTransform(safeCount - 1);
-              zIndex = 5;
-              transitionDuration = Math.max(0.3, tuckDurationMs / 1000);
+            } else if (flight?.phase === "tuck") {
+              target = getSlotTransform(posInOrder);
+              zIndex = 2 + (flight.seq % 10);
+              transitionDuration = flight.fast ? 0.24 : 0.42;
               transitionEase = [0.32, 0.72, 0, 1];
-            } else if (isMoving && phase === "peek-back") {
+            } else if (flight?.phase === "peek-back") {
               target = { x: -148, y: 98, rotate: -36, scale: 0.95 };
-              zIndex = 5;
-              transitionDuration = Math.max(
-                0.28,
-                (tuckDurationMs * 0.85) / 1000
-              );
+              zIndex = 2 + (flight.seq % 10);
+              transitionDuration = flight.fast ? 0.18 : 0.26;
               transitionEase = [0.22, 1, 0.36, 1];
-            } else if (isMoving && phase === "land-front") {
-              target = getSlotTransform(0);
-              zIndex = safeCount + 20;
-              transitionDuration = Math.max(
-                0.34,
-                (flingDurationMs * 0.75) / 1000
-              );
+            } else if (flight?.phase === "land-front") {
+              target = getSlotTransform(posInOrder);
+              zIndex = 100 + (flight.seq % 1000);
+              transitionDuration = flight.fast ? 0.24 : 0.34;
               transitionEase = [0.16, 1, 0.3, 1];
-            } else {
-              let visualSlot = posInOrder;
-              if (phase === "fling" || phase === "tuck") {
-                visualSlot = Math.max(0, posInOrder - 1);
-              } else if (phase === "land-front") {
-                visualSlot = Math.min(safeCount - 1, posInOrder + 1);
-              }
-              target = getSlotTransform(visualSlot);
-              zIndex = (safeCount - visualSlot) * 10;
             }
 
             return (
@@ -657,14 +662,14 @@ export const CardShuffleDeck = forwardRef<HTMLDivElement, CardShuffleDeckProps>(
                 }}
                 transition={
                   prefersReducedMotion
-                    ? { duration: 0.15 }
+                    ? { duration: 0.14 }
                     : {
                         duration: transitionDuration,
                         ease: transitionEase,
                       }
                 }
                 drag={isFrontDraggable}
-                dragSnapToOrigin={!isMoving}
+                dragSnapToOrigin={!isInFlight}
                 dragElastic={0.18}
                 dragConstraints={{
                   left: -200,
@@ -672,18 +677,21 @@ export const CardShuffleDeck = forwardRef<HTMLDivElement, CardShuffleDeckProps>(
                   top: -50,
                   bottom: 150,
                 }}
+                onPointerDown={isFront ? handlePointerDown : undefined}
                 onDragStart={isFrontDraggable ? handleDragStart : undefined}
                 onDragEnd={isFrontDraggable ? handleDragEnd : undefined}
-                onClick={interactive && isVisualFront ? handleCardClick : undefined}
+                onClick={interactive && isFront ? handleCardClick : undefined}
                 whileTap={isFrontDraggable ? { scale: 0.985 } : undefined}
-                aria-hidden={!isVisualFront}
+                aria-hidden={!isFront}
                 className={cn(
                   "absolute inset-0 overflow-hidden rounded-[22px] will-change-transform",
                   cardShadowClass,
+                  isInFlight && "pointer-events-none",
                   isFrontDraggable && "cursor-grab active:cursor-grabbing",
                   !isFrontDraggable &&
                     interactive &&
-                    isVisualFront &&
+                    isFront &&
+                    !isInFlight &&
                     "cursor-pointer"
                 )}
               >
