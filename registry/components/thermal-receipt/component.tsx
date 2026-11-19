@@ -55,6 +55,8 @@ export interface ThermalReceiptProps
   paymentHandle?: string;
   /** Toggle visibility of the scan-to-pay QR section */
   showQrCode?: boolean;
+  /** Enable character-by-character Framer Motion typing animation while printing */
+  typewriter?: boolean;
   /** Milliseconds between each thermally printed line */
   printSpeed?: number;
   /** Automatically begin printing when mounted */
@@ -85,6 +87,73 @@ const SMOOTH_SPRING = {
 
 function formatCurrency(amount: number, symbol: string): string {
   return `${symbol}${amount.toFixed(2)}`;
+}
+
+/**
+ * Character-by-character Framer Motion typing reveal with zero layout shift.
+ */
+interface TypewriterTextProps {
+  text: string;
+  enabled: boolean;
+  durationMs: number;
+  delayMs?: number;
+  showCursor?: boolean;
+  className?: string;
+}
+
+function TypewriterText({
+  text,
+  enabled,
+  durationMs,
+  delayMs = 0,
+  showCursor = false,
+  className,
+}: TypewriterTextProps) {
+  const chars = useMemo(() => Array.from(text), [text]);
+
+  if (!enabled) {
+    return <span className={className}>{text}</span>;
+  }
+
+  const totalSec = Math.max(0.08, durationMs / 1000);
+  const charStepSec =
+    chars.length > 1 ? Math.min(0.032, totalSec / chars.length) : 0;
+  const startDelaySec = Math.max(0, delayMs / 1000);
+
+  return (
+    <span className={cn("inline-flex flex-wrap items-baseline", className)} aria-label={text}>
+      <span aria-hidden="true">
+        {chars.map((char, index) => (
+          <motion.span
+            key={`${index}-${char}`}
+            initial={{ opacity: 0, filter: "blur(1.5px)" }}
+            animate={{ opacity: 1, filter: "blur(0px)" }}
+            transition={{
+              duration: 0.045,
+              delay: startDelaySec + index * charStepSec,
+              ease: "easeOut",
+            }}
+            className="inline"
+          >
+            {char}
+          </motion.span>
+        ))}
+      </span>
+      {showCursor && (
+        <motion.span
+          aria-hidden="true"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: [0, 1, 0] }}
+          transition={{
+            duration: 0.5,
+            repeat: Infinity,
+            ease: "linear",
+          }}
+          className="ml-[2px] inline-block h-[1em] w-[4px] translate-y-[1px] rounded-[1px] bg-zinc-400 dark:bg-zinc-500"
+        />
+      )}
+    </span>
+  );
 }
 
 /**
@@ -128,7 +197,6 @@ function generateQrMatrix(seedText: string): boolean[][] {
   placeFinder(0, size - 7);
   placeFinder(size - 7, 0);
 
-  // Timing patterns
   for (let i = 8; i < size - 8; i++) {
     reserved[6][i] = true;
     matrix[6][i] = i % 2 === 0;
@@ -136,11 +204,9 @@ function generateQrMatrix(seedText: string): boolean[][] {
     matrix[i][6] = i % 2 === 0;
   }
 
-  // Dark module
   reserved[13][8] = true;
   matrix[13][8] = true;
 
-  // Deterministic hash PRNG from seedText
   let hash = 2166136261;
   for (let i = 0; i < seedText.length; i++) {
     hash ^= seedText.charCodeAt(i);
@@ -194,7 +260,7 @@ function SerratedEdge({ position, patternId }: SerratedEdgeProps) {
 
 interface ReceiptStep {
   id: string;
-  render: () => React.ReactNode;
+  render: (isActiveLine: boolean) => React.ReactNode;
 }
 
 const ThermalReceipt = forwardRef<HTMLDivElement, ThermalReceiptProps>(
@@ -214,7 +280,8 @@ const ThermalReceipt = forwardRef<HTMLDivElement, ThermalReceiptProps>(
       paymentCaption = "SCAN TO PAY · UPI",
       paymentHandle = "bluetokai@hdfcbank",
       showQrCode = true,
-      printSpeed = 115,
+      typewriter = true,
+      printSpeed = 200,
       autoPrint = false,
       status: controlledStatus,
       defaultStatus = "ready",
@@ -229,6 +296,7 @@ const ThermalReceipt = forwardRef<HTMLDivElement, ThermalReceiptProps>(
     const rawId = useId();
     const uid = rawId.replace(/:/g, "");
     const shouldReduceMotion = useReducedMotion();
+    const useTyping = typewriter && !shouldReduceMotion;
 
     const isControlled = controlledStatus !== undefined;
     const [uncontrolledStatus, setUncontrolledStatus] = useState<ReceiptStatus>(
@@ -256,6 +324,8 @@ const ThermalReceipt = forwardRef<HTMLDivElement, ThermalReceiptProps>(
     );
 
     const safeItems = items.length > 0 ? items : DEFAULT_ITEMS;
+    const safeSpeed = Math.max(60, Math.min(500, printSpeed));
+    const lineTypingMs = Math.max(90, safeSpeed * 0.85);
 
     const totals = useMemo(() => {
       const subtotal = safeItems.reduce(
@@ -279,44 +349,69 @@ const ThermalReceipt = forwardRef<HTMLDivElement, ThermalReceiptProps>(
     );
 
     const steps = useMemo<ReceiptStep[]>(() => {
+      const orderMetaText = `ORDER ${orderNumber}${tableLabel ? ` · ${tableLabel}` : ""}`;
       const list: ReceiptStep[] = [
         {
           id: "merchant",
-          render: () => (
+          render: (isActive) => (
             <div className="pt-4 text-center font-mono text-[14px] font-bold tracking-[0.14em] text-zinc-900 dark:text-zinc-100 uppercase">
-              {merchantName}
+              <TypewriterText
+                text={merchantName}
+                enabled={useTyping}
+                durationMs={lineTypingMs}
+                showCursor={isActive}
+              />
             </div>
           ),
         },
         {
           id: "location",
-          render: () => (
+          render: (isActive) => (
             <div className="mt-1.5 text-center font-mono text-[11px] tracking-[0.01em] text-zinc-500 dark:text-zinc-400">
-              {merchantLocation}
+              <TypewriterText
+                text={merchantLocation}
+                enabled={useTyping}
+                durationMs={lineTypingMs}
+                showCursor={isActive}
+              />
             </div>
           ),
         },
         {
           id: "timestamp",
-          render: () => (
+          render: (isActive) => (
             <div className="mt-1.5 text-center font-mono text-[10.5px] tracking-[0.06em] text-zinc-400 dark:text-zinc-500 uppercase">
-              {timestamp}
+              <TypewriterText
+                text={timestamp}
+                enabled={useTyping}
+                durationMs={lineTypingMs}
+                showCursor={isActive}
+              />
             </div>
           ),
         },
         {
           id: "order-meta",
-          render: () => (
+          render: (isActive) => (
             <div className="mt-1 text-center font-mono text-[10.5px] tracking-[0.06em] text-zinc-400 dark:text-zinc-500 uppercase">
-              {`ORDER ${orderNumber}${tableLabel ? ` · ${tableLabel}` : ""}`}
+              <TypewriterText
+                text={orderMetaText}
+                enabled={useTyping}
+                durationMs={lineTypingMs}
+                showCursor={isActive}
+              />
             </div>
           ),
         },
         {
           id: "divider-1",
           render: () => (
-            <div
+            <motion.div
               aria-hidden="true"
+              initial={useTyping ? { scaleX: 0 } : false}
+              animate={{ scaleX: 1 }}
+              transition={{ duration: Math.min(0.24, lineTypingMs / 1000), ease: "easeOut" }}
+              style={{ originX: 0 }}
               className="my-3.5 border-t border-dashed border-zinc-200 dark:border-zinc-800"
             />
           ),
@@ -327,9 +422,12 @@ const ThermalReceipt = forwardRef<HTMLDivElement, ThermalReceiptProps>(
         const lineTotal = item.price * (item.quantity ?? 1);
         const qtyPrefix =
           item.quantity && item.quantity > 1 ? `${item.quantity}x ` : "";
+        const itemText = `${qtyPrefix}${item.name}`;
+        const priceText = formatCurrency(lineTotal, currencySymbol);
+
         list.push({
           id: `item-${item.id ?? index}`,
-          render: () => (
+          render: (isActive) => (
             <div
               className={cn(
                 "flex items-baseline justify-between gap-3 font-mono text-[12px] leading-relaxed",
@@ -337,67 +435,129 @@ const ThermalReceipt = forwardRef<HTMLDivElement, ThermalReceiptProps>(
               )}
             >
               <span className="truncate text-zinc-700 dark:text-zinc-300">
-                {qtyPrefix}
-                {item.name}
+                <TypewriterText
+                  text={itemText}
+                  enabled={useTyping}
+                  durationMs={lineTypingMs * 0.65}
+                />
               </span>
               <span className="shrink-0 font-semibold tabular-nums text-zinc-900 dark:text-zinc-100">
-                {formatCurrency(lineTotal, currencySymbol)}
+                <TypewriterText
+                  text={priceText}
+                  enabled={useTyping}
+                  durationMs={lineTypingMs * 0.35}
+                  delayMs={lineTypingMs * 0.55}
+                  showCursor={isActive}
+                />
               </span>
             </div>
           ),
         });
       });
 
+      const subtotalText = formatCurrency(totals.subtotal, currencySymbol);
+      const serviceLabel = `Service charge (${Math.round(serviceChargeRate * 100)}%)`;
+      const serviceText = formatCurrency(totals.serviceCharge, currencySymbol);
+      const taxLabel = `Tax (${Math.round(taxRate * 100)}%)`;
+      const taxText = formatCurrency(totals.tax, currencySymbol);
+      const totalText = formatCurrency(totals.grandTotal, currencySymbol);
+
       list.push(
         {
           id: "divider-2",
           render: () => (
-            <div
+            <motion.div
               aria-hidden="true"
+              initial={useTyping ? { scaleX: 0 } : false}
+              animate={{ scaleX: 1 }}
+              transition={{ duration: Math.min(0.24, lineTypingMs / 1000), ease: "easeOut" }}
+              style={{ originX: 0 }}
               className="my-3.5 border-t border-dashed border-zinc-200 dark:border-zinc-800"
             />
           ),
         },
         {
           id: "subtotal",
-          render: () => (
+          render: (isActive) => (
             <div className="flex items-baseline justify-between gap-3 font-mono text-[11.5px] text-zinc-500 dark:text-zinc-400">
-              <span>Subtotal</span>
+              <TypewriterText
+                text="Subtotal"
+                enabled={useTyping}
+                durationMs={lineTypingMs * 0.55}
+              />
               <span className="tabular-nums">
-                {formatCurrency(totals.subtotal, currencySymbol)}
+                <TypewriterText
+                  text={subtotalText}
+                  enabled={useTyping}
+                  durationMs={lineTypingMs * 0.4}
+                  delayMs={lineTypingMs * 0.45}
+                  showCursor={isActive}
+                />
               </span>
             </div>
           ),
         },
         {
           id: "service-charge",
-          render: () => (
+          render: (isActive) => (
             <div className="mt-1.5 flex items-baseline justify-between gap-3 font-mono text-[11.5px] text-zinc-500 dark:text-zinc-400">
-              <span>{`Service charge (${Math.round(serviceChargeRate * 100)}%)`}</span>
+              <TypewriterText
+                text={serviceLabel}
+                enabled={useTyping}
+                durationMs={lineTypingMs * 0.65}
+              />
               <span className="tabular-nums">
-                {formatCurrency(totals.serviceCharge, currencySymbol)}
+                <TypewriterText
+                  text={serviceText}
+                  enabled={useTyping}
+                  durationMs={lineTypingMs * 0.35}
+                  delayMs={lineTypingMs * 0.55}
+                  showCursor={isActive}
+                />
               </span>
             </div>
           ),
         },
         {
           id: "tax",
-          render: () => (
+          render: (isActive) => (
             <div className="mt-1.5 flex items-baseline justify-between gap-3 font-mono text-[11.5px] text-zinc-500 dark:text-zinc-400">
-              <span>{`Tax (${Math.round(taxRate * 100)}%)`}</span>
+              <TypewriterText
+                text={taxLabel}
+                enabled={useTyping}
+                durationMs={lineTypingMs * 0.55}
+              />
               <span className="tabular-nums">
-                {formatCurrency(totals.tax, currencySymbol)}
+                <TypewriterText
+                  text={taxText}
+                  enabled={useTyping}
+                  durationMs={lineTypingMs * 0.4}
+                  delayMs={lineTypingMs * 0.45}
+                  showCursor={isActive}
+                />
               </span>
             </div>
           ),
         },
         {
           id: "total",
-          render: () => (
+          render: (isActive) => (
             <div className="mt-2.5 flex items-baseline justify-between gap-3 font-mono text-[13.5px] font-bold text-zinc-950 dark:text-zinc-50">
-              <span className="tracking-[0.04em]">TOTAL</span>
+              <span className="tracking-[0.04em]">
+                <TypewriterText
+                  text="TOTAL"
+                  enabled={useTyping}
+                  durationMs={lineTypingMs * 0.45}
+                />
+              </span>
               <span className="tabular-nums">
-                {formatCurrency(totals.grandTotal, currencySymbol)}
+                <TypewriterText
+                  text={totalText}
+                  enabled={useTyping}
+                  durationMs={lineTypingMs * 0.5}
+                  delayMs={lineTypingMs * 0.4}
+                  showCursor={isActive}
+                />
               </span>
             </div>
           ),
@@ -405,20 +565,26 @@ const ThermalReceipt = forwardRef<HTMLDivElement, ThermalReceiptProps>(
         {
           id: "divider-3",
           render: () => (
-            <div
+            <motion.div
               aria-hidden="true"
+              initial={useTyping ? { scaleX: 0 } : false}
+              animate={{ scaleX: 1 }}
+              transition={{ duration: Math.min(0.24, lineTypingMs / 1000), ease: "easeOut" }}
+              style={{ originX: 0 }}
               className="my-3.5 border-t border-dashed border-zinc-200 dark:border-zinc-800"
             />
           ),
         },
         {
           id: "thank-you",
-          render: () => (
+          render: (isActive) => (
             <div className="pb-1 text-center font-mono text-[11.5px] tracking-[0.03em] text-zinc-500 dark:text-zinc-400">
-              {thankYouMessage}{" "}
-              <span aria-hidden="true" className="text-zinc-700 dark:text-zinc-300">
-                ♥
-              </span>
+              <TypewriterText
+                text={`${thankYouMessage} ♥`}
+                enabled={useTyping}
+                durationMs={lineTypingMs}
+                showCursor={isActive}
+              />
             </div>
           ),
         }
@@ -437,12 +603,13 @@ const ThermalReceipt = forwardRef<HTMLDivElement, ThermalReceiptProps>(
       serviceChargeRate,
       taxRate,
       thankYouMessage,
+      useTyping,
+      lineTypingMs,
     ]);
 
     const totalSteps = steps.length;
     const clampedPrintedCount = Math.min(printedCount, totalSteps);
 
-    // Sync autoPrint prop changes
     useEffect(() => {
       if (autoPrint && currentStatus === "ready") {
         setPrintedCount(0);
@@ -450,7 +617,6 @@ const ThermalReceipt = forwardRef<HTMLDivElement, ThermalReceiptProps>(
       }
     }, [autoPrint, currentStatus, setStatus]);
 
-    // Step-by-step thermal line feed timer
     useEffect(() => {
       if (currentStatus !== "printing") return;
 
@@ -463,11 +629,10 @@ const ThermalReceipt = forwardRef<HTMLDivElement, ThermalReceiptProps>(
       if (clampedPrintedCount >= totalSteps) {
         const doneTimer = setTimeout(() => {
           setStatus("printed");
-        }, Math.max(120, Math.min(260, printSpeed * 1.4)));
+        }, Math.max(160, Math.min(340, safeSpeed * 1.15)));
         return () => clearTimeout(doneTimer);
       }
 
-      const safeSpeed = Math.max(40, Math.min(500, printSpeed));
       const delay = clampedPrintedCount === 0 ? 220 : safeSpeed;
       const stepTimer = setTimeout(() => {
         setPrintedCount((prev) => prev + 1);
@@ -478,12 +643,11 @@ const ThermalReceipt = forwardRef<HTMLDivElement, ThermalReceiptProps>(
       currentStatus,
       clampedPrintedCount,
       totalSteps,
-      printSpeed,
+      safeSpeed,
       shouldReduceMotion,
       setStatus,
     ]);
 
-    // Cleanup transient timers on unmount
     useEffect(() => {
       return () => {
         if (copyTimerRef.current) clearTimeout(copyTimerRef.current);
@@ -518,16 +682,23 @@ const ThermalReceipt = forwardRef<HTMLDivElement, ThermalReceiptProps>(
     }, [currentStatus, isTearing, onTearOff, shouldReduceMotion, setStatus]);
 
     const handleCopyPaymentHandle = useCallback(() => {
-      if (!paymentHandle || typeof navigator === "undefined" || !navigator.clipboard) {
+      if (
+        !paymentHandle ||
+        typeof navigator === "undefined" ||
+        !navigator.clipboard
+      ) {
         return;
       }
-      navigator.clipboard.writeText(paymentHandle).then(() => {
-        setCopied(true);
-        if (copyTimerRef.current) clearTimeout(copyTimerRef.current);
-        copyTimerRef.current = setTimeout(() => setCopied(false), 1600);
-      }).catch(() => {
-        // Silently ignore clipboard denial in restricted iframes
-      });
+      navigator.clipboard
+        .writeText(paymentHandle)
+        .then(() => {
+          setCopied(true);
+          if (copyTimerRef.current) clearTimeout(copyTimerRef.current);
+          copyTimerRef.current = setTimeout(() => setCopied(false), 1600);
+        })
+        .catch(() => {
+          // Silently ignore clipboard denial in restricted iframes
+        });
     }, [paymentHandle]);
 
     const footerLabel =
@@ -686,16 +857,21 @@ const ThermalReceipt = forwardRef<HTMLDivElement, ThermalReceiptProps>(
                 <SerratedEdge position="top" patternId={`${uid}-tooth-top`} />
 
                 <div className="bg-white dark:bg-zinc-950 px-5 pb-4 min-h-[72px] shadow-[inset_0_1px_0_rgba(255,255,255,0.6)] dark:shadow-none">
-                  {visibleSteps.map((step) => (
-                    <motion.div
-                      key={step.id}
-                      initial={shouldReduceMotion ? false : { opacity: 0, y: -4 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.16, ease: "easeOut" }}
-                    >
-                      {step.render()}
-                    </motion.div>
-                  ))}
+                  {visibleSteps.map((step, idx) => {
+                    const isActiveLine =
+                      currentStatus === "printing" &&
+                      idx === visibleSteps.length - 1;
+                    return (
+                      <motion.div
+                        key={step.id}
+                        initial={shouldReduceMotion ? false : { opacity: 0, y: -3 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.14, ease: "easeOut" }}
+                      >
+                        {step.render(isActiveLine)}
+                      </motion.div>
+                    );
+                  })}
 
                   {/* Scan-to-Pay QR Section reveals upon completion */}
                   <AnimatePresence initial={false}>
@@ -718,10 +894,21 @@ const ThermalReceipt = forwardRef<HTMLDivElement, ThermalReceiptProps>(
                       >
                         <div className="mt-3.5 border-t border-dashed border-zinc-200 dark:border-zinc-800 pt-4 pb-1 flex flex-col items-center">
                           <span className="font-mono text-[10px] tracking-[0.14em] text-zinc-400 dark:text-zinc-500 uppercase">
-                            {paymentCaption}
+                            <TypewriterText
+                              text={paymentCaption}
+                              enabled={useTyping}
+                              durationMs={220}
+                            />
                           </span>
 
-                          <div
+                          <motion.div
+                            initial={
+                              shouldReduceMotion
+                                ? false
+                                : { opacity: 0, scale: 0.94 }
+                            }
+                            animate={{ opacity: 1, scale: 1 }}
+                            transition={{ duration: 0.26, delay: 0.08 }}
                             className="mt-3 rounded-2xl border border-zinc-200/90 dark:border-zinc-800 bg-white p-3 shadow-[0_1px_2px_rgba(0,0,0,0.03)]"
                             role="img"
                             aria-label={`Payment QR code for ${paymentHandle}`}
@@ -746,7 +933,7 @@ const ThermalReceipt = forwardRef<HTMLDivElement, ThermalReceiptProps>(
                                 )
                               )}
                             </svg>
-                          </div>
+                          </motion.div>
 
                           <button
                             type="button"
@@ -759,9 +946,23 @@ const ThermalReceipt = forwardRef<HTMLDivElement, ThermalReceiptProps>(
                               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-900 dark:focus-visible:ring-zinc-100"
                             )}
                           >
-                            <span>{copied ? "Copied handle" : paymentHandle}</span>
+                            <span>
+                              {copied ? (
+                                "Copied handle"
+                              ) : (
+                                <TypewriterText
+                                  text={paymentHandle}
+                                  enabled={useTyping}
+                                  durationMs={240}
+                                  delayMs={120}
+                                />
+                              )}
+                            </span>
                             {copied && (
-                              <Check className="h-3 w-3 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
+                              <Check
+                                className="h-3 w-3 text-emerald-600 dark:text-emerald-400"
+                                aria-hidden="true"
+                              />
                             )}
                           </button>
                         </div>
