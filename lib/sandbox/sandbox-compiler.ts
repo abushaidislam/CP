@@ -674,6 +674,8 @@ export function compileSandboxHtml(
           React.useEffect(() => {
             const listener = (next) => setDemoProps(next);
             demoPropsListeners.add(listener);
+            window.__STUDIO_COMPONENT_MOUNTED__ = true;
+            window.dispatchEvent(new CustomEvent("__STUDIO_COMPONENT_MOUNTED__"));
             notifyParent({ type: "RENDER_SUCCESS" });
             return () => {
               demoPropsListeners.delete(listener);
@@ -928,8 +930,8 @@ export function compileSandboxHtml(
         }
       }, interval);
     }
-    ${isVideoStudio ? buildVideoStudioRuntimeScript() : ""}
   </script>
+  ${isVideoStudio ? `<script>${buildVideoStudioRuntimeScript()}</script>` : ""}
 </body>
 </html>`;
 

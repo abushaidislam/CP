@@ -195,21 +195,52 @@ export function buildVideoStudioRuntimeScript(): string {
         "summary",
         "input:not([type='hidden']):not([disabled])",
         "select:not([disabled])",
+        "textarea:not([disabled])",
         "a[href]",
         "[data-interactive]",
         "[aria-haspopup]",
         "[aria-expanded]",
+        "[aria-pressed]",
+        "canvas[tabindex]",
       ].join(",");
+
+      function waitForComponentMount(maxWaitMs) {
+        const limit = Math.max(100, Number(maxWaitMs || 1800));
+        return new Promise((resolve) => {
+          const start = performance.now();
+          function check() {
+            const root = document.getElementById("root");
+            const hasMountedTree =
+              root &&
+              root.children.length > 0 &&
+              root.getBoundingClientRect().height > 12;
+            if (
+              (window.__STUDIO_COMPONENT_MOUNTED__ && hasMountedTree) ||
+              hasMountedTree ||
+              performance.now() - start >= limit
+            ) {
+              resolve();
+              return;
+            }
+            requestAnimationFrame(check);
+          }
+          check();
+        });
+      }
 
       function isInteractiveAtPoint(x, y) {
         try {
           const el = document.elementFromPoint(x, y);
-          if (!el || !(el instanceof HTMLElement)) return false;
+          if (!el || !(el instanceof Element)) return false;
           if (el.closest && el.closest("#__video_studio_overlay__")) return false;
           if (el.matches && el.matches(INTERACTIVE_SELECTOR)) return true;
           if (el.closest && el.closest(INTERACTIVE_SELECTOR)) return true;
           const style = window.getComputedStyle(el);
-          return style.cursor === "pointer";
+          return (
+            style.cursor === "pointer" ||
+            style.cursor === "grab" ||
+            style.cursor === "grabbing"
+          );
         } catch (e) {
           return false;
         }
@@ -217,7 +248,9 @@ export function buildVideoStudioRuntimeScript(): string {
 
       function findScrollContainer() {
         const docEl = document.scrollingElement || document.documentElement;
-        const docScrollable = Math.max(0, docEl.scrollHeight - window.innerHeight);
+        const rawDocScroll = Math.max(0, docEl.scrollHeight - window.innerHeight);
+        // Ignore tiny < 96px wrapper padding overflows around min-h-screen components
+        const docScrollable = rawDocScroll > 96 ? rawDocScroll : 0;
 
         let bestInner = null;
         let bestInnerDist = 0;
@@ -231,7 +264,7 @@ export function buildVideoStudioRuntimeScript(): string {
             const overflowY = style.overflowY;
             if (overflowY === "auto" || overflowY === "scroll") {
               const dist = el.scrollHeight - el.clientHeight;
-              if (dist > 40 && el.clientHeight > 140 && dist > bestInnerDist) {
+              if (dist > 80 && el.clientHeight > 140 && dist > bestInnerDist) {
                 bestInner = el;
                 bestInnerDist = dist;
               }
@@ -264,25 +297,25 @@ export function buildVideoStudioRuntimeScript(): string {
       }
 
       function isVisibleInViewport(el) {
-        if (!el || !(el instanceof HTMLElement)) return false;
+        if (!el || !(el instanceof Element)) return false;
         if (el.closest && el.closest("#__video_studio_overlay__")) return false;
         const style = window.getComputedStyle(el);
         if (
           style.display === "none" ||
           style.visibility === "hidden" ||
-          parseFloat(style.opacity) < 0.08 ||
+          parseFloat(style.opacity) < 0.06 ||
           style.pointerEvents === "none"
         ) {
           return false;
         }
         const rect = el.getBoundingClientRect();
-        if (rect.width < 14 || rect.height < 14) return false;
+        if (rect.width < 10 || rect.height < 10) return false;
         if (rect.width > window.innerWidth * 0.96 && rect.height > window.innerHeight * 0.96) {
           return false;
         }
         const cx = rect.left + rect.width / 2;
         const cy = rect.top + rect.height / 2;
-        if (cx < 6 || cx > window.innerWidth - 6 || cy < 6 || cy > window.innerHeight - 6) {
+        if (cx < 4 || cx > window.innerWidth - 4 || cy < 4 || cy > window.innerHeight - 4) {
           return false;
         }
         return true;
@@ -301,20 +334,40 @@ export function buildVideoStudioRuntimeScript(): string {
           }
         }
 
-        const extraEls = document.body.querySelectorAll("div, li, label, article");
+        // Also detect interactive <canvas> elements (3D sculptures, interactive visualizations)
+        const canvases = document.body.querySelectorAll("#root canvas");
+        for (let i = 0; i < canvases.length; i++) {
+          const c = canvases[i];
+          if (seen.has(c) || !isVisibleInViewport(c)) continue;
+          const style = window.getComputedStyle(c);
+          const isInteractiveCanvas =
+            c.hasAttribute("tabindex") ||
+            style.cursor === "grab" ||
+            style.cursor === "pointer" ||
+            style.cursor === "crosshair" ||
+            canvases.length === 1;
+          if (isInteractiveCanvas) {
+            seen.add(c);
+            list.push(c);
+          }
+        }
+
+        const extraEls = document.body.querySelectorAll(
+          "#root div, #root li, #root label, #root article, #root span, #root section"
+        );
         for (let i = 0; i < extraEls.length && list.length < 48; i++) {
           const el = extraEls[i];
           if (seen.has(el) || !isVisibleInViewport(el)) continue;
           const style = window.getComputedStyle(el);
-          if (style.cursor !== "pointer") continue;
+          if (style.cursor !== "pointer" && style.cursor !== "grab") continue;
           const rect = el.getBoundingClientRect();
           if (
-            rect.width >= 36 &&
-            rect.height >= 24 &&
+            rect.width >= 24 &&
+            rect.height >= 20 &&
             rect.width <= window.innerWidth * 0.78 &&
             rect.height <= window.innerHeight * 0.65
           ) {
-            if (!el.querySelector("button, a[href], [role='menuitem'], [role='option']")) {
+            if (!el.querySelector("button, a[href], [role='menuitem'], [role='option'], canvas")) {
               seen.add(el);
               list.push(el);
             }
@@ -324,8 +377,39 @@ export function buildVideoStudioRuntimeScript(): string {
         return list;
       }
 
+      function getElementDescriptorText(el) {
+        if (!el || !(el instanceof Element)) return "";
+        return (
+          (el.textContent || "") +
+          " " +
+          (el.getAttribute("aria-label") || "") +
+          " " +
+          (el.getAttribute("title") || "") +
+          " " +
+          (el.getAttribute("data-state") || "")
+        )
+          .trim()
+          .toLowerCase();
+      }
+
+      function isCloseOrDismissButton(el) {
+        if (!el || !(el instanceof Element)) return false;
+        const desc = getElementDescriptorText(el);
+        if (/\b(close|dismiss|cancel|exit)\b/.test(desc)) return true;
+        const trimmed = (el.textContent || "").trim();
+        if (trimmed === "×" || trimmed === "✕" || trimmed === "✖") return true;
+        const inDialog = el.closest && el.closest("[role='dialog'], [aria-modal='true']");
+        if (inDialog) {
+          const rect = el.getBoundingClientRect();
+          if (rect.width <= 44 && rect.height <= 44 && trimmed.length <= 1) {
+            return true;
+          }
+        }
+        return false;
+      }
+
       function isLikelyDropdownTrigger(el) {
-        if (!el || !(el instanceof HTMLElement)) return false;
+        if (!el || !(el instanceof Element)) return false;
         if (
           el.hasAttribute("aria-haspopup") ||
           el.hasAttribute("aria-expanded") ||
@@ -333,20 +417,39 @@ export function buildVideoStudioRuntimeScript(): string {
         ) {
           return true;
         }
-        const txt = (el.textContent || "").toLowerCase();
-        const aria = (el.getAttribute("aria-label") || "").toLowerCase();
+        const desc = getElementDescriptorText(el);
         return /menu|dropdown|select|filter|sort|more|options|category|product|resource|solution|company/.test(
-          txt + " " + aria
+          desc
         );
       }
 
       function isLikelyMultiClickControl(el) {
-        if (!el || !(el instanceof HTMLElement)) return false;
+        if (!el || !(el instanceof Element)) return false;
         const role = (el.getAttribute("role") || "").toLowerCase();
         if (role === "switch" || role === "checkbox") return true;
-        const text = ((el.textContent || "") + " " + (el.getAttribute("aria-label") || "")).toLowerCase();
-        return /next|prev|shuffle|swap|increment|plus|\\+|add|toggle|switch|cycle|play|step|like|heart|upvote|count/.test(
-          text
+        const desc = getElementDescriptorText(el);
+        return /next|prev|shuffle|swap|increment|plus|\+|add|toggle|switch|cycle|step|like|heart|upvote|count|reforge/.test(
+          desc
+        );
+      }
+
+      function isDecrementOrPrevControl(el) {
+        if (!el || !(el instanceof Element)) return false;
+        const desc = getElementDescriptorText(el);
+        return /\b(down|prev|previous|subtract|minus|decrement|back)\b/.test(desc);
+      }
+
+      function isIncrementOrNextControl(el) {
+        if (!el || !(el instanceof Element)) return false;
+        const desc = getElementDescriptorText(el);
+        return /\b(up|next|add|plus|increment|forward)\b/.test(desc);
+      }
+
+      function isPrimaryStartOrActionControl(el) {
+        if (!el || !(el instanceof Element)) return false;
+        const desc = getElementDescriptorText(el);
+        return /\b(start|play|run|launch|confirm|begin|watch demo|active|inactive)\b/.test(
+          desc
         );
       }
 
@@ -358,7 +461,7 @@ export function buildVideoStudioRuntimeScript(): string {
           const cx = rect.left + rect.width / 2;
           const cy = rect.top + rect.height / 2;
           const tooClose = results.some(
-            (other) => Math.hypot(other.cx - cx, other.cy - cy) < (minDistance || 34)
+            (other) => Math.hypot(other.cx - cx, other.cy - cy) < (minDistance || 28)
           );
           if (!tooClose) {
             results.push({ el, cx, cy, rect });
@@ -369,11 +472,17 @@ export function buildVideoStudioRuntimeScript(): string {
 
       function discoverPrimaryTargets() {
         const all = getAllVisibleInteractiveElements();
-        const deduped = deduplicateTargets(all, 38);
+        const deduped = deduplicateTargets(all, 28);
 
         deduped.sort((a, b) => {
-          const bandA = Math.floor(a.cy / 85);
-          const bandB = Math.floor(b.cy / 85);
+          // Prioritize interactive HTML controls before large canvases so CTAs are visited cleanly
+          const aIsCanvas = a.el.tagName === "CANVAS" ? 1 : 0;
+          const bIsCanvas = b.el.tagName === "CANVAS" ? 1 : 0;
+          if (aIsCanvas !== bIsCanvas && deduped.length <= 4) {
+            return aIsCanvas - bIsCanvas;
+          }
+          const bandA = Math.floor(a.cy / 75);
+          const bandB = Math.floor(b.cy / 75);
           if (bandA !== bandB) return bandA - bandB;
           return a.cx - b.cx;
         });
@@ -393,8 +502,9 @@ export function buildVideoStudioRuntimeScript(): string {
 
         fresh.sort((a, b) => {
           const score = (node) => {
+            if (isCloseOrDismissButton(node)) return -5;
             const role = node.getAttribute("role") || "";
-            if (role === "menuitem" || role === "option") return 4;
+            if (role === "menuitem" || role === "option" || role === "tab") return 4;
             if (node.tagName === "BUTTON" || node.tagName === "A") return 3;
             return 1;
           };
@@ -406,7 +516,7 @@ export function buildVideoStudioRuntimeScript(): string {
           return ra.left - rb.left;
         });
 
-        return deduplicateTargets(fresh, 22).slice(0, 5);
+        return deduplicateTargets(fresh, 20).slice(0, 5);
       }
 
       function scanAndReportTargets() {
@@ -497,8 +607,49 @@ export function buildVideoStudioRuntimeScript(): string {
       }
 
       // -----------------------------------------------------------------------
-      // Synthetic Pointer / Hover / Click Dispatch (Auto-Pilot)
+      // Synthetic Pointer / Hover / Click / Drag Dispatch (Auto-Pilot)
       // -----------------------------------------------------------------------
+      function createPointerInit(x, y, overrides) {
+        return Object.assign(
+          {
+            bubbles: true,
+            cancelable: true,
+            composed: true,
+            view: window,
+            detail: 1,
+            clientX: x,
+            clientY: y,
+            screenX: x,
+            screenY: y,
+            pointerId: 1,
+            pointerType: "mouse",
+            isPrimary: true,
+            button: 0,
+            buttons: 0,
+          },
+          overrides || {}
+        );
+      }
+
+      function createMouseInit(x, y, overrides) {
+        return Object.assign(
+          {
+            bubbles: true,
+            cancelable: true,
+            composed: true,
+            view: window,
+            detail: 1,
+            clientX: x,
+            clientY: y,
+            screenX: x,
+            screenY: y,
+            button: 0,
+            buttons: 0,
+          },
+          overrides || {}
+        );
+      }
+
       function markHoverAncestors(targetEl) {
         if (state.hoveredAncestors && state.hoveredAncestors.length > 0) {
           for (let i = 0; i < state.hoveredAncestors.length; i++) {
@@ -510,7 +661,7 @@ export function buildVideoStudioRuntimeScript(): string {
         }
         let curr = targetEl;
         let depth = 0;
-        while (curr && curr instanceof HTMLElement && curr.id !== "root" && depth < 6) {
+        while (curr && curr instanceof Element && curr.id !== "root" && depth < 6) {
           try {
             curr.setAttribute("data-studio-hover", "true");
             state.hoveredAncestors.push(curr);
@@ -526,13 +677,22 @@ export function buildVideoStudioRuntimeScript(): string {
           try {
             state.lastHoveredEl.removeAttribute("data-studio-hover");
             state.lastHoveredEl.dispatchEvent(
-              new PointerEvent("pointerout", { bubbles: true, cancelable: true })
+              new PointerEvent("pointerout", createPointerInit(state.x, state.y))
             );
             state.lastHoveredEl.dispatchEvent(
-              new MouseEvent("mouseout", { bubbles: true, cancelable: true })
+              new PointerEvent(
+                "pointerleave",
+                createPointerInit(state.x, state.y, { bubbles: false, cancelable: false })
+              )
             );
             state.lastHoveredEl.dispatchEvent(
-              new MouseEvent("mouseleave", { bubbles: false, cancelable: false })
+              new MouseEvent("mouseout", createMouseInit(state.x, state.y))
+            );
+            state.lastHoveredEl.dispatchEvent(
+              new MouseEvent(
+                "mouseleave",
+                createMouseInit(state.x, state.y, { bubbles: false, cancelable: false })
+              )
             );
           } catch (e) {}
           state.lastHoveredEl = null;
@@ -548,29 +708,22 @@ export function buildVideoStudioRuntimeScript(): string {
           try {
             state.lastHoveredEl.removeAttribute("data-studio-hover");
             state.lastHoveredEl.dispatchEvent(
-              new PointerEvent("pointerout", {
-                bubbles: true,
-                cancelable: true,
-                clientX: x,
-                clientY: y,
-                pointerType: "mouse",
-              })
+              new PointerEvent("pointerout", createPointerInit(x, y))
             );
             state.lastHoveredEl.dispatchEvent(
-              new MouseEvent("mouseout", {
-                bubbles: true,
-                cancelable: true,
-                clientX: x,
-                clientY: y,
-              })
+              new PointerEvent(
+                "pointerleave",
+                createPointerInit(x, y, { bubbles: false, cancelable: false })
+              )
             );
             state.lastHoveredEl.dispatchEvent(
-              new MouseEvent("mouseleave", {
-                bubbles: false,
-                cancelable: false,
-                clientX: x,
-                clientY: y,
-              })
+              new MouseEvent("mouseout", createMouseInit(x, y))
+            );
+            state.lastHoveredEl.dispatchEvent(
+              new MouseEvent(
+                "mouseleave",
+                createMouseInit(x, y, { bubbles: false, cancelable: false })
+              )
             );
           } catch (e) {}
         }
@@ -580,71 +733,50 @@ export function buildVideoStudioRuntimeScript(): string {
           markHoverAncestors(el);
           try {
             el.setAttribute("data-studio-hover", "true");
+            el.dispatchEvent(new PointerEvent("pointerover", createPointerInit(x, y)));
             el.dispatchEvent(
-              new PointerEvent("pointerover", {
-                bubbles: true,
-                cancelable: true,
-                clientX: x,
-                clientY: y,
-                pointerType: "mouse",
-              })
+              new PointerEvent(
+                "pointerenter",
+                createPointerInit(x, y, { bubbles: false, cancelable: false })
+              )
             );
+            el.dispatchEvent(new MouseEvent("mouseover", createMouseInit(x, y)));
             el.dispatchEvent(
-              new PointerEvent("pointerenter", {
-                bubbles: false,
-                cancelable: false,
-                clientX: x,
-                clientY: y,
-                pointerType: "mouse",
-              })
-            );
-            el.dispatchEvent(
-              new MouseEvent("mouseover", {
-                bubbles: true,
-                cancelable: true,
-                clientX: x,
-                clientY: y,
-              })
-            );
-            el.dispatchEvent(
-              new MouseEvent("mouseenter", {
-                bubbles: false,
-                cancelable: false,
-                clientX: x,
-                clientY: y,
-              })
+              new MouseEvent(
+                "mouseenter",
+                createMouseInit(x, y, { bubbles: false, cancelable: false })
+              )
             );
           } catch (e) {}
         }
 
         try {
-          el.dispatchEvent(
-            new PointerEvent("pointermove", {
-              bubbles: true,
-              cancelable: true,
-              clientX: x,
-              clientY: y,
-              pointerType: "mouse",
-            })
-          );
-          el.dispatchEvent(
-            new MouseEvent("mousemove", {
-              bubbles: true,
-              cancelable: true,
-              clientX: x,
-              clientY: y,
-            })
-          );
+          el.dispatchEvent(new PointerEvent("pointermove", createPointerInit(x, y)));
+          el.dispatchEvent(new MouseEvent("mousemove", createMouseInit(x, y)));
         } catch (e) {}
 
         return el;
       }
 
       function dispatchTactileClick(x, y, targetOverride) {
-        const el = targetOverride || document.elementFromPoint(x, y);
+        // Snap cursor tip to exact click coordinate so visual cursor & ripple are 100% aligned
+        state.targetX = x;
+        state.targetY = y;
+        state.x = x;
+        state.y = y;
+        state.vx = 0;
+        state.vy = 0;
+
+        const hitEl = document.elementFromPoint(x, y);
+        const el =
+          targetOverride && document.contains(targetOverride)
+            ? targetOverride
+            : hitEl;
+
         state.isPressed = true;
         state.targetScale = 0.86;
         spawnMinimalClickPulse(x, y);
+        emitCursorTelemetryNow();
 
         return new Promise((resolve) => {
           if (el) {
@@ -665,26 +797,14 @@ export function buildVideoStudioRuntimeScript(): string {
             }
 
             try {
+              if (typeof el.focus === "function") {
+                el.focus({ preventScroll: true });
+              }
               el.dispatchEvent(
-                new PointerEvent("pointerdown", {
-                  bubbles: true,
-                  cancelable: true,
-                  clientX: x,
-                  clientY: y,
-                  button: 0,
-                  buttons: 1,
-                  pointerType: "mouse",
-                })
+                new PointerEvent("pointerdown", createPointerInit(x, y, { buttons: 1 }))
               );
               el.dispatchEvent(
-                new MouseEvent("mousedown", {
-                  bubbles: true,
-                  cancelable: true,
-                  clientX: x,
-                  clientY: y,
-                  button: 0,
-                  buttons: 1,
-                })
+                new MouseEvent("mousedown", createMouseInit(x, y, { buttons: 1 }))
               );
             } catch (e) {}
 
@@ -693,33 +813,29 @@ export function buildVideoStudioRuntimeScript(): string {
               state.targetScale = 1;
               try {
                 el.dispatchEvent(
-                  new PointerEvent("pointerup", {
-                    bubbles: true,
-                    cancelable: true,
-                    clientX: x,
-                    clientY: y,
-                    button: 0,
-                    pointerType: "mouse",
-                  })
+                  new PointerEvent("pointerup", createPointerInit(x, y, { buttons: 0 }))
                 );
                 el.dispatchEvent(
-                  new MouseEvent("mouseup", {
-                    bubbles: true,
-                    cancelable: true,
-                    clientX: x,
-                    clientY: y,
-                    button: 0,
-                  })
+                  new MouseEvent("mouseup", createMouseInit(x, y, { buttons: 0 }))
                 );
-                el.dispatchEvent(
-                  new MouseEvent("click", {
-                    bubbles: true,
-                    cancelable: true,
-                    clientX: x,
-                    clientY: y,
-                    button: 0,
-                  })
-                );
+
+                // For native checkboxes/radios/summaries, .click() toggles native checked state;
+                // for all other elements, dispatch a MouseEvent("click") with exact clientX/clientY
+                const tag = (el.tagName || "").toUpperCase();
+                const inputType = (el.getAttribute && el.getAttribute("type")) || "";
+                if (
+                  (tag === "INPUT" && (inputType === "checkbox" || inputType === "radio")) ||
+                  tag === "SUMMARY" ||
+                  tag === "LABEL"
+                ) {
+                  if (typeof el.click === "function") {
+                    el.click();
+                  }
+                } else {
+                  el.dispatchEvent(
+                    new MouseEvent("click", createMouseInit(x, y, { buttons: 0 }))
+                  );
+                }
               } catch (e) {}
               if (anchor && isExternalLink) {
                 anchor.removeEventListener("click", preventNav, { capture: true });
@@ -736,11 +852,101 @@ export function buildVideoStudioRuntimeScript(): string {
         });
       }
 
+      /**
+       * Smooth 3D/Canvas interactive drag-orbit gesture + click for <canvas> targets
+       */
+      async function dispatchCanvasDragGesture(canvasEl, durationMs) {
+        if (!canvasEl || !document.contains(canvasEl)) return;
+        const rect = canvasEl.getBoundingClientRect();
+        const cx = rect.left + rect.width * 0.5;
+        const cy = rect.top + rect.height * 0.5;
+        const rx = Math.min(95, rect.width * 0.24);
+        const ry = Math.min(55, rect.height * 0.18);
+
+        const startX = cx - rx * 0.65;
+        const startY = cy + ry * 0.35;
+        await glideTo(startX, startY, 260, true);
+        if (state.choreographyCancelled) return;
+
+        state.isPressed = true;
+        state.targetScale = 0.88;
+        spawnMinimalClickPulse(startX, startY);
+
+        try {
+          canvasEl.dispatchEvent(
+            new PointerEvent("pointerdown", createPointerInit(startX, startY, { buttons: 1 }))
+          );
+          canvasEl.dispatchEvent(
+            new MouseEvent("mousedown", createMouseInit(startX, startY, { buttons: 1 }))
+          );
+        } catch (e) {}
+
+        const dragDuration = Math.max(420, Math.min(950, Number(durationMs || 680)));
+        const dragStart = performance.now();
+
+        await new Promise((resolve) => {
+          function step(now) {
+            if (state.choreographyCancelled) {
+              resolve();
+              return;
+            }
+            const raw = Math.min(1, (now - dragStart) / dragDuration);
+            const eased = easeInOutSine(raw);
+            const angle = eased * Math.PI * 1.15;
+            const curX = cx - Math.cos(angle) * rx * 0.75;
+            const curY = cy + Math.sin(angle * 1.5) * ry * 0.65;
+
+            state.targetX = curX;
+            state.targetY = curY;
+            state.x = curX;
+            state.y = curY;
+
+            try {
+              canvasEl.dispatchEvent(
+                new PointerEvent("pointermove", createPointerInit(curX, curY, { buttons: 1 }))
+              );
+              canvasEl.dispatchEvent(
+                new MouseEvent("mousemove", createMouseInit(curX, curY, { buttons: 1 }))
+              );
+            } catch (e) {}
+
+            if (raw >= 1) {
+              resolve();
+              return;
+            }
+            state.choreographyRaf = requestAnimationFrame(step);
+          }
+          state.choreographyRaf = requestAnimationFrame(step);
+        });
+
+        state.isPressed = false;
+        state.targetScale = 1;
+        try {
+          canvasEl.dispatchEvent(
+            new PointerEvent("pointerup", createPointerInit(state.x, state.y, { buttons: 0 }))
+          );
+          canvasEl.dispatchEvent(
+            new MouseEvent("mouseup", createMouseInit(state.x, state.y, { buttons: 0 }))
+          );
+        } catch (e) {}
+
+        if (state.choreographyCancelled) return;
+        await waitMs(180);
+        if (state.choreographyCancelled) return;
+
+        // Follow up with a crisp center tap to trigger reforge / canvas click handlers
+        await glideTo(cx, cy, 200, true);
+        if (!state.choreographyCancelled && state.autoClick) {
+          await dispatchTactileClick(cx, cy, canvasEl);
+          await waitMs(280);
+        }
+      }
+
       // -----------------------------------------------------------------------
       // Master 60fps Spring Physics & Minimal Pulse Loop (Zero Camera Zoom)
       // -----------------------------------------------------------------------
       function stepPhysics(now) {
-        const dt = Math.min(0.04, Math.max(0.004, (now - state.lastFrameTs) / 1000));
+        const dt = Math.min(0.035, Math.max(0.004, (now - state.lastFrameTs) / 1000));
         state.lastFrameTs = now;
 
         // Guard: keep overlay connected if DOM was mutated
@@ -749,8 +955,10 @@ export function buildVideoStudioRuntimeScript(): string {
         }
 
         const isManualDriving = state.manualActive || state.mode === "manual";
-        const stiffness = isManualDriving ? 440 : 265;
-        const damping = isManualDriving ? 37 : 28;
+        // In Auto-Pilot, glideTo already computes a cubic-eased Bézier curve, so use a high-precision
+        // critically-damped tracking spring (820 / 58) so the cursor tip never lags behind clicks
+        const stiffness = isManualDriving ? 460 : 820;
+        const damping = isManualDriving ? 38 : 58;
 
         const ax = (state.targetX - state.x) * stiffness - state.vx * damping;
         const ay = (state.targetY - state.y) * stiffness - state.vy * damping;
@@ -911,18 +1119,20 @@ export function buildVideoStudioRuntimeScript(): string {
 
       function glideTo(destX, destY, durationMs, dispatchHover) {
         return new Promise((resolve) => {
-          const startX = state.targetX;
-          const startY = state.targetY;
+          const startX = state.x;
+          const startY = state.y;
           const midX = (startX + destX) / 2;
           const midY = (startY + destY) / 2;
           const dx = destX - startX;
           const dy = destY - startY;
           const dist = Math.hypot(dx, dy);
-          const curveOffset = Math.min(72, dist * 0.18) * (dx >= 0 ? -1 : 1);
+          const curveOffset = Math.min(64, dist * 0.16) * (dx >= 0 ? -1 : 1);
           const ctrlX = midX - (dy / Math.max(1, dist)) * curveOffset;
           const ctrlY = midY + (dx / Math.max(1, dist)) * curveOffset;
 
           const start = performance.now();
+          let settleStart = 0;
+
           function step(now) {
             if (state.choreographyCancelled) {
               resolve();
@@ -942,11 +1152,22 @@ export function buildVideoStudioRuntimeScript(): string {
             }
 
             if (raw >= 1) {
-              if (dispatchHover) {
-                dispatchPointerAt(destX, destY);
+              if (!settleStart) settleStart = now;
+              const errDist = Math.hypot(state.x - destX, state.y - destY);
+              if (errDist <= 1.8 || now - settleStart >= 55) {
+                state.targetX = destX;
+                state.targetY = destY;
+                state.x = destX;
+                state.y = destY;
+                state.vx = 0;
+                state.vy = 0;
+                if (dispatchHover) {
+                  dispatchPointerAt(destX, destY);
+                }
+                emitCursorTelemetryNow();
+                resolve();
+                return;
               }
-              resolve();
-              return;
             }
             state.choreographyRaf = requestAnimationFrame(step);
           }
@@ -988,18 +1209,56 @@ export function buildVideoStudioRuntimeScript(): string {
 
       async function exploreRevealedLayer(revealedItems, deadlineTs, depth) {
         if (!revealedItems || revealedItems.length === 0 || depth > 2) return;
-        const maxHoverItems = Math.min(revealedItems.length, 3);
 
+        // Separate primary revealed items from modal close/dismiss buttons
+        const actionItems = revealedItems.filter((item) => !isCloseOrDismissButton(item.el));
+        const closeItems = revealedItems.filter((item) => isCloseOrDismissButton(item.el));
+        const activeDialog = document.querySelector("[role='dialog'], [aria-modal='true']");
+
+        // If a dialog/modal opened and only has a Close button (e.g. InkOrbitHero workflow dialog),
+        // showcase the live dialog animation before optionally closing it!
+        if (actionItems.length === 0 && closeItems.length > 0) {
+          if (activeDialog) {
+            const dlgRect = activeDialog.getBoundingClientRect();
+            const dcx = dlgRect.left + dlgRect.width * 0.46;
+            const dcy = dlgRect.top + dlgRect.height * 0.52;
+            await glideTo(dcx, dcy, 320, state.autoHover);
+            if (state.choreographyCancelled) return;
+            const showcaseWait = Math.min(
+              2200,
+              Math.max(700, (deadlineTs - performance.now()) * 0.58)
+            );
+            await waitMs(showcaseWait);
+            if (state.choreographyCancelled) return;
+          }
+          if (state.autoClick && performance.now() < deadlineTs - 420) {
+            const closeBtn = closeItems[0];
+            if (document.contains(closeBtn.el) && isVisibleInViewport(closeBtn.el)) {
+              const r = closeBtn.el.getBoundingClientRect();
+              const cx = r.left + r.width / 2;
+              const cy = r.top + r.height / 2;
+              await glideTo(cx, cy, 260, state.autoHover);
+              if (!state.choreographyCancelled) {
+                await waitMs(140);
+                await dispatchTactileClick(cx, cy, closeBtn.el);
+                await waitMs(220);
+              }
+            }
+          }
+          return;
+        }
+
+        const maxHoverItems = Math.min(actionItems.length, 3);
         for (let i = 0; i < maxHoverItems; i++) {
           if (state.choreographyCancelled || performance.now() > deadlineTs - 240) return;
-          const item = revealedItems[i];
+          const item = actionItems[i];
           if (!document.contains(item.el) || !isVisibleInViewport(item.el)) continue;
 
           const r = item.el.getBoundingClientRect();
           const ix = r.left + r.width / 2;
           const iy = r.top + r.height / 2;
 
-          await glideTo(ix, iy, 280, state.autoHover);
+          await glideTo(ix, iy, 260, state.autoHover);
           if (state.choreographyCancelled) return;
           await waitMs(170);
 
@@ -1010,7 +1269,7 @@ export function buildVideoStudioRuntimeScript(): string {
           if (shouldClickItem) {
             const subBefore = new Set(getAllVisibleInteractiveElements());
             await dispatchTactileClick(ix, iy, item.el);
-            await waitMs(280);
+            await waitMs(260);
             if (state.choreographyCancelled) return;
 
             const nestedRevealed = findNewlyRevealedTargets(subBefore, item.el);
@@ -1030,16 +1289,20 @@ export function buildVideoStudioRuntimeScript(): string {
         state.hoveringInteractive = false;
         syncNativeCursorVisibility();
 
+        // Ensure React component has mounted into #root before scanning targets
+        await waitForComponentMount(1800);
+        if (state.choreographyCancelled) return;
+
         const totalMs = Math.max(3000, (config.durationSec || state.durationSec || 8) * 1000);
         const startTime = performance.now();
         const scrollInfo = findScrollContainer();
         setScrollTop(scrollInfo, 0);
 
-        const vw = window.innerWidth;
-        const vh = window.innerHeight;
+        const vw = Math.max(320, window.innerWidth);
+        const vh = Math.max(180, window.innerHeight);
 
-        state.x = vw * 0.84;
-        state.y = vh * 0.82;
+        state.x = vw * 0.82;
+        state.y = vh * 0.8;
         state.targetX = state.x;
         state.targetY = state.y;
         state.vx = 0;
@@ -1048,14 +1311,14 @@ export function buildVideoStudioRuntimeScript(): string {
         emitCursorTelemetryNow([]);
 
         const { targets } = scanAndReportTargets();
-        const shouldScroll = state.autoScroll && scrollInfo.maxScroll > 36;
+        const shouldScroll = state.autoScroll && scrollInfo.maxScroll > 96;
 
         const entryMs = Math.round(totalMs * 0.08);
-        const scrollDownMs = shouldScroll ? Math.round(totalMs * 0.26) : 0;
-        const scrollReturnMs = shouldScroll && state.loopReturnToTop ? Math.round(totalMs * 0.13) : 0;
-        const settleMs = Math.round(totalMs * 0.05);
+        const scrollDownMs = shouldScroll ? Math.round(totalMs * 0.24) : 0;
+        const scrollReturnMs = shouldScroll && state.loopReturnToTop ? Math.round(totalMs * 0.12) : 0;
+        const settleMs = Math.round(totalMs * 0.06);
         const interactionBudgetMs = Math.max(
-          1600,
+          1800,
           totalMs - entryMs - scrollDownMs - scrollReturnMs - settleMs
         );
         const interactionDeadline = startTime + entryMs + interactionBudgetMs;
@@ -1068,8 +1331,10 @@ export function buildVideoStudioRuntimeScript(): string {
         if (state.choreographyCancelled) return;
 
         if (targets.length > 0 && (state.autoHover || state.autoClick)) {
-          const singleOrPairControls = targets.length <= 2;
+          const isSingleTarget = targets.length === 1;
           const maxVisits = Math.min(targets.length, totalMs >= 10000 ? 6 : 5);
+          let clickedIncrementRecently = false;
+          let triggeredStartAction = false;
 
           for (let i = 0; i < maxVisits; i++) {
             if (state.choreographyCancelled || performance.now() > interactionDeadline - 220) {
@@ -1077,6 +1342,20 @@ export function buildVideoStudioRuntimeScript(): string {
             }
             const t = targets[i];
             if (!document.contains(t.el) || !isVisibleInViewport(t.el)) continue;
+
+            // Interactive 3D / Canvas target: perform smooth drag-orbit + reforge click
+            if (t.el.tagName === "CANVAS") {
+              const remainingBudget = Math.max(520, interactionDeadline - performance.now());
+              await dispatchCanvasDragGesture(t.el, Math.min(820, remainingBudget * 0.45));
+              continue;
+            }
+
+            // If we just clicked an "Up / Next / Increment" button, skip clicking its immediate "Down / Prev" counterpart
+            // so we don't undo the state transition (e.g. RetroHardwareHandheldClock Rocker Up vs Rocker Down)
+            const skipUndoClick =
+              clickedIncrementRecently &&
+              isDecrementOrPrevControl(t.el) &&
+              targets.length >= 3;
 
             const freshRect = t.el.getBoundingClientRect();
             const tx = freshRect.left + freshRect.width / 2;
@@ -1087,11 +1366,11 @@ export function buildVideoStudioRuntimeScript(): string {
             const remainingTargets = Math.max(1, maxVisits - i);
             const remainingBudget = Math.max(480, interactionDeadline - performance.now());
             const slotMs = Math.min(1800, Math.floor(remainingBudget / remainingTargets));
-            const moveMs = Math.max(240, Math.min(540, Math.round(slotMs * 0.38)));
+            const moveMs = Math.max(220, Math.min(500, Math.round(slotMs * 0.36)));
 
             await glideTo(tx, ty, moveMs, state.autoHover);
             if (state.choreographyCancelled) return;
-            await waitMs(180);
+            await waitMs(170);
             if (state.choreographyCancelled) return;
 
             const hoverRevealed = findNewlyRevealedTargets(beforeHoverSet, t.el);
@@ -1101,7 +1380,12 @@ export function buildVideoStudioRuntimeScript(): string {
               continue;
             }
 
-            if (state.autoClick) {
+            if (state.autoClick && !skipUndoClick) {
+              const isStartAction = isPrimaryStartOrActionControl(t.el);
+              if (isIncrementOrNextControl(t.el)) {
+                clickedIncrementRecently = true;
+              }
+
               const beforeClickSet = new Set(getAllVisibleInteractiveElements());
               await dispatchTactileClick(tx, ty, t.el);
               await waitMs(280);
@@ -1115,12 +1399,23 @@ export function buildVideoStudioRuntimeScript(): string {
                 continue;
               }
 
+              if (isStartAction) {
+                triggeredStartAction = true;
+                // Let the live running state (e.g. countdown timer, blinking colon, progress ring) play out!
+                const showcaseRunningMs = Math.min(
+                  1800,
+                  Math.max(450, (interactionDeadline - performance.now()) * 0.55)
+                );
+                await waitMs(showcaseRunningMs);
+                continue;
+              }
+
               const wantsMultiClick =
                 !isLikelyDropdownTrigger(t.el) &&
-                (singleOrPairControls || isLikelyMultiClickControl(t.el));
+                (isSingleTarget || isLikelyMultiClickControl(t.el));
 
               if (wantsMultiClick && performance.now() < interactionDeadline - 650) {
-                const extraClicks = singleOrPairControls ? 2 : 1;
+                const extraClicks = isSingleTarget ? 2 : 1;
                 for (let c = 0; c < extraClicks; c++) {
                   if (
                     state.choreographyCancelled ||
@@ -1130,7 +1425,7 @@ export function buildVideoStudioRuntimeScript(): string {
                   ) {
                     break;
                   }
-                  await waitMs(420);
+                  await waitMs(400);
                   if (state.choreographyCancelled) return;
                   const updatedRect = t.el.getBoundingClientRect();
                   const ux = updatedRect.left + updatedRect.width / 2;
@@ -1142,25 +1437,36 @@ export function buildVideoStudioRuntimeScript(): string {
               } else {
                 await waitMs(Math.max(160, Math.min(360, slotMs * 0.25)));
               }
-            } else {
+            } else if (!skipUndoClick) {
               const orbit = Math.min(26, freshRect.width * 0.24);
-              await glideTo(tx + orbit, ty - 5, 280, true);
-              await glideTo(tx - orbit * 0.6, ty + 5, 280, true);
+              await glideTo(tx + orbit, ty - 5, 260, true);
+              await glideTo(tx - orbit * 0.6, ty + 5, 260, true);
             }
           }
 
+          // Only revisit target[0] at the end if we didn't just trigger a live start/run action
           if (
             !state.choreographyCancelled &&
+            !triggeredStartAction &&
             targets.length >= 2 &&
-            performance.now() < interactionDeadline - 700
+            performance.now() < interactionDeadline - 850
           ) {
             const freshList = discoverPrimaryTargets();
             const revisit = freshList[0];
-            if (revisit && document.contains(revisit.el) && isVisibleInViewport(revisit.el)) {
+            if (
+              revisit &&
+              revisit.el.tagName !== "CANVAS" &&
+              document.contains(revisit.el) &&
+              isVisibleInViewport(revisit.el)
+            ) {
               const r = revisit.el.getBoundingClientRect();
-              await glideTo(r.left + r.width / 2, r.top + r.height / 2, 360, state.autoHover);
-              if (state.autoClick && !state.choreographyCancelled) {
-                await waitMs(120);
+              await glideTo(r.left + r.width / 2, r.top + r.height / 2, 340, state.autoHover);
+              if (
+                state.autoClick &&
+                !state.choreographyCancelled &&
+                isLikelyMultiClickControl(revisit.el)
+              ) {
+                await waitMs(140);
                 await dispatchTactileClick(r.left + r.width / 2, r.top + r.height / 2, revisit.el);
               }
             }
@@ -1187,7 +1493,7 @@ export function buildVideoStudioRuntimeScript(): string {
         if (state.choreographyCancelled) return;
 
         if (shouldScroll) {
-          await glideTo(vw * 0.78, vh * 0.52, 280, state.autoHover);
+          await glideTo(vw * 0.78, vh * 0.52, 260, state.autoHover);
           if (state.choreographyCancelled) return;
           await smoothScrollTo(scrollInfo, scrollInfo.maxScroll, scrollDownMs);
           if (state.choreographyCancelled) return;
@@ -1199,7 +1505,11 @@ export function buildVideoStudioRuntimeScript(): string {
           }
         }
 
-        await waitMs(settleMs);
+        const remainingSettle = Math.max(
+          160,
+          Math.min(settleMs + 400, totalMs - (performance.now() - startTime))
+        );
+        await waitMs(remainingSettle);
         if (state.choreographyCancelled) return;
 
         clearSyntheticHover();
@@ -1947,14 +2257,43 @@ export function buildVideoStudioRuntimeScript(): string {
         }
       });
 
+      let scanDebounceTimer = null;
+      const scheduleAutoScan = (delayMs = 120) => {
+        if (state.activeSession || state.manualActive) return;
+        if (scanDebounceTimer) clearTimeout(scanDebounceTimer);
+        scanDebounceTimer = setTimeout(() => {
+          scanDebounceTimer = null;
+          if (!state.activeSession && !state.manualActive) {
+            warmExternalImageCache();
+            scanAndReportTargets();
+          }
+        }, delayMs);
+      };
+
+      window.addEventListener("__STUDIO_COMPONENT_MOUNTED__", () => {
+        scheduleAutoScan(60);
+        setTimeout(() => scheduleAutoScan(60), 400);
+      });
+
+      const rootNode = document.getElementById("root");
+      if (rootNode && typeof MutationObserver !== "undefined") {
+        const rootObserver = new MutationObserver(() => {
+          if (!state.activeSession && !state.manualActive) {
+            scheduleAutoScan(160);
+          }
+        });
+        rootObserver.observe(rootNode, {
+          childList: true,
+          subtree: true,
+        });
+      }
+
       setTimeout(() => {
-        warmExternalImageCache();
-        scanAndReportTargets();
-      }, 450);
+        scheduleAutoScan(40);
+      }, 350);
       setTimeout(() => {
-        warmExternalImageCache();
-        scanAndReportTargets();
-      }, 1400);
+        scheduleAutoScan(40);
+      }, 1200);
     })();
   `;
 }

@@ -66,6 +66,7 @@ export function VideoStudioWorkspace({
   const [zeroLagReplay, setZeroLagReplay] = useState<boolean>(false);
   const [stageReady, setStageReady] = useState<boolean>(false);
   const [stageReloadKey, setStageReloadKey] = useState<number>(0);
+  const [stageScale, setStageScale] = useState<number>(1);
   const [discoveredTargets, setDiscoveredTargets] =
     useState<DiscoveredTargetsInfo>({
       interactiveCount: 0,
@@ -162,7 +163,7 @@ export function VideoStudioWorkspace({
     if (compileError) return;
     const safetyTimer = setTimeout(() => {
       setStageReady(true);
-    }, 1800);
+    }, 2200);
     return () => clearTimeout(safetyTimer);
   }, [sandboxHtml, stageReloadKey, compileError]);
 
@@ -196,6 +197,11 @@ export function VideoStudioWorkspace({
     if (stageReadyFallbackTimerRef.current) {
       clearTimeout(stageReadyFallbackTimerRef.current);
     }
+    postToStage({
+      type: "SET_PREVIEW_THEME",
+      theme: previewThemeRef.current,
+    });
+    postToStage({ type: "VIDEO_STUDIO_SCAN" });
     stageReadyFallbackTimerRef.current = setTimeout(() => {
       setStageReady(true);
       postToStage({
@@ -203,7 +209,7 @@ export function VideoStudioWorkspace({
         theme: previewThemeRef.current,
       });
       postToStage({ type: "VIDEO_STUDIO_SCAN" });
-    }, 350);
+    }, 950);
   }, [postToStage]);
 
   // Keep stage preview theme synced with CanvasToolbar theme toggle without reloading srcDoc
@@ -212,9 +218,11 @@ export function VideoStudioWorkspace({
     postToStage({ type: "SET_PREVIEW_THEME", theme: previewTheme });
   }, [previewTheme, stageReady, postToStage]);
 
+  const isReviewPhase = phase === "review" && Boolean(previewVideoUrl);
+
   // Observe 16:9 stage dimensions once (zero per-frame getBoundingClientRect layout reflows!)
   useEffect(() => {
-    if (phase === "review") return;
+    if (isReviewPhase) return;
     const container = stageContainerRef.current;
     if (!container) return;
 
@@ -226,6 +234,10 @@ export function VideoStudioWorkspace({
         width: rect.width,
         height: rect.height,
       };
+      if (rect.width >= 10) {
+        const nextScale = Number((rect.width / 1280).toFixed(4));
+        setStageScale((prev) => (Math.abs(prev - nextScale) > 0.001 ? nextScale : prev));
+      }
       const canvas = stageCursorCanvasRef.current;
       if (canvas && rect.width >= 10 && rect.height >= 10) {
         const dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -234,8 +246,8 @@ export function VideoStudioWorkspace({
         if (canvas.width !== targetW || canvas.height !== targetH) {
           canvas.width = targetW;
           canvas.height = targetH;
-          cursorCtxRef.current = canvas.getContext("2d");
         }
+        cursorCtxRef.current = canvas.getContext("2d");
       }
     };
 
@@ -248,7 +260,7 @@ export function VideoStudioWorkspace({
       window.removeEventListener("resize", updateCachedRect);
       cursorCtxRef.current = null;
     };
-  }, [phase, stageReloadKey]);
+  }, [isReviewPhase, stageReloadKey]);
 
   const clearParentCursorCanvas = useCallback(() => {
     const canvas = stageCursorCanvasRef.current;
@@ -624,6 +636,8 @@ export function VideoStudioWorkspace({
 
       if (data.type === "VIDEO_STUDIO_CHOREOGRAPHY_COMPLETE") {
         if (data.dryRun) {
+          stopTimers();
+          clearParentCursorCanvas();
           setPhase((prev) => (prev === "previewing" ? "idle" : prev));
         } else if (recorderRef.current) {
           void stopRecording();
@@ -636,19 +650,24 @@ export function VideoStudioWorkspace({
   }, [
     postToStage,
     stopRecording,
+    stopTimers,
+    clearParentCursorCanvas,
     drawParentCursorCanvas,
     startReplayRenderFromTake,
   ]);
 
   const handleTogglePreviewRun = () => {
     if (phase === "previewing") {
+      stopTimers();
       postToStage({ type: "VIDEO_STUDIO_RESET" });
       clearParentCursorCanvas();
       setPhase("idle");
       return;
     }
+    stopTimers();
     setErrorMessage(null);
     setPhase("previewing");
+    startImperativeTimer(recordingConfig.duration * 1000);
     postToStage({
       type: "VIDEO_STUDIO_START_AUTOPILOT",
       durationSec: recordingConfig.duration,
@@ -663,6 +682,11 @@ export function VideoStudioWorkspace({
         renderInParentOverlay: true,
       },
     });
+    safetyStopTimerRef.current = setTimeout(() => {
+      stopTimers();
+      clearParentCursorCanvas();
+      setPhase((prev) => (prev === "previewing" ? "idle" : prev));
+    }, recordingConfig.duration * 1000 + 2200);
   };
 
   const handleStopCaptureMoves = useCallback(() => {
@@ -761,7 +785,7 @@ export function VideoStudioWorkspace({
               if (recorderRef.current) {
                 void stopRecording();
               }
-            }, recordingConfig.duration * 1000 + 1400);
+            }, recordingConfig.duration * 1000 + 1800);
           } else {
             try {
               stageIframeRef.current?.contentWindow?.focus();
@@ -934,11 +958,12 @@ export function VideoStudioWorkspace({
     phase === "rendering-replay";
 
   const handleClose = () => {
-    if (isActiveCapturePhase) {
+    if (isActiveCapturePhase || phase === "previewing") {
       recorderRef.current?.cancel();
       recorderRef.current = null;
       stopTimers();
       postToStage({ type: "VIDEO_STUDIO_STOP" });
+      clearParentCursorCanvas();
     }
     onClose();
   };
@@ -957,6 +982,7 @@ export function VideoStudioWorkspace({
         previewVideoUrl={previewVideoUrl}
         stageReady={stageReady}
         stageReloadKey={stageReloadKey}
+        stageScale={stageScale}
         currentTemplateId={currentTemplateId}
         sandboxHtml={sandboxHtml}
         compileError={compileError}

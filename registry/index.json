@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-19T15:06:26.952Z",
+  "updatedAt": "2026-11-19T17:06:57.564Z",
   "totalComponents": 55,
   "components": [
     {
@@ -921,15 +921,36 @@
       ]
     },
     {
-      "id": "aurora-ambient-hero",
-      "slug": "aurora-ambient-hero",
-      "name": "Aurora Ambient Mesh Hero",
-      "description": "Vibrant ambient blur aurora hero with dual CTA buttons, live headline gradient, and responsive design.",
-      "category": "Heroes",
+      "id": "shimmer-button",
+      "slug": "shimmer-button",
+      "name": "Aurora Shimmer Button",
+      "description": "High-contrast border shimmer button with glowing conic gradient aura and micro-press physics.",
+      "category": "Buttons",
       "isBuiltIn": true,
       "updatedAt": 1700000000000,
-      "lastRepoSyncAt": 1795098761438,
-      "path": "registry/components/aurora-ambient-hero",
+      "lastRepoSyncAt": 1795108017535,
+      "path": "registry/components/shimmer-button",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "index.css",
+        "manifest.json"
+      ],
+      "dependencies": [
+        "framer-motion",
+        "lucide-react"
+      ]
+    },
+    {
+      "id": "neon-glow-button",
+      "slug": "neon-glow-button",
+      "name": "Neon Glow Interactive Button",
+      "description": "Cyberpunk-inspired interactive button with luminous border glow, particle pulse, and ripple feedback.",
+      "category": "Buttons",
+      "isBuiltIn": true,
+      "updatedAt": 1700000000000,
+      "lastRepoSyncAt": 1795108017535,
+      "path": "registry/components/neon-glow-button",
       "files": [
         "component.tsx",
         "default.tsx",
@@ -941,15 +962,15 @@
       ]
     },
     {
-      "id": "bento-metric-grid",
-      "slug": "bento-metric-grid",
-      "name": "Bento Metric Showcase Card",
-      "description": "Bento-style card showcasing real-time metrics, interactive sparkline charts, and micro-hover states.",
+      "id": "spotlight-card",
+      "slug": "spotlight-card",
+      "name": "Interactive Spotlight Card",
+      "description": "A high-performance modern card with dynamic pointer-following radial glow, border gradient, and micro-interactions.",
       "category": "Cards",
       "isBuiltIn": true,
       "updatedAt": 1700000000000,
-      "lastRepoSyncAt": 1795098761438,
-      "path": "registry/components/bento-metric-grid",
+      "lastRepoSyncAt": 1795108017535,
+      "path": "registry/components/spotlight-card",
       "files": [
         "component.tsx",
         "default.tsx",
@@ -957,26 +978,11 @@
         "manifest.json"
       ],
       "dependencies": [
-        "lucide-react"
+        "framer-motion",
+        "lucide-react",
+        "clsx",
+        "tailwind-merge"
       ]
-    },
-    {
-      "id": "ink-orbit-hero",
-      "slug": "ink-orbit-hero",
-      "name": "Ink Orbit 3D Hero",
-      "description": "Generative 3D ink sculpture hero with interactive canvas physics, phrase blur cycling, and live workflow demo dialog.",
-      "category": "Heroes",
-      "isBuiltIn": true,
-      "updatedAt": 1700000000000,
-      "lastRepoSyncAt": 1795098761438,
-      "path": "registry/components/ink-orbit-hero",
-      "files": [
-        "component.tsx",
-        "default.tsx",
-        "index.css",
-        "manifest.json"
-      ],
-      "dependencies": []
     },
     {
       "id": "live-ping-status-pill",
@@ -986,7 +992,7 @@
       "category": "Badges",
       "isBuiltIn": true,
       "updatedAt": 1700000000000,
-      "lastRepoSyncAt": 1795098761438,
+      "lastRepoSyncAt": 1795108017535,
       "path": "registry/components/live-ping-status-pill",
       "files": [
         "component.tsx",
@@ -1006,7 +1012,7 @@
       "category": "Badges",
       "isBuiltIn": true,
       "updatedAt": 1700000000000,
-      "lastRepoSyncAt": 1795098761438,
+      "lastRepoSyncAt": 1795108017535,
       "path": "registry/components/metric-badge",
       "files": [
         "component.tsx",
@@ -1019,15 +1025,15 @@
       ]
     },
     {
-      "id": "neon-glow-button",
-      "slug": "neon-glow-button",
-      "name": "Neon Glow Interactive Button",
-      "description": "Cyberpunk-inspired interactive button with luminous border glow, particle pulse, and ripple feedback.",
-      "category": "Buttons",
+      "id": "aurora-ambient-hero",
+      "slug": "aurora-ambient-hero",
+      "name": "Aurora Ambient Mesh Hero",
+      "description": "Vibrant ambient blur aurora hero with dual CTA buttons, live headline gradient, and responsive design.",
+      "category": "Heroes",
       "isBuiltIn": true,
       "updatedAt": 1700000000000,
-      "lastRepoSyncAt": 1795098761438,
-      "path": "registry/components/neon-glow-button",
+      "lastRepoSyncAt": 1795108017535,
+      "path": "registry/components/aurora-ambient-hero",
       "files": [
         "component.tsx",
         "default.tsx",
@@ -1039,36 +1045,33 @@
       ]
     },
     {
-      "id": "shimmer-button",
-      "slug": "shimmer-button",
-      "name": "Aurora Shimmer Button",
-      "description": "High-contrast border shimmer button with glowing conic gradient aura and micro-press physics.",
-      "category": "Buttons",
+      "id": "ink-orbit-hero",
+      "slug": "ink-orbit-hero",
+      "name": "Ink Orbit 3D Hero",
+      "description": "Generative 3D ink sculpture hero with interactive canvas physics, phrase blur cycling, and live workflow demo dialog.",
+      "category": "Heroes",
       "isBuiltIn": true,
       "updatedAt": 1700000000000,
-      "lastRepoSyncAt": 1795098761438,
-      "path": "registry/components/shimmer-button",
+      "lastRepoSyncAt": 1795108017535,
+      "path": "registry/components/ink-orbit-hero",
       "files": [
         "component.tsx",
         "default.tsx",
         "index.css",
         "manifest.json"
       ],
-      "dependencies": [
-        "framer-motion",
-        "lucide-react"
-      ]
+      "dependencies": []
     },
     {
-      "id": "spotlight-card",
-      "slug": "spotlight-card",
-      "name": "Interactive Spotlight Card",
-      "description": "A high-performance modern card with dynamic pointer-following radial glow, border gradient, and micro-interactions.",
+      "id": "bento-metric-grid",
+      "slug": "bento-metric-grid",
+      "name": "Bento Metric Showcase Card",
+      "description": "Bento-style card showcasing real-time metrics, interactive sparkline charts, and micro-hover states.",
       "category": "Cards",
       "isBuiltIn": true,
       "updatedAt": 1700000000000,
-      "lastRepoSyncAt": 1795098761438,
-      "path": "registry/components/spotlight-card",
+      "lastRepoSyncAt": 1795108017535,
+      "path": "registry/components/bento-metric-grid",
       "files": [
         "component.tsx",
         "default.tsx",
@@ -1076,10 +1079,7 @@
         "manifest.json"
       ],
       "dependencies": [
-        "framer-motion",
-        "lucide-react",
-        "clsx",
-        "tailwind-merge"
+        "lucide-react"
       ]
     }
   ]

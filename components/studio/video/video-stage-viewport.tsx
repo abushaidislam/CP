@@ -36,6 +36,7 @@ export interface VideoStageViewportProps {
   previewVideoUrl: string | null;
   stageReady: boolean;
   stageReloadKey: number;
+  stageScale?: number;
   currentTemplateId: string;
   sandboxHtml: string;
   compileError: string | null;
@@ -79,6 +80,7 @@ export function VideoStageViewport({
   previewVideoUrl,
   stageReady,
   stageReloadKey,
+  stageScale = 1,
   currentTemplateId,
   sandboxHtml,
   compileError,
@@ -157,9 +159,19 @@ export function VideoStageViewport({
               ...
             </span>
           ) : phase === "previewing" ? (
-            <span className="font-medium text-foreground">
-              Previewing Auto-Pilot choreography (dry run)
-            </span>
+            <>
+              <span className="inline-block size-2 rounded-full bg-primary animate-pulse shrink-0" />
+              <span className="font-medium text-foreground">
+                Previewing Auto-Pilot choreography
+              </span>
+              <span aria-hidden="true">·</span>
+              <span
+                ref={timecodeTextRef}
+                className="font-mono text-[11px] tabular-nums text-foreground"
+              >
+                00:00.00
+              </span>
+            </>
           ) : phase === "processing" ? (
             <div className="flex items-center gap-2 text-foreground">
               <Loader2 className="size-3.5 animate-spin text-primary" />
@@ -195,7 +207,7 @@ export function VideoStageViewport({
                 {discoveredTargets.interactiveCount > 0
                   ? `${discoveredTargets.interactiveCount} interactive targets`
                   : "Surface hover sweep ready"}
-                {discoveredTargets.scrollableDistance > 36
+                {discoveredTargets.scrollableDistance > 96
                   ? ` · ${discoveredTargets.scrollableDistance}px scrollable`
                   : ""}
               </span>
@@ -244,13 +256,14 @@ export function VideoStageViewport({
         </div>
       </div>
 
-      {/* Recording Progress Bar (Strictly Outside Captured Region, Imperatively Updated) */}
-      {isActiveCapturePhase && (
+      {/* Recording / Choreography Preview Progress Bar (Strictly Outside Captured Region, Imperatively Updated) */}
+      {(isActiveCapturePhase || phase === "previewing") && (
         <div className="h-1 w-full bg-muted overflow-hidden shrink-0">
           <div
             ref={progressBarRef}
             className={cn(
-              "h-full bg-destructive transition-[width] duration-100 ease-linear",
+              "h-full transition-[width] duration-100 ease-linear",
+              phase === "previewing" ? "bg-primary" : "bg-destructive",
               (phase === "capturing-moves" ||
                 (phase === "recording" && recordingConfig.mode === "manual")) &&
                 "animate-pulse"
@@ -319,7 +332,13 @@ export function VideoStageViewport({
                 onLoad={onStageIframeLoad}
                 title="16:9 Video Studio Live Stage"
                 sandbox="allow-scripts allow-modals"
-                className="w-full h-full border-none block"
+                style={{
+                  width: "1280px",
+                  height: "720px",
+                  transform: `scale(${stageScale})`,
+                  transformOrigin: "0 0",
+                }}
+                className="border-none block"
               />
 
               {/* Top-Layer 60fps Virtual Cursor & Minimal Click Pulse Canvas (Guaranteed visible in Native & Manual Live capture) */}
