@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef, useState, useMemo, useCallback } from "react";
+import dynamic from "next/dynamic";
 import { useShallow } from "zustand/react/shallow";
 import {
   useStudioStore,
@@ -22,6 +23,14 @@ import { DemoControlsPanel } from "./demo-controls-panel";
 import { CanvasToolbar } from "./canvas/canvas-toolbar";
 import { SandboxHydrationOverlay } from "./canvas/sandbox-hydration-overlay";
 import { cn } from "@/lib/utils";
+
+const VideoStudioWorkspace = dynamic(
+  () =>
+    import("./video/video-studio-workspace").then(
+      (mod) => mod.VideoStudioWorkspace
+    ),
+  { ssr: false }
+);
 
 interface CanvasPreviewProps {
   iframeRef: React.RefObject<HTMLIFrameElement | null>;
@@ -769,8 +778,15 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
         isSandboxLoading={isSandboxLoading}
         error={error}
         hydrationMode={hydrationMode}
-        isControlsOpen={isControlsOpen}
-        onToggleControls={() => setIsControlsOpen((prev) => !prev)}
+        isControlsOpen={isControlsOpen && !isRecordingModalOpen}
+        onToggleControls={() => {
+          if (isRecordingModalOpen) {
+            setRecordingModalOpen(false);
+            setIsControlsOpen(true);
+            return;
+          }
+          setIsControlsOpen((prev) => !prev);
+        }}
         parsedDemoControls={parsedDemoControls}
         modifiedControlKeysCount={modifiedControlKeys.length}
         onTriggerTestSimulation={triggerTestSimulation}
@@ -784,7 +800,14 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
         captureSuccess={captureSuccess}
         currentPreviewImage={currentPreviewImage}
         onCaptureSnapshot={handleCaptureSnapshot}
-        onOpenRecordingModal={() => setRecordingModalOpen(true)}
+        isRecordingOpen={isRecordingModalOpen}
+        onOpenRecordingModal={() => {
+          const next = !isRecordingModalOpen;
+          if (next) {
+            setIsControlsOpen(false);
+          }
+          setRecordingModalOpen(next);
+        }}
         isFullscreen={isFullscreen}
         onToggleFullscreen={() => setIsFullscreen((prev) => !prev)}
         zoom={zoom}
@@ -793,158 +816,156 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
         onFitModeChange={handleFitModeChange}
       />
 
-      {/* Main Canvas Stage + Optional 21st.dev Native Controls Dock */}
+      {/* Main Canvas Stage + Docked Side Panel (Component Controls OR Video Capture) */}
       <div className="relative flex flex-1 min-h-0 overflow-hidden">
-        <div
-          className={`flex-1 min-w-0 relative overflow-auto p-4 md:p-6 flex items-center justify-center transition-colors duration-250 ease-smooth-out ${getCanvasBackgroundClass(
-            canvasBg
-          )}`}
-        >
-          {isResizing && (
-            <div className="fixed inset-0 z-50 cursor-ew-resize select-none bg-transparent" />
-          )}
-
-          {/* Sharp Architectural Canvas Card */}
-          <div
-            ref={cardRef}
-            style={{
-              width: getComputedWidth(),
-              maxWidth: isFluidResponsive ? "100%" : "none",
-              height: "100%",
-              maxHeight: "100%",
-              transform: `scale(${zoom / 100})`,
-              transformOrigin: "center center",
-            }}
-            className={cn(
-              "relative rounded-none border border-border shadow-vercel-floating overflow-hidden bg-background flex flex-col",
-              isFluidResponsive ? "w-full" : "",
-              draggedWidth !== null
-                ? "transition-none"
-                : "transition-[width,transform] duration-250 ease-smooth-out"
-            )}
-          >
+        {isRecordingModalOpen ? (
+          <VideoStudioWorkspace
+            backdropClassName={getCanvasBackgroundClass(canvasBg)}
+            reloadTrigger={reloadKey}
+            onClose={() => setRecordingModalOpen(false)}
+          />
+        ) : (
+          <>
             <div
-              className={`relative flex-1 w-full h-full overflow-hidden transition-colors duration-250 ease-smooth-out ${
-                previewTheme === "dark" ? "bg-zinc-950" : "bg-white"
-              }`}
+              className={`flex-1 min-w-0 relative overflow-auto p-4 md:p-6 flex items-center justify-center transition-colors duration-250 ease-smooth-out ${getCanvasBackgroundClass(
+                canvasBg
+              )}`}
             >
-              {/* Warm Update Non-Blocking Top Progress Strip */}
-              {isSandboxLoading && !error && hydrationMode === "warm" && (
+              {isResizing && (
+                <div className="fixed inset-0 z-50 cursor-ew-resize select-none bg-transparent" />
+              )}
+
+              {/* Sharp Architectural Canvas Card */}
+              <div
+                ref={cardRef}
+                style={{
+                  width: getComputedWidth(),
+                  maxWidth: isFluidResponsive ? "100%" : "none",
+                  height: "100%",
+                  maxHeight: "100%",
+                  transform: `scale(${zoom / 100})`,
+                  transformOrigin: "center center",
+                }}
+                className={cn(
+                  "relative rounded-none border border-border shadow-vercel-floating overflow-hidden bg-background flex flex-col",
+                  isFluidResponsive ? "w-full" : "",
+                  draggedWidth !== null
+                    ? "transition-none"
+                    : "transition-[width,transform] duration-250 ease-smooth-out"
+                )}
+              >
                 <div
-                  aria-hidden="true"
-                  className="pointer-events-none absolute top-0 left-0 right-0 z-20 h-0.5 bg-muted/40 overflow-hidden"
+                  className={`relative flex-1 w-full h-full overflow-hidden transition-colors duration-250 ease-smooth-out ${
+                    previewTheme === "dark" ? "bg-zinc-950" : "bg-white"
+                  }`}
                 >
-                  <div className="h-full w-2/3 bg-primary animate-shimmer" />
-                </div>
-              )}
-
-              {/* Cold Start Progressive Skeletal Placeholder & Hydration HUD */}
-              {isSandboxLoading && !error && hydrationMode === "cold" && (
-                <SandboxHydrationOverlay
-                  previewTheme={previewTheme}
-                  previewImage={currentPreviewImage}
-                  hydrationStage={hydrationStage}
-                  activeHydrationPackages={activeHydrationPackages}
-                  isHydrationSlow={isHydrationSlow}
-                  onRetryHydration={handleReloadSandbox}
-                />
-              )}
-
-              {isRecordingModalOpen ? (
-                <div className="w-full h-full flex flex-col items-center justify-center gap-2 bg-muted/20 text-muted-foreground font-sans text-xs px-6 text-center">
-                  <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground/80">
-                    VIDEO STUDIO ACTIVE
-                  </span>
-                  <span>
-                    Background preview paused to dedicate full 60fps performance
-                    to your 16:9 recording stage.
-                  </span>
-                </div>
-              ) : (
-                <iframe
-                  ref={iframeRef}
-                  key={reloadKey}
-                  srcDoc={html}
-                  onLoad={() => {
-                    setHydrationStage((prev) =>
-                      prev === "compiling" ? "hydrating-deps" : prev
-                    );
-                  }}
-                  title="21st.dev Live Component Preview"
-                  sandbox="allow-scripts allow-modals allow-popups"
-                  className={cn(
-                    "w-full h-full border-none bg-transparent transition-opacity duration-200",
-                    isSandboxLoading && !error && hydrationMode === "cold"
-                      ? "opacity-0"
-                      : "opacity-100",
-                    isResizing && "pointer-events-none"
+                  {/* Warm Update Non-Blocking Top Progress Strip */}
+                  {isSandboxLoading && !error && hydrationMode === "warm" && (
+                    <div
+                      aria-hidden="true"
+                      className="pointer-events-none absolute top-0 left-0 right-0 z-20 h-0.5 bg-muted/40 overflow-hidden"
+                    >
+                      <div className="h-full w-2/3 bg-primary animate-shimmer" />
+                    </div>
                   )}
-                />
-              )}
-            </div>
 
-            <div
-              role="separator"
-              aria-orientation="vertical"
-              aria-label="Resize preview viewport width"
-              aria-valuenow={
-                draggedWidth ??
-                (viewport === "mobile"
-                  ? 375
-                  : viewport === "tablet"
-                  ? 768
-                  : 1200)
-              }
-              aria-valuemin={320}
-              aria-valuemax={1600}
-              tabIndex={0}
-              onMouseDown={handleResizeStart}
-              onKeyDown={(e) => {
-                const step = e.shiftKey ? 50 : 20;
-                const currentW =
-                  draggedWidth ??
-                  (cardRef.current?.offsetWidth ||
+                  {/* Cold Start Progressive Skeletal Placeholder & Hydration HUD */}
+                  {isSandboxLoading && !error && hydrationMode === "cold" && (
+                    <SandboxHydrationOverlay
+                      previewTheme={previewTheme}
+                      previewImage={currentPreviewImage}
+                      hydrationStage={hydrationStage}
+                      activeHydrationPackages={activeHydrationPackages}
+                      isHydrationSlow={isHydrationSlow}
+                      onRetryHydration={handleReloadSandbox}
+                    />
+                  )}
+
+                  <iframe
+                    ref={iframeRef}
+                    key={reloadKey}
+                    srcDoc={html}
+                    onLoad={() => {
+                      setHydrationStage((prev) =>
+                        prev === "compiling" ? "hydrating-deps" : prev
+                      );
+                    }}
+                    title="21st.dev Live Component Preview"
+                    sandbox="allow-scripts allow-modals allow-popups"
+                    className={cn(
+                      "w-full h-full border-none bg-transparent transition-opacity duration-200",
+                      isSandboxLoading && !error && hydrationMode === "cold"
+                        ? "opacity-0"
+                        : "opacity-100",
+                      isResizing && "pointer-events-none"
+                    )}
+                  />
+                </div>
+
+                <div
+                  role="separator"
+                  aria-orientation="vertical"
+                  aria-label="Resize preview viewport width"
+                  aria-valuenow={
+                    draggedWidth ??
                     (viewport === "mobile"
                       ? 375
                       : viewport === "tablet"
                       ? 768
-                      : 1200));
-                if (e.key === "ArrowLeft") {
-                  e.preventDefault();
-                  setDraggedWidth(Math.max(320, currentW - step));
-                } else if (e.key === "ArrowRight") {
-                  e.preventDefault();
-                  setDraggedWidth(Math.min(1600, currentW + step));
-                }
-              }}
-              title="Drag or use arrow keys to resize preview width"
-              className="absolute right-0 top-0 bottom-0 w-3 cursor-ew-resize hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring flex items-center justify-center transition-colors duration-150 ease-smooth-out group z-20"
-            >
-              <div
-                className={cn(
-                  "h-8 w-1 rounded-none transition-colors duration-150 ease-smooth-out",
-                  isResizing ? "bg-primary" : "bg-border group-hover:bg-primary"
-                )}
-              />
+                      : 1200)
+                  }
+                  aria-valuemin={320}
+                  aria-valuemax={1600}
+                  tabIndex={0}
+                  onMouseDown={handleResizeStart}
+                  onKeyDown={(e) => {
+                    const step = e.shiftKey ? 50 : 20;
+                    const currentW =
+                      draggedWidth ??
+                      (cardRef.current?.offsetWidth ||
+                        (viewport === "mobile"
+                          ? 375
+                          : viewport === "tablet"
+                          ? 768
+                          : 1200));
+                    if (e.key === "ArrowLeft") {
+                      e.preventDefault();
+                      setDraggedWidth(Math.max(320, currentW - step));
+                    } else if (e.key === "ArrowRight") {
+                      e.preventDefault();
+                      setDraggedWidth(Math.min(1600, currentW + step));
+                    }
+                  }}
+                  title="Drag or use arrow keys to resize preview width"
+                  className="absolute right-0 top-0 bottom-0 w-3 cursor-ew-resize hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring flex items-center justify-center transition-colors duration-150 ease-smooth-out group z-20"
+                >
+                  <div
+                    className={cn(
+                      "h-8 w-1 rounded-none transition-colors duration-150 ease-smooth-out",
+                      isResizing ? "bg-primary" : "bg-border group-hover:bg-primary"
+                    )}
+                  />
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
 
-        {/* 21st.dev Native Component Controls Panel (Docked on wide preview, overlay drawer on narrow split) */}
-        {isControlsOpen && (
-          <DemoControlsPanel
-            parsed={parsedDemoControls}
-            values={effectiveControlValues}
-            modifiedKeys={modifiedControlKeys}
-            onChangeValue={handleControlChange}
-            onResetKey={handleResetControlKey}
-            onResetAll={handleResetAllControls}
-            onCopyBakedCode={handleCopyBakedDemoCode}
-            onApplyToEditor={handleApplyBakedToEditor}
-            onScaffoldControls={handleScaffoldControls}
-            onClose={() => setIsControlsOpen(false)}
-            className="absolute right-0 top-0 bottom-0 z-30 shadow-2xl @[720px]:static @[720px]:shadow-none"
-          />
+            {/* 21st.dev Native Component Controls Panel (Docked on wide preview, overlay drawer on narrow split) */}
+            {isControlsOpen && (
+              <DemoControlsPanel
+                parsed={parsedDemoControls}
+                values={effectiveControlValues}
+                modifiedKeys={modifiedControlKeys}
+                onChangeValue={handleControlChange}
+                onResetKey={handleResetControlKey}
+                onResetAll={handleResetAllControls}
+                onCopyBakedCode={handleCopyBakedDemoCode}
+                onApplyToEditor={handleApplyBakedToEditor}
+                onScaffoldControls={handleScaffoldControls}
+                onClose={() => setIsControlsOpen(false)}
+                className="absolute right-0 top-0 bottom-0 z-30 shadow-2xl @[720px]:static @[720px]:shadow-none"
+              />
+            )}
+          </>
         )}
       </div>
     </div>

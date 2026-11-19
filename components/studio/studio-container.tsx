@@ -40,10 +40,6 @@ const RepoSyncModal = dynamic(
   () => import("./repo-sync-modal").then((mod) => mod.RepoSyncModal),
   { ssr: false }
 );
-const VideoRecordingModal = dynamic(
-  () => import("./video-recording-modal").then((mod) => mod.VideoRecordingModal),
-  { ssr: false }
-);
 
 export interface StudioContainerProps {
   componentId?: string;
@@ -64,7 +60,6 @@ export function StudioContainer(props: StudioContainerProps = {}) {
     isSecurityModalOpen,
     isRepoSyncModalOpen,
     isPublishModalOpen,
-    isRecordingModalOpen,
     autoSaveToRepo,
     repoSyncStatus,
     currentTemplateId,
@@ -85,7 +80,6 @@ export function StudioContainer(props: StudioContainerProps = {}) {
       isSecurityModalOpen: state.isSecurityModalOpen,
       isRepoSyncModalOpen: state.isRepoSyncModalOpen,
       isPublishModalOpen: state.isPublishModalOpen,
-      isRecordingModalOpen: state.isRecordingModalOpen,
       autoSaveToRepo: state.autoSaveToRepo,
       repoSyncStatus: state.repoSyncStatus,
       currentTemplateId: state.currentTemplateId,
@@ -152,7 +146,7 @@ export function StudioContainer(props: StudioContainerProps = {}) {
     };
   }, []);
 
-  // Global shortcuts: Ctrl/Cmd+I for AI Copilot, Ctrl/Cmd+Shift+E for 16:9 Video Studio
+  // Global shortcuts: Ctrl/Cmd+I for AI Copilot, Ctrl/Cmd+Shift+E for Video Capture side panel
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "i") {
@@ -162,7 +156,15 @@ export function StudioContainer(props: StudioContainerProps = {}) {
       }
       if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === "e") {
         e.preventDefault();
-        setRecordingModalOpen(true);
+        const latest = useStudioStore.getState();
+        const nextOpen = !latest.isRecordingModalOpen;
+        if (nextOpen) {
+          if (latest.layoutMode === "editor") {
+            latest.setLayoutMode("split");
+          }
+          setMobileTab("preview");
+        }
+        setRecordingModalOpen(nextOpen);
       }
     };
     window.addEventListener("keydown", handleKeyDown);
@@ -351,7 +353,6 @@ export function StudioContainer(props: StudioContainerProps = {}) {
 
       {/* Modals & Dialogs (Conditionally mounted & code-split when closed) */}
       {(isRepoSyncModalOpen || isPublishModalOpen) && <RepoSyncModal />}
-      {isRecordingModalOpen && <VideoRecordingModal />}
       {isDependencyModalOpen && <DependencyModal />}
       {isSaveCheckpointDialogOpen && <SaveCheckpointDialog />}
       {isCreateVariantDialogOpen && <CreateVariantDialog />}

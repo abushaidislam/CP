@@ -42,7 +42,7 @@ const SHORTCUT_GROUPS: ShortcutGroup[] = [
       { keys: ["Ctrl / ⌘", "S"], description: "Save version checkpoint snapshot" },
       { keys: ["Ctrl / ⌘", "Shift", "S"], description: "Save active component to project repository" },
       { keys: ["Shift", "Alt", "F"], description: "Format active file with Prettier" },
-      { keys: ["Ctrl / ⌘", "Shift", "E"], description: "Open 16:9 60fps Interaction Video Studio" },
+      { keys: ["Ctrl / ⌘", "Shift", "E"], description: "Toggle 16:9 Video Capture side panel" },
       { keys: ["Ctrl / ⌘", "I"], description: "Toggle AI Copilot Assistant drawer" },
       { keys: ["Ctrl / ⌘", "`"], description: "Toggle bottom Terminal & Dev Console" },
       { keys: ["←", "→"], description: "Resize split-pane or viewport width when separator is focused" },

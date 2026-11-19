@@ -7,19 +7,27 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
-import { Separator } from "@/components/ui/separator";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import {
   ArrowDownUp,
+  Check,
   Download,
   Hand,
   Loader2,
   MousePointer2,
   Play,
+  RefreshCw,
   RotateCcw,
   Sparkles,
   Square,
   Video,
+  X,
 } from "lucide-react";
+import { cn } from "@/lib/utils";
 import type { DiscoveredTargetsInfo, StudioPhase } from "./video-studio-types";
 
 export interface VideoDirectorSidebarProps {
@@ -35,11 +43,13 @@ export interface VideoDirectorSidebarProps {
   supportsNativeMp4: boolean;
   isTranscodingMp4: boolean;
   countdownValue: number;
+  exportToast?: string | null;
   stopBtnTimecodeRef: React.RefObject<HTMLSpanElement | null>;
   onUpdateConfig: (partial: Partial<RecordingConfig>) => void;
   onSetZeroLagReplay: (enabled: boolean) => void;
   onRescanDom: () => void;
   onResetStagePosition: () => void;
+  onReloadStage: () => void;
   onTogglePreviewRun: () => void;
   onDownloadMp4: () => void;
   onDownloadWebm: () => void;
@@ -47,6 +57,8 @@ export interface VideoDirectorSidebarProps {
   onStopCaptureMoves: () => void;
   onStopRecording: () => void;
   onBeginRecording: () => void;
+  onClose?: () => void;
+  className?: string;
 }
 
 export function VideoDirectorSidebar({
@@ -62,11 +74,13 @@ export function VideoDirectorSidebar({
   supportsNativeMp4,
   isTranscodingMp4,
   countdownValue,
+  exportToast,
   stopBtnTimecodeRef,
   onUpdateConfig,
   onSetZeroLagReplay,
   onRescanDom,
   onResetStagePosition,
+  onReloadStage,
   onTogglePreviewRun,
   onDownloadMp4,
   onDownloadWebm,
@@ -74,12 +88,89 @@ export function VideoDirectorSidebar({
   onStopCaptureMoves,
   onStopRecording,
   onBeginRecording,
+  onClose,
+  className,
 }: VideoDirectorSidebarProps) {
   return (
-    <aside className="w-full lg:w-[320px] xl:w-[340px] shrink-0 border-t lg:border-t-0 lg:border-l border-border bg-card flex flex-col min-h-0">
-      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-5">
+    <aside
+      aria-label="Video Capture Controls"
+      className={cn(
+        "flex h-full w-72 sm:w-80 shrink-0 flex-col border-l border-border bg-card text-card-foreground font-sans select-none overflow-hidden",
+        className
+      )}
+    >
+      {/* Header Strip — Matches DemoControlsPanel */}
+      <div className="studio-toolbar-surface flex h-11 shrink-0 items-center justify-between gap-2 border-b border-border px-3">
+        <div className="flex items-center gap-2 min-w-0">
+          <Video className="size-3.5 text-muted-foreground shrink-0" />
+          <div className="flex items-center gap-1.5 min-w-0">
+            <span className="text-xs font-semibold tracking-tight text-foreground truncate">
+              Video Capture
+            </span>
+            <span className="text-[11px] text-muted-foreground tabular-nums whitespace-nowrap">
+              · {recordingConfig.resolution}
+            </span>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-1 shrink-0">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                disabled={isBusy}
+                onClick={onReloadStage}
+                aria-label="Reload 16:9 stage"
+                className="size-7 rounded-none text-muted-foreground hover:text-foreground"
+              >
+                <RefreshCw className="size-3.5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="font-sans text-xs">
+              Reset &amp; reload 16:9 stage
+            </TooltipContent>
+          </Tooltip>
+
+          {onClose && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-sm"
+                  onClick={onClose}
+                  aria-label="Close video capture panel"
+                  className="size-7 rounded-none text-muted-foreground hover:text-foreground"
+                >
+                  <X className="size-3.5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="font-sans text-xs">
+                Close video capture (Ctrl+Shift+E)
+              </TooltipContent>
+            </Tooltip>
+          )}
+        </div>
+      </div>
+
+      {/* Inline Export Toast */}
+      {exportToast && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="flex items-center gap-1.5 border-b border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-[11px] font-sans text-emerald-600 dark:text-emerald-400 shrink-0"
+        >
+          <Check className="size-3.5 shrink-0" />
+          <span className="truncate">{exportToast}</span>
+        </div>
+      )}
+
+      {/* Scrollable Inspector Body — Matches DemoControlsPanel divide-y cadence */}
+      <div className="flex-1 overflow-y-auto overflow-x-hidden divide-y divide-border/70">
         {/* Mode Selector */}
-        <section className="space-y-2.5">
+        <section className="px-3 py-3 space-y-2.5">
           <div className="flex items-center justify-between">
             <span className="font-mono text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
               INTERACTION MODE
@@ -123,11 +214,9 @@ export function VideoDirectorSidebar({
           </Tabs>
         </section>
 
-        <Separator />
-
         {/* Auto-Pilot Choreography Settings OR Manual Live Guide */}
         {recordingConfig.mode === "autopilot" ? (
-          <section className="space-y-3.5">
+          <section className="px-3 py-3 space-y-3">
             <div className="flex items-center justify-between">
               <span className="font-mono text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
                 CHOREOGRAPHY
@@ -172,14 +261,14 @@ export function VideoDirectorSidebar({
             </div>
 
             {/* Choreography Toggles */}
-            <div className="space-y-2.5 pt-1">
+            <div className="space-y-2.5 pt-0.5">
               <div className="flex items-center justify-between gap-3">
                 <div className="min-w-0">
                   <div className="text-xs font-medium text-foreground">
                     Auto-Hover Sweep
                   </div>
                   <div className="text-[11px] text-muted-foreground">
-                    Glide cursor over interactive cards & controls
+                    Glide cursor over interactive cards &amp; controls
                   </div>
                 </div>
                 <Switch
@@ -198,10 +287,10 @@ export function VideoDirectorSidebar({
               <div className="flex items-center justify-between gap-3">
                 <div className="min-w-0">
                   <div className="text-xs font-medium text-foreground">
-                    Smart Click & Dropdowns
+                    Smart Click &amp; Dropdowns
                   </div>
                   <div className="text-[11px] text-muted-foreground">
-                    Opens dropdowns, clicks sub-items & multi-click controls
+                    Opens dropdowns, clicks sub-items &amp; multi-click controls
                   </div>
                 </div>
                 <Switch
@@ -276,7 +365,7 @@ export function VideoDirectorSidebar({
             </Button>
           </section>
         ) : (
-          <section className="space-y-3">
+          <section className="px-3 py-3 space-y-3">
             <div className="flex items-center justify-between">
               <span className="font-mono text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
                 MANUAL LIVE CAPTURE
@@ -290,7 +379,7 @@ export function VideoDirectorSidebar({
             </div>
 
             {/* Zero-Lag Replay Toggle */}
-            <div className="flex items-center justify-between gap-3 border border-border bg-muted/30 p-3">
+            <div className="flex items-center justify-between gap-3 border border-border bg-muted/30 p-2.5">
               <div className="min-w-0">
                 <div className="text-xs font-medium text-foreground">
                   Zero-Lag Replay Mode
@@ -309,7 +398,7 @@ export function VideoDirectorSidebar({
             </div>
 
             <p className="text-[11px] text-muted-foreground leading-relaxed">
-              Hover the 16:9 stage now to preview the spring virtual cursor and
+              Hover the 16:9 stage to preview the spring virtual cursor and
               minimal click pulse before recording.
             </p>
 
@@ -327,12 +416,10 @@ export function VideoDirectorSidebar({
           </section>
         )}
 
-        <Separator />
-
         {/* Cursor & Feedback Section */}
-        <section className="space-y-3">
-          <span className="font-mono text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-            CURSOR & FEEDBACK
+        <section className="px-3 py-3 space-y-2.5">
+          <span className="block font-mono text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+            CURSOR &amp; FEEDBACK
           </span>
 
           <div className="flex items-center justify-between gap-3">
@@ -375,12 +462,10 @@ export function VideoDirectorSidebar({
           </div>
         </section>
 
-        <Separator />
-
         {/* Output & Capture Settings */}
-        <section className="space-y-3">
-          <span className="font-mono text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-            EXPORT & CAPTURE
+        <section className="px-3 py-3 space-y-3">
+          <span className="block font-mono text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+            EXPORT &amp; CAPTURE
           </span>
 
           {/* Resolution & FPS */}
@@ -499,7 +584,7 @@ export function VideoDirectorSidebar({
           </div>
 
           {/* Optional 3-2-1 Countdown */}
-          <div className="flex items-center justify-between gap-3 pt-1">
+          <div className="flex items-center justify-between gap-3 pt-0.5">
             <div className="min-w-0">
               <div className="text-xs font-medium text-foreground">
                 3-2-1 Countdown
@@ -520,8 +605,8 @@ export function VideoDirectorSidebar({
         </section>
       </div>
 
-      {/* Pinned Bottom Primary Action Bar */}
-      <div className="studio-toolbar-surface border-t border-border p-4 space-y-2 shrink-0">
+      {/* Pinned Bottom Primary Action Bar — Matches DemoControlsPanel footer */}
+      <div className="studio-toolbar-surface border-t border-border p-3 space-y-2 shrink-0">
         {phase === "review" && recordingResult ? (
           <>
             <Button
@@ -539,12 +624,12 @@ export function VideoDirectorSidebar({
                   onDownloadWebm();
                 }
               }}
-              className="w-full h-9 rounded-none text-xs font-sans font-medium gap-2"
+              className="w-full h-8 rounded-none text-xs font-sans font-medium gap-2"
             >
               {isTranscodingMp4 ? (
                 <>
                   <Loader2 className="size-3.5 animate-spin" />
-                  <span>Encoding H.264 60fps MP4...</span>
+                  <span>Encoding H.264 MP4...</span>
                 </>
               ) : (
                 <>
@@ -561,7 +646,7 @@ export function VideoDirectorSidebar({
               )}
             </Button>
 
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 gap-1.5">
               <Button
                 type="button"
                 variant="outline"
@@ -572,7 +657,7 @@ export function VideoDirectorSidebar({
                     ? onDownloadWebm
                     : onDownloadMp4
                 }
-                className="h-8 rounded-none text-xs font-sans gap-1.5"
+                className="h-7 rounded-none text-xs font-sans gap-1.5"
               >
                 <Download className="size-3" />
                 <span>
@@ -585,7 +670,7 @@ export function VideoDirectorSidebar({
                 size="sm"
                 disabled={isTranscodingMp4}
                 onClick={onNewTake}
-                className="h-8 rounded-none text-xs font-sans gap-1.5"
+                className="h-7 rounded-none text-xs font-sans gap-1.5"
               >
                 <RotateCcw className="size-3" />
                 <span>New Take</span>
@@ -598,10 +683,10 @@ export function VideoDirectorSidebar({
             variant="destructive"
             size="sm"
             onClick={onStopCaptureMoves}
-            className="w-full h-9 rounded-none text-xs font-sans font-medium gap-2"
+            className="w-full h-8 rounded-none text-xs font-sans font-medium gap-2"
           >
-            <Square className="size-3.5 fill-current" />
-            <span>Finish & Render Replay</span>
+            <Square className="size-3 fill-current" />
+            <span>Finish &amp; Render</span>
             <span ref={stopBtnTimecodeRef} className="font-mono tabular-nums">
               (00:00.00)
             </span>
@@ -612,12 +697,12 @@ export function VideoDirectorSidebar({
             variant="destructive"
             size="sm"
             onClick={onStopRecording}
-            className="w-full h-9 rounded-none text-xs font-sans font-medium gap-2"
+            className="w-full h-8 rounded-none text-xs font-sans font-medium gap-2"
           >
-            <Square className="size-3.5 fill-current" />
+            <Square className="size-3 fill-current" />
             <span>
               {phase === "rendering-replay"
-                ? "Cancel Replay Render"
+                ? "Cancel Replay"
                 : "Stop Recording"}
             </span>
             <span ref={stopBtnTimecodeRef} className="font-mono tabular-nums">
@@ -631,7 +716,7 @@ export function VideoDirectorSidebar({
             size="sm"
             disabled={!stageReady || isBusy || Boolean(compileError)}
             onClick={onBeginRecording}
-            className="w-full h-9 rounded-none text-xs font-sans font-medium gap-2"
+            className="w-full h-8 rounded-none text-xs font-sans font-medium gap-2"
           >
             {phase === "countdown" || phase === "processing" ? (
               <>

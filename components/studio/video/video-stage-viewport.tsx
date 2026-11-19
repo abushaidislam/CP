@@ -62,6 +62,7 @@ export interface VideoStageViewportProps {
   onReviewRestart: () => void;
   onReviewSeek: (time: number) => void;
   onRecordWithDirectEngine: () => void;
+  backdropClassName?: string;
 }
 
 export function VideoStageViewport({
@@ -99,9 +100,15 @@ export function VideoStageViewport({
   onReviewRestart,
   onReviewSeek,
   onRecordWithDirectEngine,
+  backdropClassName,
 }: VideoStageViewportProps) {
   return (
-    <div className="flex flex-1 flex-col min-w-0 bg-muted/20 dark:bg-black/40 p-4 sm:p-5 gap-3 justify-between overflow-hidden">
+    <div
+      className={cn(
+        "flex flex-1 flex-col min-w-0 p-4 md:p-6 gap-3 justify-between overflow-hidden transition-colors duration-250 ease-smooth-out",
+        backdropClassName || "bg-muted/20 dark:bg-black/40"
+      )}
+    >
       {/* External Telemetry Bar (Always OUTSIDE the 16:9 captured crop region!) */}
       <div className="flex items-center justify-between gap-3 text-xs font-sans shrink-0">
         <div className="flex items-center gap-2 min-w-0 text-muted-foreground">

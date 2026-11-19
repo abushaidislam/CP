@@ -80,6 +80,7 @@ export function StudioHeader() {
     setHistorySheetOpen,
     isOwnerAuthenticated,
     setSecurityModalOpen,
+    isRecordingModalOpen,
     setRecordingModalOpen,
   } = useStudioStore(
     useShallow((state) => ({
@@ -107,6 +108,7 @@ export function StudioHeader() {
       setHistorySheetOpen: state.setHistorySheetOpen,
       isOwnerAuthenticated: state.isOwnerAuthenticated,
       setSecurityModalOpen: state.setSecurityModalOpen,
+      isRecordingModalOpen: state.isRecordingModalOpen,
       setRecordingModalOpen: state.setRecordingModalOpen,
     }))
   );
@@ -874,13 +876,23 @@ export function StudioHeader() {
                 </span>
               </DropdownMenuItem>
 
-              {/* Record 16:9 60fps Video */}
+              {/* Video Capture Side Panel */}
               <DropdownMenuItem
-                onClick={() => setRecordingModalOpen(true)}
+                onClick={() => {
+                  const nextOpen = !isRecordingModalOpen;
+                  if (nextOpen && layoutMode === "editor") {
+                    setLayoutMode("split");
+                  }
+                  setRecordingModalOpen(nextOpen);
+                }}
                 className="gap-2.5 cursor-pointer rounded-none font-sans text-xs"
               >
                 <Video className="size-3.5 text-primary" />
-                <span className="flex-1">Record 16:9 Video</span>
+                <span className="flex-1">
+                  {isRecordingModalOpen
+                    ? "Close Video Capture Panel"
+                    : "Video Capture Side Panel"}
+                </span>
                 <kbd className="px-1 py-0.2 rounded-none bg-muted-foreground/10 text-[9px] font-mono text-muted-foreground">
                   ⇧E
                 </kbd>

@@ -8,7 +8,6 @@ import { DEFAULT_TEMPLATES } from "@/lib/sandbox/default-templates";
 import {
   detectCaptureCapabilities,
   drawCanvasCursorOverlay,
-  getResolutionDimensions,
   startStageRecording,
   transcodeRecordingToMp4,
   type CaptureEngineUsed,
@@ -17,54 +16,44 @@ import {
   type StageRecordingResult,
 } from "@/lib/video/stage-recorder";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import { Check, Film, Moon, RefreshCw, Sun } from "lucide-react";
-import {
   formatBytes,
   formatTimecode,
   slugifyFilename,
   type DiscoveredTargetsInfo,
   type ReplayEventItem,
   type StudioPhase,
-} from "./video/video-studio-types";
-import { VideoStageViewport } from "./video/video-stage-viewport";
-import { VideoDirectorSidebar } from "./video/video-director-sidebar";
+} from "./video-studio-types";
+import { VideoStageViewport } from "./video-stage-viewport";
+import { VideoDirectorSidebar } from "./video-director-sidebar";
 
-export function VideoRecordingModal() {
+export interface VideoStudioWorkspaceProps {
+  backdropClassName?: string;
+  reloadTrigger?: number;
+  onClose: () => void;
+}
+
+export function VideoStudioWorkspace({
+  backdropClassName,
+  reloadTrigger = 0,
+  onClose,
+}: VideoStudioWorkspaceProps) {
   const {
-    isRecordingModalOpen,
-    setRecordingModalOpen,
     recordingConfig,
     setRecordingConfig,
     files,
     dependencies,
     canvasBg,
     previewTheme,
-    setPreviewTheme,
     currentTemplateId,
     userComponents,
   } = useStudioStore(
     useShallow((state) => ({
-      isRecordingModalOpen: state.isRecordingModalOpen,
-      setRecordingModalOpen: state.setRecordingModalOpen,
       recordingConfig: state.recordingConfig,
       setRecordingConfig: state.setRecordingConfig,
       files: state.files,
       dependencies: state.dependencies,
       canvasBg: state.canvasBg,
       previewTheme: state.previewTheme,
-      setPreviewTheme: state.setPreviewTheme,
       currentTemplateId: state.currentTemplateId,
       userComponents: state.userComponents,
     }))
@@ -120,6 +109,10 @@ export function VideoRecordingModal() {
   const lastCursorTelemetryRef = useRef<CursorTelemetryState | null>(null);
   const reviewVideoRef = useRef<HTMLVideoElement | null>(null);
   const recorderRef = useRef<StageRecorderHandle | null>(null);
+  const previewVideoUrlRef = useRef<string | null>(null);
+  const cachedMp4UrlRef = useRef<string | null>(null);
+  previewVideoUrlRef.current = previewVideoUrl;
+  cachedMp4UrlRef.current = cachedMp4Url;
 
   // Imperative DOM refs for timecode & progress (0 React re-renders during recording!)
   const timecodeTextRef = useRef<HTMLSpanElement | null>(null);
@@ -131,6 +124,8 @@ export function VideoRecordingModal() {
   const safetyStopTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const countdownTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const previewThemeRef = useRef(previewTheme);
+  previewThemeRef.current = previewTheme;
 
   const currentComponentName = useMemo(() => {
     const userComp = userComponents?.[currentTemplateId];
@@ -140,23 +135,29 @@ export function VideoRecordingModal() {
   }, [userComponents, currentTemplateId]);
 
   const { html: sandboxHtml, error: compileError } = useMemo(() => {
-    if (!isRecordingModalOpen) {
-      return { html: "", error: null };
-    }
     return compileSandboxHtml(
       files["component.tsx"],
       files["default.tsx"] || files["demo.tsx"] || "",
       files["index.css"],
       dependencies,
       canvasBg,
-      previewTheme,
+      previewThemeRef.current,
       { videoStudio: true }
     );
-  }, [isRecordingModalOpen, files, dependencies, canvasBg, previewTheme]);
+  }, [files, dependencies, canvasBg]);
 
-  // Check server FFmpeg availability when modal opens
+  // Sync external CanvasToolbar reload triggers
+  const lastReloadTriggerRef = useRef(reloadTrigger);
   useEffect(() => {
-    if (!isRecordingModalOpen) return;
+    if (reloadTrigger !== lastReloadTriggerRef.current) {
+      lastReloadTriggerRef.current = reloadTrigger;
+      setStageReady(false);
+      setStageReloadKey((k) => k + 1);
+    }
+  }, [reloadTrigger]);
+
+  // Check server FFmpeg availability on mount
+  useEffect(() => {
     let cancelled = false;
     fetch("/api/video-transcode")
       .then((res) => (res.ok ? res.json() : { available: false }))
@@ -171,7 +172,7 @@ export function VideoRecordingModal() {
     return () => {
       cancelled = true;
     };
-  }, [isRecordingModalOpen]);
+  }, []);
 
   const postToStage = useCallback((message: Record<string, unknown>) => {
     try {
@@ -181,9 +182,15 @@ export function VideoRecordingModal() {
     }
   }, []);
 
+  // Keep stage preview theme synced with CanvasToolbar theme toggle without reloading srcDoc
+  useEffect(() => {
+    if (!stageReady) return;
+    postToStage({ type: "SET_PREVIEW_THEME", theme: previewTheme });
+  }, [previewTheme, stageReady, postToStage]);
+
   // Observe 16:9 stage dimensions once (zero per-frame getBoundingClientRect layout reflows!)
   useEffect(() => {
-    if (!isRecordingModalOpen || phase === "review") return;
+    if (phase === "review") return;
     const container = stageContainerRef.current;
     if (!container) return;
 
@@ -217,7 +224,7 @@ export function VideoRecordingModal() {
       window.removeEventListener("resize", updateCachedRect);
       cursorCtxRef.current = null;
     };
-  }, [isRecordingModalOpen, phase, stageReloadKey]);
+  }, [phase, stageReloadKey]);
 
   const clearParentCursorCanvas = useCallback(() => {
     const canvas = stageCursorCanvasRef.current;
@@ -292,7 +299,7 @@ export function VideoRecordingModal() {
 
   // Push live configuration changes into the stage iframe
   useEffect(() => {
-    if (!isRecordingModalOpen || !stageReady) return;
+    if (!stageReady) return;
     postToStage({
       type: "VIDEO_STUDIO_CONFIG",
       mode: recordingConfig.mode,
@@ -311,7 +318,6 @@ export function VideoRecordingModal() {
       }
     }
   }, [
-    isRecordingModalOpen,
     stageReady,
     recordingConfig,
     phase,
@@ -376,16 +382,42 @@ export function VideoRecordingModal() {
   }, []);
 
   const revokeMediaUrls = useCallback(() => {
-    if (previewVideoUrl) {
-      URL.revokeObjectURL(previewVideoUrl);
+    if (previewVideoUrlRef.current) {
+      URL.revokeObjectURL(previewVideoUrlRef.current);
     }
-    if (cachedMp4Url && cachedMp4Url !== previewVideoUrl) {
-      URL.revokeObjectURL(cachedMp4Url);
+    if (
+      cachedMp4UrlRef.current &&
+      cachedMp4UrlRef.current !== previewVideoUrlRef.current
+    ) {
+      URL.revokeObjectURL(cachedMp4UrlRef.current);
     }
     setPreviewVideoUrl(null);
     setCachedMp4Url(null);
     setRecordingResult(null);
-  }, [previewVideoUrl, cachedMp4Url]);
+  }, []);
+
+  // Clean up timers, active capture, and blob URLs when workspace unmounts
+  useEffect(() => {
+    return () => {
+      stopTimers();
+      if (toastTimerRef.current) {
+        clearTimeout(toastTimerRef.current);
+      }
+      if (recorderRef.current) {
+        recorderRef.current.cancel();
+        recorderRef.current = null;
+      }
+      if (previewVideoUrlRef.current) {
+        URL.revokeObjectURL(previewVideoUrlRef.current);
+      }
+      if (
+        cachedMp4UrlRef.current &&
+        cachedMp4UrlRef.current !== previewVideoUrlRef.current
+      ) {
+        URL.revokeObjectURL(cachedMp4UrlRef.current);
+      }
+    };
+  }, [stopTimers]);
 
   const stopRecording = useCallback(async () => {
     stopTimers();
@@ -496,8 +528,6 @@ export function VideoRecordingModal() {
 
   // Listen to messages from the 16:9 Video Studio sandbox iframe
   useEffect(() => {
-    if (!isRecordingModalOpen) return;
-
     const handleMessage = (event: MessageEvent) => {
       if (
         stageIframeRef.current &&
@@ -511,6 +541,10 @@ export function VideoRecordingModal() {
 
       if (data.type === "RENDER_SUCCESS") {
         setStageReady(true);
+        postToStage({
+          type: "SET_PREVIEW_THEME",
+          theme: previewThemeRef.current,
+        });
         setTimeout(() => postToStage({ type: "VIDEO_STUDIO_SCAN" }), 180);
       }
 
@@ -573,32 +607,11 @@ export function VideoRecordingModal() {
     window.addEventListener("message", handleMessage);
     return () => window.removeEventListener("message", handleMessage);
   }, [
-    isRecordingModalOpen,
     postToStage,
     stopRecording,
     drawParentCursorCanvas,
     startReplayRenderFromTake,
   ]);
-
-  // Clean up active recording & object URLs when dialog closes
-  useEffect(() => {
-    if (!isRecordingModalOpen) {
-      stopTimers();
-      if (recorderRef.current) {
-        recorderRef.current.cancel();
-        recorderRef.current = null;
-      }
-      lastCursorTelemetryRef.current = null;
-      clearParentCursorCanvas();
-      setPhase("idle");
-      setStageReady(false);
-      setErrorMessage(null);
-      setExportToast(null);
-      setIsTranscodingMp4(false);
-      revokeMediaUrls();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isRecordingModalOpen]);
 
   const handleTogglePreviewRun = () => {
     if (phase === "previewing") {
@@ -638,8 +651,7 @@ export function VideoRecordingModal() {
 
       const engineToUse = engineOverride || recordingConfig.captureEngine;
 
-      // ZERO-LAG REPLAY PATH (Manual Live): capture interactions at 0% encoding load,
-      // then automatically replay & render smoothly after pressing Stop!
+      // ZERO-LAG REPLAY PATH (Manual Live)
       if (recordingConfig.mode === "manual" && zeroLagReplay) {
         pendingReplayEngineRef.current = engineToUse;
         setPhase("capturing-moves");
@@ -702,7 +714,6 @@ export function VideoRecordingModal() {
               : undefined
           );
 
-          // Kick off sandbox choreography or manual spring tracking
           if (recordingConfig.mode === "autopilot") {
             postToStage({
               type: "VIDEO_STUDIO_START_AUTOPILOT",
@@ -886,10 +897,6 @@ export function VideoRecordingModal() {
     }
   };
 
-  const { width: targetWidth, height: targetHeight } = getResolutionDimensions(
-    recordingConfig.resolution
-  );
-
   const isBusy =
     phase === "recording" ||
     phase === "capturing-moves" ||
@@ -902,196 +909,92 @@ export function VideoRecordingModal() {
     phase === "capturing-moves" ||
     phase === "rendering-replay";
 
+  const handleClose = () => {
+    if (isActiveCapturePhase) {
+      recorderRef.current?.cancel();
+      recorderRef.current = null;
+      stopTimers();
+      postToStage({ type: "VIDEO_STUDIO_STOP" });
+    }
+    onClose();
+  };
+
   return (
-    <Dialog
-      open={isRecordingModalOpen}
-      onOpenChange={(open) => {
-        if (!open && isActiveCapturePhase) {
-          recorderRef.current?.cancel();
-          recorderRef.current = null;
-          stopTimers();
-          postToStage({ type: "VIDEO_STUDIO_STOP" });
-        }
-        setRecordingModalOpen(open);
-      }}
-    >
-      <DialogContent
-        onFocusOutside={(e) => e.preventDefault()}
-        onInteractOutside={(e) => {
-          if (isActiveCapturePhase) {
-            e.preventDefault();
-          }
+    <>
+      <VideoStageViewport
+        phase={phase}
+        isActiveCapturePhase={isActiveCapturePhase}
+        countdownValue={countdownValue}
+        activeEngine={activeEngine}
+        recordingConfig={recordingConfig}
+        recordingResult={recordingResult}
+        discoveredTargets={discoveredTargets}
+        previewTheme={previewTheme}
+        previewVideoUrl={previewVideoUrl}
+        stageReady={stageReady}
+        stageReloadKey={stageReloadKey}
+        currentTemplateId={currentTemplateId}
+        sandboxHtml={sandboxHtml}
+        compileError={compileError}
+        errorMessage={errorMessage}
+        isReviewPlaying={isReviewPlaying}
+        reviewCurrentTime={reviewCurrentTime}
+        reviewDuration={reviewDuration}
+        timecodeTextRef={timecodeTextRef}
+        progressBarRef={progressBarRef}
+        stageContainerRef={stageContainerRef}
+        stageIframeRef={stageIframeRef}
+        stageCursorCanvasRef={stageCursorCanvasRef}
+        reviewVideoRef={reviewVideoRef}
+        onStopCaptureMoves={handleStopCaptureMoves}
+        onStopRecording={() => void stopRecording()}
+        onTogglePreviewRun={handleTogglePreviewRun}
+        onForwardBoundaryPointer={forwardBoundaryPointerToStage}
+        onReviewTimeUpdate={setReviewCurrentTime}
+        onReviewDurationLoaded={setReviewDuration}
+        onReviewPlayPause={handleReviewPlayPause}
+        onReviewRestart={handleReviewRestart}
+        onReviewSeek={handleReviewSeek}
+        onRecordWithDirectEngine={() => {
+          setRecordingConfig({ captureEngine: "direct" });
+          void beginActualRecording("direct");
         }}
-        className="max-w-[1360px] w-[calc(100vw-2rem)] max-h-[90vh] flex flex-col overflow-hidden p-0 gap-0 rounded-none border border-border bg-card font-sans"
-      >
-        {/* Top Studio Header Bar */}
-        <DialogHeader className="studio-toolbar-surface flex-row items-center justify-between gap-4 border-b border-border px-5 py-3.5 pr-14 shrink-0 space-y-0">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="flex size-8 items-center justify-center rounded-none border border-border bg-background text-primary shrink-0">
-              <Film className="size-4" aria-hidden="true" />
-            </div>
-            <div className="min-w-0">
-              <div className="flex items-center gap-2">
-                <span className="font-mono text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-                  VIDEO STUDIO
-                </span>
-                <span
-                  aria-hidden="true"
-                  className="text-muted-foreground/50 text-xs"
-                >
-                  ·
-                </span>
-                <span className="font-mono text-[10px] text-muted-foreground tabular-nums">
-                  {targetWidth}×{targetHeight} · {recordingConfig.fps} FPS · 16:9
-                </span>
-              </div>
-              <DialogTitle className="text-sm sm:text-base font-semibold tracking-tight text-foreground font-sans truncate">
-                {currentComponentName}
-              </DialogTitle>
-              <DialogDescription className="sr-only">
-                Record a smooth 16:9 60fps interaction showcase video of your
-                live component with Auto-Pilot choreography or Manual Live
-                capture.
-              </DialogDescription>
-            </div>
-          </div>
+        backdropClassName={backdropClassName}
+      />
 
-          {/* Header Utility Strip */}
-          <div className="hidden sm:flex items-center gap-2 shrink-0">
-            {exportToast && (
-              <div
-                role="status"
-                aria-live="polite"
-                className="flex items-center gap-1.5 border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-xs font-sans text-emerald-600 dark:text-emerald-400"
-              >
-                <Check className="size-3.5 shrink-0" />
-                <span>{exportToast}</span>
-              </div>
-            )}
-
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon-sm"
-                  disabled={isBusy}
-                  onClick={() => {
-                    const next = previewTheme === "dark" ? "light" : "dark";
-                    setPreviewTheme(next);
-                    postToStage({ type: "SET_PREVIEW_THEME", theme: next });
-                  }}
-                  aria-label="Toggle stage theme"
-                  className="size-7 rounded-none border-border/80 bg-background/70"
-                >
-                  {previewTheme === "dark" ? (
-                    <Sun className="size-3.5 text-amber-500" />
-                  ) : (
-                    <Moon className="size-3.5 text-sky-400" />
-                  )}
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom" className="font-sans text-xs">
-                Stage theme: {previewTheme === "dark" ? "Dark" : "Light"}
-              </TooltipContent>
-            </Tooltip>
-
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon-sm"
-                  disabled={isBusy}
-                  onClick={() => {
-                    setStageReady(false);
-                    setStageReloadKey((k) => k + 1);
-                  }}
-                  aria-label="Reload 16:9 stage"
-                  className="size-7 rounded-none border-border/80 bg-background/70"
-                >
-                  <RefreshCw className="size-3.5" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom" className="font-sans text-xs">
-                Reset & reload 16:9 stage
-              </TooltipContent>
-            </Tooltip>
-          </div>
-        </DialogHeader>
-
-        {/* Main Workspace Split: Primary 16:9 Stage (Left) + Director Inspector (Right) */}
-        <div className="flex flex-1 min-h-0 flex-col lg:flex-row overflow-y-auto lg:overflow-hidden">
-          <VideoStageViewport
-            phase={phase}
-            isActiveCapturePhase={isActiveCapturePhase}
-            countdownValue={countdownValue}
-            activeEngine={activeEngine}
-            recordingConfig={recordingConfig}
-            recordingResult={recordingResult}
-            discoveredTargets={discoveredTargets}
-            previewTheme={previewTheme}
-            previewVideoUrl={previewVideoUrl}
-            stageReady={stageReady}
-            stageReloadKey={stageReloadKey}
-            currentTemplateId={currentTemplateId}
-            sandboxHtml={sandboxHtml}
-            compileError={compileError}
-            errorMessage={errorMessage}
-            isReviewPlaying={isReviewPlaying}
-            reviewCurrentTime={reviewCurrentTime}
-            reviewDuration={reviewDuration}
-            timecodeTextRef={timecodeTextRef}
-            progressBarRef={progressBarRef}
-            stageContainerRef={stageContainerRef}
-            stageIframeRef={stageIframeRef}
-            stageCursorCanvasRef={stageCursorCanvasRef}
-            reviewVideoRef={reviewVideoRef}
-            onStopCaptureMoves={handleStopCaptureMoves}
-            onStopRecording={() => void stopRecording()}
-            onTogglePreviewRun={handleTogglePreviewRun}
-            onForwardBoundaryPointer={forwardBoundaryPointerToStage}
-            onReviewTimeUpdate={setReviewCurrentTime}
-            onReviewDurationLoaded={setReviewDuration}
-            onReviewPlayPause={handleReviewPlayPause}
-            onReviewRestart={handleReviewRestart}
-            onReviewSeek={handleReviewSeek}
-            onRecordWithDirectEngine={() => {
-              setRecordingConfig({ captureEngine: "direct" });
-              void beginActualRecording("direct");
-            }}
-          />
-
-          <VideoDirectorSidebar
-            phase={phase}
-            isBusy={isBusy}
-            stageReady={stageReady}
-            compileError={compileError}
-            recordingConfig={recordingConfig}
-            recordingResult={recordingResult}
-            discoveredTargets={discoveredTargets}
-            zeroLagReplay={zeroLagReplay}
-            serverFfmpegReady={serverFfmpegReady}
-            supportsNativeMp4={capabilities.supportsNativeMp4}
-            isTranscodingMp4={isTranscodingMp4}
-            countdownValue={countdownValue}
-            stopBtnTimecodeRef={stopBtnTimecodeRef}
-            onUpdateConfig={setRecordingConfig}
-            onSetZeroLagReplay={setZeroLagReplay}
-            onRescanDom={() => postToStage({ type: "VIDEO_STUDIO_SCAN" })}
-            onResetStagePosition={() =>
-              postToStage({ type: "VIDEO_STUDIO_RESET" })
-            }
-            onTogglePreviewRun={handleTogglePreviewRun}
-            onDownloadMp4={() => void handleDownloadMp4()}
-            onDownloadWebm={handleDownloadWebm}
-            onNewTake={handleNewTake}
-            onStopCaptureMoves={handleStopCaptureMoves}
-            onStopRecording={() => void stopRecording()}
-            onBeginRecording={() => void beginActualRecording()}
-          />
-        </div>
-      </DialogContent>
-    </Dialog>
+      <VideoDirectorSidebar
+        phase={phase}
+        isBusy={isBusy}
+        stageReady={stageReady}
+        compileError={compileError}
+        recordingConfig={recordingConfig}
+        recordingResult={recordingResult}
+        discoveredTargets={discoveredTargets}
+        zeroLagReplay={zeroLagReplay}
+        serverFfmpegReady={serverFfmpegReady}
+        supportsNativeMp4={capabilities.supportsNativeMp4}
+        isTranscodingMp4={isTranscodingMp4}
+        countdownValue={countdownValue}
+        exportToast={exportToast}
+        stopBtnTimecodeRef={stopBtnTimecodeRef}
+        onUpdateConfig={setRecordingConfig}
+        onSetZeroLagReplay={setZeroLagReplay}
+        onRescanDom={() => postToStage({ type: "VIDEO_STUDIO_SCAN" })}
+        onResetStagePosition={() => postToStage({ type: "VIDEO_STUDIO_RESET" })}
+        onReloadStage={() => {
+          setStageReady(false);
+          setStageReloadKey((k) => k + 1);
+        }}
+        onTogglePreviewRun={handleTogglePreviewRun}
+        onDownloadMp4={() => void handleDownloadMp4()}
+        onDownloadWebm={handleDownloadWebm}
+        onNewTake={handleNewTake}
+        onStopCaptureMoves={handleStopCaptureMoves}
+        onStopRecording={() => void stopRecording()}
+        onBeginRecording={() => void beginActualRecording()}
+        onClose={handleClose}
+        className="absolute right-0 top-0 bottom-0 z-30 shadow-2xl @[720px]:static @[720px]:shadow-none"
+      />
+    </>
   );
 }

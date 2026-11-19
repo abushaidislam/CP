@@ -77,6 +77,7 @@ interface CanvasToolbarProps {
   onCaptureSnapshot: (
     action?: "thumbnail" | "both" | "download" | "copy"
   ) => void;
+  isRecordingOpen?: boolean;
   onOpenRecordingModal: () => void;
   isFullscreen: boolean;
   onToggleFullscreen: () => void;
@@ -112,6 +113,7 @@ export function CanvasToolbar({
   captureSuccess,
   currentPreviewImage,
   onCaptureSnapshot,
+  isRecordingOpen = false,
   onOpenRecordingModal,
   isFullscreen,
   onToggleFullscreen,
@@ -563,22 +565,36 @@ export function CanvasToolbar({
           </DropdownMenuContent>
         </DropdownMenu>
 
-        {/* 16:9 60fps Interaction Video Studio Trigger */}
+        {/* 16:9 60fps Video Capture Side Panel Toggle */}
         <Tooltip>
           <TooltipTrigger asChild>
             <Button
-              variant="outline"
+              variant={isRecordingOpen ? "secondary" : "outline"}
               size="icon-sm"
               onClick={onOpenRecordingModal}
-              aria-label="Open 16:9 60fps Video Studio"
-              className="studio-icon-btn size-7 rounded-none border-border/80 bg-background/70 text-muted-foreground hover:text-foreground"
+              aria-label="Toggle 16:9 Video Capture Side Panel"
+              aria-pressed={isRecordingOpen}
+              className={cn(
+                "studio-icon-btn relative size-7 rounded-none border-border/80 transition-colors",
+                isRecordingOpen
+                  ? "bg-muted text-foreground border-foreground/30"
+                  : "bg-background/70 text-muted-foreground hover:text-foreground"
+              )}
             >
               <Video className="size-3.5" />
-              <span className="sr-only">Record 16:9 Video</span>
+              {isRecordingOpen && (
+                <span
+                  className="pointer-events-none absolute top-1 right-1 size-1.5 rounded-none bg-red-500"
+                  aria-hidden="true"
+                />
+              )}
+              <span className="sr-only">Video Capture Side Panel</span>
             </Button>
           </TooltipTrigger>
           <TooltipContent side="bottom" className="font-sans text-xs">
-            Record 16:9 60fps Interaction Video (Ctrl+Shift+E)
+            {isRecordingOpen
+              ? "Close Video Capture side panel (Ctrl+Shift+E)"
+              : "Video Capture side panel (Ctrl+Shift+E)"}
           </TooltipContent>
         </Tooltip>
 
@@ -675,7 +691,11 @@ export function CanvasToolbar({
               className="flex items-center gap-2 rounded-none text-xs cursor-pointer font-sans"
             >
               <Video className="size-3.5 text-primary" />
-              <span>Record 16:9 60fps Video...</span>
+              <span>
+                {isRecordingOpen
+                  ? "Close Video Capture Panel"
+                  : "Video Capture Side Panel"}
+              </span>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuLabel className="text-[10px] uppercase font-sans text-muted-foreground">
