@@ -1,8 +1,26 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-19T06:53:55.808Z",
-  "totalComponents": 49,
+  "updatedAt": "2026-11-19T06:57:39.629Z",
+  "totalComponents": 50,
   "components": [
+    {
+      "id": "comp-1795071437892-ej5ud",
+      "slug": "case-study-carousel",
+      "name": "Case Study Carousel",
+      "description": "A multi-card depth carousel for SaaS and agency case studies powered by Framer Motion spring transitions, peeking side cards, swipe gestures, and KPI metrics.",
+      "category": "Custom",
+      "isBuiltIn": false,
+      "updatedAt": 1795071450165,
+      "lastRepoSyncAt": 1795071459553,
+      "path": "registry/components/case-study-carousel",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "index.css",
+        "manifest.json"
+      ],
+      "dependencies": []
+    },
     {
       "id": "comp-1795070872332-xpn9o",
       "slug": "service-category-grid",
