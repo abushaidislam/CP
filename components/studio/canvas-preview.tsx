@@ -1,13 +1,23 @@
 "use client";
 
-import React, { useEffect, useRef, useState, useMemo } from "react";
+import React, { useEffect, useRef, useState, useMemo, useCallback } from "react";
 import {
   useStudioStore,
   StudioViewport,
   CanvasBackground,
   PreviewTheme,
 } from "@/lib/store/studio-store";
-import { compileSandboxHtml } from "@/lib/sandbox/sandbox-compiler";
+import {
+  compileSandboxHtml,
+  type PreviewFitMode,
+} from "@/lib/sandbox/sandbox-compiler";
+import {
+  parseDemoControls,
+  bakeSettingsIntoDemoCode,
+  scaffoldSettingsDemo,
+  type DemoControlValue,
+} from "@/lib/sandbox/demo-controls";
+import { DemoControlsPanel } from "./demo-controls-panel";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -36,6 +46,7 @@ import {
   Download,
   Copy,
   Video,
+  SlidersHorizontal,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -77,10 +88,18 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
     currentTemplateId,
     userComponents,
     activeVariantByTemplate,
+    updateFile,
     updateComponentPreview,
     isRecordingModalOpen,
     setRecordingModalOpen,
   } = useStudioStore();
+
+  const [isControlsOpen, setIsControlsOpen] = useState(false);
+  const [hasAutoOpenedControls, setHasAutoOpenedControls] = useState<string | null>(null);
+  const [controlOverrides, setControlOverrides] = useState<Record<string, DemoControlValue>>({});
+  const [fitMode, setFitMode] = useState<PreviewFitMode>("normal");
+  const controlOverridesRef = useRef<Record<string, DemoControlValue>>({});
+  controlOverridesRef.current = controlOverrides;
 
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isSimulatingHover, setIsSimulatingHover] = useState(false);
@@ -166,16 +185,182 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
     }
   };
 
+  const activeDemoSource = debouncedFiles["default.tsx"] || debouncedFiles["demo.tsx"] || "";
+
+  const parsedDemoControls = useMemo(() => {
+    return parseDemoControls(activeDemoSource, debouncedFiles["component.tsx"]);
+  }, [activeDemoSource, debouncedFiles]);
+
+  // Reset overrides when switching to a different component template
+  useEffect(() => {
+    setControlOverrides({});
+    controlOverridesRef.current = {};
+  }, [currentTemplateId]);
+
+  // Prune any override keys that no longer exist in settings
+  useEffect(() => {
+    setControlOverrides((prev) => {
+      const validKeys = new Set(parsedDemoControls.controls.map((c) => c.key));
+      let changed = false;
+      const next: Record<string, DemoControlValue> = {};
+      for (const [k, v] of Object.entries(prev)) {
+        if (validKeys.has(k)) {
+          next[k] = v;
+        } else {
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, [parsedDemoControls]);
+
+  // Auto-open native controls when a template with active 21st.dev settings loads on wide viewports
+  useEffect(() => {
+    if (
+      parsedDemoControls.status === "active" &&
+      parsedDemoControls.controls.length > 0 &&
+      hasAutoOpenedControls !== currentTemplateId
+    ) {
+      setHasAutoOpenedControls(currentTemplateId);
+      if (typeof window !== "undefined" && window.innerWidth >= 1200) {
+        setIsControlsOpen(true);
+      }
+    }
+  }, [parsedDemoControls.status, parsedDemoControls.controls.length, currentTemplateId, hasAutoOpenedControls]);
+
+  const effectiveControlValues = useMemo(() => {
+    return {
+      ...parsedDemoControls.defaultValues,
+      ...controlOverrides,
+    };
+  }, [parsedDemoControls.defaultValues, controlOverrides]);
+
+  const modifiedControlKeys = useMemo(() => {
+    return Object.keys(controlOverrides).filter((k) => {
+      const defVal = parsedDemoControls.defaultValues[k];
+      const curVal = controlOverrides[k];
+      return JSON.stringify(defVal) !== JSON.stringify(curVal);
+    });
+  }, [controlOverrides, parsedDemoControls.defaultValues]);
+
+  const pushDemoPropsToIframe = useCallback((nextOverrides: Record<string, DemoControlValue>) => {
+    if (iframeRef.current && iframeRef.current.contentWindow) {
+      iframeRef.current.contentWindow.postMessage(
+        {
+          type: "SET_DEMO_PROPS",
+          props: nextOverrides,
+        },
+        "*"
+      );
+    }
+  }, []);
+
+  const handleControlChange = (key: string, value: DemoControlValue) => {
+    setControlOverrides((prev) => {
+      const defVal = parsedDemoControls.defaultValues[key];
+      const next = { ...prev };
+      if (JSON.stringify(defVal) === JSON.stringify(value)) {
+        delete next[key];
+      } else {
+        next[key] = value;
+      }
+      controlOverridesRef.current = next;
+      pushDemoPropsToIframe(next);
+      return next;
+    });
+  };
+
+  const handleResetControlKey = (key: string) => {
+    setControlOverrides((prev) => {
+      const next = { ...prev };
+      delete next[key];
+      controlOverridesRef.current = next;
+      pushDemoPropsToIframe(next);
+      return next;
+    });
+  };
+
+  const handleResetAllControls = () => {
+    setControlOverrides({});
+    controlOverridesRef.current = {};
+    if (iframeRef.current && iframeRef.current.contentWindow) {
+      iframeRef.current.contentWindow.postMessage(
+        { type: "RESET_DEMO_PROPS" },
+        "*"
+      );
+    }
+  };
+
+  const showQuickToast = (msg: string) => {
+    setToastMessage(msg);
+    if (toastTimeoutRef.current) {
+      clearTimeout(toastTimeoutRef.current);
+    }
+    toastTimeoutRef.current = setTimeout(() => {
+      setToastMessage(null);
+    }, 2400);
+  };
+
+  const handleCopyBakedDemoCode = () => {
+    const rawDemo = files["default.tsx"] || files["demo.tsx"] || "";
+    const baked = bakeSettingsIntoDemoCode(rawDemo, controlOverrides);
+    if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
+      navigator.clipboard.writeText(baked).catch(() => {});
+    }
+    showQuickToast(
+      modifiedControlKeys.length > 0
+        ? `Copied default.tsx with ${modifiedControlKeys.length} tuned control${modifiedControlKeys.length > 1 ? "s" : ""}`
+        : "Copied default.tsx code"
+    );
+  };
+
+  const handleApplyBakedToEditor = () => {
+    if (modifiedControlKeys.length === 0) return;
+    const rawDemo = files["default.tsx"] || files["demo.tsx"] || "";
+    const baked = bakeSettingsIntoDemoCode(rawDemo, controlOverrides);
+    updateFile("default.tsx", baked);
+    setControlOverrides({});
+    controlOverridesRef.current = {};
+    showQuickToast("Tuned controls baked into default.tsx");
+  };
+
+  const handleScaffoldControls = () => {
+    const scaffolded = scaffoldSettingsDemo(
+      files["component.tsx"] || "",
+      files["default.tsx"] || files["demo.tsx"] || ""
+    );
+    updateFile("default.tsx", scaffolded);
+    setControlOverrides({});
+    controlOverridesRef.current = {};
+    showQuickToast("Scaffolded 21st.dev settings controls in default.tsx");
+  };
+
+  const handleFitModeChange = (nextFit: PreviewFitMode) => {
+    setFitMode(nextFit);
+    if (iframeRef.current && iframeRef.current.contentWindow) {
+      iframeRef.current.contentWindow.postMessage(
+        {
+          type: "SET_FIT_MODE",
+          fitMode: nextFit,
+        },
+        "*"
+      );
+    }
+  };
+
   const { html, error, detectedDependencies } = useMemo(() => {
     return compileSandboxHtml(
       debouncedFiles["component.tsx"],
-      debouncedFiles["default.tsx"] || debouncedFiles["demo.tsx"] || "",
+      activeDemoSource,
       debouncedFiles["index.css"],
       dependencies,
       canvasBg,
-      previewTheme
+      previewTheme,
+      {
+        fitMode,
+      }
     );
-  }, [debouncedFiles, dependencies, canvasBg, previewTheme]);
+  }, [debouncedFiles, activeDemoSource, dependencies, canvasBg, previewTheme, fitMode]);
 
   const activeVariantId =
     activeVariantByTemplate?.[currentTemplateId] || "default";
@@ -292,6 +477,9 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
           setHydrationStage("ready");
           setIsSandboxLoading(false);
           setIsHydrationSlow(false);
+          if (Object.keys(controlOverridesRef.current).length > 0) {
+            pushDemoPropsToIframe(controlOverridesRef.current);
+          }
         }
         if (event.data.type === "RUNTIME_ERROR") {
           setHydrationStage("error");
@@ -400,7 +588,7 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
       if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
       if (captureTimeoutRef.current) clearTimeout(captureTimeoutRef.current);
     };
-  }, [setCompilerState, addTerminalLog, updateComponentPreview, currentTemplateId]);
+  }, [setCompilerState, addTerminalLog, updateComponentPreview, currentTemplateId, pushDemoPropsToIframe]);
 
   useEffect(() => {
     const handleRequestCapture = (e: Event) => {
@@ -614,6 +802,51 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
 
         {/* Right: Pure Icon-Only Canvas Controls */}
         <div className="flex items-center gap-1 shrink-0">
+          {/* 21st.dev Native Component Controls Panel Toggle */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant={isControlsOpen ? "secondary" : "outline"}
+                size="icon-sm"
+                onClick={() => setIsControlsOpen((prev) => !prev)}
+                aria-label="Toggle 21st.dev Native Component Controls"
+                aria-pressed={isControlsOpen}
+                className={cn(
+                  "studio-icon-btn relative size-7 rounded-none border-border/80 transition-colors",
+                  isControlsOpen
+                    ? "bg-muted text-foreground border-foreground/30"
+                    : "bg-background/70 text-muted-foreground hover:text-foreground"
+                )}
+              >
+                <SlidersHorizontal className="size-3.5" />
+                {parsedDemoControls.status === "active" &&
+                  parsedDemoControls.controls.length > 0 && (
+                    <Badge
+                      variant="secondary"
+                      className={cn(
+                        "pointer-events-none absolute -top-1 -right-1 h-3.5 min-w-3.5 rounded-none px-1 py-0 text-[9px] font-sans font-semibold tabular-nums",
+                        modifiedControlKeys.length > 0
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-foreground/85 text-background"
+                      )}
+                    >
+                      {modifiedControlKeys.length > 0
+                        ? modifiedControlKeys.length
+                        : parsedDemoControls.controls.length}
+                    </Badge>
+                  )}
+                <span className="sr-only">21st.dev Controls</span>
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="font-sans text-xs">
+              {parsedDemoControls.status === "active"
+                ? `21st.dev Native Controls (${parsedDemoControls.controls.length} active${
+                    modifiedControlKeys.length > 0 ? `, ${modifiedControlKeys.length} edited` : ""
+                  })`
+                : "21st.dev Native Component Controls (setup settings)"}
+            </TooltipContent>
+          </Tooltip>
+
           {/* Simulated Hover trigger - Icon-Only */}
           <Tooltip>
             <TooltipTrigger asChild>
@@ -1009,6 +1242,24 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
               ))}
               <DropdownMenuSeparator />
               <DropdownMenuLabel className="text-[10px] uppercase font-sans text-muted-foreground">
+                21st.dev Frame Fit
+              </DropdownMenuLabel>
+              {[
+                { id: "normal" as const, label: "Normal (Full)" },
+                { id: "scale" as const, label: "Scale & Center" },
+                { id: "crop" as const, label: "Crop & Fade" },
+              ].map((item) => (
+                <DropdownMenuItem
+                  key={item.id}
+                  onClick={() => handleFitModeChange(item.id)}
+                  className="flex items-center justify-between rounded-none text-xs cursor-pointer"
+                >
+                  <span>{item.label}</span>
+                  {fitMode === item.id && <Check className="size-3.5 text-primary" />}
+                </DropdownMenuItem>
+              ))}
+              <DropdownMenuSeparator />
+              <DropdownMenuLabel className="text-[10px] uppercase font-sans text-muted-foreground">
                 Zoom Level
               </DropdownMenuLabel>
               {[50, 75, 100, 125, 150].map((level) => (
@@ -1026,12 +1277,13 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
         </div>
       </div>
 
-      {/* Main Canvas Workspace */}
-      <div
-        className={`flex-1 relative overflow-auto p-4 md:p-6 flex items-center justify-center transition-colors duration-250 ease-smooth-out ${getCanvasBackgroundClass(
-          canvasBg
-        )}`}
-      >
+      {/* Main Canvas Stage + Optional 21st.dev Native Controls Dock */}
+      <div className="relative flex flex-1 min-h-0 overflow-hidden">
+        <div
+          className={`flex-1 min-w-0 relative overflow-auto p-4 md:p-6 flex items-center justify-center transition-colors duration-250 ease-smooth-out ${getCanvasBackgroundClass(
+            canvasBg
+          )}`}
+        >
         {isResizing && (
           <div className="fixed inset-0 z-50 cursor-ew-resize select-none bg-transparent" />
         )}
@@ -1489,6 +1741,24 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
             />
           </div>
         </div>
+        </div>
+
+        {/* 21st.dev Native Component Controls Panel (Docked on wide preview, overlay drawer on narrow split) */}
+        {isControlsOpen && (
+          <DemoControlsPanel
+            parsed={parsedDemoControls}
+            values={effectiveControlValues}
+            modifiedKeys={modifiedControlKeys}
+            onChangeValue={handleControlChange}
+            onResetKey={handleResetControlKey}
+            onResetAll={handleResetAllControls}
+            onCopyBakedCode={handleCopyBakedDemoCode}
+            onApplyToEditor={handleApplyBakedToEditor}
+            onScaffoldControls={handleScaffoldControls}
+            onClose={() => setIsControlsOpen(false)}
+            className="absolute right-0 top-0 bottom-0 z-30 shadow-2xl @[720px]:static @[720px]:shadow-none"
+          />
+        )}
       </div>
     </div>
   );

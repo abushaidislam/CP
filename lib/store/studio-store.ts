@@ -2022,10 +2022,12 @@ export const useStudioStore = create<StudioState>()(
           initialFiles = normalizeStudioFiles(starter.files);
           initialDeps = [...starter.dependencies];
         } else {
+          const safeNameLiteral = JSON.stringify(name);
+          const starterDemo = `"use client";\n\nimport React from "react";\nimport Component from "../components/ui/component";\n\nconst settings = {\n  title: ${safeNameLiteral},\n  accentColor: "#6366f1",\n  showBadge: true,\n};\n\nexport default function Demo(props: Partial<typeof settings>) {\n  const s = { ...settings, ...props };\n\n  return (\n    <div className="flex min-h-[300px] w-full items-center justify-center p-6">\n      <Component\n        title={s.title}\n        accentColor={s.accentColor}\n        showBadge={s.showBadge}\n      />\n    </div>\n  );\n}\n`;
           initialFiles = {
-            "component.tsx": `"use client"\n\nimport React from "react"\n\nexport function Component() {\n  return (\n    <div className="flex items-center justify-center p-8 text-foreground">\n      <h2 className="text-xl font-semibold">${name}</h2>\n    </div>\n  )\n}\n\nexport default Component\n`,
-            "default.tsx": `"use client";\n\nimport React from "react";\nimport Component from "../components/ui/component";\n\nexport default function Demo() {\n  return (\n    <div className="flex min-h-[300px] w-full items-center justify-center p-6">\n      <Component />\n    </div>\n  );\n}\n`,
-            "demo.tsx": `"use client";\n\nimport React from "react";\nimport Component from "../components/ui/component";\n\nexport default function Demo() {\n  return (\n    <div className="flex min-h-[300px] w-full items-center justify-center p-6">\n      <Component />\n    </div>\n  );\n}\n`,
+            "component.tsx": `"use client"\n\nimport React from "react"\n\nexport interface ComponentProps {\n  title?: string\n  accentColor?: string\n  showBadge?: boolean\n}\n\nexport function Component({\n  title = ${safeNameLiteral},\n  accentColor = "#6366f1",\n  showBadge = true,\n}: ComponentProps) {\n  return (\n    <div className="flex flex-col items-center justify-center gap-3 p-8 text-foreground">\n      {showBadge && (\n        <span\n          className="inline-flex items-center gap-1.5 border px-2.5 py-0.5 text-[11px] font-medium uppercase tracking-wider"\n          style={{ borderColor: accentColor, color: accentColor }}\n        >\n          21st.dev Ready\n        </span>\n      )}\n      <h2 className="text-xl font-semibold tracking-tight">{title}</h2>\n    </div>\n  )\n}\n\nexport default Component\n`,
+            "default.tsx": starterDemo,
+            "demo.tsx": starterDemo,
             "index.css": `@tailwind base;\n@tailwind components;\n@tailwind utilities;\n`,
           };
           initialDeps = [];

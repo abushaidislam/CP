@@ -2,8 +2,12 @@ import { transform } from "sucrase";
 import { extractCodeImports } from "@/lib/sandbox/package-utils";
 import { buildVideoStudioRuntimeScript } from "@/lib/sandbox/video-choreography-runtime";
 
+export type PreviewFitMode = "normal" | "scale" | "crop";
+
 export interface CompileSandboxOptions {
   videoStudio?: boolean;
+  initialDemoProps?: Record<string, unknown>;
+  fitMode?: PreviewFitMode;
 }
 
 export interface CompileResult {
@@ -60,6 +64,8 @@ export function compileSandboxHtml(
 ): CompileResult {
   const isDark = previewTheme === "dark";
   const isVideoStudio = Boolean(options?.videoStudio);
+  const initialDemoPropsJson = JSON.stringify(options?.initialDemoProps || {}).replace(/<\/script>/gi, "<\\/script>");
+  const initialFitMode: PreviewFitMode = options?.fitMode || "normal";
 
   // Transpile component.tsx
   const compTranspiled = transpileTsx(componentCode);
@@ -198,7 +204,7 @@ export function compileSandboxHtml(
   }
 
   const html = `<!DOCTYPE html>
-<html lang="en" class="h-full ${isDark ? "dark" : ""}">
+<html lang="en" class="h-full ${isDark ? "dark" : ""}" data-fit-mode="${initialFitMode}">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -317,6 +323,22 @@ export function compileSandboxHtml(
       width: 100%;
       display: flex;
       flex-direction: column;
+    }
+    html[data-fit-mode="scale"] #root {
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+    html[data-fit-mode="crop"] #root {
+      align-items: flex-start;
+      justify-content: flex-start;
+      overflow: hidden;
+      mask-image: linear-gradient(to bottom, black 82%, transparent 100%);
+      -webkit-mask-image: linear-gradient(to bottom, black 82%, transparent 100%);
+    }
+    html[data-fit-mode="scale"] [data-fit-hide],
+    html[data-fit-mode="crop"] [data-fit-hide] {
+      display: none !important;
     }
     ${isVideoStudio ? "html, body { overflow-x: hidden; }" : ""}
 
@@ -604,9 +626,30 @@ export function compileSandboxHtml(
         if (!rootEl) return;
         const root = ReactDOM.createRoot(rootEl);
 
+        const initialDemoProps = ${initialDemoPropsJson};
+        let activeDemoProps = initialDemoProps && typeof initialDemoProps === "object" ? { ...initialDemoProps } : {};
+        const demoPropsListeners = new Set();
+
+        window.__STUDIO_SET_DEMO_PROPS__ = (nextProps) => {
+          activeDemoProps = nextProps && typeof nextProps === "object" ? { ...nextProps } : {};
+          demoPropsListeners.forEach((fn) => fn(activeDemoProps));
+        };
+
+        window.__STUDIO_RESET_DEMO_PROPS__ = () => {
+          activeDemoProps = {};
+          demoPropsListeners.forEach((fn) => fn(activeDemoProps));
+        };
+
         function App() {
+          const [demoProps, setDemoProps] = React.useState(activeDemoProps);
+
           React.useEffect(() => {
+            const listener = (next) => setDemoProps(next);
+            demoPropsListeners.add(listener);
             notifyParent({ type: "RENDER_SUCCESS" });
+            return () => {
+              demoPropsListeners.delete(listener);
+            };
           }, []);
 
           const renderFallbackComponent = (err) => {
@@ -620,7 +663,7 @@ export function compileSandboxHtml(
             return React.createElement(
               "div",
               { className: "min-h-full w-full flex flex-col items-center justify-center p-6" },
-              React.createElement(ComponentFromCode, null)
+              React.createElement(ComponentFromCode, demoProps)
             );
           };
 
@@ -631,7 +674,7 @@ export function compileSandboxHtml(
           return React.createElement(
             ErrorBoundary,
             { fallback: renderFallbackComponent },
-            React.createElement(DemoComponent, null)
+            React.createElement(DemoComponent, demoProps)
           );
         }
 
@@ -649,6 +692,20 @@ export function compileSandboxHtml(
     window.addEventListener("message", (event) => {
       if (event.data && event.data.type === "TRIGGER_SIMULATED_HOVER") {
         runSimulatedHover(event.data.durationMs || 4000);
+      }
+      if (event.data && event.data.type === "SET_DEMO_PROPS") {
+        if (typeof window.__STUDIO_SET_DEMO_PROPS__ === "function") {
+          window.__STUDIO_SET_DEMO_PROPS__(event.data.props || {});
+        }
+      }
+      if (event.data && event.data.type === "RESET_DEMO_PROPS") {
+        if (typeof window.__STUDIO_RESET_DEMO_PROPS__ === "function") {
+          window.__STUDIO_RESET_DEMO_PROPS__();
+        }
+      }
+      if (event.data && event.data.type === "SET_FIT_MODE") {
+        const mode = event.data.fitMode || "normal";
+        document.documentElement.setAttribute("data-fit-mode", mode);
       }
       if (event.data && event.data.type === "SET_PREVIEW_THEME") {
         const theme = event.data.theme;

@@ -4,6 +4,12 @@ import React, { useState, useMemo, useEffect, useRef } from "react";
 import { useStudioStore, PreviewTheme, StudioFileName } from "@/lib/store/studio-store";
 import { DEFAULT_TEMPLATES } from "@/lib/sandbox/default-templates";
 import { compileSandboxHtml } from "@/lib/sandbox/sandbox-compiler";
+import {
+  parseDemoControls,
+  bakeSettingsIntoDemoCode,
+  type DemoControlValue,
+} from "@/lib/sandbox/demo-controls";
+import { DemoControlsPanel } from "@/components/studio/demo-controls-panel";
 import { formatRelativeTime } from "@/lib/utils";
 import {
   Dialog,
@@ -26,6 +32,7 @@ import {
   Code2,
   History,
   Loader2,
+  SlidersHorizontal,
 } from "lucide-react";
 
 export interface QuickPreviewModalProps {
@@ -61,6 +68,11 @@ export function QuickPreviewModal({
   const [previewHydrationStage, setPreviewHydrationStage] = useState<
     "compiling" | "hydrating-deps" | "mounting"
   >("compiling");
+  const [showControls, setShowControls] = useState<boolean>(false);
+  const [controlOverrides, setControlOverrides] = useState<Record<string, DemoControlValue>>({});
+  const quickIframeRef = useRef<HTMLIFrameElement | null>(null);
+  const controlOverridesRef = useRef<Record<string, DemoControlValue>>({});
+  controlOverridesRef.current = controlOverrides;
   const copyTimerRef = useRef<NodeJS.Timeout | null>(null);
   const cliTimerRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -137,13 +149,93 @@ export function QuickPreviewModal({
     cliTimerRef.current = setTimeout(() => setCopiedCli(false), 2000);
   };
 
+  const demoSourceForControls = useMemo(() => {
+    if (!component?.files) return "";
+    return component.files["default.tsx"] || component.files["demo.tsx"] || "";
+  }, [component]);
+
+  const parsedDemoControls = useMemo(() => {
+    if (!component?.files) {
+      return parseDemoControls("");
+    }
+    return parseDemoControls(demoSourceForControls, component.files["component.tsx"]);
+  }, [component, demoSourceForControls]);
+
+  useEffect(() => {
+    setControlOverrides({});
+    controlOverridesRef.current = {};
+    setShowControls(parsedDemoControls.status === "active" && parsedDemoControls.controls.length > 0);
+  }, [component?.id, parsedDemoControls.status, parsedDemoControls.controls.length]);
+
+  const effectiveControlValues = useMemo(() => {
+    return {
+      ...parsedDemoControls.defaultValues,
+      ...controlOverrides,
+    };
+  }, [parsedDemoControls.defaultValues, controlOverrides]);
+
+  const modifiedControlKeys = useMemo(() => {
+    return Object.keys(controlOverrides).filter((k) => {
+      return (
+        JSON.stringify(parsedDemoControls.defaultValues[k]) !==
+        JSON.stringify(controlOverrides[k])
+      );
+    });
+  }, [controlOverrides, parsedDemoControls.defaultValues]);
+
+  const pushQuickDemoProps = (nextOverrides: Record<string, DemoControlValue>) => {
+    if (quickIframeRef.current?.contentWindow) {
+      quickIframeRef.current.contentWindow.postMessage(
+        { type: "SET_DEMO_PROPS", props: nextOverrides },
+        "*"
+      );
+    }
+  };
+
+  const handleQuickControlChange = (key: string, value: DemoControlValue) => {
+    setControlOverrides((prev) => {
+      const next = { ...prev };
+      if (JSON.stringify(parsedDemoControls.defaultValues[key]) === JSON.stringify(value)) {
+        delete next[key];
+      } else {
+        next[key] = value;
+      }
+      controlOverridesRef.current = next;
+      pushQuickDemoProps(next);
+      return next;
+    });
+  };
+
+  const handleQuickResetKey = (key: string) => {
+    setControlOverrides((prev) => {
+      const next = { ...prev };
+      delete next[key];
+      controlOverridesRef.current = next;
+      pushQuickDemoProps(next);
+      return next;
+    });
+  };
+
+  const handleQuickResetAll = () => {
+    setControlOverrides({});
+    controlOverridesRef.current = {};
+    if (quickIframeRef.current?.contentWindow) {
+      quickIframeRef.current.contentWindow.postMessage({ type: "RESET_DEMO_PROPS" }, "*");
+    }
+  };
+
+  const handleCopyBakedDemo = async () => {
+    const baked = bakeSettingsIntoDemoCode(demoSourceForControls, controlOverrides);
+    await copyText(baked);
+  };
+
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const { compiledHtml, compileError } = useMemo(() => {
     if (!component) return { compiledHtml: "", compileError: null };
     try {
       const res = compileSandboxHtml(
         component.files["component.tsx"] || "",
-        component.files["default.tsx"] || component.files["demo.tsx"] || "",
+        demoSourceForControls,
         component.files["index.css"] || "",
         component.dependencies || [],
         previewTheme === "dark" ? "dark" : "light",
@@ -156,7 +248,7 @@ export function QuickPreviewModal({
         compileError: err instanceof Error ? err.message : String(err),
       };
     }
-  }, [component, previewTheme, reloadKey]);
+  }, [component, demoSourceForControls, previewTheme, reloadKey]);
 
   const activeCodeContent = resolveComponentFile(selectedCodeFile);
   const codeLines = useMemo(() => {
@@ -195,6 +287,9 @@ export function QuickPreviewModal({
       }
       if (e.data?.type === "RENDER_SUCCESS" || e.data?.type === "RUNTIME_ERROR") {
         setIsIframeLoading(false);
+        if (e.data?.type === "RENDER_SUCCESS" && Object.keys(controlOverridesRef.current).length > 0) {
+          pushQuickDemoProps(controlOverridesRef.current);
+        }
       }
     };
     window.addEventListener("message", handleMsg);
@@ -302,6 +397,21 @@ export function QuickPreviewModal({
                     <RotateCcw className="size-3.5" />
                     <span>Reset Preview</span>
                   </Button>
+                  {parsedDemoControls.status === "active" &&
+                    parsedDemoControls.controls.length > 0 && (
+                      <Button
+                        variant={showControls ? "secondary" : "outline"}
+                        size="sm"
+                        className="rounded-none gap-1.5 font-sans h-8 text-xs"
+                        onClick={() => setShowControls((v) => !v)}
+                      >
+                        <SlidersHorizontal className="size-3.5" />
+                        <span>Controls</span>
+                        <span className="font-mono text-[10px] text-muted-foreground tabular-nums">
+                          ({parsedDemoControls.controls.length})
+                        </span>
+                      </Button>
+                    )}
                 </div>
                 {component.description && (
                   <p className="font-sans text-xs text-muted-foreground truncate max-w-md">
@@ -331,7 +441,8 @@ export function QuickPreviewModal({
                 </div>
               )}
 
-              <div className="w-full h-[440px] rounded-none border border-border bg-background overflow-hidden relative">
+              <div className="w-full h-[440px] rounded-none border border-border bg-background overflow-hidden relative flex">
+                <div className="relative flex-1 min-w-0 h-full overflow-hidden">
                 {isIframeLoading && !compileError && (
                   <div
                     role="status"
@@ -386,12 +497,29 @@ export function QuickPreviewModal({
                   </div>
                 )}
                 <iframe
+                  ref={quickIframeRef}
                   key={`${component.id}-${reloadKey}-${previewTheme}`}
                   title={`${component.name} Preview`}
                   srcDoc={compiledHtml}
                   sandbox="allow-scripts allow-same-origin allow-modals allow-popups"
                   className="w-full h-full border-0"
                 />
+                </div>
+
+                {showControls && parsedDemoControls.status === "active" && (
+                  <DemoControlsPanel
+                    parsed={parsedDemoControls}
+                    values={effectiveControlValues}
+                    modifiedKeys={modifiedControlKeys}
+                    onChangeValue={handleQuickControlChange}
+                    onResetKey={handleQuickResetKey}
+                    onResetAll={handleQuickResetAll}
+                    onCopyBakedCode={handleCopyBakedDemo}
+                    onClose={() => setShowControls(false)}
+                    readOnly
+                    className="w-64 sm:w-72"
+                  />
+                )}
               </div>
             </TabsContent>
 
