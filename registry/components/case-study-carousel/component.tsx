@@ -1,12 +1,7 @@
 "use client";
 
 import * as React from "react";
-import {
-  AnimatePresence,
-  motion,
-  useReducedMotion,
-  type PanInfo,
-} from "framer-motion";
+import { motion, useReducedMotion, type PanInfo } from "framer-motion";
 import { ArrowRight, ChevronLeft, ChevronRight } from "lucide-react";
 
 function cn(...classes: Array<string | undefined | null | false>) {
@@ -27,7 +22,6 @@ export interface CaseStudyItem {
   ctaHref?: string;
   metrics: CaseStudyMetric[];
   visualVariant?: "ferrofluid" | "prism" | "torus" | "sphere" | "monolith";
-  accentGradient?: string;
   imageUrl?: string;
   imageAlt?: string;
 }
@@ -45,6 +39,7 @@ export interface CaseStudyCarouselProps
   onExploreAll?: () => void;
   exploreAllLabel?: string;
   theme?: "light" | "dark";
+  shaderBackground?: boolean;
   glassmorphism?: boolean;
   autoPlay?: boolean;
   autoPlayInterval?: number;
@@ -63,8 +58,6 @@ const DEFAULT_ITEMS: CaseStudyItem[] = [
     ctaLabel: "Read More",
     ctaHref: "#case-study-lgpsmi",
     visualVariant: "ferrofluid",
-    accentGradient:
-      "from-indigo-400/25 via-rose-300/20 to-amber-200/25",
     metrics: [
       { value: "+40%", label: "Demo Booking" },
       { value: "+25%", label: "Closing Rate" },
@@ -80,8 +73,6 @@ const DEFAULT_ITEMS: CaseStudyItem[] = [
     ctaLabel: "Read More",
     ctaHref: "#case-study-kinetic",
     visualVariant: "prism",
-    accentGradient:
-      "from-sky-400/25 via-cyan-300/20 to-indigo-300/25",
     metrics: [
       { value: "4x", label: "Productivity" },
       { value: "-52%", label: "Triage Time" },
@@ -97,8 +88,6 @@ const DEFAULT_ITEMS: CaseStudyItem[] = [
     ctaLabel: "Read More",
     ctaHref: "#case-study-velora",
     visualVariant: "torus",
-    accentGradient:
-      "from-violet-400/25 via-fuchsia-300/20 to-sky-300/25",
     metrics: [
       { value: "+31%", label: "Net Retention" },
       { value: "-18%", label: "Churn Rate" },
@@ -114,8 +103,6 @@ const DEFAULT_ITEMS: CaseStudyItem[] = [
     ctaLabel: "Read More",
     ctaHref: "#case-study-stratum",
     visualVariant: "sphere",
-    accentGradient:
-      "from-emerald-300/25 via-teal-300/20 to-cyan-300/25",
     metrics: [
       { value: "78%", label: "Auto-Resolved" },
       { value: "14s", label: "First Response" },
@@ -131,8 +118,6 @@ const DEFAULT_ITEMS: CaseStudyItem[] = [
     ctaLabel: "Read More",
     ctaHref: "#case-study-monolith",
     visualVariant: "monolith",
-    accentGradient:
-      "from-amber-300/25 via-orange-300/20 to-rose-300/25",
     metrics: [
       { value: "12ms", label: "P99 Latency" },
       { value: "+64%", label: "Throughput" },
@@ -470,6 +455,122 @@ function CaseStudyArtwork({
   );
 }
 
+function ShaderGradientBackdrop({
+  uid,
+  isDark,
+  shouldReduceMotion,
+}: {
+  uid: string;
+  isDark: boolean;
+  shouldReduceMotion: boolean | null;
+}) {
+  return (
+    <div
+      aria-hidden="true"
+      className="pointer-events-none absolute inset-0 overflow-hidden"
+    >
+      {/* Base canvas */}
+      <div
+        className={cn(
+          "absolute inset-0",
+          isDark ? "bg-[#090B14]" : "bg-white"
+        )}
+      />
+
+      {/* Electric indigo-violet bottom-right shader anchor */}
+      <motion.div
+        animate={
+          shouldReduceMotion
+            ? undefined
+            : {
+                scale: [1, 1.06, 1],
+                x: [0, -18, 0],
+                y: [0, -12, 0],
+              }
+        }
+        transition={
+          shouldReduceMotion
+            ? undefined
+            : { duration: 14, repeat: Infinity, repeatType: "mirror", ease: "easeInOut" }
+        }
+        className="absolute -bottom-[26%] -right-[14%] h-[92%] w-[88%] rounded-full blur-[95px]"
+        style={{
+          background: isDark
+            ? "radial-gradient(circle at 60% 60%, rgba(91,53,245,0.72) 0%, rgba(79,70,229,0.45) 45%, transparent 75%)"
+            : "radial-gradient(circle at 62% 62%, #4C2DF5 0%, #5B5BF7 38%, rgba(96,165,250,0.55) 68%, transparent 86%)",
+        }}
+      />
+
+      {/* Soft sky-cyan left/mid shader wave */}
+      <motion.div
+        animate={
+          shouldReduceMotion
+            ? undefined
+            : {
+                scale: [1, 1.05, 1],
+                x: [0, 20, 0],
+                y: [0, 10, 0],
+              }
+        }
+        transition={
+          shouldReduceMotion
+            ? undefined
+            : { duration: 18, repeat: Infinity, repeatType: "mirror", ease: "easeInOut" }
+        }
+        className="absolute -bottom-[22%] -left-[16%] h-[78%] w-[78%] rounded-full blur-[90px]"
+        style={{
+          background: isDark
+            ? "radial-gradient(circle at 42% 58%, rgba(56,189,248,0.34) 0%, rgba(59,130,246,0.22) 48%, transparent 78%)"
+            : "radial-gradient(circle at 42% 58%, #76C3FF 0%, #7BB8FC 42%, rgba(147,197,253,0.4) 68%, transparent 86%)",
+        }}
+      />
+
+      {/* Upper-right sky-blue highlight */}
+      <div
+        className="absolute -right-[10%] -top-[18%] h-[68%] w-[52%] rounded-full blur-[85px]"
+        style={{
+          background: isDark
+            ? "radial-gradient(circle at 60% 40%, rgba(56,189,248,0.24) 0%, transparent 72%)"
+            : "radial-gradient(circle at 60% 40%, rgba(125,201,255,0.78) 0%, rgba(147,197,253,0.38) 48%, transparent 78%)",
+        }}
+      />
+
+      {/* Pure white / deep obsidian top-left cloud mask to keep heading crisp */}
+      <div
+        className="absolute -left-[12%] -top-[18%] h-[66%] w-[72%] rounded-full blur-[70px]"
+        style={{
+          background: isDark
+            ? "radial-gradient(circle at 38% 35%, #090B14 35%, rgba(9,11,20,0.8) 65%, transparent 90%)"
+            : "radial-gradient(circle at 38% 35%, #FFFFFF 42%, rgba(255,255,255,0.88) 68%, transparent 92%)",
+        }}
+      />
+
+      {/* Fine shader film-grain overlay */}
+      <svg
+        className={cn(
+          "absolute inset-0 h-full w-full",
+          isDark ? "opacity-[0.14] mix-blend-screen" : "opacity-[0.12] mix-blend-multiply"
+        )}
+      >
+        <filter id={`${uid}-shader-grain`}>
+          <feTurbulence
+            type="fractalNoise"
+            baseFrequency="0.82"
+            numOctaves="3"
+            stitchTiles="stitch"
+          />
+          <feColorMatrix type="saturate" values="0" />
+        </filter>
+        <rect
+          width="100%"
+          height="100%"
+          filter={`url(#${uid}-shader-grain)`}
+        />
+      </svg>
+    </div>
+  );
+}
+
 function getCircularOffset(index: number, activeIndex: number, total: number) {
   if (total <= 1) return 0;
   let diff = index - activeIndex;
@@ -496,6 +597,7 @@ export const CaseStudyCarousel = React.forwardRef<
       onExploreAll,
       exploreAllLabel = "Explore all Case Studies",
       theme = "light",
+      shaderBackground = true,
       glassmorphism = true,
       autoPlay = false,
       autoPlayInterval = 5000,
@@ -523,8 +625,6 @@ export const CaseStudyCarousel = React.forwardRef<
     const currentIndex = isControlled
       ? ((controlledIndex % total) + total) % total
       : ((internalIndex % total) + total) % total;
-
-    const activeItem = safeItems[currentIndex];
 
     const setIndex = React.useCallback(
       (next: number) => {
@@ -587,10 +687,6 @@ export const CaseStudyCarousel = React.forwardRef<
           mass: 1.02,
         };
 
-    const activeAura =
-      activeItem?.accentGradient ||
-      "from-indigo-400/25 via-rose-300/20 to-amber-200/25";
-
     return (
       <section
         ref={ref}
@@ -605,29 +701,19 @@ export const CaseStudyCarousel = React.forwardRef<
         className={cn(
           "relative w-full max-w-[1040px] overflow-hidden rounded-[36px] px-4 py-12 sm:rounded-[44px] sm:px-8 sm:py-16 focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-400",
           isDark
-            ? "bg-[#0B0C10] text-neutral-50 border border-white/10 shadow-[0_32px_90px_-20px_rgba(0,0,0,0.85)]"
-            : "bg-white text-neutral-950 border border-black/[0.04] shadow-[0_32px_90px_-24px_rgba(0,0,0,0.12)]",
+            ? "bg-[#090B14] text-neutral-50 border border-white/10 shadow-[0_32px_90px_-20px_rgba(0,0,0,0.85)]"
+            : "bg-white text-neutral-950 border border-black/[0.05] shadow-[0_32px_90px_-24px_rgba(15,23,42,0.16)]",
           className
         )}
         {...rest}
       >
-        {/* Ambient Dynamic Color Aura (enhances glassmorphism depth) */}
-        {glassmorphism && (
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={activeItem?.id || currentIndex}
-              initial={{ opacity: 0, scale: 0.94 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 1.04 }}
-              transition={{ duration: shouldReduceMotion ? 0.15 : 0.7, ease: "easeOut" }}
-              aria-hidden="true"
-              className={cn(
-                "pointer-events-none absolute left-1/2 top-1/2 h-[380px] w-[720px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-gradient-to-r blur-[90px]",
-                activeAura,
-                isDark ? "opacity-55" : "opacity-75"
-              )}
-            />
-          </AnimatePresence>
+        {/* Reference Shader Gradient + Grain Backdrop */}
+        {shaderBackground && (
+          <ShaderGradientBackdrop
+            uid={uid}
+            isDark={isDark}
+            shouldReduceMotion={shouldReduceMotion}
+          />
         )}
 
         {/* Top Eyebrow & Heading */}
@@ -641,7 +727,7 @@ export const CaseStudyCarousel = React.forwardRef<
               glassmorphism
                 ? isDark
                   ? "bg-white/[0.08] backdrop-blur-md text-neutral-200 ring-1 ring-white/15 shadow-sm"
-                  : "bg-white/75 backdrop-blur-md text-neutral-800 ring-1 ring-black/[0.06] shadow-[0_4px_16px_rgba(0,0,0,0.04)]"
+                  : "bg-white/80 backdrop-blur-md text-neutral-800 ring-1 ring-black/[0.06] shadow-[0_4px_16px_rgba(0,0,0,0.04)]"
                 : isDark
                   ? "bg-white/[0.07] text-neutral-200 ring-1 ring-white/10"
                   : "bg-neutral-100/90 text-neutral-800 ring-1 ring-black/[0.04]"
@@ -727,8 +813,8 @@ export const CaseStudyCarousel = React.forwardRef<
                   isActive ? "cursor-grab active:cursor-grabbing" : "cursor-pointer",
                   glassmorphism
                     ? isDark
-                      ? "bg-white/[0.06] backdrop-blur-2xl border border-white/15 ring-1 ring-inset ring-white/10 shadow-[0_28px_70px_-14px_rgba(0,0,0,0.8)]"
-                      : "bg-white/75 backdrop-blur-2xl border border-white/80 ring-1 ring-inset ring-black/[0.04] shadow-[0_24px_60px_-14px_rgba(15,23,42,0.12)]"
+                      ? "bg-[#12141D]/70 backdrop-blur-2xl border border-white/15 ring-1 ring-inset ring-white/10 shadow-[0_28px_70px_-14px_rgba(0,0,0,0.82)]"
+                      : "bg-white/75 backdrop-blur-2xl border border-white/85 ring-1 ring-inset ring-black/[0.04] shadow-[0_24px_60px_-14px_rgba(30,41,59,0.18)]"
                     : isDark
                       ? "bg-[#17181E] border border-white/10 shadow-[0_24px_60px_-14px_rgba(0,0,0,0.7)]"
                       : "bg-[#F5F5F7] border border-black/[0.045] shadow-[0_22px_50px_-14px_rgba(0,0,0,0.1)]"
@@ -845,7 +931,12 @@ export const CaseStudyCarousel = React.forwardRef<
                           >
                             {metric.value}
                           </div>
-                          <div className="truncate text-[10px] text-neutral-400 sm:text-[11px]">
+                          <div
+                            className={cn(
+                              "truncate text-[10px] sm:text-[11px]",
+                              isDark ? "text-neutral-400" : "text-neutral-500"
+                            )}
+                          >
                             {metric.label}
                           </div>
                         </motion.div>
@@ -857,7 +948,7 @@ export const CaseStudyCarousel = React.forwardRef<
             );
           })}
 
-          {/* Left / Right Glassmorphic Circular Controls */}
+          {/* Reference-Matched Soft-Feathered Obsidian Move Buttons */}
           {showArrows && total > 1 && (
             <>
               <motion.button
@@ -866,14 +957,25 @@ export const CaseStudyCarousel = React.forwardRef<
                 aria-label="Previous case study"
                 whileHover={shouldReduceMotion ? undefined : { scale: 1.08 }}
                 whileTap={shouldReduceMotion ? undefined : { scale: 0.94 }}
-                className={cn(
-                  "absolute left-1 z-40 flex h-9 w-9 items-center justify-center rounded-full backdrop-blur-md transition-shadow duration-200 focus:outline-none focus-visible:ring-2 sm:left-4",
-                  isDark
-                    ? "bg-white/15 text-white ring-1 ring-white/25 shadow-[0_8px_28px_rgba(0,0,0,0.5)] hover:bg-white/25 focus-visible:ring-white"
-                    : "bg-neutral-950/85 text-white ring-2 ring-white/85 shadow-[0_10px_26px_rgba(0,0,0,0.22)] hover:bg-neutral-950 focus-visible:ring-neutral-900"
-                )}
+                className="group absolute left-1 z-40 flex h-9 w-9 items-center justify-center rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-white/80 sm:left-4"
               >
-                <ChevronLeft className="h-4 w-4" />
+                {/* Soft feathered outer shadow/halo matching reference */}
+                <span
+                  aria-hidden="true"
+                  className="pointer-events-none absolute -inset-0.5 rounded-full bg-black/45 blur-[3px] transition-opacity duration-200 group-hover:bg-black/60"
+                />
+                <span
+                  aria-hidden="true"
+                  className="pointer-events-none absolute inset-0 rounded-full shadow-[inset_0_1px_2px_rgba(255,255,255,0.22),0_6px_16px_rgba(0,0,0,0.35)]"
+                  style={{
+                    background:
+                      "radial-gradient(circle at 38% 30%, #3A3B42 0%, #16171B 52%, #060608 100%)",
+                  }}
+                />
+                <ChevronLeft
+                  className="relative z-10 h-4 w-4 text-white"
+                  strokeWidth={2.25}
+                />
               </motion.button>
 
               <motion.button
@@ -882,14 +984,24 @@ export const CaseStudyCarousel = React.forwardRef<
                 aria-label="Next case study"
                 whileHover={shouldReduceMotion ? undefined : { scale: 1.08 }}
                 whileTap={shouldReduceMotion ? undefined : { scale: 0.94 }}
-                className={cn(
-                  "absolute right-1 z-40 flex h-9 w-9 items-center justify-center rounded-full backdrop-blur-md transition-shadow duration-200 focus:outline-none focus-visible:ring-2 sm:right-4",
-                  isDark
-                    ? "bg-white/15 text-white ring-1 ring-white/25 shadow-[0_8px_28px_rgba(0,0,0,0.5)] hover:bg-white/25 focus-visible:ring-white"
-                    : "bg-neutral-950/85 text-white ring-2 ring-white/85 shadow-[0_10px_26px_rgba(0,0,0,0.22)] hover:bg-neutral-950 focus-visible:ring-neutral-900"
-                )}
+                className="group absolute right-1 z-40 flex h-9 w-9 items-center justify-center rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-white/80 sm:right-4"
               >
-                <ChevronRight className="h-4 w-4" />
+                <span
+                  aria-hidden="true"
+                  className="pointer-events-none absolute -inset-0.5 rounded-full bg-black/45 blur-[3px] transition-opacity duration-200 group-hover:bg-black/60"
+                />
+                <span
+                  aria-hidden="true"
+                  className="pointer-events-none absolute inset-0 rounded-full shadow-[inset_0_1px_2px_rgba(255,255,255,0.22),0_6px_16px_rgba(0,0,0,0.35)]"
+                  style={{
+                    background:
+                      "radial-gradient(circle at 38% 30%, #3A3B42 0%, #16171B 52%, #060608 100%)",
+                  }}
+                />
+                <ChevronRight
+                  className="relative z-10 h-4 w-4 text-white"
+                  strokeWidth={2.25}
+                />
               </motion.button>
             </>
           )}
@@ -912,7 +1024,7 @@ export const CaseStudyCarousel = React.forwardRef<
                   aria-selected={active}
                   aria-label={`Go to ${item.brandName} case study`}
                   onClick={() => setIndex(idx)}
-                  className="relative flex h-2 items-center justify-center px-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-400 rounded-full"
+                  className="relative flex h-2 items-center justify-center rounded-full px-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
                 >
                   {active ? (
                     <motion.span
@@ -922,15 +1034,17 @@ export const CaseStudyCarousel = React.forwardRef<
                           ? { duration: 0.1 }
                           : { type: "spring", stiffness: 360, damping: 28 }
                       }
-                      className="block h-1.5 w-6 rounded-full bg-gradient-to-r from-amber-200 via-rose-300 to-indigo-400 shadow-[0_0_10px_rgba(165,180,252,0.55)]"
+                      className="block h-1.5 w-6 rounded-full bg-gradient-to-r from-amber-200 via-rose-200 to-indigo-300 shadow-[0_0_10px_rgba(255,255,255,0.6)]"
                     />
                   ) : (
                     <span
                       className={cn(
                         "block h-1.5 w-1.5 rounded-full transition-colors duration-200",
-                        isDark
-                          ? "bg-neutral-700 hover:bg-neutral-500"
-                          : "bg-neutral-300/80 hover:bg-neutral-400"
+                        shaderBackground
+                          ? "bg-white/45 hover:bg-white/80"
+                          : isDark
+                            ? "bg-neutral-700 hover:bg-neutral-500"
+                            : "bg-neutral-300/80 hover:bg-neutral-400"
                       )}
                     />
                   )}
@@ -940,22 +1054,44 @@ export const CaseStudyCarousel = React.forwardRef<
           </div>
         )}
 
-        {/* Bottom Primary CTA with Iridescent Glass Glow */}
+        {/* Reference-Matched Iridescent Rim + Soft-Edged Obsidian CTA Button */}
         <div className="relative z-10 mt-6 flex justify-center">
           <motion.button
             type="button"
             onClick={onExploreAll}
-            whileHover={shouldReduceMotion ? undefined : { y: -2, scale: 1.02 }}
-            whileTap={shouldReduceMotion ? undefined : { scale: 0.98 }}
-            transition={{ type: "spring", stiffness: 400, damping: 25 }}
-            className={cn(
-              "relative inline-flex items-center justify-center rounded-full px-6 py-2.5 text-xs font-medium backdrop-blur-md transition-shadow duration-200 focus:outline-none focus-visible:ring-2",
-              isDark
-                ? "bg-white/95 text-neutral-950 ring-1 ring-white/40 shadow-[0_0_28px_rgba(165,180,252,0.35),0_8px_20px_rgba(0,0,0,0.4)] focus-visible:ring-white"
-                : "bg-neutral-950/95 text-white ring-1 ring-indigo-300/40 shadow-[0_0_28px_rgba(129,140,248,0.32),0_8px_20px_rgba(0,0,0,0.22)] focus-visible:ring-neutral-900"
-            )}
+            whileHover={shouldReduceMotion ? undefined : { y: -2, scale: 1.025 }}
+            whileTap={shouldReduceMotion ? undefined : { scale: 0.975 }}
+            transition={{ type: "spring", stiffness: 380, damping: 26 }}
+            className="group relative inline-flex items-center justify-center rounded-full p-[2px] focus:outline-none focus-visible:ring-2 focus-visible:ring-white/80"
           >
-            {exploreAllLabel}
+            {/* Soft feathered multi-color pastel halo */}
+            <span
+              aria-hidden="true"
+              className="pointer-events-none absolute -inset-1 rounded-full opacity-90 blur-[5px] transition-all duration-300 group-hover:opacity-100 group-hover:blur-[7px]"
+              style={{
+                background:
+                  "linear-gradient(110deg, #D8B4FE 0%, #FDE68A 32%, #93C5FD 68%, #818CF8 100%)",
+              }}
+            />
+            {/* Crisp iridescent rim border */}
+            <span
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-0 rounded-full opacity-95"
+              style={{
+                background:
+                  "linear-gradient(110deg, #E9D5FF 0%, #FEF08A 34%, #BAE6FD 68%, #818CF8 100%)",
+              }}
+            />
+            {/* Deep matte-obsidian pill core with soft inner glow */}
+            <span
+              className="relative z-10 inline-flex items-center justify-center rounded-full px-6 py-2.5 text-xs font-medium tracking-[-0.01em] text-white shadow-[inset_0_1px_1.5px_rgba(255,255,255,0.22),inset_0_-2px_6px_rgba(0,0,0,0.75)]"
+              style={{
+                background:
+                  "radial-gradient(ellipse at 50% 0%, #24252B 0%, #0E0F12 58%, #060608 100%)",
+              }}
+            >
+              {exploreAllLabel}
+            </span>
           </motion.button>
         </div>
       </section>
