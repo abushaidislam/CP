@@ -1,31 +1,59 @@
-"use client"
+"use client";
 
-import React from "react"
+import React from "react";
+import {
+  NetworkingCard,
+  type NetworkingCardTheme,
+} from "@/components/ui/component";
 
-export interface ComponentProps {
-  title?: string
-  accentColor?: string
-  showBadge?: boolean
-}
+const settings = {
+  title: "NETWORKING",
+  description:
+    "NETWORKING IS THE ART OF BUILDING CONNECTIONS THAT MOVE YOU FORWARD. IT'S THE BRIDGE BETWEEN WHERE YOU ARE AND WHERE YOU WANT TO GO.",
+  theme: "auto",
+  autoPlay: true,
+  speed: 1,
+  soundEnabled: false,
+};
 
-export function Component({
-  title = "NetworkingCard",
-  accentColor = "#6366f1",
-  showBadge = true,
-}: ComponentProps) {
-  return (
-    <div className="flex flex-col items-center justify-center gap-3 p-8 text-foreground">
-      {showBadge && (
-        <span
-          className="inline-flex items-center gap-1.5 border px-2.5 py-0.5 text-[11px] font-medium uppercase tracking-wider"
-          style={{ borderColor: accentColor, color: accentColor }}
-        >
-          21st.dev Ready
-        </span>
-      )}
-      <h2 className="text-xl font-semibold tracking-tight">{title}</h2>
-    </div>
+const VALID_THEMES: ReadonlyArray<NetworkingCardTheme> = [
+  "auto",
+  "dark",
+  "light",
+];
+
+export default function NetworkingCardDemo(
+  props: Partial<typeof settings> = {}
+) {
+  const config = { ...settings, ...props };
+
+  const theme: NetworkingCardTheme = VALID_THEMES.includes(
+    config.theme as NetworkingCardTheme
   )
+    ? (config.theme as NetworkingCardTheme)
+    : "auto";
+
+  const speed =
+    typeof config.speed === "number" && Number.isFinite(config.speed)
+      ? Math.min(Math.max(config.speed, 0.2), 3)
+      : 1;
+
+  return (
+    <div className="w-full min-h-[400px] flex items-center justify-center p-4 sm:p-8">
+      <NetworkingCard
+        title={typeof config.title === "string" ? config.title : settings.title}
+        description={
+          typeof config.description === "string"
+            ? config.description
+            : settings.description
+        }
+        theme={theme}
+        autoPlay={Boolean(config.autoPlay)}
+        speed={speed}
+        soundEnabled={Boolean(config.soundEnabled)}
+      />
+    </div>
+  );
 }
 
-export default Component
+export { NetworkingCardDemo as Demo, NetworkingCardDemo as demo };
