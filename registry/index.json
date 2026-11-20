@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-20T05:26:33.187Z",
+  "updatedAt": "2026-11-20T05:26:41.016Z",
   "totalComponents": 50,
   "components": [
     {
@@ -10,8 +10,8 @@
       "description": "GPU-accelerated WebGL black hole shader that pulls curved 3D streams of monospace source code through spaghettification, a 360-degree radial warp tunnel, and a swirling plasma event horizon.",
       "category": "Custom",
       "isBuiltIn": false,
-      "updatedAt": 1795152389092,
-      "lastRepoSyncAt": 1795152393048,
+      "updatedAt": 1795152397919,
+      "lastRepoSyncAt": 1795152400982,
       "path": "registry/components/code-singularity",
       "files": [
         "component.tsx",
