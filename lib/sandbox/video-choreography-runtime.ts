@@ -1849,8 +1849,10 @@ export function buildVideoStudioRuntimeScript(): string {
           stylesText += hoverMirrorCss;
         }
 
-        // Prevent accidental CDATA termination inside XML SVG foreignObject
+        // Prevent accidental CDATA termination inside XML SVG foreignObject and strip external rules
         stylesText = stylesText.replace(/\\]\\]>/g, "");
+        stylesText = stylesText.replace(/@import\s+[^;]+;/gi, "");
+        stylesText = stylesText.replace(/@charset\s+[^;]+;/gi, "");
         state.cachedStyleSig = sig;
         state.cachedStylesText = stylesText;
         return stylesText;
@@ -1976,7 +1978,8 @@ export function buildVideoStudioRuntimeScript(): string {
 
           const clonedRoot = root.cloneNode(true);
           prepareCloneForXml(root, clonedRoot);
-          const serializedRoot = serializer.serializeToString(clonedRoot);
+          let serializedRoot = serializer.serializeToString(clonedRoot);
+          serializedRoot = serializedRoot.replace(/&nbsp;/g, "&#160;");
 
           let serializedPortals = "";
           const bodyChildren = document.body.children;

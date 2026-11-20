@@ -811,27 +811,25 @@ export async function startStageRecording(
     );
   }
 
-  // Zero-permission Direct Stage Compositor is used for "direct" and "auto" so clicking Record
-  // works 100% of the time without system screen-share popups or iframe permission failures.
+  // If user explicitly requested Direct engine, or if displayMedia is unavailable in this environment
   if (
     options.preferredEngine === "direct" ||
-    options.preferredEngine === "auto" ||
     caps.isLikelyCrossOriginIframe ||
     !caps.hasDisplayMedia
   ) {
-    if (options.preferredEngine === "native" && caps.hasDisplayMedia) {
-      try {
-        return await startNativeRegionCapture(options);
-      } catch {
-        return startDirectStageCapture(options);
-      }
-    }
     return startDirectStageCapture(options);
   }
 
+  // Both "native" ("Hardware") and "auto" modes attempt GPU Hardware Region Capture.
+  // Hardware capture records live rendered GPU screen pixels with 100% fidelity,
+  // completely eliminating SVG foreignObject rendering errors, tainted canvas blocks, or blank black screens.
   try {
     return await startNativeRegionCapture(options);
-  } catch {
+  } catch (err) {
+    if (options.preferredEngine === "native") {
+      throw err;
+    }
+    // If user dismisses the tab-share permission prompt in "auto" mode, fallback smoothly to Direct Stage
     return startDirectStageCapture(options);
   }
 }

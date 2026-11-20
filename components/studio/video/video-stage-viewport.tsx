@@ -303,11 +303,17 @@ export function VideoStageViewport({
                   void e.currentTarget.play();
                 }}
                 onLoadedMetadata={(e) => {
+                  const mediaDuration = e.currentTarget.duration;
+                  // Chromium fragmented MP4/WebM often falsely reports 0.13s (just the first cluster)
+                  // on loadedmetadata. Never overwrite the accurately measured recording duration!
+                  const minExpected = recordingResult?.durationMs
+                    ? (recordingResult.durationMs / 1000) * 0.75
+                    : 1;
                   if (
-                    Number.isFinite(e.currentTarget.duration) &&
-                    e.currentTarget.duration > 0
+                    Number.isFinite(mediaDuration) &&
+                    mediaDuration > minExpected
                   ) {
-                    onReviewDurationLoaded(e.currentTarget.duration);
+                    onReviewDurationLoaded(mediaDuration);
                   }
                 }}
                 className="w-full h-full object-contain bg-black"
