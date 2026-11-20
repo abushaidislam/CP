@@ -146,6 +146,12 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
 
   const handleThemeChange = (nextTheme: PreviewTheme) => {
     setPreviewTheme(nextTheme);
+    const root = document.documentElement;
+    if (nextTheme === "dark") {
+      root.classList.add("dark");
+    } else {
+      root.classList.remove("dark");
+    }
 
     if (iframeRef.current && iframeRef.current.contentWindow) {
       iframeRef.current.contentWindow.postMessage(
@@ -378,7 +384,7 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
     );
   }, [debouncedFiles, activeDemoSource, dependencies, canvasBg]);
 
-  // Keep live iframe theme & fit mode synchronized via instant postMessage without reloading srcDoc
+  // Keep live iframe theme, background & fit mode synchronized via instant postMessage without reloading srcDoc
   useEffect(() => {
     if (iframeRef.current?.contentWindow) {
       iframeRef.current.contentWindow.postMessage(
@@ -387,6 +393,15 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
       );
     }
   }, [previewTheme, iframeRef]);
+
+  useEffect(() => {
+    if (iframeRef.current?.contentWindow) {
+      iframeRef.current.contentWindow.postMessage(
+        { type: "SET_CANVAS_BG", canvasBg },
+        "*"
+      );
+    }
+  }, [canvasBg, iframeRef]);
 
   useEffect(() => {
     if (iframeRef.current?.contentWindow) {
@@ -726,19 +741,23 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
     }
   };
 
-  const getCanvasBackgroundClass = (bg: CanvasBackground) => {
+  const getCanvasBackgroundClass = (
+    bg: CanvasBackground,
+    theme: PreviewTheme = previewTheme
+  ) => {
+    const isDark = theme === "dark";
     switch (bg) {
       case "mesh":
-        return "vercel-mesh-gradient dark:vercel-mesh-gradient-dark";
+        return isDark ? "vercel-mesh-gradient-dark" : "vercel-mesh-gradient";
       case "grid":
-        return "canvas-grid-light dark:canvas-grid-dark";
+        return isDark ? "canvas-grid-dark" : "canvas-grid-light";
       case "light":
-        return "bg-zinc-100";
+        return isDark ? "bg-zinc-900" : "bg-zinc-100";
       case "black":
-        return "bg-black";
+        return isDark ? "bg-black" : "bg-zinc-200";
       case "dark":
       default:
-        return "bg-muted/30";
+        return isDark ? "bg-muted/30" : "bg-zinc-100/80";
     }
   };
 
@@ -820,7 +839,7 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
       <div className="relative flex flex-1 min-h-0 overflow-hidden">
         {isRecordingModalOpen ? (
           <VideoStudioWorkspace
-            backdropClassName={getCanvasBackgroundClass(canvasBg)}
+            backdropClassName={getCanvasBackgroundClass(canvasBg, previewTheme)}
             reloadTrigger={reloadKey}
             onClose={() => setRecordingModalOpen(false)}
           />
@@ -828,7 +847,8 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
           <>
             <div
               className={`flex-1 min-w-0 relative overflow-auto p-4 md:p-6 flex items-center justify-center transition-colors duration-250 ease-smooth-out ${getCanvasBackgroundClass(
-                canvasBg
+                canvasBg,
+                previewTheme
               )}`}
             >
               {isResizing && (

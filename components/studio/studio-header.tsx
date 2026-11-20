@@ -82,6 +82,8 @@ export function StudioHeader() {
     setSecurityModalOpen,
     isRecordingModalOpen,
     setRecordingModalOpen,
+    previewTheme,
+    setPreviewTheme,
   } = useStudioStore(
     useShallow((state) => ({
       currentTemplateId: state.currentTemplateId,
@@ -110,6 +112,8 @@ export function StudioHeader() {
       setSecurityModalOpen: state.setSecurityModalOpen,
       isRecordingModalOpen: state.isRecordingModalOpen,
       setRecordingModalOpen: state.setRecordingModalOpen,
+      previewTheme: state.previewTheme,
+      setPreviewTheme: state.setPreviewTheme,
     }))
   );
 
@@ -192,17 +196,25 @@ export function StudioHeader() {
 
   React.useEffect(() => {
     const root = document.documentElement;
-    setIsDark(root.classList.contains("dark"));
-  }, []);
+    const shouldBeDark = previewTheme === "dark";
+    setIsDark(shouldBeDark);
+    if (shouldBeDark) {
+      root.classList.add("dark");
+    } else {
+      root.classList.remove("dark");
+    }
+  }, [previewTheme]);
 
   const toggleTheme = () => {
+    const nextTheme = previewTheme === "dark" ? "light" : "dark";
+    setPreviewTheme(nextTheme);
     const root = document.documentElement;
-    if (root.classList.contains("dark")) {
-      root.classList.remove("dark");
-      setIsDark(false);
-    } else {
+    if (nextTheme === "dark") {
       root.classList.add("dark");
       setIsDark(true);
+    } else {
+      root.classList.remove("dark");
+      setIsDark(false);
     }
   };
 

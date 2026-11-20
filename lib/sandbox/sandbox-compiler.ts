@@ -188,21 +188,8 @@ export function compileSandboxHtml(
   const safeDemoDataUri = JSON.stringify(demoDataUri).replace(/<\/script>/gi, "<\\/script>");
   const safeCssCode = (cssCode || "").replace(/<\/style/gi, "<\\/style");
 
-  // Base background style inside preview according to canvasBg and previewTheme
-  let bgClass = isDark ? "bg-zinc-950 text-zinc-100" : "bg-white text-zinc-900";
-  if (canvasBg === "black") {
-    bgClass = isDark ? "bg-black text-white" : "bg-zinc-100 text-zinc-900";
-  } else if (canvasBg === "light") {
-    bgClass = isDark ? "bg-zinc-900 text-zinc-100" : "bg-zinc-50 text-zinc-900";
-  } else if (canvasBg === "grid") {
-    bgClass = isDark
-      ? "bg-zinc-950 text-zinc-100 canvas-grid-dark"
-      : "bg-zinc-50 text-zinc-900 canvas-grid-light";
-  } else if (canvasBg === "mesh") {
-    bgClass = isDark
-      ? "bg-zinc-950 text-zinc-100 canvas-mesh"
-      : "bg-zinc-50 text-zinc-900 canvas-mesh-light";
-  }
+  // Base background attribute inside preview according to canvasBg and previewTheme
+  const safeCanvasBg = canvasBg || "dark";
 
   const html = `<!DOCTYPE html>
 <html lang="en" class="h-full ${isDark ? "dark" : ""}" data-fit-mode="${initialFitMode}">
@@ -359,29 +346,77 @@ export function compileSandboxHtml(
       background: rgba(140, 140, 140, 0.45);
     }
     
+    /* Adaptive Canvas Backgrounds */
+    body {
+      transition: background-color 0.2s ease, color 0.2s ease;
+    }
+    
+    /* Default / Neutral Dark */
+    body[data-canvas-bg="dark"],
+    body:not([data-canvas-bg]) {
+      background-color: #ffffff;
+      color: #09090b;
+    }
+    .dark body[data-canvas-bg="dark"],
+    .dark body:not([data-canvas-bg]) {
+      background-color: #09090b;
+      color: #fafafa;
+    }
+
+    /* Dot Grid */
+    body[data-canvas-bg="grid"],
     .canvas-grid-light {
       background-color: #fafafa;
-      background-image: radial-gradient(rgba(0, 0, 0, 0.09) 1px, transparent 1px);
+      background-image: radial-gradient(circle, rgba(0, 0, 0, 0.12) 1px, transparent 1px);
       background-size: 20px 20px;
+      color: #09090b;
     }
+    .dark body[data-canvas-bg="grid"],
     .canvas-grid-dark {
       background-color: #09090b;
-      background-image: radial-gradient(rgba(255, 255, 255, 0.1) 1px, transparent 1px);
+      background-image: radial-gradient(circle, rgba(255, 255, 255, 0.13) 1px, transparent 1px);
       background-size: 20px 20px;
+      color: #fafafa;
     }
+
+    /* Ambient Mesh */
+    body[data-canvas-bg="mesh"],
     .canvas-mesh-light {
       background-color: #fafafa;
       background-image: 
         radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.12) 0px, transparent 50%),
         radial-gradient(at 100% 0%, rgba(168, 85, 247, 0.12) 0px, transparent 50%),
         radial-gradient(at 50% 100%, rgba(236, 72, 153, 0.08) 0px, transparent 50%);
+      color: #09090b;
     }
+    .dark body[data-canvas-bg="mesh"],
     .canvas-mesh {
       background-color: #09090b;
       background-image: 
         radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.2) 0px, transparent 50%),
         radial-gradient(at 100% 0%, rgba(168, 85, 247, 0.2) 0px, transparent 50%),
         radial-gradient(at 50% 100%, rgba(236, 72, 153, 0.12) 0px, transparent 50%);
+      color: #fafafa;
+    }
+
+    /* Solid Light */
+    body[data-canvas-bg="light"] {
+      background-color: #f4f4f5;
+      color: #09090b;
+    }
+    .dark body[data-canvas-bg="light"] {
+      background-color: #18181b;
+      color: #fafafa;
+    }
+
+    /* Pure Black */
+    body[data-canvas-bg="black"] {
+      background-color: #f4f4f5;
+      color: #09090b;
+    }
+    .dark body[data-canvas-bg="black"] {
+      background-color: #000000;
+      color: #ffffff;
     }
 
     ${safeCssCode}
@@ -392,7 +427,7 @@ export function compileSandboxHtml(
     ${JSON.stringify({ imports: importsMap }, null, 2)}
   </script>
 </head>
-<body class="${bgClass} select-none antialiased min-h-full">
+<body data-canvas-bg="${safeCanvasBg}" class="select-none antialiased min-h-full">
   <div id="root" class="min-h-full w-full flex flex-col"></div>
 
   <!-- Early Global Error & Lifecycle Handler -->
@@ -746,6 +781,10 @@ export function compileSandboxHtml(
         } else {
           html.classList.remove("dark");
         }
+      }
+      if (event.data && event.data.type === "SET_CANVAS_BG") {
+        const bg = event.data.canvasBg || "dark";
+        document.body.setAttribute("data-canvas-bg", bg);
       }
       if (event.data && event.data.type === "EVAL_COMMAND") {
         const { code, id } = event.data;

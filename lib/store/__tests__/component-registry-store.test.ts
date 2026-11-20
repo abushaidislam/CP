@@ -229,9 +229,26 @@ describe("Component Registry & Work History Store Slice", () => {
     expect(useStudioStore.getState().userComponents["non-existent-id"]).toBeUndefined();
   });
 
-  it("should initialize with clean slate and allow creating and duplicating custom components with previews", () => {
+  it("should seed default templates with vibrant preview images and balanced categories", () => {
     const initialComponents = createInitialUserComponents();
-    expect(Object.keys(initialComponents).length).toBe(0);
+    const componentList = Object.values(initialComponents);
+
+    expect(componentList.length).toBeGreaterThanOrEqual(7);
+
+    const expectedIds = [
+      "ink-orbit-hero",
+      "spotlight-card",
+      "neon-glow-button",
+      "live-ping-status-pill",
+    ];
+
+    for (const id of expectedIds) {
+      const comp = initialComponents[id];
+      expect(comp).toBeDefined();
+      expect(comp.id).toBe(id);
+      expect(comp.previewImage).toBeDefined();
+      expect(comp.files["component.tsx"]).toBeDefined();
+    }
 
     const store = useStudioStore.getState();
     const blankId = store.createComponent({ name: "Blank Slate" });
@@ -243,7 +260,7 @@ describe("Component Registry & Work History Store Slice", () => {
     expect(useStudioStore.getState().userComponents[dupId].previewImage).toBe(blankComp.previewImage);
   });
 
-  it("should merge older persisted state and sanitize removed default IDs", () => {
+  it("should merge initial starter templates with older persisted state", () => {
     const olderPersistedState = {
       userComponents: {
         "custom-old": {
@@ -260,26 +277,15 @@ describe("Component Registry & Work History Store Slice", () => {
           },
           dependencies: [],
         },
-        "ink-orbit-hero": {
-          id: "ink-orbit-hero",
-          name: "Ink Orbit 3D Hero",
-          description: "Removed default template",
-          category: "Heroes",
-          createdAt: 1690000000000,
-          updatedAt: 1690000000000,
-          files: { "component.tsx": "", "demo.tsx": "", "index.css": "" },
-          dependencies: [],
-        },
       },
     };
 
     const merged = studioPersistMerge(olderPersistedState, useStudioStore.getState());
     expect(merged.userComponents["custom-old"]).toBeDefined();
-    expect(merged.userComponents["ink-orbit-hero"]).toBeUndefined();
-    expect(merged.userComponents["aurora-ambient-hero"]).toBeUndefined();
-    expect(merged.userComponents["bento-metric-grid"]).toBeUndefined();
-    expect(merged.userComponents["neon-glow-button"]).toBeUndefined();
-    expect(merged.userComponents["live-ping-status-pill"]).toBeUndefined();
+    expect(merged.userComponents["spotlight-card"]).toBeDefined();
+    expect(merged.userComponents["neon-glow-button"]).toBeDefined();
+    expect(merged.userComponents["live-ping-status-pill"]).toBeDefined();
+    expect(merged.userComponents["ink-orbit-hero"]).toBeDefined();
   });
 });
 

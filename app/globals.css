@@ -189,13 +189,13 @@
 /* Canvas checkerboard patterns */
 .canvas-grid-light {
   background-color: #fafafa;
-  background-image: radial-gradient(rgba(0, 0, 0, 0.09) 1px, transparent 1px);
+  background-image: radial-gradient(circle, rgba(0, 0, 0, 0.12) 1px, transparent 1px);
   background-size: 20px 20px;
 }
 
 .canvas-grid-dark {
   background-color: #050506;
-  background-image: radial-gradient(rgba(255, 255, 255, 0.11) 1px, transparent 1px);
+  background-image: radial-gradient(circle, rgba(255, 255, 255, 0.13) 1px, transparent 1px);
   background-size: 20px 20px;
 }
 

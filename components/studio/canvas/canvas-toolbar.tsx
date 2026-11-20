@@ -357,37 +357,24 @@ export function CanvasToolbar({
               Backdrop
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem
-              onClick={() => onCanvasBgChange("mesh")}
-              className="rounded-none"
-            >
-              Subtle Ambient
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => onCanvasBgChange("grid")}
-              className="rounded-none"
-            >
-              Dot Grid
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => onCanvasBgChange("light")}
-              className="rounded-none"
-            >
-              Solid Light
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => onCanvasBgChange("dark")}
-              className="rounded-none"
-            >
-              Neutral Dark
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              onClick={() => onCanvasBgChange("black")}
-              className="rounded-none"
-            >
-              Pure Black
-            </DropdownMenuItem>
+            {[
+              { id: "mesh" as const, label: "Subtle Ambient" },
+              { id: "grid" as const, label: "Dot Grid" },
+              { id: "light" as const, label: "Solid Light" },
+              { id: "dark" as const, label: "Neutral Dark" },
+              { id: "black" as const, label: "Pure Black" },
+            ].map((item) => (
+              <DropdownMenuItem
+                key={item.id}
+                onClick={() => onCanvasBgChange(item.id)}
+                className="flex items-center justify-between rounded-none text-xs cursor-pointer font-sans"
+              >
+                <span>{item.label}</span>
+                {canvasBg === item.id && (
+                  <Check className="size-3.5 text-primary" />
+                )}
+              </DropdownMenuItem>
+            ))}
           </DropdownMenuContent>
         </DropdownMenu>
 
