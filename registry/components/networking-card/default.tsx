@@ -2,36 +2,50 @@
 
 import React from "react";
 import {
-  NetworkingCard,
-  type NetworkingCardTheme,
+  SynapseMeshCard,
+  type SynapseMeshAccent,
+  type SynapseMeshTheme,
 } from "@/components/ui/component";
 
 const settings = {
-  title: "NETWORKING",
-  description:
-    "NETWORKING IS THE ART OF BUILDING CONNECTIONS THAT MOVE YOU FORWARD. IT'S THE BRIDGE BETWEEN WHERE YOU ARE AND WHERE YOU WANT TO GO.",
+  title: "SYNAPSE MESH",
   theme: "auto",
+  accent: "emerald",
   autoPlay: true,
   speed: 1,
   soundEnabled: false,
 };
 
-const VALID_THEMES: ReadonlyArray<NetworkingCardTheme> = [
+const VALID_THEMES: ReadonlyArray<SynapseMeshTheme> = [
   "auto",
   "dark",
   "light",
 ];
 
-export default function NetworkingCardDemo(
+const VALID_ACCENTS: ReadonlyArray<SynapseMeshAccent> = [
+  "mono",
+  "emerald",
+  "cyan",
+  "amber",
+  "violet",
+];
+
+export default function SynapseMeshCardDemo(
   props: Partial<typeof settings> = {}
 ) {
   const config = { ...settings, ...props };
 
-  const theme: NetworkingCardTheme = VALID_THEMES.includes(
-    config.theme as NetworkingCardTheme
+  const theme: SynapseMeshTheme = VALID_THEMES.includes(
+    config.theme as SynapseMeshTheme
   )
-    ? (config.theme as NetworkingCardTheme)
+    ? (config.theme as SynapseMeshTheme)
     : "auto";
+
+  const accent: SynapseMeshAccent = VALID_ACCENTS.includes(
+    config.accent as SynapseMeshAccent
+  )
+    ? (config.accent as SynapseMeshAccent)
+    : "emerald";
 
   const speed =
     typeof config.speed === "number" && Number.isFinite(config.speed)
@@ -39,15 +53,11 @@ export default function NetworkingCardDemo(
       : 1;
 
   return (
-    <div className="w-full min-h-[400px] flex items-center justify-center p-4 sm:p-8">
-      <NetworkingCard
+    <div className="w-full min-h-[420px] flex items-center justify-center p-4 sm:p-8">
+      <SynapseMeshCard
         title={typeof config.title === "string" ? config.title : settings.title}
-        description={
-          typeof config.description === "string"
-            ? config.description
-            : settings.description
-        }
         theme={theme}
+        accent={accent}
         autoPlay={Boolean(config.autoPlay)}
         speed={speed}
         soundEnabled={Boolean(config.soundEnabled)}
@@ -56,4 +66,4 @@ export default function NetworkingCardDemo(
   );
 }
 
-export { NetworkingCardDemo as Demo, NetworkingCardDemo as demo };
+export { SynapseMeshCardDemo as Demo, SynapseMeshCardDemo as demo };
