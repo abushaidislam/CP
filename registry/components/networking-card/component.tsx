@@ -1,31 +1,69 @@
-"use client"
+"use client";
 
-import React from "react"
+import React from "react";
+import {
+  SynapseMeshCard,
+  type SynapseMeshAccent,
+  type SynapseMeshTheme,
+} from "@/components/ui/component";
 
-export interface ComponentProps {
-  title?: string
-  accentColor?: string
-  showBadge?: boolean
-}
+const settings = {
+  title: "SYNAPSE MESH",
+  theme: "auto",
+  accent: "emerald",
+  autoPlay: true,
+  speed: 1,
+  soundEnabled: false,
+};
 
-export function Component({
-  title = "NetworkingCard",
-  accentColor = "#6366f1",
-  showBadge = true,
-}: ComponentProps) {
-  return (
-    <div className="flex flex-col items-center justify-center gap-3 p-8 text-foreground">
-      {showBadge && (
-        <span
-          className="inline-flex items-center gap-1.5 border px-2.5 py-0.5 text-[11px] font-medium uppercase tracking-wider"
-          style={{ borderColor: accentColor, color: accentColor }}
-        >
-          21st.dev Ready
-        </span>
-      )}
-      <h2 className="text-xl font-semibold tracking-tight">{title}</h2>
-    </div>
+const VALID_THEMES: ReadonlyArray<SynapseMeshTheme> = [
+  "auto",
+  "dark",
+  "light",
+];
+
+const VALID_ACCENTS: ReadonlyArray<SynapseMeshAccent> = [
+  "mono",
+  "emerald",
+  "cyan",
+  "amber",
+  "violet",
+];
+
+export default function SynapseMeshCardDemo(
+  props: Partial<typeof settings> = {}
+) {
+  const config = { ...settings, ...props };
+
+  const theme: SynapseMeshTheme = VALID_THEMES.includes(
+    config.theme as SynapseMeshTheme
   )
+    ? (config.theme as SynapseMeshTheme)
+    : "auto";
+
+  const accent: SynapseMeshAccent = VALID_ACCENTS.includes(
+    config.accent as SynapseMeshAccent
+  )
+    ? (config.accent as SynapseMeshAccent)
+    : "emerald";
+
+  const speed =
+    typeof config.speed === "number" && Number.isFinite(config.speed)
+      ? Math.min(Math.max(config.speed, 0.2), 3)
+      : 1;
+
+  return (
+    <div className="w-full min-h-[420px] flex items-center justify-center p-4 sm:p-8">
+      <SynapseMeshCard
+        title={typeof config.title === "string" ? config.title : settings.title}
+        theme={theme}
+        accent={accent}
+        autoPlay={Boolean(config.autoPlay)}
+        speed={speed}
+        soundEnabled={Boolean(config.soundEnabled)}
+      />
+    </div>
+  );
 }
 
-export default Component
+export { SynapseMeshCardDemo as Demo, SynapseMeshCardDemo as demo };
