@@ -1,24 +1,23 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-20T16:26:25.065Z",
+  "updatedAt": "2026-11-20T18:07:42.351Z",
   "totalComponents": 59,
   "components": [
     {
-      "id": "comp-1795191221625-1myv8",
-      "slug": "iridescent-orb",
-      "name": "IridescentOrb",
-      "description": "A WebGL-powered 3D iridescent caustic ribbon orb with Fresnel rim dispersion, pointer-reactive field tilt, and state-driven AI presence animations.",
-      "category": "Custom",
+      "id": "comp-1795198052646-cc84b",
+      "slug": "networking-card",
+      "name": "NetworkingCard",
+      "description": "",
+      "category": "Cards",
       "isBuiltIn": false,
-      "updatedAt": 1795191980472,
-      "lastRepoSyncAt": 1795191985025,
-      "path": "registry/components/iridescent-orb",
+      "updatedAt": 1795198057704,
+      "lastRepoSyncAt": 1795198062197,
+      "path": "registry/components/networking-card",
       "files": [
         "component.tsx",
         "default.tsx",
         "index.css",
-        "manifest.json",
-        "preview.png"
+        "manifest.json"
       ],
       "dependencies": []
     },
