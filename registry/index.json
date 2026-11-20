@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-20T16:14:03.608Z",
+  "updatedAt": "2026-11-20T16:15:44.326Z",
   "totalComponents": 59,
   "components": [
     {
@@ -10,14 +10,15 @@
       "description": "A WebGL-powered 3D iridescent caustic ribbon orb with Fresnel rim dispersion, pointer-reactive field tilt, and state-driven AI presence animations.",
       "category": "Custom",
       "isBuiltIn": false,
-      "updatedAt": 1795191239588,
-      "lastRepoSyncAt": 1795191243568,
+      "updatedAt": 1795191340111,
+      "lastRepoSyncAt": 1795191344291,
       "path": "registry/components/iridescent-orb",
       "files": [
         "component.tsx",
         "default.tsx",
         "index.css",
-        "manifest.json"
+        "manifest.json",
+        "preview.png"
       ],
       "dependencies": []
     },
