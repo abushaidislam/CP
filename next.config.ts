@@ -2,6 +2,9 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   output: "standalone",
+  experimental: {
+    agentUpgrade: "security",
+  },
   allowedDevOrigins: [
     "*.run.app",
     "ais-dev-wvssokgshakuhhubiepyef-410246434679.asia-southeast1.run.app",
