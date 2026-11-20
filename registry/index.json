@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-20T05:19:34.657Z",
+  "updatedAt": "2026-11-20T05:19:40.293Z",
   "totalComponents": 49,
   "components": [
     {
@@ -10,8 +10,8 @@
       "description": "An expressive metallic-gradient character stage with 9-second kinetic typography, depth-of-field camera pans, blinking eye choreography, and zero-rerender cursor tracking.",
       "category": "Cards",
       "isBuiltIn": false,
-      "updatedAt": 1795151970231,
-      "lastRepoSyncAt": 1795151974545,
+      "updatedAt": 1795151977339,
+      "lastRepoSyncAt": 1795151980262,
       "path": "registry/components/reactive-gradient-character",
       "files": [
         "component.tsx",
