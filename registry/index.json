@@ -1,26 +1,8 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-20T05:26:41.016Z",
-  "totalComponents": 50,
+  "updatedAt": "2026-11-20T05:28:02.104Z",
+  "totalComponents": 49,
   "components": [
-    {
-      "id": "comp-1795152376378-295ap",
-      "slug": "code-singularity",
-      "name": "CodeSingularity",
-      "description": "GPU-accelerated WebGL black hole shader that pulls curved 3D streams of monospace source code through spaghettification, a 360-degree radial warp tunnel, and a swirling plasma event horizon.",
-      "category": "Custom",
-      "isBuiltIn": false,
-      "updatedAt": 1795152397919,
-      "lastRepoSyncAt": 1795152400982,
-      "path": "registry/components/code-singularity",
-      "files": [
-        "component.tsx",
-        "default.tsx",
-        "index.css",
-        "manifest.json"
-      ],
-      "dependencies": []
-    },
     {
       "id": "comp-1795151952242-4ag6g",
       "slug": "reactive-gradient-character",
@@ -28,8 +10,8 @@
       "description": "An expressive metallic-gradient character stage with 9-second kinetic typography, depth-of-field camera pans, blinking eye choreography, and zero-rerender cursor tracking.",
       "category": "Cards",
       "isBuiltIn": false,
-      "updatedAt": 1795151977339,
-      "lastRepoSyncAt": 1795151980262,
+      "updatedAt": 1795152477604,
+      "lastRepoSyncAt": 1795152482078,
       "path": "registry/components/reactive-gradient-character",
       "files": [
         "component.tsx",
