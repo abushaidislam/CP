@@ -2,35 +2,35 @@
 
 import React from "react";
 import {
-  NetworkingCard,
-  type NetworkingCardTheme,
+  SynapseCard,
+  type SynapseCardTheme,
 } from "@/components/ui/component";
 
 const settings = {
-  title: "NETWORKING",
+  title: "SYNAPSE",
   description:
-    "NETWORKING IS THE ART OF BUILDING CONNECTIONS THAT MOVE YOU FORWARD. IT'S THE BRIDGE BETWEEN WHERE YOU ARE AND WHERE YOU WANT TO GO.",
+    "THE ARCHITECTURE OF LIVING CONNECTIONS. A QUIET SYSTEM THAT ADAPTS ITS STRUCTURE IN REAL TIME AS SIGNALS MOVE.",
   theme: "auto",
   autoPlay: true,
   speed: 1,
   soundEnabled: false,
 };
 
-const VALID_THEMES: ReadonlyArray<NetworkingCardTheme> = [
+const VALID_THEMES: ReadonlyArray<SynapseCardTheme> = [
   "auto",
   "dark",
   "light",
 ];
 
-export default function NetworkingCardDemo(
+export default function SynapseCardDemo(
   props: Partial<typeof settings> = {}
 ) {
   const config = { ...settings, ...props };
 
-  const theme: NetworkingCardTheme = VALID_THEMES.includes(
-    config.theme as NetworkingCardTheme
+  const theme: SynapseCardTheme = VALID_THEMES.includes(
+    config.theme as SynapseCardTheme
   )
-    ? (config.theme as NetworkingCardTheme)
+    ? (config.theme as SynapseCardTheme)
     : "auto";
 
   const speed =
@@ -40,7 +40,7 @@ export default function NetworkingCardDemo(
 
   return (
     <div className="w-full min-h-[400px] flex items-center justify-center p-4 sm:p-8">
-      <NetworkingCard
+      <SynapseCard
         title={typeof config.title === "string" ? config.title : settings.title}
         description={
           typeof config.description === "string"
@@ -56,4 +56,4 @@ export default function NetworkingCardDemo(
   );
 }
 
-export { NetworkingCardDemo as Demo, NetworkingCardDemo as demo };
+export { SynapseCardDemo as Demo, SynapseCardDemo as demo };
