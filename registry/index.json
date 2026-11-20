@@ -1,8 +1,26 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-20T18:20:02.488Z",
-  "totalComponents": 60,
+  "updatedAt": "2026-11-20T18:21:59.351Z",
+  "totalComponents": 61,
   "components": [
+    {
+      "id": "comp-1795198904500-i870q",
+      "slug": "lenticular-glyph",
+      "name": "Lenticular Glyph",
+      "description": "",
+      "category": "Custom",
+      "isBuiltIn": false,
+      "updatedAt": 1795198914453,
+      "lastRepoSyncAt": 1795198919124,
+      "path": "registry/components/lenticular-glyph",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "index.css",
+        "manifest.json"
+      ],
+      "dependencies": []
+    },
     {
       "id": "comp-1795198052646-cc84b",
       "slug": "networking-card",
