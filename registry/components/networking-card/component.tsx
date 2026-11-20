@@ -1,31 +1,952 @@
-"use client"
+"use client";
 
-import React from "react"
+import React, { useEffect, useId, useRef, useState } from "react";
 
-export interface ComponentProps {
-  title?: string
-  accentColor?: string
-  showBadge?: boolean
+function cn(...classes: Array<string | undefined | null | false>): string {
+  return classes.filter(Boolean).join(" ");
 }
 
-export function Component({
-  title = "NetworkingCard",
-  accentColor = "#6366f1",
-  showBadge = true,
-}: ComponentProps) {
-  return (
-    <div className="flex flex-col items-center justify-center gap-3 p-8 text-foreground">
-      {showBadge && (
-        <span
-          className="inline-flex items-center gap-1.5 border px-2.5 py-0.5 text-[11px] font-medium uppercase tracking-wider"
-          style={{ borderColor: accentColor, color: accentColor }}
+function usePrefersReducedMotion(): boolean {
+  const [reduced, setReduced] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.matchMedia) return;
+    const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+    setReduced(mediaQuery.matches);
+
+    const handleChange = (event: MediaQueryListEvent) => {
+      setReduced(event.matches);
+    };
+
+    mediaQuery.addEventListener("change", handleChange);
+    return () => mediaQuery.removeEventListener("change", handleChange);
+  }, []);
+
+  return reduced;
+}
+
+export type SynapseMeshTheme = "auto" | "dark" | "light";
+export type SynapseMeshAccent = "mono" | "emerald" | "cyan" | "amber" | "violet";
+
+export interface SynapseMeshCardProps
+  extends Omit<React.HTMLAttributes<HTMLElement>, "title"> {
+  /** Primary title shown in the top-left header cell */
+  title?: string;
+  /** Short technical eyebrow label above the title */
+  eyebrow?: string;
+  /** Editorial copy displayed in the top-right header cell */
+  description?: string;
+  /** Color theme mode. "auto" follows Tailwind dark mode classes */
+  theme?: SynapseMeshTheme;
+  /** Accent color for the hub core, active pulses, and status indicator */
+  accent?: SynapseMeshAccent;
+  /** Enables autonomous organic traversal of the central hub */
+  autoPlay?: boolean;
+  /** Speed multiplier for autonomous orbit motion (0.2 to 3) */
+  speed?: number;
+  /** Enables subtle tactile Web Audio ticks when new links form after user interaction */
+  soundEnabled?: boolean;
+  /** Allows pointer tracking, click-to-pin, and keyboard navigation */
+  interactive?: boolean;
+  /** Shows the live telemetry footer strip (active links, coordinates, mode) */
+  showTelemetry?: boolean;
+  /** Optional callback fired when the active connection count changes */
+  onConnectionChange?: (count: number) => void;
+}
+
+interface Point {
+  x: number;
+  y: number;
+}
+
+interface NodeMorphState {
+  linkProgress: number;
+  pullX: number;
+  pullY: number;
+  pulse: number;
+  wasLinked: boolean;
+}
+
+type InteractionMode = "AUTO" | "TRACKING" | "PINNED" | "PAUSED";
+
+// Original figure-8 / Lissajous-inspired organic closed loop
+const ORBIT_WAYPOINTS: ReadonlyArray<Point> = [
+  { x: 0.0, y: 0.0 },
+  { x: 0.56, y: -0.34 },
+  { x: 0.68, y: 0.28 },
+  { x: 0.04, y: 0.14 },
+  { x: -0.58, y: 0.32 },
+  { x: -0.62, y: -0.28 },
+];
+
+const BASE_CYCLE_SECONDS = 7.4;
+
+const ACCENT_HEX: Record<
+  Exclude<SynapseMeshAccent, "mono">,
+  { dark: string; light: string }
+> = {
+  emerald: { dark: "#34d399", light: "#059669" },
+  cyan: { dark: "#22d3ee", light: "#0891b2" },
+  amber: { dark: "#fbbf24", light: "#d97706" },
+  violet: { dark: "#a78bfa", light: "#7c3aed" },
+};
+
+function sampleClosedCatmullRom(points: ReadonlyArray<Point>, t: number): Point {
+  const n = points.length;
+  const wrapped = ((t % 1) + 1) % 1;
+  const scaled = wrapped * n;
+  const i1 = Math.floor(scaled) % n;
+  const u = scaled - Math.floor(scaled);
+
+  const p0 = points[(i1 - 1 + n) % n];
+  const p1 = points[i1];
+  const p2 = points[(i1 + 1) % n];
+  const p3 = points[(i1 + 2) % n];
+
+  const u2 = u * u;
+  const u3 = u2 * u;
+
+  const x =
+    0.5 *
+    (2 * p1.x +
+      (-p0.x + p2.x) * u +
+      (2 * p0.x - 5 * p1.x + 4 * p2.x - p3.x) * u2 +
+      (-p0.x + 3 * p1.x - 3 * p2.x + p3.x) * u3);
+
+  const y =
+    0.5 *
+    (2 * p1.y +
+      (-p0.y + p2.y) * u +
+      (2 * p0.y - 5 * p1.y + 4 * p2.y - p3.y) * u2 +
+      (-p0.y + 3 * p1.y - 3 * p2.y + p3.y) * u3);
+
+  return { x, y };
+}
+
+function easeOutCubic(x: number): number {
+  const clamped = Math.min(Math.max(x, 0), 1);
+  return 1 - Math.pow(1 - clamped, 3);
+}
+
+const SynapseMeshCard = React.forwardRef<HTMLElement, SynapseMeshCardProps>(
+  (
+    {
+      title = "SYNAPSE MESH",
+      eyebrow = "TOPOLOGY // 01",
+      description = "ADAPTIVE SIGNAL ROUTING ACROSS DISTRIBUTED NODES. EVERY CONNECTION MORPHS IN REAL TIME AS PROXIMITY SHIFTS.",
+      theme = "auto",
+      accent = "mono",
+      autoPlay = true,
+      speed = 1,
+      soundEnabled = false,
+      interactive = true,
+      showTelemetry = true,
+      onConnectionChange,
+      className,
+      ...rest
+    },
+    ref
+  ) => {
+    const rawId = useId();
+    const safeId = rawId.replace(/:/g, "");
+    const headingId = `synapse-title-${safeId}`;
+    const descId = `synapse-desc-${safeId}`;
+
+    const prefersReducedMotion = usePrefersReducedMotion();
+    const containerRef = useRef<HTMLDivElement | null>(null);
+    const canvasRef = useRef<HTMLCanvasElement | null>(null);
+    const linksTextRef = useRef<HTMLSpanElement | null>(null);
+    const coordsTextRef = useRef<HTMLSpanElement | null>(null);
+
+    const [mode, setMode] = useState<InteractionMode>(
+      autoPlay ? "AUTO" : "PAUSED"
+    );
+    const [srLinkCount, setSrLinkCount] = useState(12);
+
+    const configRef = useRef({
+      autoPlay,
+      speed,
+      soundEnabled,
+      interactive,
+      prefersReducedMotion,
+      theme,
+      accent,
+    });
+    configRef.current = {
+      autoPlay,
+      speed: Number.isFinite(speed) ? Math.min(Math.max(speed, 0.2), 3) : 1,
+      soundEnabled,
+      interactive,
+      prefersReducedMotion,
+      theme,
+      accent,
+    };
+
+    const onConnectionChangeRef = useRef(onConnectionChange);
+    onConnectionChangeRef.current = onConnectionChange;
+
+    const controlRef = useRef({
+      pointerActive: false,
+      keyboardActive: false,
+      pinned: false,
+      paused: false,
+      targetX: 0,
+      targetY: 0,
+    });
+
+    const hubRef = useRef({
+      x: 0,
+      y: 0,
+      vx: 0,
+      vy: 0,
+      haloScale: 1,
+    });
+
+    const initializedRef = useRef(false);
+    const nodeStatesRef = useRef(new Map<string, NodeMorphState>());
+    const lastLinkCountRef = useRef(-1);
+    const lastModeRef = useRef<InteractionMode>(autoPlay ? "AUTO" : "PAUSED");
+    const lastHudUpdateRef = useRef(0);
+    const audioCtxRef = useRef<AudioContext | null>(null);
+    const lastTickTimeRef = useRef(0);
+    const userInteractedRef = useRef(false);
+
+    const playSynapseTick = () => {
+      if (!configRef.current.soundEnabled || !userInteractedRef.current) return;
+      if (typeof window === "undefined") return;
+
+      const nowMs = performance.now();
+      if (nowMs - lastTickTimeRef.current < 48) return;
+      lastTickTimeRef.current = nowMs;
+
+      try {
+        const AudioCtx =
+          window.AudioContext ||
+          (window as unknown as { webkitAudioContext?: typeof AudioContext })
+            .webkitAudioContext;
+        if (!AudioCtx) return;
+
+        if (!audioCtxRef.current) {
+          audioCtxRef.current = new AudioCtx();
+        }
+        const ctx = audioCtxRef.current;
+        if (ctx.state === "suspended") {
+          void ctx.resume();
+        }
+
+        const now = ctx.currentTime;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        const filter = ctx.createBiquadFilter();
+
+        osc.type = "triangle";
+        osc.frequency.setValueAtTime(1320, now);
+        osc.frequency.exponentialRampToValueAtTime(290, now + 0.015);
+
+        filter.type = "bandpass";
+        filter.frequency.setValueAtTime(1050, now);
+        filter.Q.setValueAtTime(1.5, now);
+
+        gain.gain.setValueAtTime(0.0001, now);
+        gain.gain.linearRampToValueAtTime(0.048, now + 0.002);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.018);
+
+        osc.connect(filter);
+        filter.connect(gain);
+        gain.connect(ctx.destination);
+
+        osc.start(now);
+        osc.stop(now + 0.02);
+      } catch {
+        // Ignore restricted Web Audio contexts
+      }
+    };
+
+    useEffect(() => {
+      return () => {
+        if (audioCtxRef.current) {
+          void audioCtxRef.current.close();
+          audioCtxRef.current = null;
+        }
+      };
+    }, []);
+
+    useEffect(() => {
+      const container = containerRef.current;
+      const canvas = canvasRef.current;
+      if (!container || !canvas) return;
+
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
+
+      let width = 0;
+      let height = 0;
+      let dpr = 1;
+      let rafId = 0;
+      let lastFrameTime = performance.now();
+      let phase = 0;
+
+      const resize = () => {
+        const rect = container.getBoundingClientRect();
+        width = Math.max(1, rect.width);
+        height = Math.max(1, rect.height);
+        dpr = Math.min(window.devicePixelRatio || 1, 2);
+
+        canvas.width = Math.round(width * dpr);
+        canvas.height = Math.round(height * dpr);
+        canvas.style.width = `${width}px`;
+        canvas.style.height = `${height}px`;
+
+        if (!initializedRef.current) {
+          hubRef.current.x = width / 2;
+          hubRef.current.y = height / 2;
+          controlRef.current.targetX = width / 2;
+          controlRef.current.targetY = height / 2;
+          initializedRef.current = true;
+        }
+      };
+
+      resize();
+      const observer = new ResizeObserver(resize);
+      observer.observe(container);
+
+      const resolveColors = () => {
+        const currentTheme = configRef.current.theme;
+        const currentAccent = configRef.current.accent;
+
+        let isDark = true;
+        let fg = "#f5f5f5";
+
+        if (currentTheme === "dark") {
+          isDark = true;
+          fg = "#f5f5f5";
+        } else if (currentTheme === "light") {
+          isDark = false;
+          fg = "#09090b";
+        } else {
+          const computed = window.getComputedStyle(container).color || "";
+          fg = computed || "#f5f5f5";
+          const match = computed.match(/\d+/g);
+          if (match && match.length >= 3) {
+            const lum =
+              0.299 * Number(match[0]) +
+              0.587 * Number(match[1]) +
+              0.114 * Number(match[2]);
+            isDark = lum > 128;
+          }
+        }
+
+        const accentHex =
+          currentAccent === "mono"
+            ? fg
+            : isDark
+              ? ACCENT_HEX[currentAccent].dark
+              : ACCENT_HEX[currentAccent].light;
+
+        return { fg, accentHex };
+      };
+
+      const render = (now: number) => {
+        const dt = Math.min((now - lastFrameTime) / 1000, 0.05);
+        lastFrameTime = now;
+
+        const {
+          autoPlay: isAuto,
+          speed: spd,
+          prefersReducedMotion: reduced,
+        } = configRef.current;
+
+        const ctrl = controlRef.current;
+        const pitch = width / 9;
+        const centerX = width / 2;
+        const centerY = height / 2;
+
+        // Resolve active interaction mode
+        let currentMode: InteractionMode = "PAUSED";
+        let targetX = centerX;
+        let targetY = centerY;
+
+        if (ctrl.pinned) {
+          currentMode = "PINNED";
+          targetX = ctrl.targetX;
+          targetY = ctrl.targetY;
+        } else if (ctrl.pointerActive || ctrl.keyboardActive) {
+          currentMode = "TRACKING";
+          targetX = ctrl.targetX;
+          targetY = ctrl.targetY;
+        } else if (isAuto && !reduced && !ctrl.paused) {
+          currentMode = "AUTO";
+          phase = (phase + (dt * spd) / BASE_CYCLE_SECONDS) % 1;
+          const norm = sampleClosedCatmullRom(ORBIT_WAYPOINTS, phase);
+          targetX = centerX + norm.x * (width * 0.42);
+          targetY = centerY + norm.y * (height * 0.35);
+        } else {
+          currentMode = "PAUSED";
+        }
+
+        if (currentMode !== lastModeRef.current) {
+          lastModeRef.current = currentMode;
+          setMode(currentMode);
+        }
+
+        // Critically damped hub position & velocity tracking
+        const prevX = hubRef.current.x;
+        const prevY = hubRef.current.y;
+        const followRate = reduced ? 1 : 1 - Math.exp(-dt * 9.5);
+        hubRef.current.x += (targetX - hubRef.current.x) * followRate;
+        hubRef.current.y += (targetY - hubRef.current.y) * followRate;
+
+        const safeDt = Math.max(dt, 0.001);
+        const instantVx = (hubRef.current.x - prevX) / safeDt;
+        const instantVy = (hubRef.current.y - prevY) / safeDt;
+        const velSmooth = reduced ? 1 : 1 - Math.exp(-dt * 12);
+        hubRef.current.vx += (instantVx - hubRef.current.vx) * velSmooth;
+        hubRef.current.vy += (instantVy - hubRef.current.vy) * velSmooth;
+
+        const targetHalo = ctrl.pinned ? 1.55 : ctrl.pointerActive ? 1.25 : 1.0;
+        hubRef.current.haloScale +=
+          (targetHalo - hubRef.current.haloScale) * followRate;
+
+        const hx = hubRef.current.x;
+        const hy = hubRef.current.y;
+
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        ctx.clearRect(0, 0, width, height);
+
+        const { fg, accentHex } = resolveColors();
+
+        const spotlightRadius = pitch * 3.5;
+        const minConnectDist = pitch * 1.44;
+        const maxConnectDist = pitch * 2.34;
+        const maxDotRadius = pitch * 0.108;
+        const hubRadius = pitch * 0.168;
+
+        const colsHalf = Math.ceil(width / (2 * pitch)) + 1;
+        const rowsHalf = Math.ceil(height / (2 * pitch)) + 1;
+
+        const morphInRate = reduced ? 1 : 1 - Math.exp(-dt * 14);
+        const morphOutRate = reduced ? 1 : 1 - Math.exp(-dt * 10);
+        const pullRate = reduced ? 1 : 1 - Math.exp(-dt * 11);
+
+        let activeCount = 0;
+        let newlyLinked = false;
+        const activeKeys = new Set<string>();
+
+        const drawSpokes: Array<{
+          x: number;
+          y: number;
+          progress: number;
+        }> = [];
+        const drawDots: Array<{
+          x: number;
+          y: number;
+          r: number;
+          alpha: number;
+          pulse: number;
+          linkProgress: number;
+        }> = [];
+
+        for (let r = -rowsHalf; r <= rowsHalf; r++) {
+          const gy = centerY + r * pitch;
+          if (gy < -pitch || gy > height + pitch) continue;
+
+          for (let c = -colsHalf; c <= colsHalf; c++) {
+            const gx = centerX + c * pitch;
+            if (gx < -pitch || gx > width + pitch) continue;
+
+            const key = `${c},${r}`;
+            const dx = gx - hx;
+            const dy = gy - hy;
+            const dist = Math.hypot(dx, dy);
+
+            const isLinked = dist >= minConnectDist && dist <= maxConnectDist;
+            if (isLinked) activeCount++;
+
+            let state = nodeStatesRef.current.get(key);
+            if (!state && (dist < spotlightRadius || isLinked)) {
+              state = {
+                linkProgress: isLinked ? 1 : 0,
+                pullX: 0,
+                pullY: 0,
+                pulse: 0,
+                wasLinked: isLinked,
+              };
+              nodeStatesRef.current.set(key, state);
+            }
+
+            if (!state) continue;
+            activeKeys.add(key);
+
+            // Elastic spoke morph progress
+            const targetLink = isLinked ? 1 : 0;
+            const rate = isLinked ? morphInRate : morphOutRate;
+            state.linkProgress += (targetLink - state.linkProgress) * rate;
+            if (state.linkProgress < 0.008 && !isLinked) {
+              state.linkProgress = 0;
+            }
+
+            // Trigger crisp ring pulse when a new link snaps in
+            if (isLinked && !state.wasLinked) {
+              state.pulse = 1;
+              newlyLinked = true;
+            }
+            state.wasLinked = isLinked;
+
+            if (state.pulse > 0) {
+              state.pulse = reduced ? 0 : Math.max(0, state.pulse - dt * 2.6);
+            }
+
+            // Subtle magnetic attraction toward hub when linked
+            const pullStrength =
+              isLinked && dist > 1 ? pitch * 0.065 * state.linkProgress : 0;
+            const targetPullX =
+              dist > 1 ? (-dx / dist) * pullStrength : 0;
+            const targetPullY =
+              dist > 1 ? (-dy / dist) * pullStrength : 0;
+            state.pullX += (targetPullX - state.pullX) * pullRate;
+            state.pullY += (targetPullY - state.pullY) * pullRate;
+
+            const renderX = gx + state.pullX;
+            const renderY = gy + state.pullY;
+
+            if (state.linkProgress > 0.015) {
+              drawSpokes.push({
+                x: renderX,
+                y: renderY,
+                progress: state.linkProgress,
+              });
+            }
+
+            if (dist < spotlightRadius) {
+              const t = 1 - dist / spotlightRadius;
+              const baseR = Math.max(
+                0.55,
+                maxDotRadius * Math.pow(t, 1.38)
+              );
+              const morphedR = baseR * (1 + state.linkProgress * 0.16);
+              const alpha = t < 0.22 ? t / 0.22 : 1;
+
+              drawDots.push({
+                x: renderX,
+                y: renderY,
+                r: morphedR,
+                alpha,
+                pulse: state.pulse,
+                linkProgress: state.linkProgress,
+              });
+            }
+          }
+        }
+
+        // Prune dormant off-screen node states to keep memory flat
+        nodeStatesRef.current.forEach((st, key) => {
+          if (!activeKeys.has(key) && st.linkProgress === 0 && st.pulse === 0) {
+            nodeStatesRef.current.delete(key);
+          }
+        });
+
+        // Fire audio tick & callbacks without triggering 60fps React re-renders
+        if (newlyLinked && lastLinkCountRef.current > 0) {
+          playSynapseTick();
+        }
+        if (activeCount !== lastLinkCountRef.current) {
+          lastLinkCountRef.current = activeCount;
+          onConnectionChangeRef.current?.(activeCount);
+          setSrLinkCount(activeCount);
+        }
+
+        if (now - lastHudUpdateRef.current > 65) {
+          lastHudUpdateRef.current = now;
+          if (linksTextRef.current) {
+            linksTextRef.current.textContent = `${String(activeCount).padStart(2, "0")} LINKS`;
+          }
+          if (coordsTextRef.current) {
+            const nx = ((hx - centerX) / (width * 0.5)).toFixed(2);
+            const ny = (-(hy - centerY) / (height * 0.5)).toFixed(2);
+            coordsTextRef.current.textContent = `X ${nx}  Y ${ny}`;
+          }
+        }
+
+        // 1. Draw morphing radial spokes (extending/retracting smoothly from hub)
+        ctx.save();
+        ctx.lineCap = "round";
+        const baseLineWidth = Math.max(1, pitch * 0.017);
+        for (let i = 0; i < drawSpokes.length; i++) {
+          const sp = drawSpokes[i];
+          const eased = easeOutCubic(sp.progress);
+          const endX = hx + (sp.x - hx) * eased;
+          const endY = hy + (sp.y - hy) * eased;
+
+          ctx.strokeStyle = fg;
+          ctx.globalAlpha = 0.85 * eased;
+          ctx.lineWidth = baseLineWidth * (0.75 + 0.25 * eased);
+          ctx.beginPath();
+          ctx.moveTo(hx, hy);
+          ctx.lineTo(endX, endY);
+          ctx.stroke();
+        }
+        ctx.restore();
+
+        // 2. Draw proximity-scaled dots & crisp 1px synapse ring pulses
+        ctx.save();
+        for (let i = 0; i < drawDots.length; i++) {
+          const dot = drawDots[i];
+
+          if (dot.pulse > 0.02) {
+            const pInv = 1 - dot.pulse;
+            const ringR = dot.r + pitch * 0.24 * easeOutCubic(pInv);
+            ctx.strokeStyle = accentHex;
+            ctx.globalAlpha = dot.pulse * 0.65;
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.arc(dot.x, dot.y, ringR, 0, Math.PI * 2);
+            ctx.stroke();
+          }
+
+          ctx.fillStyle = fg;
+          ctx.globalAlpha = dot.alpha;
+          ctx.beginPath();
+          ctx.arc(dot.x, dot.y, dot.r, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.restore();
+
+        // 3. Draw velocity-morphed central hub & subtle perimeter halo
+        const speedMag = Math.hypot(hubRef.current.vx, hubRef.current.vy);
+        const stretch = reduced
+          ? 1
+          : 1 + Math.min(speedMag / 1600, 0.16);
+        const squash = 1 / Math.sqrt(stretch);
+        const angle =
+          speedMag > 6
+            ? Math.atan2(hubRef.current.vy, hubRef.current.vx)
+            : 0;
+
+        ctx.save();
+        ctx.translate(hx, hy);
+
+        // Crisp 1px morphing halo ring around hub
+        ctx.strokeStyle = accentHex;
+        ctx.globalAlpha = ctrl.pinned ? 0.8 : 0.35;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.arc(0, 0, hubRadius * 1.48 * hubRef.current.haloScale, 0, Math.PI * 2);
+        ctx.stroke();
+
+        // Velocity-responsive elliptical hub core
+        ctx.rotate(angle);
+        ctx.scale(stretch, squash);
+        ctx.fillStyle = accentHex;
+        ctx.globalAlpha = 1;
+        ctx.beginPath();
+        ctx.arc(0, 0, hubRadius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+
+        rafId = window.requestAnimationFrame(render);
+      };
+
+      rafId = window.requestAnimationFrame(render);
+
+      return () => {
+        window.cancelAnimationFrame(rafId);
+        observer.disconnect();
+      };
+    }, []);
+
+    const getCanvasCoords = (clientX: number, clientY: number): Point | null => {
+      if (!containerRef.current) return null;
+      const rect = containerRef.current.getBoundingClientRect();
+      return {
+        x: Math.min(Math.max(clientX - rect.left, 0), rect.width),
+        y: Math.min(Math.max(clientY - rect.top, 0), rect.height),
+      };
+    };
+
+    const handlePointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
+      if (!configRef.current.interactive || controlRef.current.pinned) return;
+      const pt = getCanvasCoords(event.clientX, event.clientY);
+      if (!pt) return;
+      controlRef.current.pointerActive = true;
+      controlRef.current.keyboardActive = false;
+      controlRef.current.targetX = pt.x;
+      controlRef.current.targetY = pt.y;
+    };
+
+    const handlePointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+      if (!configRef.current.interactive) return;
+      userInteractedRef.current = true;
+      const pt = getCanvasCoords(event.clientX, event.clientY);
+      if (!pt) return;
+
+      if (controlRef.current.pinned) {
+        controlRef.current.pinned = false;
+        controlRef.current.pointerActive = true;
+        controlRef.current.targetX = pt.x;
+        controlRef.current.targetY = pt.y;
+      } else {
+        controlRef.current.pinned = true;
+        controlRef.current.pointerActive = false;
+        controlRef.current.keyboardActive = false;
+        controlRef.current.targetX = pt.x;
+        controlRef.current.targetY = pt.y;
+      }
+    };
+
+    const handlePointerLeave = () => {
+      controlRef.current.pointerActive = false;
+    };
+
+    const handleKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+      if (!configRef.current.interactive || !containerRef.current) return;
+      userInteractedRef.current = true;
+      const rect = containerRef.current.getBoundingClientRect();
+      const step = rect.width / 18;
+
+      if (
+        event.key === "ArrowLeft" ||
+        event.key === "ArrowRight" ||
+        event.key === "ArrowUp" ||
+        event.key === "ArrowDown"
+      ) {
+        event.preventDefault();
+        controlRef.current.pinned = false;
+        if (!controlRef.current.keyboardActive) {
+          controlRef.current.targetX = hubRef.current.x;
+          controlRef.current.targetY = hubRef.current.y;
+          controlRef.current.keyboardActive = true;
+        }
+        if (event.key === "ArrowLeft") {
+          controlRef.current.targetX = Math.max(
+            0,
+            controlRef.current.targetX - step
+          );
+        } else if (event.key === "ArrowRight") {
+          controlRef.current.targetX = Math.min(
+            rect.width,
+            controlRef.current.targetX + step
+          );
+        } else if (event.key === "ArrowUp") {
+          controlRef.current.targetY = Math.max(
+            0,
+            controlRef.current.targetY - step
+          );
+        } else if (event.key === "ArrowDown") {
+          controlRef.current.targetY = Math.min(
+            rect.height,
+            controlRef.current.targetY + step
+          );
+        }
+      } else if (event.key === "Enter") {
+        event.preventDefault();
+        controlRef.current.pinned = !controlRef.current.pinned;
+        if (controlRef.current.pinned) {
+          controlRef.current.targetX = hubRef.current.x;
+          controlRef.current.targetY = hubRef.current.y;
+        }
+      } else if (event.key === " ") {
+        event.preventDefault();
+        controlRef.current.pinned = false;
+        controlRef.current.keyboardActive = false;
+        controlRef.current.paused = !controlRef.current.paused;
+      } else if (event.key === "Escape" || event.key === "Home") {
+        event.preventDefault();
+        controlRef.current.pinned = false;
+        controlRef.current.keyboardActive = false;
+        controlRef.current.pointerActive = false;
+        controlRef.current.targetX = rect.width / 2;
+        controlRef.current.targetY = rect.height / 2;
+      }
+    };
+
+    const surfaceThemeClasses =
+      theme === "dark"
+        ? "bg-[#050507] text-[#f5f5f5] border-zinc-800"
+        : theme === "light"
+          ? "bg-white text-zinc-950 border-zinc-200"
+          : "bg-white text-zinc-950 border-zinc-200 dark:bg-[#050507] dark:text-[#f5f5f5] dark:border-zinc-800";
+
+    const dividerThemeClasses =
+      theme === "dark"
+        ? "border-zinc-800 divide-zinc-800"
+        : theme === "light"
+          ? "border-zinc-200 divide-zinc-200"
+          : "border-zinc-200 divide-zinc-200 dark:border-zinc-800 dark:divide-zinc-800";
+
+    const mutedTextClasses =
+      theme === "dark"
+        ? "text-zinc-400"
+        : theme === "light"
+          ? "text-zinc-500"
+          : "text-zinc-500 dark:text-zinc-400";
+
+    const statusDotClasses =
+      accent === "emerald"
+        ? "bg-emerald-600 dark:bg-emerald-400"
+        : accent === "cyan"
+          ? "bg-cyan-600 dark:bg-cyan-400"
+          : accent === "amber"
+            ? "bg-amber-600 dark:bg-amber-400"
+            : accent === "violet"
+              ? "bg-violet-600 dark:bg-violet-400"
+              : theme === "dark"
+                ? "bg-white"
+                : theme === "light"
+                  ? "bg-zinc-900"
+                  : "bg-zinc-900 dark:bg-white";
+
+    return (
+      <article
+        ref={ref}
+        aria-labelledby={headingId}
+        aria-describedby={descId}
+        className={cn(
+          "w-full max-w-[460px] rounded-xl border select-none overflow-hidden transition-colors duration-200",
+          surfaceThemeClasses,
+          className
+        )}
+        style={{
+          fontFamily:
+            "'Space Grotesk', 'Plus Jakarta Sans', 'Inter', ui-sans-serif, system-ui, sans-serif",
+        }}
+        {...rest}
+      >
+        {/* Split editorial header */}
+        <header
+          className={cn(
+            "grid grid-cols-12 border-b divide-x",
+            dividerThemeClasses
+          )}
         >
-          21st.dev Ready
-        </span>
-      )}
-      <h2 className="text-xl font-semibold tracking-tight">{title}</h2>
-    </div>
-  )
-}
+          <div className="col-span-5 flex flex-col justify-center gap-1.5 px-4 py-5 sm:px-5 sm:py-6">
+            <span
+              className={cn(
+                "font-mono text-[9px] uppercase tracking-[0.16em]",
+                mutedTextClasses
+              )}
+            >
+              {eyebrow}
+            </span>
+            <h2
+              id={headingId}
+              className="text-[14px] sm:text-[15px] font-semibold uppercase tracking-[0.1em] leading-tight"
+            >
+              {title}
+            </h2>
+          </div>
 
-export default Component
+          <div className="col-span-7 flex items-center px-4 py-5 sm:px-5 sm:py-6">
+            <p
+              id={descId}
+              className={cn(
+                "font-mono text-[9px] sm:text-[9.5px] uppercase tracking-[0.06em] leading-[1.65]",
+                mutedTextClasses
+              )}
+            >
+              {description}
+            </p>
+          </div>
+        </header>
+
+        {/* Interactive morphing synapse canvas */}
+        <div
+          ref={containerRef}
+          role="application"
+          tabIndex={interactive ? 0 : -1}
+          aria-label={`${title} interactive topology canvas with ${srLinkCount} active links. Move pointer to steer, click or press Enter to pin node, Space to pause, Arrow keys to nudge.`}
+          onPointerMove={handlePointerMove}
+          onPointerDown={handlePointerDown}
+          onPointerLeave={handlePointerLeave}
+          onKeyDown={handleKeyDown}
+          className={cn(
+            "relative w-full aspect-[10/10.5] overflow-hidden outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-zinc-400 dark:focus-visible:ring-zinc-500",
+            interactive ? "cursor-crosshair" : "cursor-default"
+          )}
+        >
+          {/* Subtle corner registration ticks */}
+          <span
+            aria-hidden="true"
+            className={cn(
+              "pointer-events-none absolute left-3 top-2.5 font-mono text-[10px] leading-none opacity-35",
+              mutedTextClasses
+            )}
+          >
+            +
+          </span>
+          <span
+            aria-hidden="true"
+            className={cn(
+              "pointer-events-none absolute right-3 top-2.5 font-mono text-[10px] leading-none opacity-35",
+              mutedTextClasses
+            )}
+          >
+            +
+          </span>
+          <span
+            aria-hidden="true"
+            className={cn(
+              "pointer-events-none absolute left-3 bottom-2.5 font-mono text-[10px] leading-none opacity-35",
+              mutedTextClasses
+            )}
+          >
+            +
+          </span>
+          <span
+            aria-hidden="true"
+            className={cn(
+              "pointer-events-none absolute right-3 bottom-2.5 font-mono text-[10px] leading-none opacity-35",
+              mutedTextClasses
+            )}
+          >
+            +
+          </span>
+
+          <canvas
+            ref={canvasRef}
+            aria-hidden="true"
+            className="block h-full w-full"
+          />
+          <span className="sr-only" aria-live="polite">
+            {srLinkCount} active links, mode {mode}
+          </span>
+        </div>
+
+        {/* Live telemetry footer strip */}
+        {showTelemetry && (
+          <footer
+            className={cn(
+              "flex items-center justify-between border-t px-4 py-2.5 font-mono text-[10px] uppercase tracking-[0.12em] tabular-nums",
+              dividerThemeClasses,
+              mutedTextClasses
+            )}
+          >
+            <div className="flex items-center gap-2">
+              <span
+                className={cn(
+                  "h-1.5 w-1.5 rounded-full transition-colors duration-200",
+                  statusDotClasses
+                )}
+              />
+              <span>{mode}</span>
+            </div>
+
+            <span ref={linksTextRef}>12 LINKS</span>
+
+            <span ref={coordsTextRef} className="hidden sm:inline">
+              X 0.00  Y 0.00
+            </span>
+          </footer>
+        )}
+      </article>
+    );
+  }
+);
+
+SynapseMeshCard.displayName = "SynapseMeshCard";
+
+export {
+  SynapseMeshCard,
+  SynapseMeshCard as component,
+  SynapseMeshCard as Component,
+};
+export default SynapseMeshCard;
