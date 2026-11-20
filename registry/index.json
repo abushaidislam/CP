@@ -1,8 +1,26 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-20T05:19:40.293Z",
-  "totalComponents": 49,
+  "updatedAt": "2026-11-20T05:26:33.187Z",
+  "totalComponents": 50,
   "components": [
+    {
+      "id": "comp-1795152376378-295ap",
+      "slug": "code-singularity",
+      "name": "CodeSingularity",
+      "description": "GPU-accelerated WebGL black hole shader that pulls curved 3D streams of monospace source code through spaghettification, a 360-degree radial warp tunnel, and a swirling plasma event horizon.",
+      "category": "Custom",
+      "isBuiltIn": false,
+      "updatedAt": 1795152389092,
+      "lastRepoSyncAt": 1795152393048,
+      "path": "registry/components/code-singularity",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "index.css",
+        "manifest.json"
+      ],
+      "dependencies": []
+    },
     {
       "id": "comp-1795151952242-4ag6g",
       "slug": "reactive-gradient-character",
