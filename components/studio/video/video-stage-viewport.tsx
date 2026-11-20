@@ -288,9 +288,20 @@ export function VideoStageViewport({
                 playsInline
                 onPlay={() => onReviewPlayStateChange?.(true)}
                 onPause={() => onReviewPlayStateChange?.(false)}
-                onTimeUpdate={(e) =>
-                  onReviewTimeUpdate(e.currentTarget.currentTime)
-                }
+                onTimeUpdate={(e) => {
+                  const current = e.currentTarget.currentTime;
+                  onReviewTimeUpdate(current);
+                  // Chromium WebM loop safeguard: MediaRecorder WebM blobs lack duration/cue points
+                  // so native 'loop' often freezes at the final frame instead of restarting.
+                  if (reviewDuration > 0 && current >= reviewDuration - 0.08) {
+                    e.currentTarget.currentTime = 0;
+                    void e.currentTarget.play();
+                  }
+                }}
+                onEnded={(e) => {
+                  e.currentTarget.currentTime = 0;
+                  void e.currentTarget.play();
+                }}
                 onLoadedMetadata={(e) => {
                   if (
                     Number.isFinite(e.currentTarget.duration) &&

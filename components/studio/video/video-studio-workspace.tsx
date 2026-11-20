@@ -938,8 +938,13 @@ export function VideoStudioWorkspace({
 
   const handleReviewSeek = (val: number) => {
     setReviewCurrentTime(val);
-    if (reviewVideoRef.current) {
-      reviewVideoRef.current.currentTime = val;
+    const vid = reviewVideoRef.current;
+    if (vid) {
+      try {
+        vid.currentTime = val;
+      } catch {
+        // Ignore seek error if stream index is not seekable
+      }
     }
   };
 
