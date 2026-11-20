@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-20T18:17:20.983Z",
+  "updatedAt": "2026-11-20T18:17:27.054Z",
   "totalComponents": 60,
   "components": [
     {
@@ -10,8 +10,8 @@
       "description": "",
       "category": "Cards",
       "isBuiltIn": false,
-      "updatedAt": 1795198636650,
-      "lastRepoSyncAt": 1795198640943,
+      "updatedAt": 1795198644875,
+      "lastRepoSyncAt": 1795198647030,
       "path": "registry/components/networking-card",
       "files": [
         "component.tsx",
