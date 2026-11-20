@@ -34,7 +34,7 @@ export const metadata: Metadata = {
     ],
   },
   openGraph: {
-    title: "Vercel / 21st Studio - Component Studio & Design Sandbox",
+    title: "Comp / 21st Studio - Component Studio & Design Sandbox",
     description:
       "An implementation of Vercel's Geist design language. Author React & Tailwind components in real-time with AST analysis and publish directly to 21st.dev.",
     images: [
@@ -48,7 +48,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Vercel / 21st Studio - Component Studio & Design Sandbox",
+    title: "Comp / 21st Studio - Component Studio & Design Sandbox",
     description:
       "An implementation of Vercel's Geist design language. Author React & Tailwind components in real-time with AST analysis and publish directly to 21st.dev.",
     images: ["/brand/og-card.png"],
