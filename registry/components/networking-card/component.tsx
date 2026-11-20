@@ -25,21 +25,21 @@ function usePrefersReducedMotion(): boolean {
   return reduced;
 }
 
-export type NetworkingCardTheme = "auto" | "dark" | "light";
+export type SynapseCardTheme = "auto" | "dark" | "light";
 
-export interface NetworkingCardProps
+export interface SynapseCardProps
   extends Omit<React.HTMLAttributes<HTMLElement>, "title"> {
   /** Heading displayed in the top-left header cell */
   title?: string;
   /** Editorial description displayed in the top-right header cell */
   description?: string;
   /** Color theme mode. "auto" follows Tailwind dark mode classes */
-  theme?: NetworkingCardTheme;
-  /** Enables autonomous orbital traversal of the central hub node */
+  theme?: SynapseCardTheme;
+  /** Enables autonomous sweeping traversal of the central hub node */
   autoPlay?: boolean;
   /** Speed multiplier for autonomous hub motion (0.2 to 3) */
   speed?: number;
-  /** Enables subtle tactile click sound via Web Audio API during pointer/keyboard interaction */
+  /** Enables subtle tactile click sound via Web Audio API during interaction */
   soundEnabled?: boolean;
   /** Allows pointer hover/drag and keyboard navigation to steer the hub node */
   interactive?: boolean;
@@ -52,7 +52,14 @@ interface Point {
   y: number;
 }
 
-// Normalized closed-loop waypoints matching the reference choreography
+interface NodeMorphState {
+  progress: number;
+  pullX: number;
+  pullY: number;
+  wasLinked: boolean;
+}
+
+// Restored sweeping organic choreography
 const ORBIT_WAYPOINTS: ReadonlyArray<Point> = [
   { x: 0.0, y: 0.0 },
   { x: -0.28, y: 0.31 },
@@ -96,11 +103,16 @@ function sampleClosedCatmullRom(points: ReadonlyArray<Point>, t: number): Point 
   return { x, y };
 }
 
-const NetworkingCard = React.forwardRef<HTMLElement, NetworkingCardProps>(
+function easeOutCubic(x: number): number {
+  const clamped = Math.min(Math.max(x, 0), 1);
+  return 1 - Math.pow(1 - clamped, 3);
+}
+
+const SynapseCard = React.forwardRef<HTMLElement, SynapseCardProps>(
   (
     {
-      title = "NETWORKING",
-      description = "NETWORKING IS THE ART OF BUILDING CONNECTIONS THAT MOVE YOU FORWARD. IT'S THE BRIDGE BETWEEN WHERE YOU ARE AND WHERE YOU WANT TO GO.",
+      title = "SYNAPSE",
+      description = "THE ARCHITECTURE OF LIVING CONNECTIONS. A QUIET SYSTEM THAT ADAPTS ITS STRUCTURE IN REAL TIME AS SIGNALS MOVE.",
       theme = "auto",
       autoPlay = true,
       speed = 1,
@@ -114,8 +126,8 @@ const NetworkingCard = React.forwardRef<HTMLElement, NetworkingCardProps>(
   ) => {
     const rawId = useId();
     const safeId = rawId.replace(/:/g, "");
-    const headingId = `networking-title-${safeId}`;
-    const descId = `networking-desc-${safeId}`;
+    const headingId = `synapse-title-${safeId}`;
+    const descId = `synapse-desc-${safeId}`;
 
     const prefersReducedMotion = usePrefersReducedMotion();
     const containerRef = useRef<HTMLDivElement | null>(null);
@@ -123,7 +135,6 @@ const NetworkingCard = React.forwardRef<HTMLElement, NetworkingCardProps>(
     const [activeLinks, setActiveLinks] = useState(12);
     const [isPaused, setIsPaused] = useState(false);
 
-    // Refs for zero-rerender 60fps canvas loop
     const configRef = useRef({
       autoPlay,
       speed,
@@ -146,21 +157,17 @@ const NetworkingCard = React.forwardRef<HTMLElement, NetworkingCardProps>(
     const onConnectionChangeRef = useRef(onConnectionChange);
     onConnectionChangeRef.current = onConnectionChange;
 
-    const pointerRef = useRef<{
-      active: boolean;
-      targetX: number;
-      targetY: number;
-      keyboardActive: boolean;
-    }>({
+    const pointerRef = useRef({
       active: false,
+      keyboardActive: false,
       targetX: 0,
       targetY: 0,
-      keyboardActive: false,
     });
 
     const hubRef = useRef<Point>({ x: 0, y: 0 });
     const initializedRef = useRef(false);
-    const prevConnectionsRef = useRef(new Set<string>());
+    const nodeStatesRef = useRef(new Map<string, NodeMorphState>());
+    const lastLinkCountRef = useRef(-1);
     const audioCtxRef = useRef<AudioContext | null>(null);
     const lastTickTimeRef = useRef(0);
     const userInteractedRef = useRef(false);
@@ -170,7 +177,7 @@ const NetworkingCard = React.forwardRef<HTMLElement, NetworkingCardProps>(
       if (typeof window === "undefined") return;
 
       const nowMs = performance.now();
-      if (nowMs - lastTickTimeRef.current < 42) return;
+      if (nowMs - lastTickTimeRef.current < 44) return;
       lastTickTimeRef.current = nowMs;
 
       try {
@@ -194,15 +201,15 @@ const NetworkingCard = React.forwardRef<HTMLElement, NetworkingCardProps>(
         const filter = ctx.createBiquadFilter();
 
         osc.type = "triangle";
-        osc.frequency.setValueAtTime(1450, now);
-        osc.frequency.exponentialRampToValueAtTime(320, now + 0.014);
+        osc.frequency.setValueAtTime(1400, now);
+        osc.frequency.exponentialRampToValueAtTime(310, now + 0.014);
 
         filter.type = "bandpass";
         filter.frequency.setValueAtTime(1100, now);
         filter.Q.setValueAtTime(1.4, now);
 
         gain.gain.setValueAtTime(0.0001, now);
-        gain.gain.linearRampToValueAtTime(0.055, now + 0.002);
+        gain.gain.linearRampToValueAtTime(0.05, now + 0.002);
         gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.016);
 
         osc.connect(filter);
@@ -212,7 +219,7 @@ const NetworkingCard = React.forwardRef<HTMLElement, NetworkingCardProps>(
         osc.start(now);
         osc.stop(now + 0.018);
       } catch {
-        // Ignore Web Audio errors on restricted contexts
+        // Ignore restricted Web Audio contexts
       }
     };
 
@@ -285,7 +292,6 @@ const NetworkingCard = React.forwardRef<HTMLElement, NetworkingCardProps>(
         const centerX = width / 2;
         const centerY = height / 2;
 
-        // Determine desired hub target
         let targetX = centerX;
         let targetY = centerY;
 
@@ -299,7 +305,7 @@ const NetworkingCard = React.forwardRef<HTMLElement, NetworkingCardProps>(
           targetY = centerY + norm.y * (height * 0.36);
         }
 
-        // Critically damped exponential smoothing (zero bounce)
+        // Critically damped smooth hub follow
         const smoothing = reduced ? 1 : 1 - Math.exp(-dt * 10);
         hubRef.current.x += (targetX - hubRef.current.x) * smoothing;
         hubRef.current.y += (targetY - hubRef.current.y) * smoothing;
@@ -312,7 +318,6 @@ const NetworkingCard = React.forwardRef<HTMLElement, NetworkingCardProps>(
 
         const fgColor = resolveForegroundColor();
 
-        // Geometric parameters matched to reference proportions
         const spotlightRadius = pitch * 3.45;
         const minConnectDist = pitch * 1.44;
         const maxConnectDist = pitch * 2.32;
@@ -322,9 +327,16 @@ const NetworkingCard = React.forwardRef<HTMLElement, NetworkingCardProps>(
         const colsHalf = Math.ceil(width / (2 * pitch)) + 1;
         const rowsHalf = Math.ceil(height / (2 * pitch)) + 1;
 
-        const nextConnections = new Set<string>();
-        const connectedPoints: Array<{ x: number; y: number }> = [];
-        const visibleDots: Array<{
+        const morphInRate = reduced ? 1 : 1 - Math.exp(-dt * 15);
+        const morphOutRate = reduced ? 1 : 1 - Math.exp(-dt * 11);
+        const pullRate = reduced ? 1 : 1 - Math.exp(-dt * 11);
+
+        let activeCount = 0;
+        let newlyLinked = false;
+        const activeKeys = new Set<string>();
+
+        const drawSpokes: Array<{ x: number; y: number; progress: number }> = [];
+        const drawDots: Array<{
           x: number;
           y: number;
           r: number;
@@ -339,63 +351,116 @@ const NetworkingCard = React.forwardRef<HTMLElement, NetworkingCardProps>(
             const gx = centerX + c * pitch;
             if (gx < -pitch || gx > width + pitch) continue;
 
+            const key = `${c},${r}`;
             const dx = gx - hx;
             const dy = gy - hy;
             const dist = Math.hypot(dx, dy);
 
-            if (dist >= spotlightRadius) continue;
+            const isLinked = dist >= minConnectDist && dist <= maxConnectDist;
+            if (isLinked) activeCount++;
 
-            const t = 1 - dist / spotlightRadius;
-            const dotRadius = Math.max(0.55, maxDotRadius * Math.pow(t, 1.38));
-            const alpha = t < 0.22 ? t / 0.22 : 1;
+            let state = nodeStatesRef.current.get(key);
+            if (!state && (dist < spotlightRadius || isLinked)) {
+              state = {
+                progress: isLinked ? 1 : 0,
+                pullX: 0,
+                pullY: 0,
+                wasLinked: isLinked,
+              };
+              nodeStatesRef.current.set(key, state);
+            }
 
-            visibleDots.push({ x: gx, y: gy, r: dotRadius, alpha });
+            if (!state) continue;
+            activeKeys.add(key);
 
-            if (dist >= minConnectDist && dist <= maxConnectDist) {
-              const key = `${c},${r}`;
-              nextConnections.add(key);
-              connectedPoints.push({ x: gx, y: gy });
+            // Smooth elastic spoke morph progress
+            const targetProgress = isLinked ? 1 : 0;
+            const rate = isLinked ? morphInRate : morphOutRate;
+            state.progress += (targetProgress - state.progress) * rate;
+            if (state.progress < 0.008 && !isLinked) {
+              state.progress = 0;
+            }
+
+            if (isLinked && !state.wasLinked) {
+              newlyLinked = true;
+            }
+            state.wasLinked = isLinked;
+
+            // Very subtle magnetic micro-tension toward hub when linked
+            const pullStrength =
+              isLinked && dist > 1 ? pitch * 0.045 * state.progress : 0;
+            const targetPullX = dist > 1 ? (-dx / dist) * pullStrength : 0;
+            const targetPullY = dist > 1 ? (-dy / dist) * pullStrength : 0;
+            state.pullX += (targetPullX - state.pullX) * pullRate;
+            state.pullY += (targetPullY - state.pullY) * pullRate;
+
+            const renderX = gx + state.pullX;
+            const renderY = gy + state.pullY;
+
+            if (state.progress > 0.015) {
+              drawSpokes.push({
+                x: renderX,
+                y: renderY,
+                progress: state.progress,
+              });
+            }
+
+            if (dist < spotlightRadius) {
+              const t = 1 - dist / spotlightRadius;
+              const baseR = Math.max(0.55, maxDotRadius * Math.pow(t, 1.38));
+              const morphedR = baseR * (1 + state.progress * 0.12);
+              const alpha = t < 0.22 ? t / 0.22 : 1;
+
+              drawDots.push({
+                x: renderX,
+                y: renderY,
+                r: morphedR,
+                alpha,
+              });
             }
           }
         }
 
-        // Detect newly snapped connections for optional audio feedback & callback
-        let hasNewConnection = false;
-        nextConnections.forEach((key) => {
-          if (!prevConnectionsRef.current.has(key)) {
-            hasNewConnection = true;
+        nodeStatesRef.current.forEach((st, key) => {
+          if (!activeKeys.has(key) && st.progress === 0) {
+            nodeStatesRef.current.delete(key);
           }
         });
 
-        if (nextConnections.size !== prevConnectionsRef.current.size) {
-          setActiveLinks(nextConnections.size);
-          onConnectionChangeRef.current?.(nextConnections.size);
-        }
-
-        if (hasNewConnection && prevConnectionsRef.current.size > 0) {
+        if (newlyLinked && lastLinkCountRef.current > 0) {
           playSynapseTick();
         }
-        prevConnectionsRef.current = nextConnections;
+        if (activeCount !== lastLinkCountRef.current) {
+          lastLinkCountRef.current = activeCount;
+          setActiveLinks(activeCount);
+          onConnectionChangeRef.current?.(activeCount);
+        }
 
-        // 1. Draw crisp radial spokes
+        // 1. Draw crisp smoothly morphing radial spokes
         ctx.save();
         ctx.strokeStyle = fgColor;
-        ctx.globalAlpha = 0.88;
-        ctx.lineWidth = Math.max(1, pitch * 0.018);
-        ctx.beginPath();
-        for (let i = 0; i < connectedPoints.length; i++) {
-          const pt = connectedPoints[i];
+        ctx.lineCap = "round";
+        const baseLineWidth = Math.max(1, pitch * 0.018);
+        for (let i = 0; i < drawSpokes.length; i++) {
+          const sp = drawSpokes[i];
+          const eased = easeOutCubic(sp.progress);
+          const endX = hx + (sp.x - hx) * eased;
+          const endY = hy + (sp.y - hy) * eased;
+
+          ctx.globalAlpha = 0.88 * eased;
+          ctx.lineWidth = baseLineWidth * (0.8 + 0.2 * eased);
+          ctx.beginPath();
           ctx.moveTo(hx, hy);
-          ctx.lineTo(pt.x, pt.y);
+          ctx.lineTo(endX, endY);
+          ctx.stroke();
         }
-        ctx.stroke();
         ctx.restore();
 
-        // 2. Draw proximity-scaled grid dots
+        // 2. Draw proximity-scaled crisp grid dots
         ctx.save();
         ctx.fillStyle = fgColor;
-        for (let i = 0; i < visibleDots.length; i++) {
-          const dot = visibleDots[i];
+        for (let i = 0; i < drawDots.length; i++) {
+          const dot = drawDots[i];
           ctx.globalAlpha = dot.alpha;
           ctx.beginPath();
           ctx.arc(dot.x, dot.y, dot.r, 0, Math.PI * 2);
@@ -403,7 +468,7 @@ const NetworkingCard = React.forwardRef<HTMLElement, NetworkingCardProps>(
         }
         ctx.restore();
 
-        // 3. Draw central hub node
+        // 3. Draw pure solid monochrome central hub node (no bubble/halo)
         ctx.save();
         ctx.fillStyle = fgColor;
         ctx.globalAlpha = 1;
@@ -538,7 +603,7 @@ const NetworkingCard = React.forwardRef<HTMLElement, NetworkingCardProps>(
         }}
         {...rest}
       >
-        {/* Top editorial split header */}
+        {/* Clean Swiss split header */}
         <header
           className={cn(
             "grid grid-cols-2 border-b divide-x",
@@ -564,7 +629,7 @@ const NetworkingCard = React.forwardRef<HTMLElement, NetworkingCardProps>(
           </div>
         </header>
 
-        {/* Interactive dot-matrix radial network canvas */}
+        {/* Interactive dot-matrix morphing network canvas */}
         <div
           ref={containerRef}
           role="application"
@@ -594,11 +659,11 @@ const NetworkingCard = React.forwardRef<HTMLElement, NetworkingCardProps>(
   }
 );
 
-NetworkingCard.displayName = "NetworkingCard";
+SynapseCard.displayName = "SynapseCard";
 
 export {
-  NetworkingCard,
-  NetworkingCard as component,
-  NetworkingCard as Component,
+  SynapseCard,
+  SynapseCard as component,
+  SynapseCard as Component,
 };
-export default NetworkingCard;
+export default SynapseCard;
