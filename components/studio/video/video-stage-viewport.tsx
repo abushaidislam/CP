@@ -276,96 +276,103 @@ export function VideoStageViewport({
       {/* Centered 16:9 Stage Wrapper */}
       <div className="flex-1 flex items-center justify-center min-h-[260px] w-full overflow-hidden">
         <div className="w-full max-w-[920px] flex flex-col gap-2">
-          {phase === "review" && previewVideoUrl ? (
-            /* Post-Capture Review Player */
-            <div className="relative w-full aspect-video border border-border bg-black overflow-hidden">
-              <video
-                ref={reviewVideoRef}
-                src={previewVideoUrl}
-                autoPlay
-                muted
-                loop
-                playsInline
-                onPlay={() => onReviewPlayStateChange?.(true)}
-                onPause={() => onReviewPlayStateChange?.(false)}
-                onTimeUpdate={(e) => {
-                  const current = e.currentTarget.currentTime;
-                  onReviewTimeUpdate(current);
-                  // Chromium WebM loop safeguard: MediaRecorder WebM blobs lack duration/cue points
-                  // so native 'loop' often freezes at the final frame instead of restarting.
-                  if (reviewDuration > 0 && current >= reviewDuration - 0.08) {
+          {/* LIVE EDGE-TO-EDGE 16:9 RECORDING STAGE (Always mounted so New Take is 0ms instant) */}
+          <div
+            ref={stageContainerRef}
+            data-testid="video-studio-16x9-stage"
+            onPointerMoveCapture={(e) => onForwardBoundaryPointer(e, "move")}
+            onPointerDownCapture={(e) => onForwardBoundaryPointer(e, "down")}
+            onPointerUpCapture={(e) => onForwardBoundaryPointer(e, "up")}
+            className={cn(
+              "relative w-full aspect-video border border-border overflow-hidden",
+              previewTheme === "dark" ? "bg-zinc-950" : "bg-white",
+              phase !== "review" &&
+                recordingConfig.mode === "manual" &&
+                recordingConfig.showCursor &&
+                "cursor-none"
+            )}
+          >
+            {!stageReady && !compileError && (
+              <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-2.5 bg-background/95 text-muted-foreground font-sans text-xs">
+                <Loader2 className="size-5 animate-spin text-primary" />
+                <span>Hydrating 16:9 component stage...</span>
+              </div>
+            )}
+
+            <iframe
+              ref={stageIframeRef}
+              key={`${stageReloadKey}-${currentTemplateId}`}
+              srcDoc={sandboxHtml}
+              onLoad={onStageIframeLoad}
+              title="16:9 Video Studio Live Stage"
+              sandbox="allow-scripts allow-modals"
+              style={{
+                width: "1280px",
+                height: "720px",
+                transform: `scale(${stageScale})`,
+                transformOrigin: "0 0",
+              }}
+              className={cn(
+                "absolute top-0 left-0 border-none block",
+                phase === "review" && previewVideoUrl && "invisible pointer-events-none"
+              )}
+            />
+
+            {/* Top-Layer 60fps Virtual Cursor & Minimal Click Pulse Canvas (Guaranteed visible in Native & Manual Live capture) */}
+            <canvas
+              ref={stageCursorCanvasRef}
+              aria-hidden="true"
+              className={cn(
+                "pointer-events-none absolute inset-0 z-30 w-full h-full block",
+                phase === "review" && previewVideoUrl && "invisible"
+              )}
+            />
+
+            {/* Post-Capture Review Player Overlay */}
+            {phase === "review" && previewVideoUrl && (
+              <div className="
+                absolute inset-0 z-40 bg-black overflow-hidden
+              ">
+                <video
+                  ref={reviewVideoRef}
+                  src={previewVideoUrl}
+                  autoPlay
+                  muted
+                  loop
+                  playsInline
+                  onPlay={() => onReviewPlayStateChange?.(true)}
+                  onPause={() => onReviewPlayStateChange?.(false)}
+                  onTimeUpdate={(e) => {
+                    const current = e.currentTarget.currentTime;
+                    onReviewTimeUpdate(current);
+                    // Chromium WebM loop safeguard: MediaRecorder WebM blobs lack duration/cue points
+                    // so native 'loop' often freezes at the final frame instead of restarting.
+                    if (reviewDuration > 0 && current >= reviewDuration - 0.08) {
+                      e.currentTarget.currentTime = 0;
+                      void e.currentTarget.play();
+                    }
+                  }}
+                  onEnded={(e) => {
                     e.currentTarget.currentTime = 0;
                     void e.currentTarget.play();
-                  }
-                }}
-                onEnded={(e) => {
-                  e.currentTarget.currentTime = 0;
-                  void e.currentTarget.play();
-                }}
-                onLoadedMetadata={(e) => {
-                  const mediaDuration = e.currentTarget.duration;
-                  // Chromium fragmented MP4/WebM often falsely reports 0.13s (just the first cluster)
-                  // on loadedmetadata. Never overwrite the accurately measured recording duration!
-                  const minExpected = recordingResult?.durationMs
-                    ? (recordingResult.durationMs / 1000) * 0.75
-                    : 1;
-                  if (
-                    Number.isFinite(mediaDuration) &&
-                    mediaDuration > minExpected
-                  ) {
-                    onReviewDurationLoaded(mediaDuration);
-                  }
-                }}
-                className="w-full h-full object-contain bg-black"
-              />
-            </div>
-          ) : (
-            /* LIVE EDGE-TO-EDGE 16:9 RECORDING STAGE (Exact Crop Target) */
-            <div
-              ref={stageContainerRef}
-              data-testid="video-studio-16x9-stage"
-              onPointerMoveCapture={(e) => onForwardBoundaryPointer(e, "move")}
-              onPointerDownCapture={(e) => onForwardBoundaryPointer(e, "down")}
-              onPointerUpCapture={(e) => onForwardBoundaryPointer(e, "up")}
-              className={cn(
-                "relative w-full aspect-video border border-border overflow-hidden",
-                previewTheme === "dark" ? "bg-zinc-950" : "bg-white",
-                recordingConfig.mode === "manual" &&
-                  recordingConfig.showCursor &&
-                  "cursor-none"
-              )}
-            >
-              {!stageReady && !compileError && (
-                <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-2.5 bg-background/95 text-muted-foreground font-sans text-xs">
-                  <Loader2 className="size-5 animate-spin text-primary" />
-                  <span>Hydrating 16:9 component stage...</span>
-                </div>
-              )}
-
-              <iframe
-                ref={stageIframeRef}
-                key={`${stageReloadKey}-${currentTemplateId}`}
-                srcDoc={sandboxHtml}
-                onLoad={onStageIframeLoad}
-                title="16:9 Video Studio Live Stage"
-                sandbox="allow-scripts allow-modals"
-                style={{
-                  width: "1280px",
-                  height: "720px",
-                  transform: `scale(${stageScale})`,
-                  transformOrigin: "0 0",
-                }}
-                className="absolute top-0 left-0 border-none block"
-              />
-
-              {/* Top-Layer 60fps Virtual Cursor & Minimal Click Pulse Canvas (Guaranteed visible in Native & Manual Live capture) */}
-              <canvas
-                ref={stageCursorCanvasRef}
-                aria-hidden="true"
-                className="pointer-events-none absolute inset-0 z-30 w-full h-full block"
-              />
-            </div>
-          )}
+                  }}
+                  onLoadedMetadata={(e) => {
+                    const mediaDuration = e.currentTarget.duration;
+                    const minExpected = recordingResult?.durationMs
+                      ? (recordingResult.durationMs / 1000) * 0.75
+                      : 0.4;
+                    if (
+                      Number.isFinite(mediaDuration) &&
+                      mediaDuration > minExpected
+                    ) {
+                      onReviewDurationLoaded(mediaDuration);
+                    }
+                  }}
+                  className="w-full h-full object-contain bg-black"
+                />
+              </div>
+            )}
+          </div>
 
           {/* Inline Review Scrubber Bar */}
           {phase === "review" && previewVideoUrl && (

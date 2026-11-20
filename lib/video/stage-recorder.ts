@@ -67,22 +67,25 @@ export function pickSupportedRecorderMime(preferred: "mp4" | "webm"): string {
     return "video/webm";
   }
 
-  const mp4Candidates = [
-    "video/mp4;codecs=avc1.42E01E",
-    "video/mp4;codecs=avc1.4d002a",
-    "video/mp4;codecs=h264",
-    "video/mp4",
-  ];
+  // Prefer hardware H.264/VP8 in WebM container first for MediaRecorder stability
+  // (Chromium's raw MediaRecorder video/mp4 writes unindexed fMP4 without duration headers;
+  // server FFmpeg normalizes final MP4 exports with +faststart and CFR timestamps).
   const webmFastCandidates = [
     "video/webm;codecs=h264",
     "video/webm;codecs=vp8",
     "video/webm",
     "video/webm;codecs=vp9",
   ];
+  const mp4Candidates = [
+    "video/mp4;codecs=avc1.42E01E",
+    "video/mp4;codecs=avc1.4d002a",
+    "video/mp4;codecs=h264",
+    "video/mp4",
+  ];
 
   const ordered =
-    preferred === "mp4"
-      ? [...mp4Candidates, ...webmFastCandidates]
+    preferred === "webm"
+      ? [...webmFastCandidates, ...mp4Candidates]
       : [...webmFastCandidates, ...mp4Candidates];
 
   for (const mime of ordered) {
@@ -255,7 +258,7 @@ interface ExtendedDisplayMediaOptions extends DisplayMediaStreamOptions {
 }
 
 /**
- * Primary Engine: Zero-Copy Hardware GPU Region Capture (`getDisplayMedia` + `CropTarget`).
+ * Primary Hardware Engine: Zero-Copy Hardware GPU Region Capture (`getDisplayMedia` + `CropTarget`).
  *
  * When Region Capture (`CropTarget`) is supported (Chrome/Edge), pipes the cropped GPU
  * MediaStream DIRECTLY into hardware-accelerated MediaRecorder with ZERO `<video>` copy,
@@ -385,6 +388,13 @@ async function startNativeRegionCapture(
             cleanup();
             reject(new Error("Zero-copy GPU recorder encountered an encoding error."));
           };
+          try {
+            if (recorder.state === "recording") {
+              recorder.requestData();
+            }
+          } catch {
+            // Ignore
+          }
           recorder.stop();
         }),
     };
@@ -519,6 +529,13 @@ async function startNativeRegionCapture(
           cleanup();
           reject(new Error("MediaRecorder encountered an encoding error."));
         };
+        try {
+          if (recorder.state === "recording") {
+            recorder.requestData();
+          }
+        } catch {
+          // Ignore
+        }
         recorder.stop();
       }),
   };
@@ -526,10 +543,10 @@ async function startNativeRegionCapture(
 
 /**
  * Turbo Zero-Permission Direct Stage Compositor:
+ * - Pre-warms Frame #1 onto the backing buffer BEFORE starting MediaRecorder so the initial I-frame keyframe is never black.
  * - Uses zero-copy GPU `ImageBitmap` transfer for `<canvas>` / WebGL components.
- * - Uses fast SVG `Blob` transfer + cached stylesheets (no `encodeURIComponent` main-thread stalls).
- * - Uses adaptive frame-budgeted scheduling so the live UI never lags or freezes while
- *   compositing the spring cursor & minimal click pulses at a locked 60fps.
+ * - Uses fast SVG `Blob` transfer + live CSS/WAAPI animation baking + automatic `safeMode` fallback if XML parsing ever fails.
+ * - Uses high-cadence adaptive scheduling while compositing the spring cursor & minimal click pulses at a locked 60fps.
  */
 async function startDirectStageCapture(
   options: StartRecorderOptions
@@ -565,10 +582,13 @@ async function startDirectStageCapture(
   let active = true;
   let rafId = 0;
   let frameReqId = 0;
+  let lastHandledReqId = -1;
   let inFlightFrame = false;
   let hasDrawnFrame = false;
+  let useSafeMode = false;
   let nextPollTimer: ReturnType<typeof setTimeout> | null = null;
   let safetyTimer: ReturnType<typeof setTimeout> | null = null;
+  let firstFrameReadyResolve: (() => void) | null = null;
 
   let cursorTelemetry: CursorTelemetryState = options.initialCursorTelemetry
     ? {
@@ -596,10 +616,18 @@ async function startDirectStageCapture(
     }
   };
 
-  const scheduleNextCapture = (lastCaptureMs = 16) => {
+  const notifyFirstFrameReady = () => {
+    if (firstFrameReadyResolve) {
+      const resolve = firstFrameReadyResolve;
+      firstFrameReadyResolve = null;
+      resolve();
+    }
+  };
+
+  const scheduleNextCapture = (lastCaptureMs = 14) => {
     if (!active) return;
     if (nextPollTimer) clearTimeout(nextPollTimer);
-    const delay = Math.max(28, Math.min(90, Math.round(lastCaptureMs * 1.45)));
+    const delay = Math.max(10, Math.min(36, Math.round(lastCaptureMs * 0.55)));
     nextPollTimer = setTimeout(requestSandboxFrame, delay);
   };
 
@@ -607,32 +635,194 @@ async function startDirectStageCapture(
     if (!active || inFlightFrame || !options.iframeElement?.contentWindow) return;
     inFlightFrame = true;
     frameReqId += 1;
-    options.iframeElement.contentWindow.postMessage(
-      { type: "VIDEO_STUDIO_CAPTURE_FRAME", requestId: frameReqId },
-      "*"
-    );
+    try {
+      options.iframeElement.contentWindow.postMessage(
+        {
+          type: "VIDEO_STUDIO_CAPTURE_FRAME",
+          requestId: frameReqId,
+          safeMode: useSafeMode,
+        },
+        "*"
+      );
+    } catch {
+      inFlightFrame = false;
+      return;
+    }
     if (safetyTimer) clearTimeout(safetyTimer);
     safetyTimer = setTimeout(() => {
       if (!active) return;
       inFlightFrame = false;
-      scheduleNextCapture(35);
-    }, 260);
+      scheduleNextCapture(25);
+    }, 240);
   };
 
-  const drawFrame = () => {
-    if (!active) return;
-
+  const renderCompositeFrameOnce = () => {
     if (hasDrawnFrame) {
       ctx.drawImage(frameBufferCanvas, 0, 0, width, height);
     } else {
       ctx.fillStyle = isDark ? "#09090b" : "#ffffff";
       ctx.fillRect(0, 0, width, height);
     }
-
     drawCanvasCursorOverlay(ctx, width, height, cursorTelemetry, isDark);
-    rafId = requestAnimationFrame(drawFrame);
   };
-  drawFrame();
+
+  const drawFrameLoop = () => {
+    if (!active) return;
+    renderCompositeFrameOnce();
+    rafId = requestAnimationFrame(drawFrameLoop);
+  };
+
+  const loadImageUrlIntoFrame = (url: string, shouldRevoke: boolean, captureMs: number) => {
+    const img = new Image();
+    img.onload = () => {
+      if (active && frameBufferCtx) {
+        try {
+          frameBufferCtx.fillStyle = isDark ? "#09090b" : "#ffffff";
+          frameBufferCtx.fillRect(0, 0, width, height);
+          frameBufferCtx.drawImage(img, 0, 0, width, height);
+          hasDrawnFrame = true;
+          renderCompositeFrameOnce();
+          notifyFirstFrameReady();
+        } catch {
+          // Ignore transient draw error
+        }
+      }
+      if (shouldRevoke) {
+        URL.revokeObjectURL(url);
+      }
+      if (active) {
+        scheduleNextCapture(captureMs);
+      }
+    };
+    img.onerror = () => {
+      if (shouldRevoke) {
+        URL.revokeObjectURL(url);
+      }
+      if (active) {
+        // If XML foreignObject failed to parse once, switch to safeMode (inline computed styles) and retry immediately
+        if (!useSafeMode) {
+          useSafeMode = true;
+          scheduleNextCapture(4);
+        } else {
+          notifyFirstFrameReady();
+          scheduleNextCapture(Math.max(captureMs, 32));
+        }
+      }
+    };
+    img.src = url;
+  };
+
+  const handleFrameBitmap = (requestId: number, bitmap: ImageBitmap | null, captureMs = 8) => {
+    if (requestId > 0 && requestId <= lastHandledReqId) {
+      closeBitmapIfNeeded(bitmap);
+      return;
+    }
+    if (requestId > 0) lastHandledReqId = requestId;
+    inFlightFrame = false;
+    if (safetyTimer) clearTimeout(safetyTimer);
+    if (!active) {
+      closeBitmapIfNeeded(bitmap);
+      return;
+    }
+    if (bitmap && frameBufferCtx) {
+      try {
+        frameBufferCtx.fillStyle = isDark ? "#09090b" : "#ffffff";
+        frameBufferCtx.fillRect(0, 0, width, height);
+        frameBufferCtx.drawImage(bitmap, 0, 0, width, height);
+        hasDrawnFrame = true;
+        renderCompositeFrameOnce();
+        notifyFirstFrameReady();
+      } catch {
+        // Ignore
+      }
+    }
+    closeBitmapIfNeeded(bitmap);
+    if (nextPollTimer) clearTimeout(nextPollTimer);
+    const targetFrameMs = Math.round(1000 / fps);
+    nextPollTimer = setTimeout(
+      requestSandboxFrame,
+      Math.max(4, Math.min(32, targetFrameMs - captureMs))
+    );
+  };
+
+  const handleFrameBlob = (requestId: number, blob: Blob | null, captureMs = 16) => {
+    if (requestId > 0 && requestId <= lastHandledReqId) return;
+    if (requestId > 0) lastHandledReqId = requestId;
+    inFlightFrame = false;
+    if (safetyTimer) clearTimeout(safetyTimer);
+    if (!blob || !active) {
+      scheduleNextCapture(captureMs);
+      return;
+    }
+    const objectUrl = URL.createObjectURL(blob);
+    loadImageUrlIntoFrame(objectUrl, true, captureMs);
+  };
+
+  const handleFrameDataUrl = (requestId: number, dataUrl: string | null, captureMs = 20) => {
+    if (requestId > 0 && requestId <= lastHandledReqId) return;
+    if (requestId > 0) lastHandledReqId = requestId;
+    inFlightFrame = false;
+    if (safetyTimer) clearTimeout(safetyTimer);
+    if (!dataUrl || !active) {
+      scheduleNextCapture(captureMs);
+      return;
+    }
+    loadImageUrlIntoFrame(dataUrl, false, captureMs);
+  };
+
+  // Attach direct message listener so Frame #1 is captured before recorder.start()
+  const onWindowMessage = (event: MessageEvent) => {
+    if (
+      !active ||
+      !options.iframeElement?.contentWindow ||
+      event.source !== options.iframeElement.contentWindow
+    ) {
+      return;
+    }
+    const data = event.data;
+    if (!data || typeof data !== "object") return;
+    if (data.type === "VIDEO_STUDIO_CURSOR_STATE") {
+      cursorTelemetry = data as CursorTelemetryState;
+    } else if (data.type === "VIDEO_STUDIO_FRAME_BITMAP") {
+      handleFrameBitmap(
+        Number(data.requestId || 0),
+        data.bitmap instanceof ImageBitmap ? data.bitmap : null,
+        Number(data.captureMs || 8)
+      );
+    } else if (data.type === "VIDEO_STUDIO_FRAME_BLOB") {
+      handleFrameBlob(
+        Number(data.requestId || 0),
+        data.blob instanceof Blob ? data.blob : null,
+        Number(data.captureMs || 16)
+      );
+    } else if (data.type === "VIDEO_STUDIO_FRAME_DATA") {
+      handleFrameDataUrl(
+        Number(data.requestId || 0),
+        typeof data.dataUrl === "string" ? data.dataUrl : null,
+        Number(data.captureMs || 20)
+      );
+    }
+  };
+  window.addEventListener("message", onWindowMessage);
+
+  // Pre-warm Frame #1 before starting MediaRecorder so the video's first keyframe is never black!
+  if (options.iframeElement?.contentWindow) {
+    await new Promise<void>((resolve) => {
+      firstFrameReadyResolve = resolve;
+      const prewarmTimeout = setTimeout(() => {
+        firstFrameReadyResolve = null;
+        resolve();
+      }, 550);
+      const origResolve = firstFrameReadyResolve;
+      firstFrameReadyResolve = () => {
+        clearTimeout(prewarmTimeout);
+        origResolve();
+      };
+      requestSandboxFrame();
+    });
+  }
+
+  drawFrameLoop();
 
   const canvasStream = canvas.captureStream(fps);
   const bitrate = options.resolution === "1080p" ? 8_000_000 : 4_800_000;
@@ -651,47 +841,17 @@ async function startDirectStageCapture(
   const startedAt = performance.now();
   recorder.start(200);
 
-  // Trigger initial frame request on next tick so caller's recorderRef.current is guaranteed assigned
-  nextPollTimer = setTimeout(requestSandboxFrame, 0);
+  if (!inFlightFrame && !nextPollTimer) {
+    nextPollTimer = setTimeout(requestSandboxFrame, 4);
+  }
 
   const cleanup = () => {
     active = false;
+    window.removeEventListener("message", onWindowMessage);
     if (nextPollTimer) clearTimeout(nextPollTimer);
     if (safetyTimer) clearTimeout(safetyTimer);
     if (rafId) cancelAnimationFrame(rafId);
     canvasStream.getTracks().forEach((t) => t.stop());
-  };
-
-  const loadImageUrlIntoFrame = (url: string, shouldRevoke: boolean, captureMs: number) => {
-    const img = new Image();
-    img.onload = () => {
-      if (active && frameBufferCtx) {
-        try {
-          frameBufferCtx.fillStyle = isDark ? "#09090b" : "#ffffff";
-          frameBufferCtx.fillRect(0, 0, width, height);
-          frameBufferCtx.drawImage(img, 0, 0, width, height);
-          hasDrawnFrame = true;
-        } catch {
-          // Ignore transient draw error
-        }
-      }
-      // Revoke blob URL ONLY AFTER drawImage has rasterized the SVG onto frameBufferCanvas
-      if (shouldRevoke) {
-        URL.revokeObjectURL(url);
-      }
-      if (active) {
-        scheduleNextCapture(captureMs);
-      }
-    };
-    img.onerror = () => {
-      if (shouldRevoke) {
-        URL.revokeObjectURL(url);
-      }
-      if (active) {
-        scheduleNextCapture(Math.max(captureMs, 45));
-      }
-    };
-    img.src = url;
   };
 
   return {
@@ -699,48 +859,14 @@ async function startDirectStageCapture(
     updateCursorTelemetry: (telemetry) => {
       cursorTelemetry = telemetry;
     },
-    pushFrameBitmap: (_requestId, bitmap, captureMs = 8) => {
-      inFlightFrame = false;
-      if (safetyTimer) clearTimeout(safetyTimer);
-      if (!active) {
-        closeBitmapIfNeeded(bitmap);
-        return;
-      }
-      if (bitmap && frameBufferCtx) {
-        try {
-          frameBufferCtx.fillStyle = isDark ? "#09090b" : "#ffffff";
-          frameBufferCtx.fillRect(0, 0, width, height);
-          frameBufferCtx.drawImage(bitmap, 0, 0, width, height);
-          hasDrawnFrame = true;
-        } catch {
-          // Ignore
-        }
-      }
-      closeBitmapIfNeeded(bitmap);
-      if (nextPollTimer) clearTimeout(nextPollTimer);
-      nextPollTimer = setTimeout(
-        requestSandboxFrame,
-        Math.max(24, Math.min(75, Math.round(captureMs * 1.5)))
-      );
+    pushFrameBitmap: (requestId, bitmap, captureMs = 8) => {
+      handleFrameBitmap(requestId, bitmap, captureMs);
     },
-    pushFrameBlob: (_requestId, blob, captureMs = 20) => {
-      inFlightFrame = false;
-      if (safetyTimer) clearTimeout(safetyTimer);
-      if (!blob || !active) {
-        scheduleNextCapture(captureMs);
-        return;
-      }
-      const objectUrl = URL.createObjectURL(blob);
-      loadImageUrlIntoFrame(objectUrl, true, captureMs);
+    pushFrameBlob: (requestId, blob, captureMs = 16) => {
+      handleFrameBlob(requestId, blob, captureMs);
     },
-    pushFrameDataUrl: (_requestId, dataUrl, captureMs = 25) => {
-      inFlightFrame = false;
-      if (safetyTimer) clearTimeout(safetyTimer);
-      if (!dataUrl || !active) {
-        scheduleNextCapture(captureMs);
-        return;
-      }
-      loadImageUrlIntoFrame(dataUrl, false, captureMs);
+    pushFrameDataUrl: (requestId, dataUrl, captureMs = 20) => {
+      handleFrameDataUrl(requestId, dataUrl, captureMs);
     },
     cancel: () => {
       try {
@@ -753,6 +879,7 @@ async function startDirectStageCapture(
     stop: () =>
       new Promise<StageRecordingResult>((resolve, reject) => {
         const durationMs = Math.max(200, Math.round(performance.now() - startedAt));
+        renderCompositeFrameOnce();
         if (recorder.state === "inactive") {
           cleanup();
           resolve({
@@ -797,9 +924,9 @@ async function startDirectStageCapture(
 
 /**
  * Starts 16:9 60fps stage recording using the preferred engine with automatic graceful fallback.
- * - In "auto" mode or inside embedded preview iframes, uses the zero-permission Direct Stage Compositor
+ * - In "auto" or "direct" mode, or inside embedded preview iframes, uses the zero-permission Direct Stage Compositor
  *   so recording starts immediately without browser screen-share permission dialogs or NotAllowedError failures.
- * - In "native" ("Hardware") mode, attempts getDisplayMedia + CropTarget and falls back to Direct Stage if blocked by iframe policy.
+ * - In "native" ("Hardware") mode, attempts getDisplayMedia + CropTarget and falls back to Direct Stage if blocked.
  */
 export async function startStageRecording(
   options: StartRecorderOptions
@@ -811,32 +938,33 @@ export async function startStageRecording(
     );
   }
 
-  // If user explicitly requested Direct engine, or if displayMedia is unavailable in this environment
+  // In "auto" or "direct" mode, or when embedded in a preview iframe, use the zero-permission Direct Stage Compositor
   if (
     options.preferredEngine === "direct" ||
+    options.preferredEngine === "auto" ||
     caps.isLikelyCrossOriginIframe ||
     !caps.hasDisplayMedia
   ) {
     return startDirectStageCapture(options);
   }
 
-  // Both "native" ("Hardware") and "auto" modes attempt GPU Hardware Region Capture.
-  // Hardware capture records live rendered GPU screen pixels with 100% fidelity,
-  // completely eliminating SVG foreignObject rendering errors, tainted canvas blocks, or blank black screens.
+  // Explicit "native" ("Hardware") mode attempts GPU Hardware Region Capture
   try {
     return await startNativeRegionCapture(options);
   } catch (err) {
-    if (options.preferredEngine === "native") {
-      throw err;
+    // If user activation expired (e.g. during async Zero-Lag Replay render) or permission was blocked,
+    // rethrow only if user explicitly cancelled the permission dialog on initial start
+    const msg = err instanceof Error ? err.message : String(err);
+    if (/user gesture|activation/i.test(msg)) {
+      return startDirectStageCapture(options);
     }
-    // If user dismisses the tab-share permission prompt in "auto" mode, fallback smoothly to Direct Stage
-    return startDirectStageCapture(options);
+    throw err;
   }
 }
 
 /**
- * Converts a recorded WebM/native blob to a universally compatible H.264 60fps MP4
- * via the local FFmpeg server route (`/api/video-transcode`).
+ * Converts a recorded WebM/native MediaRecorder blob to a universally compatible,
+ * constant-framerate H.264 +faststart 60fps/30fps MP4 via the local FFmpeg server route (`/api/video-transcode`).
  */
 export async function transcodeRecordingToMp4(params: {
   blob: Blob;
@@ -845,12 +973,11 @@ export async function transcodeRecordingToMp4(params: {
   forceRescale?: boolean;
   ownerSessionToken?: string | null;
 }): Promise<Blob> {
-  if (params.blob.type.includes("video/mp4") && !params.forceRescale) {
-    return params.blob;
-  }
+  const isMp4Input = params.blob.type.toLowerCase().includes("mp4");
+  const filename = isMp4Input ? "recording.mp4" : "recording.webm";
 
   const formData = new FormData();
-  formData.append("file", params.blob, "recording.webm");
+  formData.append("file", params.blob, filename);
   formData.append("fps", String(params.fps));
   formData.append("resolution", params.resolution);
 

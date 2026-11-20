@@ -197,6 +197,34 @@ export function compileSandboxHtml(
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>21st.dev Component Preview</title>
+  <script>
+    (function() {
+      try {
+        var origGetContext = HTMLCanvasElement.prototype.getContext;
+        HTMLCanvasElement.prototype.getContext = function(type, attributes) {
+          if (type === "webgl" || type === "webgl2" || type === "experimental-webgl") {
+            attributes = Object.assign({}, attributes || {}, { preserveDrawingBuffer: true });
+          }
+          return origGetContext.call(this, type, attributes);
+        };
+      } catch (e) {}
+      try {
+        window.localStorage.getItem("__test__");
+      } catch (e) {
+        var mem = {};
+        var fakeStorage = {
+          getItem: function(k) { return Object.prototype.hasOwnProperty.call(mem, k) ? mem[k] : null; },
+          setItem: function(k, v) { mem[k] = String(v); },
+          removeItem: function(k) { delete mem[k]; },
+          clear: function() { mem = {}; },
+          key: function(i) { return Object.keys(mem)[i] || null; },
+          get length() { return Object.keys(mem).length; }
+        };
+        try { Object.defineProperty(window, "localStorage", { value: fakeStorage }); } catch (err) {}
+        try { Object.defineProperty(window, "sessionStorage", { value: fakeStorage }); } catch (err) {}
+      }
+    })();
+  </script>
   
   <!-- Tailwind CSS CDN with Dynamic MutationObserver scanning -->
   <script src="https://cdn.tailwindcss.com"></script>

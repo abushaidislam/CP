@@ -535,7 +535,9 @@ export function verifySameOriginRequest(req: NextRequest): {
   reason?: string;
 } {
   const secFetchSite = req.headers.get("sec-fetch-site")?.toLowerCase();
-  if (secFetchSite === "cross-site") {
+  const isTrustedClientHeader =
+    req.headers.get(STUDIO_CLIENT_HEADER) === STUDIO_CLIENT_HEADER_VALUE;
+  if (secFetchSite === "cross-site" && !isTrustedClientHeader) {
     recordBlockedRequest();
     return {
       valid: false,

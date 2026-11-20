@@ -134,7 +134,12 @@ export async function POST(req: NextRequest) {
     const height = resolution === "720p" ? 720 : 1080;
 
     const jobId = randomUUID();
-    inputPath = join(tmpdir(), `studio-video-in-${jobId}.webm`);
+    const isMp4Input =
+      (fileEntry.type && fileEntry.type.toLowerCase().includes("mp4")) ||
+      (typeof (fileEntry as File).name === "string" &&
+        (fileEntry as File).name.toLowerCase().endsWith(".mp4"));
+    const inputExt = isMp4Input ? "mp4" : "webm";
+    inputPath = join(tmpdir(), `studio-video-in-${jobId}.${inputExt}`);
     outputPath = join(tmpdir(), `studio-video-out-${jobId}.mp4`);
 
     const arrayBuffer = await fileEntry.arrayBuffer();
@@ -152,11 +157,13 @@ export async function POST(req: NextRequest) {
         "-c:v",
         "libx264",
         "-preset",
-        "fast",
+        "veryfast",
         "-crf",
         "18",
         "-r",
         String(fps),
+        "-vsync",
+        "cfr",
         "-vf",
         scaleFilter,
         "-pix_fmt",

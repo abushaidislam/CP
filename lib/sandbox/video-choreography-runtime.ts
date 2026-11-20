@@ -1767,26 +1767,61 @@ export function buildVideoStudioRuntimeScript(): string {
       }
 
       // -----------------------------------------------------------------------
-      // Turbo Low-Overhead Frame Snapshot Helper (Hybrid Canvas+DOM + Cached Styles + Blob)
+      // Turbo Low-Overhead Frame Snapshot Helper (Hybrid Canvas+DOM + Live Animation Baking + Blob)
       // -----------------------------------------------------------------------
+      let scratchImgCanvas = null;
+      let scratchImgCtx = null;
+
+      function tryInlineLiveImg(liveImg, rawSrc) {
+        if (!liveImg || !liveImg.complete || !(liveImg.naturalWidth > 0)) return null;
+        try {
+          if (!scratchImgCanvas) {
+            scratchImgCanvas = document.createElement("canvas");
+            scratchImgCtx = scratchImgCanvas.getContext("2d");
+          }
+          if (!scratchImgCtx) return null;
+          const w = Math.min(640, Math.max(16, liveImg.naturalWidth));
+          const h = Math.min(640, Math.max(16, liveImg.naturalHeight));
+          scratchImgCanvas.width = w;
+          scratchImgCanvas.height = h;
+          scratchImgCtx.clearRect(0, 0, w, h);
+          scratchImgCtx.drawImage(liveImg, 0, 0, w, h);
+          const isPngOrSvg = /\.png|\.svg|\.webp/i.test(rawSrc);
+          const dataUrl = scratchImgCanvas.toDataURL(
+            isPngOrSvg ? "image/png" : "image/jpeg",
+            0.85
+          );
+          if (dataUrl && dataUrl.startsWith("data:image/")) {
+            state.externalImgCache.set(rawSrc, dataUrl);
+            return dataUrl;
+          }
+        } catch (e) {}
+        return null;
+      }
+
       function warmExternalImageCache() {
         try {
           const imgs = document.querySelectorAll("img[src]");
           for (let i = 0; i < imgs.length; i++) {
-            const src = imgs[i].getAttribute("src") || "";
-            if (
-              (src.startsWith("http://") || src.startsWith("https://")) &&
-              !state.externalImgCache.has(src)
-            ) {
-              state.externalImgCache.set(src, "");
-              fetch(src, { mode: "cors" })
+            const imgEl = imgs[i];
+            const rawSrc = imgEl.getAttribute("src") || "";
+            if (!rawSrc || rawSrc.startsWith("data:")) continue;
+            if (state.externalImgCache.get(rawSrc)) continue;
+
+            // Try fast synchronous canvas read if already loaded
+            if (tryInlineLiveImg(imgEl, rawSrc)) continue;
+
+            if (!state.externalImgCache.has(rawSrc)) {
+              state.externalImgCache.set(rawSrc, "");
+              const resolvedUrl = imgEl.src || rawSrc;
+              fetch(resolvedUrl, { mode: "cors" })
                 .then((r) => (r.ok ? r.blob() : null))
                 .then((blob) => {
                   if (!blob) return;
                   const reader = new FileReader();
                   reader.onloadend = () => {
                     if (typeof reader.result === "string") {
-                      state.externalImgCache.set(src, reader.result);
+                      state.externalImgCache.set(rawSrc, reader.result);
                     }
                   };
                   reader.readAsDataURL(blob);
@@ -1820,6 +1855,7 @@ export function buildVideoStudioRuntimeScript(): string {
         try {
           for (let s = 0; s < document.styleSheets.length; s++) {
             const sheet = document.styleSheets[s];
+            if (sheet.ownerNode && sheet.ownerNode.id === "__video_studio_hover_mirror__") continue;
             let rules;
             try {
               rules = sheet.cssRules;
@@ -1849,25 +1885,172 @@ export function buildVideoStudioRuntimeScript(): string {
           stylesText += hoverMirrorCss;
         }
 
+        // Disable CSS animation/transition resets inside static SVG foreignObject so baked live computed transforms/opacities are authoritative
+        stylesText += nl + "*, *::before, *::after { animation-play-state: paused !important; transition: none !important; }" + nl;
+
         // Prevent accidental CDATA termination inside XML SVG foreignObject and strip external rules
         stylesText = stylesText.replace(/\\]\\]>/g, "");
-        stylesText = stylesText.replace(/@import\s+[^;]+;/gi, "");
-        stylesText = stylesText.replace(/@charset\s+[^;]+;/gi, "");
+        stylesText = stylesText.replace(/@import\\s+[^;]+;/gi, "");
+        stylesText = stylesText.replace(/@charset\\s+[^;]+;/gi, "");
         state.cachedStyleSig = sig;
         state.cachedStylesText = stylesText;
         return stylesText;
       }
 
-      function prepareCloneForXml(sourceNode, clonedNode) {
+      const VALID_XML_ATTR_RE = /^[a-zA-Z_:][a-zA-Z0-9_.:-]*$/;
+
+      function sanitizeElementAttributes(el) {
+        if (!el || !el.attributes) return;
+        for (let i = el.attributes.length - 1; i >= 0; i--) {
+          const attr = el.attributes[i];
+          if (!attr) continue;
+          const name = attr.name || "";
+          if (
+            !VALID_XML_ATTR_RE.test(name) ||
+            name.toLowerCase().startsWith("on")
+          ) {
+            try {
+              el.removeAttribute(name);
+            } catch (e) {}
+          }
+        }
+      }
+
+      function syncLiveAnimatedAndScrollState(sourceRoot, cloneRoot, safeMode) {
+        const liveQueue = [sourceRoot];
+        const cloneQueue = [cloneRoot];
+        let visited = 0;
+        const maxNodes = safeMode ? 420 : 280;
+
+        while (liveQueue.length > 0 && visited < maxNodes) {
+          const liveEl = liveQueue.shift();
+          const cloneEl = cloneQueue.shift();
+          if (!liveEl || !cloneEl || !(liveEl instanceof Element) || !(cloneEl instanceof Element)) {
+            continue;
+          }
+          visited++;
+
+          sanitizeElementAttributes(cloneEl);
+
+          let cs = null;
+          try {
+            cs = window.getComputedStyle(liveEl);
+          } catch (e) {}
+
+          if (cs) {
+            if (cs.display === "none") {
+              cloneEl.style.display = "none";
+              continue;
+            }
+
+            const hasCssAnim = cs.animationName && cs.animationName !== "none";
+            const hasWaapi =
+              typeof liveEl.getAnimations === "function" &&
+              liveEl.getAnimations().length > 0;
+            const hasTransition =
+              cs.transitionProperty &&
+              cs.transitionProperty !== "none" &&
+              cs.transitionDuration !== "0s";
+            const isHovered = liveEl.hasAttribute("data-studio-hover");
+
+            if (hasCssAnim || hasWaapi || hasTransition || isHovered || safeMode) {
+              if (cs.transform && cs.transform !== "none") {
+                cloneEl.style.transform = cs.transform;
+              }
+              if (cs.opacity && cs.opacity !== "1") {
+                cloneEl.style.opacity = cs.opacity;
+              }
+              if (cs.filter && cs.filter !== "none") {
+                cloneEl.style.filter = cs.filter;
+              }
+              if (cs.clipPath && cs.clipPath !== "none") {
+                cloneEl.style.clipPath = cs.clipPath;
+              }
+              if (hasCssAnim || hasWaapi) {
+                cloneEl.style.animation = "none";
+              }
+              if (isHovered || hasTransition || hasCssAnim || safeMode) {
+                if (cs.backgroundColor && cs.backgroundColor !== "rgba(0, 0, 0, 0)") {
+                  cloneEl.style.backgroundColor = cs.backgroundColor;
+                }
+                if (cs.color) {
+                  cloneEl.style.color = cs.color;
+                }
+                if (cs.borderColor) {
+                  cloneEl.style.borderColor = cs.borderColor;
+                }
+                if (cs.boxShadow && cs.boxShadow !== "none") {
+                  cloneEl.style.boxShadow = cs.boxShadow;
+                }
+              }
+            }
+
+            if (safeMode) {
+              cloneEl.style.display = cs.display;
+              cloneEl.style.position = cs.position;
+              cloneEl.style.padding = cs.padding;
+              cloneEl.style.margin = cs.margin;
+              cloneEl.style.borderRadius = cs.borderRadius;
+              cloneEl.style.fontSize = cs.fontSize;
+              cloneEl.style.fontWeight = cs.fontWeight;
+              if (cs.display.indexOf("flex") !== -1 || cs.display.indexOf("grid") !== -1) {
+                cloneEl.style.flexDirection = cs.flexDirection;
+                cloneEl.style.alignItems = cs.alignItems;
+                cloneEl.style.justifyContent = cs.justifyContent;
+                cloneEl.style.gap = cs.gap;
+              }
+            }
+          }
+
+          // Preserve inner scroll container offset in static SVG foreignObject
+          const sTop = liveEl.scrollTop || 0;
+          const sLeft = liveEl.scrollLeft || 0;
+          const liveChildren = liveEl.children;
+          const cloneChildren = Array.from(cloneEl.children);
+
+          if (
+            (sTop > 0 || sLeft > 0) &&
+            liveEl !== document.documentElement &&
+            liveEl !== document.body &&
+            cloneEl.childNodes.length > 0
+          ) {
+            const scrollWrap = document.createElement("div");
+            scrollWrap.setAttribute(
+              "style",
+              "width:100%;transform:translate3d(-" +
+                Math.round(sLeft) +
+                "px,-" +
+                Math.round(sTop) +
+                "px,0);"
+            );
+            while (cloneEl.firstChild) {
+              scrollWrap.appendChild(cloneEl.firstChild);
+            }
+            cloneEl.appendChild(scrollWrap);
+            cloneEl.style.overflow = "hidden";
+          }
+
+          const count = Math.min(liveChildren.length, cloneChildren.length);
+          for (let i = 0; i < count; i++) {
+            liveQueue.push(liveChildren[i]);
+            cloneQueue.push(cloneChildren[i]);
+          }
+        }
+      }
+
+      function prepareCloneForXml(sourceNode, clonedNode, safeMode) {
         if (!sourceNode || !clonedNode || !(clonedNode instanceof Element)) return;
 
-        // 1. Remove inline <script> and <style> from cloned DOM (all styles are already injected in top CDATA block)
-        const removable = clonedNode.querySelectorAll("script, style");
+        // 1. Remove nested scripts, styles, iframes, objects from cloned DOM
+        const removable = clonedNode.querySelectorAll("script, style, iframe, object, embed");
         for (let i = 0; i < removable.length; i++) {
           removable[i].remove();
         }
 
-        // 2. Composite live <canvas> elements into <img> snapshots so hybrid 3D/canvas + HTML components capture 100% intact
+        // 2. Sync live CSS animations, WAAPI/Framer Motion transforms, hover states & inner scroll containers
+        syncLiveAnimatedAndScrollState(sourceNode, clonedNode, Boolean(safeMode));
+
+        // 3. Composite live <canvas> elements into <img> snapshots so hybrid 3D/canvas + HTML components capture 100% intact
         const liveCanvases = sourceNode.querySelectorAll("canvas");
         const clonedCanvases = clonedNode.querySelectorAll("canvas");
         for (let i = 0; i < liveCanvases.length && i < clonedCanvases.length; i++) {
@@ -1895,7 +2078,7 @@ export function buildVideoStudioRuntimeScript(): string {
           }
         }
 
-        // 3. Sync live form control state (inputs, checkboxes, selects, textareas)
+        // 4. Sync live form control state (inputs, checkboxes, selects, textareas)
         const liveInputs = sourceNode.querySelectorAll("input, textarea, select");
         const clonedInputs = clonedNode.querySelectorAll("input, textarea, select");
         for (let i = 0; i < liveInputs.length && i < clonedInputs.length; i++) {
@@ -1915,27 +2098,69 @@ export function buildVideoStudioRuntimeScript(): string {
           } catch (e) {}
         }
 
-        // 4. Inline cached data URLs for external images so SVG foreignObject never blocks or stalls
+        // 5. Inline data URLs for ALL non-data: images (http, https, relative /assets/..., blob:)
+        // because SVG loaded in new Image() blocks every non-data: image URI
+        const liveImgs = sourceNode.querySelectorAll("img[src]");
         const clonedImgs = clonedNode.querySelectorAll("img[src]");
         for (let i = 0; i < clonedImgs.length; i++) {
           const imgEl = clonedImgs[i];
+          const liveImg = liveImgs[i] || null;
           const src = imgEl.getAttribute("src") || "";
-          if (src.startsWith("http://") || src.startsWith("https://")) {
-            const cached = state.externalImgCache.get(src);
+          imgEl.removeAttribute("crossorigin");
+          imgEl.removeAttribute("loading");
+          imgEl.removeAttribute("srcset");
+          if (src && !src.startsWith("data:")) {
+            let cached = state.externalImgCache.get(src);
+            if (!cached && liveImg) {
+              cached = tryInlineLiveImg(liveImg, src);
+            }
             if (cached) {
               imgEl.setAttribute("src", cached);
             } else {
               warmExternalImageCache();
               imgEl.setAttribute(
                 "src",
-                "data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Crect width='100%25' height='100%25' fill='%2327272a'/%3E%3C/svg%3E"
+                "data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Crect width='100%25' height='100%25' fill='%2327272a' fill-opacity='0.35'/%3E%3C/svg%3E"
               );
             }
           }
         }
       }
 
-      async function captureFastFrame(requestId) {
+      function sanitizeXmlString(xmlStr) {
+        return String(xmlStr || "")
+          .replace(/&nbsp;/g, "&#160;")
+          .replace(/[\\x00-\\x08\\x0B\\x0C\\x0E-\\x1F]/g, "");
+      }
+
+      function getStageBackgroundStyle(isDark) {
+        const bgMode = document.body.getAttribute("data-canvas-bg") || "dark";
+        if (bgMode === "grid") {
+          return isDark
+            ? "background-color:#09090b;background-image:radial-gradient(circle,rgba(255,255,255,0.13) 1px,transparent 1px);background-size:20px 20px;color:#fafafa;"
+            : "background-color:#fafafa;background-image:radial-gradient(circle,rgba(0,0,0,0.12) 1px,transparent 1px);background-size:20px 20px;color:#09090b;";
+        }
+        if (bgMode === "mesh") {
+          return isDark
+            ? "background-color:#09090b;background-image:radial-gradient(at 0% 0%,rgba(99,102,241,0.2) 0px,transparent 50%),radial-gradient(at 100% 0%,rgba(168,85,247,0.2) 0px,transparent 50%),radial-gradient(at 50% 100%,rgba(236,72,153,0.12) 0px,transparent 50%);color:#fafafa;"
+            : "background-color:#fafafa;background-image:radial-gradient(at 0% 0%,rgba(99,102,241,0.12) 0px,transparent 50%),radial-gradient(at 100% 0%,rgba(168,85,247,0.12) 0px,transparent 50%),radial-gradient(at 50% 100%,rgba(236,72,153,0.08) 0px,transparent 50%);color:#09090b;";
+        }
+        if (bgMode === "light") {
+          return isDark
+            ? "background-color:#18181b;color:#fafafa;"
+            : "background-color:#f4f4f5;color:#09090b;";
+        }
+        if (bgMode === "black") {
+          return isDark
+            ? "background-color:#000000;color:#ffffff;"
+            : "background-color:#f4f4f5;color:#09090b;";
+        }
+        return isDark
+          ? "background-color:#09090b;color:#fafafa;"
+          : "background-color:#ffffff;color:#09090b;";
+      }
+
+      async function captureFastFrame(requestId, safeMode) {
         const t0 = performance.now();
         try {
           const root = document.getElementById("root");
@@ -1972,14 +2197,13 @@ export function buildVideoStudioRuntimeScript(): string {
           }
 
           // Fast Path 2: Full DOM + Hybrid Canvas Compositor via SVG foreignObject Blob
-          const stylesText = getCachedStylesText();
+          const stylesText = safeMode ? "" : getCachedStylesText();
           const serializer = new XMLSerializer();
           const scrollY = window.scrollY || document.documentElement.scrollTop || 0;
 
           const clonedRoot = root.cloneNode(true);
-          prepareCloneForXml(root, clonedRoot);
-          let serializedRoot = serializer.serializeToString(clonedRoot);
-          serializedRoot = serializedRoot.replace(/&nbsp;/g, "&#160;");
+          prepareCloneForXml(root, clonedRoot, safeMode);
+          const serializedRoot = sanitizeXmlString(serializer.serializeToString(clonedRoot));
 
           let serializedPortals = "";
           const bodyChildren = document.body.children;
@@ -1994,8 +2218,8 @@ export function buildVideoStudioRuntimeScript(): string {
               continue;
             }
             const clonedPortal = child.cloneNode(true);
-            prepareCloneForXml(child, clonedPortal);
-            serializedPortals += serializer.serializeToString(clonedPortal);
+            prepareCloneForXml(child, clonedPortal, safeMode);
+            serializedPortals += sanitizeXmlString(serializer.serializeToString(clonedPortal));
           }
 
           const isDark = document.documentElement.classList.contains("dark");
@@ -2005,7 +2229,9 @@ export function buildVideoStudioRuntimeScript(): string {
             document.body.className
           )
             .replace(/__vs_hide_native_cursor__/g, "")
+            .replace(/["<>]/g, "")
             .trim();
+          const stageBgStyle = getStageBackgroundStyle(isDark);
 
           const nl = String.fromCharCode(10);
           const svgString =
@@ -2025,16 +2251,12 @@ export function buildVideoStudioRuntimeScript(): string {
             width +
             "px;height:" +
             height +
-            "px;overflow:hidden;background-color:" +
-            (isDark ? "#09090b" : "#ffffff") +
-            ";color:" +
-            (isDark ? "#fafafa" : "#09090b") +
-            ';">' +
-            "<style>/* <![CDATA[ */" +
-            nl +
-            stylesText +
-            nl +
-            "/* ]]> */</style>" +
+            "px;overflow:hidden;" +
+            stageBgStyle +
+            '">' +
+            (stylesText
+              ? "<style>/* <![CDATA[ */" + nl + stylesText + nl + "/* ]]> */</style>"
+              : "") +
             '<div style="width:100%;min-height:100%;transform:translateY(-' +
             scrollY +
             'px);">' +
@@ -2256,7 +2478,7 @@ export function buildVideoStudioRuntimeScript(): string {
         }
 
         if (msg.type === "VIDEO_STUDIO_CAPTURE_FRAME") {
-          captureFastFrame(msg.requestId);
+          captureFastFrame(msg.requestId, Boolean(msg.safeMode));
         }
       });
 

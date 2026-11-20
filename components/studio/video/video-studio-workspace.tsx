@@ -79,6 +79,7 @@ export function VideoStudioWorkspace({
   const [recordingResult, setRecordingResult] =
     useState<StageRecordingResult | null>(null);
   const [previewVideoUrl, setPreviewVideoUrl] = useState<string | null>(null);
+  const [rawWebmUrl, setRawWebmUrl] = useState<string | null>(null);
   const [cachedMp4Url, setCachedMp4Url] = useState<string | null>(null);
   const [isTranscodingMp4, setIsTranscodingMp4] = useState<boolean>(false);
   const [serverFfmpegReady, setServerFfmpegReady] = useState<boolean>(true);
@@ -109,8 +110,10 @@ export function VideoStudioWorkspace({
   const reviewVideoRef = useRef<HTMLVideoElement | null>(null);
   const recorderRef = useRef<StageRecorderHandle | null>(null);
   const previewVideoUrlRef = useRef<string | null>(null);
+  const rawWebmUrlRef = useRef<string | null>(null);
   const cachedMp4UrlRef = useRef<string | null>(null);
   previewVideoUrlRef.current = previewVideoUrl;
+  rawWebmUrlRef.current = rawWebmUrl;
   cachedMp4UrlRef.current = cachedMp4Url;
 
   // Imperative DOM refs for timecode & progress (0 React re-renders during recording!)
@@ -128,6 +131,10 @@ export function VideoStudioWorkspace({
   );
   const previewThemeRef = useRef(previewTheme);
   previewThemeRef.current = previewTheme;
+  const recordingConfigRef = useRef(recordingConfig);
+  recordingConfigRef.current = recordingConfig;
+  const serverFfmpegReadyRef = useRef(serverFfmpegReady);
+  serverFfmpegReadyRef.current = serverFfmpegReady;
 
   const currentComponentName = useMemo(() => {
     const userComp = userComponents?.[currentTemplateId];
@@ -193,6 +200,22 @@ export function VideoStudioWorkspace({
     }
   }, []);
 
+  const pushStageConfig = useCallback(() => {
+    const cfg = recordingConfigRef.current;
+    postToStage({
+      type: "VIDEO_STUDIO_CONFIG",
+      mode: cfg.mode,
+      durationSec: cfg.duration,
+      autoHover: cfg.autoHover,
+      autoClick: cfg.autoClick,
+      autoScroll: cfg.autoScroll,
+      loopReturnToTop: cfg.loopReturnToTop,
+      showCursor: cfg.showCursor,
+      clickRipples: cfg.clickRipples,
+      renderInParentOverlay: true,
+    });
+  }, [postToStage]);
+
   const handleStageIframeLoad = useCallback(() => {
     if (stageReadyFallbackTimerRef.current) {
       clearTimeout(stageReadyFallbackTimerRef.current);
@@ -201,6 +224,7 @@ export function VideoStudioWorkspace({
       type: "SET_PREVIEW_THEME",
       theme: previewThemeRef.current,
     });
+    pushStageConfig();
     postToStage({ type: "VIDEO_STUDIO_SCAN" });
     stageReadyFallbackTimerRef.current = setTimeout(() => {
       setStageReady(true);
@@ -208,9 +232,10 @@ export function VideoStudioWorkspace({
         type: "SET_PREVIEW_THEME",
         theme: previewThemeRef.current,
       });
+      pushStageConfig();
       postToStage({ type: "VIDEO_STUDIO_SCAN" });
     }, 950);
-  }, [postToStage]);
+  }, [postToStage, pushStageConfig]);
 
   // Keep stage preview theme synced with CanvasToolbar theme toggle without reloading srcDoc
   useEffect(() => {
@@ -218,31 +243,30 @@ export function VideoStudioWorkspace({
     postToStage({ type: "SET_PREVIEW_THEME", theme: previewTheme });
   }, [previewTheme, stageReady, postToStage]);
 
-  const isReviewPhase = phase === "review" && Boolean(previewVideoUrl);
-
-  // Observe 16:9 stage dimensions once (zero per-frame getBoundingClientRect layout reflows!)
+  // Observe 16:9 stage dimensions continuously (stage stays mounted during review phase)
   useEffect(() => {
-    if (isReviewPhase) return;
     const container = stageContainerRef.current;
     if (!container) return;
 
     const updateCachedRect = () => {
       const rect = container.getBoundingClientRect();
+      const innerWidth = container.clientWidth || rect.width;
+      const innerHeight = container.clientHeight || rect.height;
       stageRectRef.current = {
         left: rect.left,
         top: rect.top,
         width: rect.width,
         height: rect.height,
       };
-      if (rect.width >= 10) {
-        const nextScale = Number((rect.width / 1280).toFixed(4));
+      if (innerWidth >= 10) {
+        const nextScale = Number((innerWidth / 1280).toFixed(4));
         setStageScale((prev) => (Math.abs(prev - nextScale) > 0.001 ? nextScale : prev));
       }
       const canvas = stageCursorCanvasRef.current;
-      if (canvas && rect.width >= 10 && rect.height >= 10) {
+      if (canvas && innerWidth >= 10 && innerHeight >= 10) {
         const dpr = Math.min(window.devicePixelRatio || 1, 2);
-        const targetW = Math.round(rect.width * dpr);
-        const targetH = Math.round(rect.height * dpr);
+        const targetW = Math.round(innerWidth * dpr);
+        const targetH = Math.round(innerHeight * dpr);
         if (canvas.width !== targetW || canvas.height !== targetH) {
           canvas.width = targetW;
           canvas.height = targetH;
@@ -260,7 +284,7 @@ export function VideoStudioWorkspace({
       window.removeEventListener("resize", updateCachedRect);
       cursorCtxRef.current = null;
     };
-  }, [isReviewPhase, stageReloadKey]);
+  }, [stageReloadKey]);
 
   const clearParentCursorCanvas = useCallback(() => {
     const canvas = stageCursorCanvasRef.current;
@@ -336,25 +360,14 @@ export function VideoStudioWorkspace({
   // Push live configuration changes into the stage iframe
   useEffect(() => {
     if (!stageReady) return;
-    postToStage({
-      type: "VIDEO_STUDIO_CONFIG",
-      mode: recordingConfig.mode,
-      durationSec: recordingConfig.duration,
-      autoHover: recordingConfig.autoHover,
-      autoClick: recordingConfig.autoClick,
-      autoScroll: recordingConfig.autoScroll,
-      loopReturnToTop: recordingConfig.loopReturnToTop,
-      showCursor: recordingConfig.showCursor,
-      clickRipples: recordingConfig.clickRipples,
-      renderInParentOverlay: true,
-    });
+    pushStageConfig();
     if (!recordingConfig.showCursor || recordingConfig.mode !== "manual") {
       clearParentCursorCanvas();
     }
   }, [
     stageReady,
     recordingConfig,
-    postToStage,
+    pushStageConfig,
     clearParentCursorCanvas,
   ]);
 
@@ -415,16 +428,22 @@ export function VideoStudioWorkspace({
   }, []);
 
   const revokeMediaUrls = useCallback(() => {
-    if (previewVideoUrlRef.current) {
-      URL.revokeObjectURL(previewVideoUrlRef.current);
-    }
-    if (
-      cachedMp4UrlRef.current &&
-      cachedMp4UrlRef.current !== previewVideoUrlRef.current
-    ) {
-      URL.revokeObjectURL(cachedMp4UrlRef.current);
+    const urls = new Set(
+      [
+        previewVideoUrlRef.current,
+        rawWebmUrlRef.current,
+        cachedMp4UrlRef.current,
+      ].filter(Boolean) as string[]
+    );
+    for (const u of urls) {
+      try {
+        URL.revokeObjectURL(u);
+      } catch {
+        // Ignore
+      }
     }
     setPreviewVideoUrl(null);
+    setRawWebmUrl(null);
     setCachedMp4Url(null);
     setRecordingResult(null);
   }, []);
@@ -443,14 +462,19 @@ export function VideoStudioWorkspace({
         recorderRef.current.cancel();
         recorderRef.current = null;
       }
-      if (previewVideoUrlRef.current) {
-        URL.revokeObjectURL(previewVideoUrlRef.current);
-      }
-      if (
-        cachedMp4UrlRef.current &&
-        cachedMp4UrlRef.current !== previewVideoUrlRef.current
-      ) {
-        URL.revokeObjectURL(cachedMp4UrlRef.current);
+      const urls = new Set(
+        [
+          previewVideoUrlRef.current,
+          rawWebmUrlRef.current,
+          cachedMp4UrlRef.current,
+        ].filter(Boolean) as string[]
+      );
+      for (const u of urls) {
+        try {
+          URL.revokeObjectURL(u);
+        } catch {
+          // Ignore
+        }
       }
     };
   }, [stopTimers]);
@@ -458,6 +482,7 @@ export function VideoStudioWorkspace({
   const stopRecording = useCallback(async () => {
     stopTimers();
     postToStage({ type: "VIDEO_STUDIO_STOP" });
+    clearParentCursorCanvas();
 
     const handle = recorderRef.current;
     if (!handle) {
@@ -469,14 +494,54 @@ export function VideoStudioWorkspace({
 
     try {
       const result = await handle.stop();
-      const url = URL.createObjectURL(result.blob);
-      setRecordingResult(result);
-      setPreviewVideoUrl(url);
-      if (result.mimeType.includes("video/mp4") && !result.needsServerRescale) {
-        setCachedMp4Url(url);
+      if (!result.blob || result.blob.size === 0) {
+        throw new Error(
+          "Recorded video stream was empty. Please try recording again."
+        );
+      }
+
+      const rawUrl = URL.createObjectURL(result.blob);
+      setRawWebmUrl(rawUrl);
+
+      let activePreviewUrl = rawUrl;
+      let finalResult: StageRecordingResult = result;
+
+      // When server FFmpeg is available, normalize the raw MediaRecorder stream into a
+      // constant-framerate, seekable +faststart H.264 MP4 right during finalization so
+      // the Review player loops/seeks flawlessly and MP4 download is 0ms instant!
+      if (serverFfmpegReadyRef.current) {
+        try {
+          const cfg = recordingConfigRef.current;
+          const mp4Blob = await transcodeRecordingToMp4({
+            blob: result.blob,
+            fps: cfg.fps,
+            resolution: cfg.resolution,
+            forceRescale: true,
+            ownerSessionToken: useStudioStore.getState().ownerSessionToken,
+          });
+          if (mp4Blob && mp4Blob.size > 0) {
+            const mp4Url = URL.createObjectURL(mp4Blob);
+            setCachedMp4Url(mp4Url);
+            activePreviewUrl = mp4Url;
+            if (cfg.format === "mp4") {
+              finalResult = {
+                ...result,
+                blob: mp4Blob,
+                mimeType: "video/mp4",
+                needsServerRescale: false,
+              };
+            }
+          }
+        } catch {
+          // Graceful fallback to raw WebM stream if background transcode fails
+          setCachedMp4Url(null);
+        }
       } else {
         setCachedMp4Url(null);
       }
+
+      setRecordingResult(finalResult);
+      setPreviewVideoUrl(activePreviewUrl);
       setReviewDuration(Math.max(0.5, result.durationMs / 1000));
       setReviewCurrentTime(0);
       setIsReviewPlaying(true);
@@ -489,7 +554,7 @@ export function VideoStudioWorkspace({
       );
       setPhase("error");
     }
-  }, [postToStage, stopTimers]);
+  }, [postToStage, stopTimers, clearParentCursorCanvas]);
 
   const startReplayRenderFromTake = useCallback(
     async (events: ReplayEventItem[], durationMs: number) => {
@@ -581,6 +646,7 @@ export function VideoStudioWorkspace({
           type: "SET_PREVIEW_THEME",
           theme: previewThemeRef.current,
         });
+        pushStageConfig();
         setTimeout(() => postToStage({ type: "VIDEO_STUDIO_SCAN" }), 180);
       }
 
@@ -646,6 +712,7 @@ export function VideoStudioWorkspace({
     return () => window.removeEventListener("message", handleMessage);
   }, [
     postToStage,
+    pushStageConfig,
     stopRecording,
     stopTimers,
     clearParentCursorCanvas,
@@ -844,11 +911,17 @@ export function VideoStudioWorkspace({
   );
 
   const handleDownloadWebm = () => {
-    if (!previewVideoUrl || !recordingResult) return;
-    const ext = recordingResult.mimeType.includes("video/mp4") ? "mp4" : "webm";
+    const targetUrl = rawWebmUrl || previewVideoUrl;
+    if (!targetUrl || !recordingResult) return;
+    const isWebmAvailable = Boolean(rawWebmUrl);
+    const ext = isWebmAvailable
+      ? "webm"
+      : recordingResult.mimeType.includes("video/mp4")
+      ? "mp4"
+      : "webm";
     const slug = slugifyFilename(currentComponentName);
     const a = document.createElement("a");
-    a.href = previewVideoUrl;
+    a.href = targetUrl;
     a.download = `${slug}-${recordingConfig.resolution}-${recordingConfig.fps}fps.${ext}`;
     document.body.appendChild(a);
     a.click();
@@ -883,9 +956,7 @@ export function VideoStudioWorkspace({
         blob: recordingResult.blob,
         fps: recordingConfig.fps,
         resolution: recordingConfig.resolution,
-        forceRescale: Boolean(
-          recordingResult.needsServerRescale && serverFfmpegReady
-        ),
+        forceRescale: true,
         ownerSessionToken: useStudioStore.getState().ownerSessionToken,
       });
       const mp4Url = URL.createObjectURL(mp4Blob);
@@ -913,6 +984,8 @@ export function VideoStudioWorkspace({
     setErrorMessage(null);
     setExportToast(null);
     setPhase("idle");
+    clearParentCursorCanvas();
+    pushStageConfig();
     postToStage({ type: "VIDEO_STUDIO_RESET" });
   };
 

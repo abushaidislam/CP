@@ -1,0 +1,8 @@
+@keyframes aurora-pulse {
+  0%, 100% { transform: scale(1) translate(0, 0); opacity: 0.8; }
+  50% { transform: scale(1.08) translate(10px, -10px); opacity: 1; }
+}
+
+.animate-aurora {
+  animation: aurora-pulse 8s ease-in-out infinite;
+}
