@@ -39,6 +39,12 @@ export interface SynapseCardProps
   autoPlay?: boolean;
   /** Speed multiplier for autonomous hub motion (0.2 to 3) */
   speed?: number;
+  /** Grid columns across the canvas width (6 to 18). Higher values pack more dots */
+  dotDensity?: number;
+  /** Visible dot spotlight spread in grid units (2 to 8). Higher values reveal more dots */
+  dotReach?: number;
+  /** Radial spoke connection reach in grid units (1.6 to 5). Higher values connect more lines */
+  lineReach?: number;
   /** Enables subtle tactile click sound via Web Audio API during interaction */
   soundEnabled?: boolean;
   /** Allows pointer hover/drag and keyboard navigation to steer the hub node */
@@ -59,7 +65,6 @@ interface NodeMorphState {
   wasLinked: boolean;
 }
 
-// Restored sweeping organic choreography
 const ORBIT_WAYPOINTS: ReadonlyArray<Point> = [
   { x: 0.0, y: 0.0 },
   { x: -0.28, y: 0.31 },
@@ -108,6 +113,11 @@ function easeOutCubic(x: number): number {
   return 1 - Math.pow(1 - clamped, 3);
 }
 
+function clampNumber(value: number, min: number, max: number, fallback: number): number {
+  if (typeof value !== "number" || !Number.isFinite(value)) return fallback;
+  return Math.min(Math.max(value, min), max);
+}
+
 const SynapseCard = React.forwardRef<HTMLElement, SynapseCardProps>(
   (
     {
@@ -116,6 +126,9 @@ const SynapseCard = React.forwardRef<HTMLElement, SynapseCardProps>(
       theme = "auto",
       autoPlay = true,
       speed = 1,
+      dotDensity = 10,
+      dotReach = 3.8,
+      lineReach = 2.5,
       soundEnabled = false,
       interactive = true,
       onConnectionChange,
@@ -138,6 +151,9 @@ const SynapseCard = React.forwardRef<HTMLElement, SynapseCardProps>(
     const configRef = useRef({
       autoPlay,
       speed,
+      dotDensity,
+      dotReach,
+      lineReach,
       soundEnabled,
       interactive,
       prefersReducedMotion,
@@ -146,7 +162,10 @@ const SynapseCard = React.forwardRef<HTMLElement, SynapseCardProps>(
     });
     configRef.current = {
       autoPlay,
-      speed: Number.isFinite(speed) ? Math.min(Math.max(speed, 0.2), 3) : 1,
+      speed: clampNumber(speed, 0.2, 3, 1),
+      dotDensity: clampNumber(dotDensity, 6, 18, 10),
+      dotReach: clampNumber(dotReach, 2, 8, 3.8),
+      lineReach: clampNumber(lineReach, 1.6, 5, 2.5),
       soundEnabled,
       interactive,
       prefersReducedMotion,
@@ -284,11 +303,14 @@ const SynapseCard = React.forwardRef<HTMLElement, SynapseCardProps>(
         const {
           autoPlay: isAuto,
           speed: spd,
+          dotDensity: density,
+          dotReach: dReach,
+          lineReach: lReach,
           prefersReducedMotion: reduced,
           isPaused: paused,
         } = configRef.current;
 
-        const pitch = width / 9;
+        const pitch = width / density;
         const centerX = width / 2;
         const centerY = height / 2;
 
@@ -305,7 +327,6 @@ const SynapseCard = React.forwardRef<HTMLElement, SynapseCardProps>(
           targetY = centerY + norm.y * (height * 0.36);
         }
 
-        // Critically damped smooth hub follow
         const smoothing = reduced ? 1 : 1 - Math.exp(-dt * 10);
         hubRef.current.x += (targetX - hubRef.current.x) * smoothing;
         hubRef.current.y += (targetY - hubRef.current.y) * smoothing;
@@ -318,11 +339,15 @@ const SynapseCard = React.forwardRef<HTMLElement, SynapseCardProps>(
 
         const fgColor = resolveForegroundColor();
 
-        const spotlightRadius = pitch * 3.45;
-        const minConnectDist = pitch * 1.44;
-        const maxConnectDist = pitch * 2.32;
-        const maxDotRadius = pitch * 0.112;
-        const hubRadius = pitch * 0.175;
+        const minConnectDist = pitch * 1.42;
+        const maxConnectDist = pitch * lReach;
+        // Always ensure dots remain visible beyond the active line reach
+        const spotlightRadius = Math.max(
+          pitch * dReach,
+          maxConnectDist + pitch * 0.75
+        );
+        const maxDotRadius = Math.min(Math.max(pitch * 0.112, 2.6), 7.5);
+        const hubRadius = Math.min(Math.max(pitch * 0.175, 5.5), 11.5);
 
         const colsHalf = Math.ceil(width / (2 * pitch)) + 1;
         const rowsHalf = Math.ceil(height / (2 * pitch)) + 1;
@@ -373,7 +398,6 @@ const SynapseCard = React.forwardRef<HTMLElement, SynapseCardProps>(
             if (!state) continue;
             activeKeys.add(key);
 
-            // Smooth elastic spoke morph progress
             const targetProgress = isLinked ? 1 : 0;
             const rate = isLinked ? morphInRate : morphOutRate;
             state.progress += (targetProgress - state.progress) * rate;
@@ -386,7 +410,6 @@ const SynapseCard = React.forwardRef<HTMLElement, SynapseCardProps>(
             }
             state.wasLinked = isLinked;
 
-            // Very subtle magnetic micro-tension toward hub when linked
             const pullStrength =
               isLinked && dist > 1 ? pitch * 0.045 * state.progress : 0;
             const targetPullX = dist > 1 ? (-dx / dist) * pullStrength : 0;
@@ -407,9 +430,9 @@ const SynapseCard = React.forwardRef<HTMLElement, SynapseCardProps>(
 
             if (dist < spotlightRadius) {
               const t = 1 - dist / spotlightRadius;
-              const baseR = Math.max(0.55, maxDotRadius * Math.pow(t, 1.38));
+              const baseR = Math.max(0.55, maxDotRadius * Math.pow(t, 1.32));
               const morphedR = baseR * (1 + state.progress * 0.12);
-              const alpha = t < 0.22 ? t / 0.22 : 1;
+              const alpha = t < 0.2 ? t / 0.2 : 1;
 
               drawDots.push({
                 x: renderX,
@@ -440,14 +463,14 @@ const SynapseCard = React.forwardRef<HTMLElement, SynapseCardProps>(
         ctx.save();
         ctx.strokeStyle = fgColor;
         ctx.lineCap = "round";
-        const baseLineWidth = Math.max(1, pitch * 0.018);
+        const baseLineWidth = Math.min(Math.max(pitch * 0.018, 0.9), 1.4);
         for (let i = 0; i < drawSpokes.length; i++) {
           const sp = drawSpokes[i];
           const eased = easeOutCubic(sp.progress);
           const endX = hx + (sp.x - hx) * eased;
           const endY = hy + (sp.y - hy) * eased;
 
-          ctx.globalAlpha = 0.88 * eased;
+          ctx.globalAlpha = 0.86 * eased;
           ctx.lineWidth = baseLineWidth * (0.8 + 0.2 * eased);
           ctx.beginPath();
           ctx.moveTo(hx, hy);
@@ -468,7 +491,7 @@ const SynapseCard = React.forwardRef<HTMLElement, SynapseCardProps>(
         }
         ctx.restore();
 
-        // 3. Draw pure solid monochrome central hub node (no bubble/halo)
+        // 3. Draw pure solid monochrome central hub node
         ctx.save();
         ctx.fillStyle = fgColor;
         ctx.globalAlpha = 1;
