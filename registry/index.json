@@ -1,8 +1,26 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-19T17:06:57.564Z",
-  "totalComponents": 55,
+  "updatedAt": "2026-11-20T05:19:34.657Z",
+  "totalComponents": 49,
   "components": [
+    {
+      "id": "comp-1795151952242-4ag6g",
+      "slug": "reactive-gradient-character",
+      "name": "Reactive Gradient Character",
+      "description": "An expressive metallic-gradient character stage with 9-second kinetic typography, depth-of-field camera pans, blinking eye choreography, and zero-rerender cursor tracking.",
+      "category": "Cards",
+      "isBuiltIn": false,
+      "updatedAt": 1795151970231,
+      "lastRepoSyncAt": 1795151974545,
+      "path": "registry/components/reactive-gradient-character",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "index.css",
+        "manifest.json"
+      ],
+      "dependencies": []
+    },
     {
       "id": "comp-1794635799526-1ellv",
       "slug": "retro-hardware-handheld-clock",
@@ -938,147 +956,6 @@
       ],
       "dependencies": [
         "framer-motion",
-        "lucide-react"
-      ]
-    },
-    {
-      "id": "neon-glow-button",
-      "slug": "neon-glow-button",
-      "name": "Neon Glow Interactive Button",
-      "description": "Cyberpunk-inspired interactive button with luminous border glow, particle pulse, and ripple feedback.",
-      "category": "Buttons",
-      "isBuiltIn": true,
-      "updatedAt": 1700000000000,
-      "lastRepoSyncAt": 1795108017535,
-      "path": "registry/components/neon-glow-button",
-      "files": [
-        "component.tsx",
-        "default.tsx",
-        "index.css",
-        "manifest.json"
-      ],
-      "dependencies": [
-        "lucide-react"
-      ]
-    },
-    {
-      "id": "spotlight-card",
-      "slug": "spotlight-card",
-      "name": "Interactive Spotlight Card",
-      "description": "A high-performance modern card with dynamic pointer-following radial glow, border gradient, and micro-interactions.",
-      "category": "Cards",
-      "isBuiltIn": true,
-      "updatedAt": 1700000000000,
-      "lastRepoSyncAt": 1795108017535,
-      "path": "registry/components/spotlight-card",
-      "files": [
-        "component.tsx",
-        "default.tsx",
-        "index.css",
-        "manifest.json"
-      ],
-      "dependencies": [
-        "framer-motion",
-        "lucide-react",
-        "clsx",
-        "tailwind-merge"
-      ]
-    },
-    {
-      "id": "live-ping-status-pill",
-      "slug": "live-ping-status-pill",
-      "name": "Live Telemetry Health Pill",
-      "description": "Real-time service health pill with animated beacon ping, latency counter, and status indicator.",
-      "category": "Badges",
-      "isBuiltIn": true,
-      "updatedAt": 1700000000000,
-      "lastRepoSyncAt": 1795108017535,
-      "path": "registry/components/live-ping-status-pill",
-      "files": [
-        "component.tsx",
-        "default.tsx",
-        "index.css",
-        "manifest.json"
-      ],
-      "dependencies": [
-        "lucide-react"
-      ]
-    },
-    {
-      "id": "metric-badge",
-      "slug": "metric-badge",
-      "name": "Live Status Radar Badge",
-      "description": "Compact telemetry badge with animated pulsing ping, status tooltip, and gradient border.",
-      "category": "Badges",
-      "isBuiltIn": true,
-      "updatedAt": 1700000000000,
-      "lastRepoSyncAt": 1795108017535,
-      "path": "registry/components/metric-badge",
-      "files": [
-        "component.tsx",
-        "default.tsx",
-        "index.css",
-        "manifest.json"
-      ],
-      "dependencies": [
-        "lucide-react"
-      ]
-    },
-    {
-      "id": "aurora-ambient-hero",
-      "slug": "aurora-ambient-hero",
-      "name": "Aurora Ambient Mesh Hero",
-      "description": "Vibrant ambient blur aurora hero with dual CTA buttons, live headline gradient, and responsive design.",
-      "category": "Heroes",
-      "isBuiltIn": true,
-      "updatedAt": 1700000000000,
-      "lastRepoSyncAt": 1795108017535,
-      "path": "registry/components/aurora-ambient-hero",
-      "files": [
-        "component.tsx",
-        "default.tsx",
-        "index.css",
-        "manifest.json"
-      ],
-      "dependencies": [
-        "lucide-react"
-      ]
-    },
-    {
-      "id": "ink-orbit-hero",
-      "slug": "ink-orbit-hero",
-      "name": "Ink Orbit 3D Hero",
-      "description": "Generative 3D ink sculpture hero with interactive canvas physics, phrase blur cycling, and live workflow demo dialog.",
-      "category": "Heroes",
-      "isBuiltIn": true,
-      "updatedAt": 1700000000000,
-      "lastRepoSyncAt": 1795108017535,
-      "path": "registry/components/ink-orbit-hero",
-      "files": [
-        "component.tsx",
-        "default.tsx",
-        "index.css",
-        "manifest.json"
-      ],
-      "dependencies": []
-    },
-    {
-      "id": "bento-metric-grid",
-      "slug": "bento-metric-grid",
-      "name": "Bento Metric Showcase Card",
-      "description": "Bento-style card showcasing real-time metrics, interactive sparkline charts, and micro-hover states.",
-      "category": "Cards",
-      "isBuiltIn": true,
-      "updatedAt": 1700000000000,
-      "lastRepoSyncAt": 1795108017535,
-      "path": "registry/components/bento-metric-grid",
-      "files": [
-        "component.tsx",
-        "default.tsx",
-        "index.css",
-        "manifest.json"
-      ],
-      "dependencies": [
         "lucide-react"
       ]
     }
