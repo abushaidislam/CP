@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { useShallow } from "zustand/react/shallow";
 import { useStudioStore } from "@/lib/store/studio-store";
 import {
   Dialog,
@@ -21,7 +22,13 @@ export function SaveCheckpointDialog() {
     isSaveCheckpointDialogOpen,
     setSaveCheckpointDialogOpen,
     saveCheckpoint,
-  } = useStudioStore();
+  } = useStudioStore(
+    useShallow((state) => ({
+      isSaveCheckpointDialogOpen: state.isSaveCheckpointDialogOpen,
+      setSaveCheckpointDialogOpen: state.setSaveCheckpointDialogOpen,
+      saveCheckpoint: state.saveCheckpoint,
+    }))
+  );
 
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");

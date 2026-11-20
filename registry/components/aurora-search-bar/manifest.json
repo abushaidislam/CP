@@ -1,0 +1,13 @@
+{
+  "id": "comp-1795005545986-6n5cr",
+  "slug": "aurora-search-bar",
+  "name": "Aurora Search Bar",
+  "description": "An expandable circular-to-pill search bar with critically-damped spring morphing and an iridescent bottom-edge aurora shimmer.",
+  "category": "Custom",
+  "isBuiltIn": false,
+  "createdAt": 1795005545986,
+  "updatedAt": 1795076861413,
+  "lastRepoSyncAt": 1795076870964,
+  "dependencies": [],
+  "previewImage": "./preview.png"
+}

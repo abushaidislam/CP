@@ -1,0 +1,15 @@
+{
+  "id": "comp-1794935044468-dg8nw",
+  "slug": "isometric-ranking-stack",
+  "name": "IsometricRankingStack",
+  "description": "Interactive isometric 4-tier AI visibility cube stack with cumulative layer shading, floating prompt/answer cards, and spring-tracked step callouts.",
+  "category": "Custom",
+  "isBuiltIn": false,
+  "createdAt": 1794935044468,
+  "updatedAt": 1794936097649,
+  "lastRepoSyncAt": 1794936109089,
+  "dependencies": [
+    "framer-motion"
+  ],
+  "previewImage": "./preview.png"
+}

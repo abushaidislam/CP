@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useShallow } from "zustand/react/shallow";
 import { useStudioStore, StudioFileName } from "@/lib/store/studio-store";
 import { VersionDiffViewer } from "./version-diff-viewer";
 import { Button } from "@/components/ui/button";
@@ -63,7 +64,22 @@ export function VersionHistorySheet() {
     deleteCheckpoint,
     files,
     setSaveCheckpointDialogOpen,
-  } = useStudioStore();
+  } = useStudioStore(
+    useShallow((state) => ({
+      variantsByTemplate: state.variantsByTemplate,
+      activeVariantByTemplate: state.activeVariantByTemplate,
+      currentTemplateId: state.currentTemplateId,
+      isHistorySheetOpen: state.isHistorySheetOpen,
+      setHistorySheetOpen: state.setHistorySheetOpen,
+      selectedCheckpointId: state.selectedCheckpointId,
+      setSelectedCheckpointId: state.setSelectedCheckpointId,
+      restoreCheckpoint: state.restoreCheckpoint,
+      forkCheckpointToNewVariant: state.forkCheckpointToNewVariant,
+      deleteCheckpoint: state.deleteCheckpoint,
+      files: state.files,
+      setSaveCheckpointDialogOpen: state.setSaveCheckpointDialogOpen,
+    }))
+  );
 
   const [activeDiffFile, setActiveDiffFile] = useState<StudioFileName>("component.tsx");
   const [confirmRestoreId, setConfirmRestoreId] = useState<string | null>(null);
@@ -255,8 +271,8 @@ export function VersionHistorySheet() {
                           <TabsTrigger value="component.tsx" className="font-mono text-xs">
                             component.tsx
                           </TabsTrigger>
-                          <TabsTrigger value="demo.tsx" className="font-mono text-xs">
-                            demo.tsx
+                          <TabsTrigger value="default.tsx" className="font-mono text-xs">
+                            default.tsx
                           </TabsTrigger>
                           <TabsTrigger value="index.css" className="font-mono text-xs">
                             index.css
@@ -276,8 +292,16 @@ export function VersionHistorySheet() {
                           transition={{ duration: 0.16, ease: [0.22, 1, 0.36, 1] }}
                         >
                           <VersionDiffViewer
-                            oldCode={selectedCp.files[activeDiffFile] || ""}
-                            newCode={files[activeDiffFile] || ""}
+                            oldCode={
+                              activeDiffFile === "default.tsx" || activeDiffFile === "demo.tsx"
+                                ? selectedCp.files["default.tsx"] ?? selectedCp.files["demo.tsx"] ?? ""
+                                : selectedCp.files[activeDiffFile] || ""
+                            }
+                            newCode={
+                              activeDiffFile === "default.tsx" || activeDiffFile === "demo.tsx"
+                                ? files["default.tsx"] ?? files["demo.tsx"] ?? ""
+                                : files[activeDiffFile] || ""
+                            }
                             filename={activeDiffFile}
                             oldLabel={selectedCp.name}
                             newLabel="Current Working"
@@ -331,7 +355,7 @@ export function VersionHistorySheet() {
                 ) : (
                   /* Scrollable timeline list */
                   <div className="flex-1 overflow-y-auto p-4 space-y-3">
-                    {checkpoints.map((cp, idx) => {
+                    {checkpoints.map((cp) => {
                       const isConfirmingRestore = confirmRestoreId === cp.id;
                       const isForking = forkingId === cp.id;
 

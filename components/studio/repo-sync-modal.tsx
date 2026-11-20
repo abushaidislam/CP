@@ -2,6 +2,7 @@
 
 import React, { useState, useMemo, useEffect } from "react";
 import confetti from "canvas-confetti";
+import { useShallow } from "zustand/react/shallow";
 import { useStudioStore } from "@/lib/store/studio-store";
 import { parseComponentAST } from "@/lib/sandbox/ast-parser";
 import {
@@ -15,32 +16,25 @@ import {
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Switch } from "@/components/ui/switch";
 import {
   GitCommit,
   GitBranch,
   FolderGit2,
-  CheckCircle2,
-  AlertCircle,
   Loader2,
-  FileCode2,
-  FileJson,
   Layers,
   ExternalLink,
-  ChevronDown,
-  ChevronUp,
   Check,
   RefreshCw,
-  Copy,
-  Download,
-  FolderDown,
   UploadCloud,
   Sparkles,
-  ShieldCheck,
   Code,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import {
+  RepoSyncTab,
+  type RepoSyncActionResult,
+} from "./repo-sync/repo-sync-tab";
+import { PublishExportTab } from "./repo-sync/publish-export-tab";
 
 function toCleanSlug(raw: string): string {
   return (
@@ -74,10 +68,30 @@ export function RepoSyncModal() {
     syncAllComponentsToProjectRepo,
     hydrateFromProjectRepo,
     importWorkspaceBundle,
-  } = useStudioStore();
+  } = useStudioStore(
+    useShallow((state) => ({
+      files: state.files,
+      dependencies: state.dependencies,
+      currentTemplateId: state.currentTemplateId,
+      userComponents: state.userComponents,
+      isRepoSyncModalOpen: state.isRepoSyncModalOpen,
+      isPublishModalOpen: state.isPublishModalOpen,
+      setRepoSyncModalOpen: state.setRepoSyncModalOpen,
+      repoSyncStatus: state.repoSyncStatus,
+      autoSaveToRepo: state.autoSaveToRepo,
+      setAutoSaveToRepo: state.setAutoSaveToRepo,
+      lastRepoSyncError: state.lastRepoSyncError,
+      repoGitInfo: state.repoGitInfo,
+      githubRepoConfig: state.githubRepoConfig,
+      setGithubRepoConfig: state.setGithubRepoConfig,
+      saveComponentToProjectRepo: state.saveComponentToProjectRepo,
+      syncAllComponentsToProjectRepo: state.syncAllComponentsToProjectRepo,
+      hydrateFromProjectRepo: state.hydrateFromProjectRepo,
+      importWorkspaceBundle: state.importWorkspaceBundle,
+    }))
+  );
 
   const isOpen = Boolean(isRepoSyncModalOpen || isPublishModalOpen);
-
   const [activeTab, setActiveTab] = useState<"repo" | "publish">("repo");
 
   const activeComponent = userComponents?.[currentTemplateId];
@@ -129,13 +143,11 @@ export function RepoSyncModal() {
   const [pushToGithub, setPushToGithub] = useState(false);
   const [showAdvancedGit, setShowAdvancedGit] = useState(false);
   const [copiedFileKey, setCopiedFileKey] = useState<string | null>(null);
-  const [actionResult, setActionResult] = useState<{
-    type: "single" | "all";
-    repoPath?: string;
-    savedCount?: number;
-    commitSha?: string;
-    commitUrl?: string;
-  } | null>(null);
+  const [actionResult, setActionResult] = useState<RepoSyncActionResult | null>(
+    null
+  );
+  const [bundleStatusMsg, setBundleStatusMsg] = useState<string | null>(null);
+  const fileInputRef = React.useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     if (isOpen) {
@@ -162,7 +174,6 @@ export function RepoSyncModal() {
   const cssLines = cssCode.split("\n").length;
 
   const targetDir = `registry/components/${derivedSlug}`;
-
   const compFilename = `${derivedSlug}.tsx`;
   const demoFilename = `${derivedSlug}-demo.tsx`;
   const compPath =
@@ -175,17 +186,23 @@ export function RepoSyncModal() {
       : `./components/demo/${demoFilename}`;
   const hasDemo = demoCode.trim().length > 0;
 
+  const escapeCliArg = (val: string) =>
+    val.replace(/[\r\n]/g, " ").replace(/(["`$\\])/g, "\\$1");
+
   const publishCommand = useMemo(() => {
+    const safeName = escapeCliArg(activeName);
+    const safeSlug = escapeCliArg(derivedSlug);
+    const safeTags = customTags ? escapeCliArg(customTags) : "";
     const demoFlag = hasDemo ? ` --demo ${demoPath}` : "";
-    const tagsFlag = customTags ? ` --tags "${customTags}"` : "";
+    const tagsFlag = safeTags ? ` --tags "${safeTags}"` : "";
 
     if (cliFormat === "powershell") {
-      return `21st publish ${compPath}${hasDemo ? ` \`\n  --demo ${demoPath}` : ""} \`\n  --name "${activeName}" \`\n  --slug "${derivedSlug}" \`\n  --visibility ${visibility}${tagsFlag ? ` \`\n  ${tagsFlag}` : ""}`;
+      return `21st publish ${compPath}${hasDemo ? ` \`\n  --demo ${demoPath}` : ""} \`\n  --name "${safeName}" \`\n  --slug "${safeSlug}" \`\n  --visibility ${visibility}${tagsFlag ? ` \`\n  ${tagsFlag}` : ""}`;
     }
     if (cliFormat === "bash") {
-      return `21st publish ${compPath}${hasDemo ? ` \\\n  --demo ${demoPath}` : ""} \\\n  --name "${activeName}" \\\n  --slug "${derivedSlug}" \\\n  --visibility ${visibility}${tagsFlag ? ` \\\n  ${tagsFlag}` : ""}`;
+      return `21st publish ${compPath}${hasDemo ? ` \\\n  --demo ${demoPath}` : ""} \\\n  --name "${safeName}" \\\n  --slug "${safeSlug}" \\\n  --visibility ${visibility}${tagsFlag ? ` \\\n  ${tagsFlag}` : ""}`;
     }
-    return `21st publish ${compPath}${demoFlag} --name "${activeName}" --slug "${derivedSlug}" --visibility ${visibility}${tagsFlag}`;
+    return `21st publish ${compPath}${demoFlag} --name "${safeName}" --slug "${safeSlug}" --visibility ${visibility}${tagsFlag}`;
   }, [
     compPath,
     demoPath,
@@ -224,22 +241,14 @@ export function RepoSyncModal() {
     }
     setDownloadedAll(true);
     setTimeout(() => setDownloadedAll(false), 2200);
-    confetti({
-      particleCount: 55,
-      spread: 60,
-      origin: { y: 0.65 },
-    });
+    confetti({ particleCount: 55, spread: 60, origin: { y: 0.65 } });
   };
 
   const handleCopyPublishCli = () => {
     navigator.clipboard?.writeText(publishCommand);
     setCopiedPublishCli(true);
     setTimeout(() => setCopiedPublishCli(false), 2000);
-    confetti({
-      particleCount: 55,
-      spread: 60,
-      origin: { y: 0.65 },
-    });
+    confetti({ particleCount: 55, spread: 60, origin: { y: 0.65 } });
   };
 
   const handleCopySetupCli = () => {
@@ -248,26 +257,22 @@ export function RepoSyncModal() {
     setTimeout(() => setCopiedSetupCli(false), 2000);
   };
 
-  const [bundleStatusMsg, setBundleStatusMsg] = useState<string | null>(null);
-  const fileInputRef = React.useRef<HTMLInputElement | null>(null);
-
   const handleExportWorkspaceJson = () => {
-    const rawStorage =
-      typeof window !== "undefined"
-        ? window.localStorage.getItem("21st-component-studio-storage-v3")
-        : null;
-    const payload =
-      rawStorage ||
-      JSON.stringify(
-        {
-          state: {
-            userComponents: userComponents || {},
-          },
-          version: 0,
+    // Export strictly sanitized component & variant data — never dump raw localStorage or credentials
+    const storeState = useStudioStore.getState();
+    const payload = JSON.stringify(
+      {
+        version: 1,
+        exportedAt: new Date().toISOString(),
+        state: {
+          userComponents: storeState.userComponents || {},
+          variantsByTemplate: storeState.variantsByTemplate || {},
+          activeVariantByTemplate: storeState.activeVariantByTemplate || {},
         },
-        null,
-        2
-      );
+      },
+      null,
+      2
+    );
     const blob = new Blob([payload], {
       type: "application/json;charset=utf-8",
     });
@@ -280,7 +285,7 @@ export function RepoSyncModal() {
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
     setBundleStatusMsg(
-      `Exported all ${allComponentsCount} components to backup .json`
+      `Exported all ${allComponentsCount} components to sanitized backup .json`
     );
     setTimeout(() => setBundleStatusMsg(null), 3500);
   };
@@ -298,11 +303,7 @@ export function RepoSyncModal() {
         setBundleStatusMsg(
           `Imported ${res.importedCount} components! Click 'Sync All to Repo' below to save them to GitHub.`
         );
-        confetti({
-          particleCount: 55,
-          spread: 60,
-          origin: { y: 0.65 },
-        });
+        confetti({ particleCount: 55, spread: 60, origin: { y: 0.65 } });
       } else {
         setBundleStatusMsg(res.error || "Failed to import JSON backup.");
       }
@@ -328,11 +329,7 @@ export function RepoSyncModal() {
         commitUrl: res.commitUrl,
       });
       setCommitMessage("");
-      confetti({
-        particleCount: 55,
-        spread: 60,
-        origin: { y: 0.65 },
-      });
+      confetti({ particleCount: 55, spread: 60, origin: { y: 0.65 } });
     }
   };
 
@@ -352,11 +349,7 @@ export function RepoSyncModal() {
         commitUrl: res.commitUrl,
       });
       setCommitMessage("");
-      confetti({
-        particleCount: 70,
-        spread: 70,
-        origin: { y: 0.65 },
-      });
+      confetti({ particleCount: 70, spread: 70, origin: { y: 0.65 } });
     }
   };
 
@@ -447,639 +440,72 @@ export function RepoSyncModal() {
           </div>
 
           {/* TAB 1: Project Repo Storage & File Export */}
-          <TabsContent value="repo" className="flex-1 px-6 py-4 space-y-4 m-0">
-            {/* 1. Auto-Save Toggle & Library Status Strip */}
-            <div className="flex flex-wrap items-center justify-between gap-3 rounded-none border border-border bg-background px-4 py-3">
-              <div className="space-y-0.5">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-semibold text-foreground font-sans">
-                    Auto-Save Edits to Project Repo
-                  </span>
-                  <Badge
-                    variant="outline"
-                    className="rounded-none text-[9px] py-0 px-1.5 font-sans text-emerald-500 border-emerald-500/30 bg-emerald-500/10"
-                  >
-                    {savedRepoCount}/{allComponentsCount} synced in repo
-                  </Badge>
-                </div>
-                <p className="text-[11px] text-muted-foreground font-sans">
-                  Automatically writes your code and preview snapshot to{" "}
-                  <span className="font-mono text-foreground/90">
-                    {targetDir}/
-                  </span>{" "}
-                  as you work.
-                </p>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <Switch
-                  checked={autoSaveToRepo}
-                  onCheckedChange={setAutoSaveToRepo}
-                  aria-label="Toggle auto-save to project repository"
-                />
-              </div>
-            </div>
-
-            {/* 2. Target Project Repository File Structure + Quick Copy/Download */}
-            <div className="rounded-none border border-border bg-background p-4 space-y-3">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div className="flex items-center gap-2">
-                  <span className="font-mono text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-                    REPO FILES &amp; QUICK EXPORT
-                  </span>
-                  <span className="text-border">/</span>
-                  <span className="font-mono text-xs font-medium text-foreground">
-                    {targetDir}/
-                  </span>
-                </div>
-
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleDownloadAllFiles}
-                  className="rounded-none h-7 px-2.5 gap-1.5 text-[11px] font-sans"
-                >
-                  {downloadedAll ? (
-                    <>
-                      <Check className="size-3 text-emerald-500" />
-                      <span>Downloaded!</span>
-                    </>
-                  ) : (
-                    <>
-                      <FolderDown className="size-3 text-primary" />
-                      <span>Download All (.tsx)</span>
-                    </>
-                  )}
-                </Button>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                {/* component.tsx */}
-                <div className="flex items-center justify-between rounded-none border border-border/80 bg-card px-3 py-2">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <FileCode2 className="size-3.5 text-sky-500 shrink-0" />
-                    <span className="font-mono text-[11px] text-foreground truncate">
-                      component.tsx
-                    </span>
-                    <span className="font-mono text-[10px] text-muted-foreground shrink-0">
-                      ({compLines}L)
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-1 shrink-0">
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      onClick={() => handleCopyFile("component.tsx", compCode)}
-                      aria-label="Copy component.tsx"
-                      className="size-6 rounded-none text-muted-foreground hover:text-foreground"
-                    >
-                      {copiedFileKey === "component.tsx" ? (
-                        <Check className="size-3 text-emerald-500" />
-                      ) : (
-                        <Copy className="size-3" />
-                      )}
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      onClick={() =>
-                        handleDownloadFile(`${derivedSlug}.tsx`, compCode)
-                      }
-                      aria-label="Download component.tsx"
-                      className="size-6 rounded-none text-muted-foreground hover:text-foreground"
-                    >
-                      <Download className="size-3" />
-                    </Button>
-                  </div>
-                </div>
-
-                {/* default.tsx */}
-                <div className="flex items-center justify-between rounded-none border border-border/80 bg-card px-3 py-2">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <FileCode2 className="size-3.5 text-violet-500 shrink-0" />
-                    <span className="font-mono text-[11px] text-foreground truncate">
-                      default.tsx
-                    </span>
-                    <span className="font-mono text-[10px] text-muted-foreground shrink-0">
-                      ({demoLines}L)
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-1 shrink-0">
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      onClick={() => handleCopyFile("default.tsx", demoCode)}
-                      aria-label="Copy default.tsx"
-                      className="size-6 rounded-none text-muted-foreground hover:text-foreground"
-                    >
-                      {copiedFileKey === "default.tsx" ? (
-                        <Check className="size-3 text-emerald-500" />
-                      ) : (
-                        <Copy className="size-3" />
-                      )}
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      onClick={() =>
-                        handleDownloadFile(`${derivedSlug}-demo.tsx`, demoCode)
-                      }
-                      aria-label="Download default.tsx"
-                      className="size-6 rounded-none text-muted-foreground hover:text-foreground"
-                    >
-                      <Download className="size-3" />
-                    </Button>
-                  </div>
-                </div>
-
-                {/* index.css */}
-                <div className="flex items-center justify-between rounded-none border border-border/80 bg-card px-3 py-2">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <FileCode2 className="size-3.5 text-emerald-500 shrink-0" />
-                    <span className="font-mono text-[11px] text-foreground truncate">
-                      index.css
-                    </span>
-                    <span className="font-mono text-[10px] text-muted-foreground shrink-0">
-                      ({cssLines}L)
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-1 shrink-0">
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      onClick={() => handleCopyFile("index.css", cssCode)}
-                      aria-label="Copy index.css"
-                      className="size-6 rounded-none text-muted-foreground hover:text-foreground"
-                    >
-                      {copiedFileKey === "index.css" ? (
-                        <Check className="size-3 text-emerald-500" />
-                      ) : (
-                        <Copy className="size-3" />
-                      )}
-                    </Button>
-                  </div>
-                </div>
-
-                {/* manifest.json & preview.png */}
-                <div className="flex items-center justify-between rounded-none border border-border/80 bg-card px-3 py-2">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <FileJson className="size-3.5 text-amber-500 shrink-0" />
-                    <span className="font-mono text-[11px] text-foreground truncate">
-                      manifest.json + preview.png
-                    </span>
-                  </div>
-                  <span className="font-mono text-[10px] text-muted-foreground shrink-0">
-                    {dependencies.length} deps
-                  </span>
-                </div>
-              </div>
-
-              {/* Browser LocalStorage Backup & Migration Bar */}
-              <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-border/60">
-                <div className="text-[11px] text-muted-foreground font-sans">
-                  Browser LocalStorage Bundle ({allComponentsCount} components):
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept=".json,application/json"
-                    onChange={handleImportWorkspaceJsonFile}
-                    className="hidden"
-                  />
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    type="button"
-                    onClick={handleExportWorkspaceJson}
-                    className="rounded-none h-6 px-2 text-[11px] font-sans gap-1"
-                  >
-                    <Download className="size-3 text-primary" />
-                    <span>Export All ({allComponentsCount}) .json</span>
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    className="rounded-none h-6 px-2 text-[11px] font-sans gap-1"
-                  >
-                    <UploadCloud className="size-3 text-sky-500" />
-                    <span>Import Backup .json</span>
-                  </Button>
-                </div>
-              </div>
-              {bundleStatusMsg && (
-                <div className="text-[11px] text-emerald-500 font-sans pt-0.5">
-                  {bundleStatusMsg}
-                </div>
-              )}
-            </div>
-
-            {/* 3. Optional Collapsible: Direct GitHub API Push */}
-            <div className="rounded-none border border-border bg-background px-4 py-2.5">
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-xs font-medium text-muted-foreground font-sans">
-                  Optional: Custom Git Commit &amp; Direct Remote GitHub Push
-                </span>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  type="button"
-                  onClick={() => setShowAdvancedGit((p) => !p)}
-                  className="h-6 px-2 text-[11px] font-sans text-muted-foreground hover:text-foreground rounded-none gap-1"
-                >
-                  <span>{showAdvancedGit ? "Hide Options" : "Configure"}</span>
-                  {showAdvancedGit ? (
-                    <ChevronUp className="size-3" />
-                  ) : (
-                    <ChevronDown className="size-3" />
-                  )}
-                </Button>
-              </div>
-
-              {showAdvancedGit && (
-                <div className="mt-3 pt-3 border-t border-border/70 space-y-3">
-                  <div>
-                    <label
-                      htmlFor="repo-sync-commit-message"
-                      className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider font-sans"
-                    >
-                      Commit Message (Optional)
-                    </label>
-                    <Input
-                      id="repo-sync-commit-message"
-                      type="text"
-                      value={commitMessage}
-                      onChange={(e) => setCommitMessage(e.target.value)}
-                      placeholder={defaultCommitMsg}
-                      className="mt-1 h-8 text-xs rounded-none bg-card font-sans"
-                    />
-                  </div>
-
-                  <div className="flex items-center justify-between gap-2 pt-1">
-                    <span className="text-xs text-foreground font-sans">
-                      Also push directly to a remote GitHub branch via REST API
-                    </span>
-                    <Switch
-                      checked={pushToGithub}
-                      onCheckedChange={setPushToGithub}
-                      aria-label="Also push commit directly to remote GitHub API"
-                    />
-                  </div>
-
-                  {pushToGithub && (
-                    <div className="rounded-none border border-border/80 bg-card p-3 space-y-2.5">
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                        <div className="sm:col-span-2">
-                          <label className="text-[10px] text-muted-foreground font-sans">
-                            Repository (owner/repo)
-                          </label>
-                          <Input
-                            type="text"
-                            value={githubRepoConfig.repo}
-                            onChange={(e) =>
-                              setGithubRepoConfig({ repo: e.target.value })
-                            }
-                            placeholder={
-                              repoGitInfo?.envGithubRepo ||
-                              "username/component-studio"
-                            }
-                            className="mt-0.5 h-7 text-xs rounded-none font-mono bg-background"
-                          />
-                        </div>
-                        <div>
-                          <label className="text-[10px] text-muted-foreground font-sans">
-                            Branch
-                          </label>
-                          <Input
-                            type="text"
-                            value={githubRepoConfig.branch}
-                            onChange={(e) =>
-                              setGithubRepoConfig({ branch: e.target.value })
-                            }
-                            placeholder={repoGitInfo?.envGithubBranch || "main"}
-                            className="mt-0.5 h-7 text-xs rounded-none font-mono bg-background"
-                          />
-                        </div>
-                      </div>
-                      <div>
-                        <label className="text-[10px] text-muted-foreground font-sans">
-                          GitHub Personal Access Token (repo scope)
-                        </label>
-                        <Input
-                          type="password"
-                          value={githubRepoConfig.token}
-                          onChange={(e) =>
-                            setGithubRepoConfig({ token: e.target.value })
-                          }
-                          placeholder={
-                            repoGitInfo?.hasGithubToken
-                              ? "Configured via server GITHUB_TOKEN"
-                              : "ghp_xxxxxxxxxxxxxxxxxxxx"
-                          }
-                          className="mt-0.5 h-7 text-xs rounded-none font-mono bg-background"
-                        />
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-
-            {/* 4. Live Status / Error / Success Banner */}
-            {lastRepoSyncError && (
-              <div className="flex items-start gap-2 rounded-none border border-rose-500/35 bg-rose-500/10 p-3 text-xs text-rose-500 font-sans">
-                <AlertCircle className="size-4 shrink-0 mt-0.5" />
-                <div className="min-w-0 flex-1">
-                  <div className="font-semibold">Repository Sync Error</div>
-                  <div className="text-[11px] opacity-90 break-words mt-0.5">
-                    {lastRepoSyncError}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {actionResult && !lastRepoSyncError && (
-              <div className="flex items-start justify-between gap-3 rounded-none border border-emerald-500/35 bg-emerald-500/10 p-3 text-xs text-emerald-600 dark:text-emerald-400 font-sans">
-                <div className="flex items-start gap-2 min-w-0">
-                  <CheckCircle2 className="size-4 shrink-0 mt-0.5 text-emerald-500" />
-                  <div className="space-y-0.5 min-w-0">
-                    <div className="font-semibold">
-                      {actionResult.type === "single"
-                        ? `Saved "${activeName}" into Project Repository!`
-                        : `Synced all ${actionResult.savedCount} components into Project Repository!`}
-                    </div>
-                    <div className="text-[11px] opacity-90">
-                      Written to{" "}
-                      <span className="font-mono">
-                        {actionResult.repoPath || "registry/components/"}
-                      </span>{" "}
-                      and indexed in{" "}
-                      <span className="font-mono">registry/index.json</span>
-                      {actionResult.commitSha
-                        ? ` • Commit ${actionResult.commitSha}`
-                        : ""}
-                    </div>
-                  </div>
-                </div>
-
-                {actionResult.commitUrl && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    asChild
-                    className="rounded-none h-7 px-2.5 text-[11px] font-sans shrink-0 border-emerald-500/40 text-emerald-600 dark:text-emerald-400"
-                  >
-                    <a
-                      href={actionResult.commitUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      <span>View on GitHub</span>
-                      <ExternalLink className="size-3 ml-1" />
-                    </a>
-                  </Button>
-                )}
-              </div>
-            )}
+          <TabsContent value="repo" className="flex-1 px-6 py-4 m-0">
+            <RepoSyncTab
+              activeName={activeName}
+              derivedSlug={derivedSlug}
+              targetDir={targetDir}
+              savedRepoCount={savedRepoCount}
+              allComponentsCount={allComponentsCount}
+              autoSaveToRepo={autoSaveToRepo}
+              onAutoSaveChange={setAutoSaveToRepo}
+              compCode={compCode}
+              demoCode={demoCode}
+              cssCode={cssCode}
+              compLines={compLines}
+              demoLines={demoLines}
+              cssLines={cssLines}
+              dependenciesCount={dependencies.length}
+              copiedFileKey={copiedFileKey}
+              downloadedAll={downloadedAll}
+              onCopyFile={handleCopyFile}
+              onDownloadFile={handleDownloadFile}
+              onDownloadAllFiles={handleDownloadAllFiles}
+              fileInputRef={fileInputRef}
+              onImportWorkspaceJsonFile={handleImportWorkspaceJsonFile}
+              onExportWorkspaceJson={handleExportWorkspaceJson}
+              bundleStatusMsg={bundleStatusMsg}
+              showAdvancedGit={showAdvancedGit}
+              onToggleAdvancedGit={() => setShowAdvancedGit((p) => !p)}
+              commitMessage={commitMessage}
+              onCommitMessageChange={setCommitMessage}
+              defaultCommitMsg={defaultCommitMsg}
+              pushToGithub={pushToGithub}
+              onPushToGithubChange={setPushToGithub}
+              githubRepoConfig={githubRepoConfig}
+              onGithubRepoConfigChange={setGithubRepoConfig}
+              repoGitInfo={repoGitInfo}
+              lastRepoSyncError={lastRepoSyncError}
+              actionResult={actionResult}
+            />
           </TabsContent>
 
           {/* TAB 2: CLI Publish & Metadata */}
-          <TabsContent
-            value="publish"
-            className="flex-1 px-6 py-4 space-y-4 m-0"
-          >
-            {/* Component Identity & Metadata */}
-            <div className="rounded-none border border-border bg-background p-4 space-y-3 font-sans">
-              <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
-                <div className="sm:col-span-5">
-                  <label
-                    htmlFor="publish-component-title"
-                    className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider font-sans"
-                  >
-                    Component Name
-                  </label>
-                  <Input
-                    id="publish-component-title"
-                    type="text"
-                    value={customTitle}
-                    onChange={(e) => setCustomTitle(e.target.value)}
-                    placeholder={activeName}
-                    className="mt-1 h-8 text-xs rounded-none bg-card font-sans"
-                  />
-                </div>
-
-                <div className="sm:col-span-4">
-                  <label
-                    htmlFor="publish-component-slug"
-                    className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider font-sans"
-                  >
-                    Slug / Filename
-                  </label>
-                  <Input
-                    id="publish-component-slug"
-                    type="text"
-                    value={customSlug}
-                    onChange={(e) => setCustomSlug(e.target.value)}
-                    placeholder={derivedSlug}
-                    className="mt-1 h-8 text-xs rounded-none font-mono bg-card"
-                  />
-                </div>
-
-                <div className="sm:col-span-3">
-                  <label
-                    id="publish-visibility-label"
-                    className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider font-sans"
-                  >
-                    Visibility
-                  </label>
-                  <div
-                    role="group"
-                    aria-labelledby="publish-visibility-label"
-                    className="mt-1 grid grid-cols-2 gap-px bg-border border border-border h-8 font-sans"
-                  >
-                    <Button
-                      variant={visibility === "published" ? "default" : "ghost"}
-                      size="sm"
-                      type="button"
-                      aria-pressed={visibility === "published"}
-                      onClick={() => setVisibility("published")}
-                      className="rounded-none h-full text-[11px] font-sans px-1"
-                    >
-                      Public
-                    </Button>
-                    <Button
-                      variant={visibility === "private" ? "default" : "ghost"}
-                      size="sm"
-                      type="button"
-                      aria-pressed={visibility === "private"}
-                      onClick={() => setVisibility("private")}
-                      className="rounded-none h-full text-[11px] font-sans px-1"
-                    >
-                      Private
-                    </Button>
-                  </div>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-                <div>
-                  <label
-                    htmlFor="publish-custom-description"
-                    className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider font-sans"
-                  >
-                    Description (Optional)
-                  </label>
-                  <Input
-                    id="publish-custom-description"
-                    type="text"
-                    value={customDescription}
-                    onChange={(e) => setCustomDescription(e.target.value)}
-                    placeholder={
-                      activeComponent?.description ||
-                      `Production-ready ${activeName} component`
-                    }
-                    className="mt-1 h-8 text-xs rounded-none bg-card font-sans"
-                  />
-                </div>
-                <div>
-                  <label
-                    htmlFor="publish-custom-tags"
-                    className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider font-sans"
-                  >
-                    Tags (comma separated)
-                  </label>
-                  <Input
-                    id="publish-custom-tags"
-                    type="text"
-                    value={customTags}
-                    onChange={(e) => setCustomTags(e.target.value)}
-                    placeholder="button, animation, tailwind, ui"
-                    className="mt-1 h-8 text-xs rounded-none font-mono bg-card"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* 21st CLI Command Generator */}
-            <div className="rounded-none border border-border bg-background p-4 space-y-3">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <span className="text-xs font-semibold text-foreground font-sans">
-                  21st.dev CLI Publish Command
-                </span>
-
-                <div className="flex items-center gap-2">
-                  <div
-                    role="group"
-                    aria-label="CLI file path style"
-                    className="inline-flex rounded-none border border-border bg-card p-0.5 text-xs font-sans"
-                  >
-                    <Button
-                      variant={pathStyle === "folder" ? "default" : "ghost"}
-                      size="sm"
-                      type="button"
-                      aria-pressed={pathStyle === "folder"}
-                      onClick={() => setPathStyle("folder")}
-                      className="rounded-none h-6 px-2 text-[10px] font-sans"
-                    >
-                      Folder Root
-                    </Button>
-                    <Button
-                      variant={pathStyle === "project" ? "default" : "ghost"}
-                      size="sm"
-                      type="button"
-                      aria-pressed={pathStyle === "project"}
-                      onClick={() => setPathStyle("project")}
-                      className="rounded-none h-6 px-2 text-[10px] font-sans"
-                    >
-                      Next.js Path
-                    </Button>
-                  </div>
-
-                  <div
-                    role="group"
-                    aria-label="CLI shell format"
-                    className="inline-flex rounded-none border border-border bg-card p-0.5 text-xs font-sans"
-                  >
-                    <Button
-                      variant={cliFormat === "oneline" ? "default" : "ghost"}
-                      size="sm"
-                      type="button"
-                      aria-pressed={cliFormat === "oneline"}
-                      onClick={() => setCliFormat("oneline")}
-                      className="rounded-none h-6 px-2 text-[10px] font-sans"
-                    >
-                      One-Liner
-                    </Button>
-                    <Button
-                      variant={cliFormat === "powershell" ? "default" : "ghost"}
-                      size="sm"
-                      type="button"
-                      aria-pressed={cliFormat === "powershell"}
-                      onClick={() => setCliFormat("powershell")}
-                      className="rounded-none h-6 px-2 text-[10px] font-sans"
-                    >
-                      PowerShell
-                    </Button>
-                    <Button
-                      variant={cliFormat === "bash" ? "default" : "ghost"}
-                      size="sm"
-                      type="button"
-                      aria-pressed={cliFormat === "bash"}
-                      onClick={() => setCliFormat("bash")}
-                      className="rounded-none h-6 px-2 text-[10px] font-sans"
-                    >
-                      Bash
-                    </Button>
-                  </div>
-                </div>
-              </div>
-
-              <div className="relative rounded-none border border-border bg-card p-3.5 pr-24 font-mono text-xs text-foreground">
-                <pre className="whitespace-pre-wrap break-all leading-relaxed select-all font-mono">
-                  {publishCommand}
-                </pre>
-                <Button
-                  variant="default"
-                  size="sm"
-                  onClick={handleCopyPublishCli}
-                  className="rounded-none absolute top-2.5 right-2.5 h-7 gap-1.5 px-3 text-xs font-sans cursor-pointer"
-                >
-                  {copiedPublishCli ? (
-                    <Check className="size-3.5 text-emerald-400" />
-                  ) : (
-                    <Copy className="size-3.5" />
-                  )}
-                  <span>{copiedPublishCli ? "Copied!" : "Copy"}</span>
-                </Button>
-              </div>
-
-              <div className="rounded-none border border-border bg-card px-3 py-2 flex items-center justify-between gap-3 text-xs font-sans">
-                <div className="flex items-center gap-2 min-w-0">
-                  <ShieldCheck className="size-3.5 text-primary shrink-0" />
-                  <span className="text-[11px] text-muted-foreground font-sans shrink-0">
-                    First time?
-                  </span>
-                  <code className="rounded-none bg-background px-2 py-0.5 font-mono text-[11px] border border-border text-foreground truncate">
-                    npm i -g @21st-dev/cli &amp;&amp; 21st login
-                  </code>
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleCopySetupCli}
-                  className="rounded-none h-6 text-[11px] gap-1 px-2 font-sans shrink-0"
-                >
-                  {copiedSetupCli ? (
-                    <Check className="size-3 text-emerald-500" />
-                  ) : (
-                    <Copy className="size-3" />
-                  )}
-                  <span>{copiedSetupCli ? "Copied" : "Copy Setup"}</span>
-                </Button>
-              </div>
-            </div>
+          <TabsContent value="publish" className="flex-1 px-6 py-4 m-0">
+            <PublishExportTab
+              activeName={activeName}
+              derivedSlug={derivedSlug}
+              defaultDescription={activeComponent?.description}
+              customTitle={customTitle}
+              onCustomTitleChange={setCustomTitle}
+              customSlug={customSlug}
+              onCustomSlugChange={setCustomSlug}
+              customDescription={customDescription}
+              onCustomDescriptionChange={setCustomDescription}
+              customTags={customTags}
+              onCustomTagsChange={setCustomTags}
+              visibility={visibility}
+              onVisibilityChange={setVisibility}
+              pathStyle={pathStyle}
+              onPathStyleChange={setPathStyle}
+              cliFormat={cliFormat}
+              onCliFormatChange={setCliFormat}
+              publishCommand={publishCommand}
+              copiedPublishCli={copiedPublishCli}
+              onCopyPublishCli={handleCopyPublishCli}
+              copiedSetupCli={copiedSetupCli}
+              onCopySetupCli={handleCopySetupCli}
+            />
           </TabsContent>
         </Tabs>
 

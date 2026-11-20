@@ -1,16 +1,9 @@
-"use client";
+import { readRegistrySummaries } from "@/lib/registry/server-registry";
+import { HomeHubClient } from "@/components/hub/home-hub-client";
 
-import { useRouter } from "next/navigation";
-import { ComponentHub } from "@/components/hub/component-hub";
+export const dynamic = "force-dynamic";
 
-export default function Home() {
-  const router = useRouter();
-
-  return (
-    <ComponentHub
-      onNavigateStudio={(id) => {
-        router.push(`/studio/${id}`);
-      }}
-    />
-  );
+export default async function Home() {
+  const { summaries } = await readRegistrySummaries();
+  return <HomeHubClient initialSummaries={summaries} />;
 }

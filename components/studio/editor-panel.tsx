@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
+import { useShallow } from "zustand/react/shallow";
 import { useStudioStore, StudioFileName } from "@/lib/store/studio-store";
 import { CodeEditor } from "./code-editor";
 import { Button } from "@/components/ui/button";
@@ -22,6 +23,7 @@ import {
   Loader2,
   Copy,
   MoreHorizontal,
+  X,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -45,10 +47,23 @@ export function EditorPanel() {
     resetCurrentTemplate,
     setDependencyModalOpen,
     toggleTerminal,
-  } = useStudioStore();
+  } = useStudioStore(
+    useShallow((state) => ({
+      files: state.files,
+      activeTab: state.activeTab,
+      dependencies: state.dependencies,
+      compilerError: state.compilerError,
+      updateFile: state.updateFile,
+      setActiveTab: state.setActiveTab,
+      resetCurrentTemplate: state.resetCurrentTemplate,
+      setDependencyModalOpen: state.setDependencyModalOpen,
+      toggleTerminal: state.toggleTerminal,
+    }))
+  );
 
   const [isFormatting, setIsFormatting] = useState(false);
   const [formatSuccess, setFormatSuccess] = useState(false);
+  const [formatError, setFormatError] = useState<string | null>(null);
 
   // Global shortcut to toggle terminal (Ctrl+` or Cmd+`)
   useEffect(() => {
@@ -91,8 +106,15 @@ export function EditorPanel() {
   const [copied, setCopied] = useState(false);
   const effectiveTab = (activeTab === "demo.tsx" ? "default.tsx" : activeTab) as StudioFileName;
 
+  const resolveFileContent = (tab: StudioFileName): string => {
+    if (tab === "default.tsx" || tab === "demo.tsx") {
+      return files["default.tsx"] ?? files["demo.tsx"] ?? "";
+    }
+    return files[tab] ?? "";
+  };
+
   const handleCopyFor21st = () => {
-    const content = files[effectiveTab] || files[activeTab] || "";
+    const content = resolveFileContent(effectiveTab);
     if (content) {
       navigator.clipboard.writeText(content);
       setCopied(true);
@@ -100,32 +122,58 @@ export function EditorPanel() {
     }
   };
 
-  const handleFormat = async () => {
+  const handleFormat = useCallback(async () => {
     try {
       setIsFormatting(true);
+      setFormatError(null);
+      const latestState = useStudioStore.getState();
+      const tab = latestState.activeTab;
+      const code =
+        tab === "default.tsx" || tab === "demo.tsx"
+          ? latestState.files["default.tsx"] ?? latestState.files["demo.tsx"] ?? ""
+          : latestState.files[tab] ?? "";
+
       const res = await fetch("/api/format-code", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "X-Studio-Client": "component-studio",
+        },
         body: JSON.stringify({
-          code: files[activeTab],
-          filename: activeTab,
+          code,
+          filename: tab,
         }),
       });
 
       const data = await res.json();
       if (res.ok && data.formatted) {
-        updateFile(activeTab, data.formatted);
+        updateFile(tab, data.formatted);
         setFormatSuccess(true);
         setTimeout(() => setFormatSuccess(false), 2000);
+      } else {
+        setFormatError(
+          data?.error || "Unable to format code due to a syntax error."
+        );
       }
     } catch (err) {
       console.error("Format error", err);
+      setFormatError(
+        err instanceof Error ? err.message : "Failed to format code."
+      );
     } finally {
       setIsFormatting(false);
     }
-  };
+  }, [updateFile]);
 
-  const currentFileContent = files[effectiveTab] || files[activeTab] || "";
+  const handleEditorChange = useCallback(
+    (newVal: string) => {
+      if (formatError) setFormatError(null);
+      updateFile(activeTab, newVal);
+    },
+    [activeTab, updateFile, formatError]
+  );
+
+  const currentFileContent = resolveFileContent(effectiveTab);
   const lineCount = currentFileContent.split("\n").length;
 
   return (
@@ -203,7 +251,7 @@ export function EditorPanel() {
               </Button>
             </TooltipTrigger>
             <TooltipContent side="bottom" className="font-sans text-xs">
-              Auto-format code with Prettier
+              Auto-format code with Prettier (Shift+Alt+F)
             </TooltipContent>
           </Tooltip>
 
@@ -305,7 +353,7 @@ export function EditorPanel() {
                   <span>Format Code</span>
                 </span>
                 <kbd className="font-mono text-[10px] text-muted-foreground/70 bg-muted px-1 rounded-none border border-border/40">
-                  Ctrl+S
+                  Shift+Alt+F
                 </kbd>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
@@ -321,9 +369,9 @@ export function EditorPanel() {
         </div>
       </div>
 
-      {/* Compiler / Lint Error Notification Banner with smooth exit */}
+      {/* Compiler / Format Error Notification Banner with smooth exit */}
       <AnimatePresence>
-        {compilerError && (
+        {(compilerError || formatError) && (
           <motion.div
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: "auto", opacity: 1 }}
@@ -334,10 +382,26 @@ export function EditorPanel() {
             <div
               role="alert"
               aria-live="assertive"
-              className="flex items-center gap-2 border-b border-destructive/20 bg-destructive/10 px-3 py-1.5 text-xs text-destructive"
+              className="flex items-center justify-between gap-2 border-b border-destructive/20 bg-destructive/10 px-3 py-1.5 text-xs text-destructive"
             >
-              <AlertCircle className="size-3.5 shrink-0" />
-              <span className="truncate text-[11px] font-sans">{compilerError}</span>
+              <div className="flex items-center gap-2 min-w-0">
+                <AlertCircle className="size-3.5 shrink-0" />
+                <span className="truncate text-[11px] font-sans">
+                  {formatError ? `Format error: ${formatError}` : compilerError}
+                </span>
+              </div>
+              {formatError && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-sm"
+                  onClick={() => setFormatError(null)}
+                  aria-label="Dismiss format error"
+                  className="size-5 rounded-none text-destructive hover:bg-destructive/15 shrink-0"
+                >
+                  <X className="size-3" />
+                </Button>
+              )}
             </div>
           </motion.div>
         )}
@@ -443,8 +507,8 @@ export function EditorPanel() {
       <div className="flex-1 relative overflow-hidden bg-background min-h-0">
         <CodeEditor
           filename={activeTab}
-          value={files[activeTab] || files[effectiveTab] || ""}
-          onChange={(newVal) => updateFile(activeTab, newVal)}
+          value={currentFileContent}
+          onChange={handleEditorChange}
           onFormat={handleFormat}
         />
       </div>

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenAI, Type } from "@google/genai";
 import { auditComponentGuidelines } from "@/lib/sandbox/guideline-linter";
 import {
   COPILOT_PREMIUM_DESIGN_MANIFESTO,
@@ -13,10 +13,28 @@ import {
   getDailyQuotaSummary,
   incrementDailyAiQuota,
   isOwnerRequestAuthenticated,
+  readJsonWithLimit,
   recordBlockedRequest,
-  verifyPayloadSize,
   verifySameOriginRequest,
 } from "@/lib/security/api-guard";
+
+let cachedGeminiClient: { apiKey: string; client: GoogleGenAI } | null = null;
+
+function getGeminiClient(apiKey: string): GoogleGenAI {
+  if (cachedGeminiClient && cachedGeminiClient.apiKey === apiKey) {
+    return cachedGeminiClient.client;
+  }
+  const client = new GoogleGenAI({
+    apiKey,
+    httpOptions: {
+      headers: {
+        "User-Agent": "aistudio-build",
+      },
+    },
+  });
+  cachedGeminiClient = { apiKey, client };
+  return client;
+}
 
 interface ChatHistoryItem {
   role: "user" | "assistant" | "model" | "system";
@@ -43,6 +61,7 @@ interface RequestBody {
   demoCode?: string;
   cssCode?: string;
   dependencies?: string[];
+  compilerError?: string | null;
   model?: string;
   role?: string;
   preserveDesign?: boolean;
@@ -57,6 +76,19 @@ const VALID_MODELS = [
   "gemini-4-argon",        // Complex tasks & deep reasoning
   "gemini-3.1-flash-lite", // Fast tasks & instant feedback
 ];
+
+const ROLE_INSTRUCTIONS: Record<string, string> = {
+  copilot: `ACTIVE SPECIALIST ROLE: Full-Stack Component Co-Pilot.
+Balance clean TypeScript architecture, interactive React 19 state, Tailwind CSS precision, and smooth Framer Motion micro-interactions.`,
+  designer: `ACTIVE SPECIALIST ROLE: UI & Visual Design Director.
+Focus on atmospheric minimalism, high-craft dark & light mode surfaces, subtle 1px borders, refined typography hierarchy, glassmorphic depth, and balanced spatial rhythm. You are explicitly authorized to elevate visual styling and aesthetics.`,
+  architect: `ACTIVE SPECIALIST ROLE: Staff React & TypeScript Architect.
+Focus on composable API design, strict TypeScript Props interfaces, clean custom hooks, ref forwarding, memoized callbacks, and zero unnecessary re-renders.`,
+  auditor: `ACTIVE SPECIALIST ROLE: 21st.dev Standards & WCAG Accessibility Auditor.
+Focus on 100% 21st.dev compliance, keyboard navigation (Arrow keys, Enter, Escape, Tab), focus-visible rings, ARIA roles/labels, contrast ratios, and className merging via cn().`,
+  optimizer: `ACTIVE SPECIALIST ROLE: Motion Physics & Interaction Engineer.
+Focus onchoreographed Framer Motion springs (stiffness, damping, mass), layoutId shared transitions, AnimatePresence exit animations, and tactile hover/tap micro-interactions.`,
+};
 
 const MASTER_COPILOT_INSTRUCTION = `You are the Dedicated Component Studio Co-Pilot — an elite React 19, TypeScript, Tailwind CSS, and Framer Motion pair programmer for this live component playground.
 
@@ -94,6 +126,80 @@ CRITICAL CODE MODIFICATION RULES:
 
 ${COPILOT_PREMIUM_DESIGN_MANIFESTO}`;
 
+const COPILOT_RESPONSE_SCHEMA = {
+  type: Type.OBJECT,
+  properties: {
+    reasoningSteps: {
+      type: Type.ARRAY,
+      items: {
+        type: Type.OBJECT,
+        properties: {
+          title: { type: Type.STRING },
+          description: { type: Type.STRING },
+          detail: { type: Type.STRING },
+          category: { type: Type.STRING },
+          items: {
+            type: Type.ARRAY,
+            items: { type: Type.STRING },
+          },
+        },
+        required: ["title", "description"],
+      },
+    },
+    reasoningSummary: {
+      type: Type.STRING,
+      description: "One concise sentence summarizing the architectural approach taken.",
+    },
+    message: {
+      type: Type.STRING,
+      description: "Conversational markdown response answering the user and explaining any code changes.",
+    },
+    complianceScore: {
+      type: Type.INTEGER,
+      description: "Quality and 21st.dev guideline compliance score from 0 to 100.",
+    },
+    issuesFound: {
+      type: Type.ARRAY,
+      items: { type: Type.STRING },
+    },
+    issuesFixed: {
+      type: Type.ARRAY,
+      items: { type: Type.STRING },
+    },
+    addedDependencies: {
+      type: Type.ARRAY,
+      items: { type: Type.STRING },
+      description: "Any external npm package names used in the updated code (e.g., lucide-react, framer-motion, canvas-confetti).",
+    },
+    followUpSuggestions: {
+      type: Type.ARRAY,
+      items: { type: Type.STRING },
+      description: "3 short, actionable follow-up prompts (under 8 words each) the user can click next.",
+    },
+    changedFiles: {
+      type: Type.OBJECT,
+      properties: {
+        "component.tsx": {
+          type: Type.STRING,
+          nullable: true,
+          description: "Complete compilable code for component.tsx if modified, or null if unchanged.",
+        },
+        "default.tsx": {
+          type: Type.STRING,
+          nullable: true,
+          description: "Complete compilable code for default.tsx if modified, or null if unchanged.",
+        },
+        "index.css": {
+          type: Type.STRING,
+          nullable: true,
+          description: "Complete CSS code for index.css if modified, or null if unchanged.",
+        },
+      },
+    },
+  },
+  required: ["message", "reasoningSummary", "changedFiles"],
+};
+
 function normalizeGeminiModel(requestedModel?: string): string {
   if (requestedModel && VALID_MODELS.includes(requestedModel)) {
     return requestedModel;
@@ -106,6 +212,18 @@ function normalizeGeminiModel(requestedModel?: string): string {
     return "gemini-3.1-flash-lite";
   }
   return "gemini-4-hydrogen";
+}
+
+function unescapeJsonStringLiteral(raw: string): string {
+  try {
+    return JSON.parse(`"${raw}"`);
+  } catch {
+    return raw
+      .replace(/\\n/g, "\n")
+      .replace(/\\t/g, "\t")
+      .replace(/\\"/g, '"')
+      .replace(/\\\\/g, "\\");
+  }
 }
 
 function parseJsonResponseSafely(textOutput: string): {
@@ -121,6 +239,8 @@ function parseJsonResponseSafely(textOutput: string): {
   complianceScore?: number;
   issuesFound?: string[];
   issuesFixed?: string[];
+  addedDependencies?: string[];
+  followUpSuggestions?: string[];
   changedFiles?: Partial<Record<string, string | null>>;
 } {
   const trimmed = (textOutput || "").trim();
@@ -151,7 +271,36 @@ function parseJsonResponseSafely(textOutput: string): {
       try {
         return JSON.parse(trimmed.slice(firstBrace, lastBrace + 1));
       } catch {
-        // continue
+        // Fallback field extraction if JSON was partially truncated on a very large file
+        const msgMatch = trimmed.match(/"message"\s*:\s*"((?:\\.|[^"\\])*)"/);
+        const summaryMatch = trimmed.match(/"reasoningSummary"\s*:\s*"((?:\\.|[^"\\])*)"/);
+        const compMatch = trimmed.match(/"component\.tsx"\s*:\s*"((?:\\.|[^"\\])*)"/);
+        const defMatch = trimmed.match(/"default\.tsx"\s*:\s*"((?:\\.|[^"\\])*)"/);
+        const cssMatch = trimmed.match(/"index\.css"\s*:\s*"((?:\\.|[^"\\])*)"/);
+
+        const recoveredFiles: Partial<Record<string, string | null>> = {};
+        if (compMatch?.[1]) recoveredFiles["component.tsx"] = unescapeJsonStringLiteral(compMatch[1]);
+        if (defMatch?.[1]) recoveredFiles["default.tsx"] = unescapeJsonStringLiteral(defMatch[1]);
+        if (cssMatch?.[1]) recoveredFiles["index.css"] = unescapeJsonStringLiteral(cssMatch[1]);
+
+        if (msgMatch?.[1] || Object.keys(recoveredFiles).length > 0) {
+          return {
+            message: msgMatch?.[1]
+              ? unescapeJsonStringLiteral(msgMatch[1])
+              : "Applied the requested updates to your component files.",
+            reasoningSummary: summaryMatch?.[1]
+              ? unescapeJsonStringLiteral(summaryMatch[1])
+              : undefined,
+            changedFiles: recoveredFiles,
+          };
+        }
+
+        // Never dump raw broken JSON braces directly into the user's chat bubble
+        return {
+          message:
+            "I analyzed your component, but the generated output was too large to format in a single payload. Try breaking the request into a smaller step or switching to Gemini 4 Hydrogen.",
+          changedFiles: {},
+        };
       }
     }
 
@@ -164,13 +313,7 @@ function parseJsonResponseSafely(textOutput: string): {
 
 export async function POST(req: NextRequest) {
   try {
-    // 1. Enforce payload size cap (12MB max for multimodal image prompts)
-    const sizeCheck = verifyPayloadSize(req, 12 * 1024 * 1024);
-    if (!sizeCheck.valid && sizeCheck.errorResponse) {
-      return sizeCheck.errorResponse;
-    }
-
-    // 2. Enforce Same-Origin & CSRF verification
+    // 1. Enforce Same-Origin & CSRF verification
     const originCheck = verifySameOriginRequest(req);
     if (!originCheck.valid) {
       return NextResponse.json(
@@ -182,7 +325,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 3. Enforce Owner Session Authentication before allowing AI credit usage
+    // 2. Enforce Owner Session Authentication before allowing AI credit usage
     if (!isOwnerRequestAuthenticated(req)) {
       recordBlockedRequest();
       return NextResponse.json(
@@ -196,7 +339,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 4. Enforce Sliding-Window Per-IP Burst Rate Limit
+    // 3. Enforce Sliding-Window Per-IP Burst Rate Limit
     const clientIp = getClientIp(req);
     const limitPerMin = getConfiguredAiRateLimitPerMin();
     const rateCheck = checkRateLimit(clientIp, "ai-assistant", limitPerMin, 60_000);
@@ -217,7 +360,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 5. Enforce Daily AI Credit Quota Guard
+    // 4. Enforce Daily AI Credit Quota Guard
     const quotaCheck = checkDailyAiQuota();
     if (!quotaCheck.allowed) {
       return NextResponse.json(
@@ -231,7 +374,12 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const body: RequestBody = await req.json();
+    // 5. Enforce real streaming payload size cap (12MB max for multimodal image prompts)
+    const parsedBody = await readJsonWithLimit<RequestBody>(req, 12 * 1024 * 1024);
+    if (!parsedBody.ok) {
+      return parsedBody.errorResponse;
+    }
+    const body = parsedBody.data;
     const {
       prompt,
       action = "chat",
@@ -240,6 +388,7 @@ export async function POST(req: NextRequest) {
       demoCode = "",
       cssCode = "",
       dependencies = [],
+      compilerError = null,
       model: requestedModel = "gemini-4-hydrogen",
       role: requestedRole = "copilot",
       preserveDesign = true,
@@ -250,6 +399,9 @@ export async function POST(req: NextRequest) {
 
     const activeDemoCode = defaultCode ?? demoCode ?? "";
     const activeModel = normalizeGeminiModel(requestedModel);
+    const roleInstruction = ROLE_INSTRUCTIONS[requestedRole] || ROLE_INSTRUCTIONS.copilot;
+    // If the user explicitly selected the "designer" persona, allow visual improvements
+    const effectivePreserveDesign = requestedRole === "designer" ? false : preserveDesign;
 
     // Run static guideline audit first (instant zero-latency baseline)
     const staticAudit = auditComponentGuidelines(
@@ -301,7 +453,7 @@ export async function POST(req: NextRequest) {
             items: [
               "Exported component signature",
               "Props interface check",
-              preserveDesign ? "UI Design Lock active" : "Visual edit mode",
+              effectivePreserveDesign ? "UI Design Lock active" : "Visual edit mode",
             ],
           },
           {
@@ -324,57 +476,37 @@ export async function POST(req: NextRequest) {
                   ? `Identified ${issueTexts.length} issue(s) to address.`
                   : "All foundational 21st.dev guidelines satisfied!"
               }`
-            : "Gemini AI is not configured yet on the server. Ensure GEMINI_API_KEY is set in your environment secrets to run live AI edits.",
+            : "Gemini AI is not configured yet on the server. Ensure GEMINI_API_KEY is set in Settings > Secrets to run live AI edits.",
         issuesFound: issueTexts,
         issuesFixed: [],
+        addedDependencies: [],
+        followUpSuggestions: [
+          "Audit 21st.dev compliance standards",
+          "Add Framer Motion spring physics",
+          "Polish dark and light mode tokens",
+        ],
         changedFiles: {},
       });
     }
 
-    // Initialize official GoogleGenAI client on server-side only
-    const ai = new GoogleGenAI({
-      apiKey,
-      httpOptions: {
-        headers: {
-          "User-Agent": "aistudio-build",
-        },
-      },
-    });
+    // Reuse singleton GoogleGenAI client on server-side only
+    const ai = getGeminiClient(apiKey);
 
     const systemInstruction = `${MASTER_COPILOT_INSTRUCTION}
-${preserveDesign ? `\n${COPILOT_UI_PRESERVATION_SKILL}\n` : ""}
+
+${roleInstruction}
+${effectivePreserveDesign ? `\n${COPILOT_UI_PRESERVATION_SKILL}\n` : ""}
 CONVERSATION & RESPONSE INSTRUCTIONS:
 - You are engaged in a multi-turn conversation with the developer. Maintain full context across previous turns.
-- Provide insightful, friendly, and technically precise feedback.
+- Provide insightful, friendly, and technically precise feedback in "message" (use clean Markdown with bullet points and inline code where helpful; do NOT duplicate the entire 200-line file inside "message" if you already placed it in "changedFiles").
 - Document your internal chain-of-thought in "reasoningSteps" (4 sequential steps showing the exact engineering work you performed: 1. Context & file scan, 2. AST & props analysis, 3. 21st.dev & design audit, 4. Code synthesis & verification). Each step must include a clear "title", a specific 1-sentence "description" of what you examined or changed, a short "detail" badge (e.g., "component.tsx", "AST & Props", "95/100"), a "category" ("context" | "ast" | "audit" | "synthesis" | "verify"), and an "items" array of 2 to 4 short micro-operation labels (under 4 words each, e.g., ["Read component.tsx", "Checked Props interface", "Preserved Tailwind layout"]).
 - MULTIMODAL CAPABILITY: If image attachments are provided (mockups, wireframes, screenshots), carefully analyze their visual hierarchy, typography, colors, padding, alignment, and motion cues, and implement matching production React + Tailwind code.
 - CODE ATTACHMENT CAPABILITY: If external code snippets or references are attached, analyze their logic, interfaces, or styles and integrate them into component.tsx / default.tsx / index.css.
-- If the user asks for code changes, enhancements, fixes, or styling, you MUST supply the COMPLETE updated file code in the "changedFiles" object.
-- If the user asks a general question, advice, or brainstorming without requiring code changes, leave "changedFiles" as an empty object {}.
-
-JSON Output Format (Strictly enforce valid JSON):
-{
-  "reasoningSteps": [
-    {
-      "title": "Short step heading (e.g., Inspecting component props & DOM hierarchy)",
-      "description": "Specific 1-sentence explanation of what you examined or modified in this step.",
-      "detail": "File or target badge (e.g., component.tsx)",
-      "category": "context | ast | audit | synthesis | verify",
-      "items": ["Read component.tsx", "Checked Props interface", "Verified cn() usage"]
-    }
-  ],
-  "reasoningSummary": "One concise sentence summarizing the architectural approach taken.",
-  "message": "Conversational markdown response answering the user, explaining your reasoning and code changes",
-  "complianceScore": <number 0-100 indicating quality and guideline compliance>,
-  "issuesFound": ["Short descriptions of issues found, if any"],
-  "issuesFixed": ["Short descriptions of issues addressed, if any"],
-  "changedFiles": {
-    "component.tsx": "<COMPLETE compilable code if changed, or null>",
-    "default.tsx": "<COMPLETE compilable code if changed, or null>",
-    "index.css": "<COMPLETE compilable code if changed, or null>"
-  }
-}
-CRITICAL: Never output partial code with placeholders like '// rest of code'. Changed files must be complete and compilable.`;
+- DEPENDENCY DETECTION: If your updated code imports any external npm package (e.g., "lucide-react", "framer-motion", "canvas-confetti"), include the package name in "addedDependencies".
+- FOLLOW-UP SUGGESTIONS: Always provide 3 tailored, high-value next-step prompts in "followUpSuggestions" (each under 8 words, e.g. "Add keyboard navigation & Esc handler", "Create interactive control panel in default.tsx", "Add spring hover micro-interactions").
+- If the user asks for code changes, enhancements, fixes, or styling, you MUST supply the COMPLETE updated file code in "changedFiles".
+- If a file was NOT modified, set its key in "changedFiles" to null.
+- CRITICAL: Never output partial code with placeholders like '// rest of code'. Changed files must be 100% complete and compilable.`;
 
     // Filter and build multi-turn contents enforcing strict user -> model alternation
     const contents: Array<{
@@ -385,7 +517,7 @@ CRITICAL: Never output partial code with placeholders like '// rest of code'. Ch
       >;
     }> = [];
 
-    const recentHistory = history.slice(-10);
+    const recentHistory = history.slice(-12);
     for (const item of recentHistory) {
       if (item.role === "system" || !item.content || !item.content.trim()) continue;
       const turnRole: "user" | "model" =
@@ -414,13 +546,27 @@ CRITICAL: Never output partial code with placeholders like '// rest of code'. Ch
       (action === "autofix"
         ? "Auto-fix any guideline violations while keeping the existing UI design, layout, and styling 100% unchanged."
         : "Audit this component");
-    const designLockReminder = preserveDesign
+    const designLockReminder = effectivePreserveDesign
       ? `\n\n[ACTIVE SKILL: UI & DESIGN LOCK ON]
 CRITICAL RULE FOR THIS TURN: Keep the existing UI, layout structure, spacing, colors, gradients, border-radius, shadows, and visual appearance 100% UNCHANGED. Apply the requested changes, fixes, or code improvements WITHOUT altering how the component looks unless the user prompt above explicitly asks for a specific visual/style change.`
+      : `\n\n[ACTIVE SKILL: VISUAL DESIGN EDITING UNLOCKED]
+You may refine and elevate visual styling, layout, colors, and animations to fulfill the user's request.`;
+
+    const compilerErrorContext = compilerError
+      ? `\n\n[ACTIVE SANDBOX COMPILER / RUNTIME ERROR]:\n${compilerError}\nPlease ensure your response resolves this error cleanly.`
       : "";
 
+    const failingStaticRules = staticAudit.checks
+      .filter((c) => !c.passed)
+      .map((c) => `- ${c.title}: ${c.description}`)
+      .join("\n");
+
     let currentTurnText = `Current Editor Context:
+Specialist Mode: ${requestedRole}
 Active Dependencies: ${JSON.stringify(dependencies)}
+Static 21st.dev Compliance Score: ${staticAudit.score}/100${
+      failingStaticRules ? `\nCurrently Failing Checks:\n${failingStaticRules}` : ""
+    }${compilerErrorContext}
 
 --- component.tsx ---
 ${componentCode}
@@ -481,16 +627,17 @@ ${userPrompt}${designLockReminder}`;
       });
     }
 
-    // Invoke Gemini multi-turn generation and record daily credit consumption
-    const updatedQuota = incrementDailyAiQuota();
+    // Invoke Gemini multi-turn generation; deduct daily quota only after successful upstream call
     const response = await ai.models.generateContent({
       model: activeModel,
       contents,
       config: {
         systemInstruction,
         responseMimeType: "application/json",
+        responseSchema: COPILOT_RESPONSE_SCHEMA,
       },
     });
+    const updatedQuota = incrementDailyAiQuota();
 
     const textOutput = response.text || "";
     const parsedResult = parseJsonResponseSafely(textOutput);
@@ -526,54 +673,84 @@ ${userPrompt}${designLockReminder}`;
     const demoLines = activeDemoCode.split("\n").length;
     const passedRules = staticAudit.checks.filter((c) => c.passed).length;
 
-    const defaultSteps = [
-      {
-        title: "Scanning workspace files & context",
-        description: `Examined component.tsx (${compLines} lines), default.tsx (${demoLines} lines), and ${dependencies.length} active package dependencies.`,
-        detail: "component.tsx",
-        category: "context" as const,
-        items: [
-          `Read component.tsx (${compLines}L)`,
-          `Read default.tsx (${demoLines}L)`,
-          `${dependencies.length} NPM deps indexed`,
-        ],
-      },
-      {
-        title: "Evaluating design & 21st.dev standards",
-        description: `Checked 21st.dev compliance rules (${passedRules}/${staticAudit.checks.length} passed), Tailwind tokens, and contrast states.`,
-        detail: `${staticAudit.score}/100`,
-        category: "audit" as const,
-        items: [
-          `${passedRules}/${staticAudit.checks.length} checks passed`,
-          "Tailwind cn() merge",
-          preserveDesign ? "UI Design Lock enforced" : "Visual styling unlocked",
-        ],
-      },
-      {
-        title:
-          changedFileKeys.length > 0
-            ? "Synthesizing code modifications"
-            : "Formulating architectural guidance",
-        description:
-          changedFileKeys.length > 0
-            ? `Prepared complete, compilable TypeScript updates for ${changedFileKeys.join(", ")}.`
-            : "Synthesized response aligned with Component Studio Co-Pilot standards.",
-        detail: activeModel.replace("gemini-", ""),
-        category: "synthesis" as const,
-        items:
-          changedFileKeys.length > 0
-            ? [
-                `Updated ${changedFileKeys.join(", ")}`,
-                "Full TypeScript validation",
-                "Ready for diff review",
-              ]
-            : [
-                `Model: ${activeModel.replace("gemini-", "")}`,
-                "Architectural review",
-                "Zero unintended mutations",
+    const validCategories = new Set(["context", "ast", "audit", "synthesis", "verify"]);
+    const normalizedSteps =
+      Array.isArray(parsedResult.reasoningSteps) && parsedResult.reasoningSteps.length > 0
+        ? parsedResult.reasoningSteps.map((st, idx) => ({
+            title: st.title || `Step ${idx + 1}`,
+            description: st.description || "",
+            detail: st.detail || undefined,
+            category: (st.category && validCategories.has(st.category)
+              ? st.category
+              : ["context", "ast", "audit", "synthesis", "verify"][idx % 5]) as
+              | "context"
+              | "ast"
+              | "audit"
+              | "synthesis"
+              | "verify",
+            items: Array.isArray(st.items) ? st.items.slice(0, 4) : undefined,
+          }))
+        : [
+            {
+              title: "Scanning workspace files & context",
+              description: `Examined component.tsx (${compLines} lines), default.tsx (${demoLines} lines), and ${dependencies.length} active package dependencies.`,
+              detail: "component.tsx",
+              category: "context" as const,
+              items: [
+                `Read component.tsx (${compLines}L)`,
+                `Read default.tsx (${demoLines}L)`,
+                `${dependencies.length} NPM deps indexed`,
               ],
-      },
-    ];
+            },
+            {
+              title: "Evaluating design & 21st.dev standards",
+              description: `Checked 21st.dev compliance rules (${passedRules}/${staticAudit.checks.length} passed), Tailwind tokens, and contrast states.`,
+              detail: `${staticAudit.score}/100`,
+              category: "audit" as const,
+              items: [
+                `${passedRules}/${staticAudit.checks.length} checks passed`,
+                "Tailwind cn() merge",
+                effectivePreserveDesign ? "UI Design Lock enforced" : "Visual styling unlocked",
+              ],
+            },
+            {
+              title:
+                changedFileKeys.length > 0
+                  ? "Synthesizing code modifications"
+                  : "Formulating architectural guidance",
+              description:
+                changedFileKeys.length > 0
+                  ? `Prepared complete, compilable TypeScript updates for ${changedFileKeys.join(", ")}.`
+                  : "Synthesized response aligned with Component Studio Co-Pilot standards.",
+              detail: activeModel.replace("gemini-", ""),
+              category: "synthesis" as const,
+              items:
+                changedFileKeys.length > 0
+                  ? [
+                      `Updated ${changedFileKeys.join(", ")}`,
+                      "Full TypeScript validation",
+                      "Ready for diff review",
+                    ]
+                  : [
+                      `Model: ${activeModel.replace("gemini-", "")}`,
+                      "Architectural review",
+                      "Zero unintended mutations",
+                    ],
+            },
+          ];
+
+    const defaultFollowUps =
+      changedFileKeys.length > 0
+        ? [
+            "Add interactive controls in default.tsx",
+            "Enhance keyboard accessibility & ARIA",
+            "Add smooth Framer Motion spring transitions",
+          ]
+        : [
+            "Audit and auto-fix 21st.dev guidelines",
+            "Add Framer Motion hover & tap springs",
+            "Polish dark and light mode tokens",
+          ];
 
     return NextResponse.json({
       success: true,
@@ -583,16 +760,21 @@ ${userPrompt}${designLockReminder}`;
       modelUsed: activeModel,
       roleUsed: requestedRole || "copilot",
       complianceScore: parsedResult.complianceScore ?? staticAudit.score,
-      reasoningSteps:
-        Array.isArray(parsedResult.reasoningSteps) && parsedResult.reasoningSteps.length > 0
-          ? parsedResult.reasoningSteps
-          : defaultSteps,
+      reasoningSteps: normalizedSteps,
       reasoningSummary:
         parsedResult.reasoningSummary ||
         "Evaluated component architecture under Component Studio Co-Pilot standards.",
       message: parsedResult.message || "Response generated successfully.",
       issuesFound: parsedResult.issuesFound || [],
       issuesFixed: parsedResult.issuesFixed || [],
+      addedDependencies: Array.isArray(parsedResult.addedDependencies)
+        ? parsedResult.addedDependencies.filter((d) => typeof d === "string" && d.trim().length > 0)
+        : [],
+      followUpSuggestions:
+        Array.isArray(parsedResult.followUpSuggestions) &&
+        parsedResult.followUpSuggestions.length > 0
+          ? parsedResult.followUpSuggestions.slice(0, 4)
+          : defaultFollowUps,
       changedFiles: sanitizedChangedFiles,
       checks: staticAudit.checks,
     });

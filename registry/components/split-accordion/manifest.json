@@ -1,0 +1,13 @@
+{
+  "id": "comp-1795086871704-ydhci",
+  "slug": "split-accordion",
+  "name": "Split Accordion",
+  "description": "A sleek, detaching accordion where the active item smoothly splits away from adjacent rows into an elevated rounded card while collapsed neighbors seamlessly re-merge.",
+  "category": "Custom",
+  "isBuiltIn": false,
+  "createdAt": 1795086871704,
+  "updatedAt": 1795087389905,
+  "lastRepoSyncAt": 1795087399477,
+  "dependencies": [],
+  "previewImage": "./preview.png"
+}

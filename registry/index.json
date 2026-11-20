@@ -1,8 +1,457 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-15T15:12:07.708Z",
-  "totalComponents": 25,
+  "updatedAt": "2026-11-19T17:06:57.564Z",
+  "totalComponents": 55,
   "components": [
+    {
+      "id": "comp-1794635799526-1ellv",
+      "slug": "retro-hardware-handheld-clock",
+      "name": "Retro Hardware Handheld Clock",
+      "description": "",
+      "category": "Cards",
+      "isBuiltIn": false,
+      "updatedAt": 1795100773965,
+      "lastRepoSyncAt": 1795100786801,
+      "path": "registry/components/retro-hardware-handheld-clock",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "index.css",
+        "manifest.json",
+        "preview.png"
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "comp-1795089925039-noo1w",
+      "slug": "thermal-receipt",
+      "name": "ThermalReceipt",
+      "description": "An interactive thermal receipt printer card that feeds order line items one by one with live print progress, serrated tear edges, a scan-to-pay QR reveal, and a tactile tear-off reset.",
+      "category": "Cards",
+      "isBuiltIn": false,
+      "updatedAt": 1795090685233,
+      "lastRepoSyncAt": 1795090696235,
+      "path": "registry/components/thermal-receipt",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "index.css",
+        "manifest.json",
+        "preview.png"
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "comp-1795087680744-pfft4",
+      "slug": "brand-profile-card",
+      "name": "Brand Profile Card",
+      "description": "A sleek social brand profile card with an atmospheric mesh-gradient banner, overlapping emblem avatar, social links, and an animated Follow button with live follower count updates.",
+      "category": "Custom",
+      "isBuiltIn": false,
+      "updatedAt": 1795087951250,
+      "lastRepoSyncAt": 1795087962490,
+      "path": "registry/components/brand-profile-card",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "index.css",
+        "manifest.json",
+        "preview.png"
+      ],
+      "dependencies": [
+        "framer-motion",
+        "lucide-react",
+        "clsx",
+        "tailwind-merge"
+      ]
+    },
+    {
+      "id": "comp-1795086871704-ydhci",
+      "slug": "split-accordion",
+      "name": "Split Accordion",
+      "description": "A sleek, detaching accordion where the active item smoothly splits away from adjacent rows into an elevated rounded card while collapsed neighbors seamlessly re-merge.",
+      "category": "Custom",
+      "isBuiltIn": false,
+      "updatedAt": 1795087389905,
+      "lastRepoSyncAt": 1795087399477,
+      "path": "registry/components/split-accordion",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "index.css",
+        "manifest.json",
+        "preview.png"
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "comp-1795072783869-qjna8",
+      "slug": "card-shuffle-deck",
+      "name": "CardShuffleDeck",
+      "description": "An interactive fanned card deck that continuously flings the front card out to the bottom-left and tucks it smoothly behind the stack, with click, drag-to-flick, and keyboard navigation.",
+      "category": "Cards",
+      "isBuiltIn": false,
+      "updatedAt": 1795085055153,
+      "lastRepoSyncAt": 1795085064718,
+      "path": "registry/components/card-shuffle-deck",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "index.css",
+        "manifest.json",
+        "preview.png"
+      ],
+      "dependencies": [
+        "framer-motion",
+        "clsx",
+        "tailwind-merge"
+      ]
+    },
+    {
+      "id": "comp-1795077612417-mgl7x",
+      "slug": "frequency-selector",
+      "name": "Frequency Selector",
+      "description": "A compact pill-shaped recurrence selector that morphs into an inline segmented picker with blur-dissolve transitions and an expandable weekday row when Weekly is chosen.",
+      "category": "Custom",
+      "isBuiltIn": false,
+      "updatedAt": 1795077776767,
+      "lastRepoSyncAt": 1795077786586,
+      "path": "registry/components/frequency-selector",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "index.css",
+        "manifest.json",
+        "preview.png"
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "comp-1795005545986-6n5cr",
+      "slug": "aurora-search-bar",
+      "name": "Aurora Search Bar",
+      "description": "An expandable circular-to-pill search bar with critically-damped spring morphing and an iridescent bottom-edge aurora shimmer.",
+      "category": "Custom",
+      "isBuiltIn": false,
+      "updatedAt": 1795076861413,
+      "lastRepoSyncAt": 1795076870964,
+      "path": "registry/components/aurora-search-bar",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "index.css",
+        "manifest.json",
+        "preview.png"
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "comp-1795071437892-ej5ud",
+      "slug": "case-study-carousel",
+      "name": "Case Study Carousel",
+      "description": "A multi-card depth carousel for SaaS and agency case studies powered by Framer Motion spring transitions, peeking side cards, swipe gestures, and KPI metrics.",
+      "category": "Custom",
+      "isBuiltIn": false,
+      "updatedAt": 1795071957163,
+      "lastRepoSyncAt": 1795071968917,
+      "path": "registry/components/case-study-carousel",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "index.css",
+        "manifest.json",
+        "preview.png"
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "comp-1795070872332-xpn9o",
+      "slug": "service-category-grid",
+      "name": "ServiceCategoryGrid",
+      "description": "A pastel-accented 2x2 service category card grid with capability pill tags, crisp white action footers, and reduced-motion-aware hover transitions.",
+      "category": "Custom",
+      "isBuiltIn": false,
+      "updatedAt": 1795071225001,
+      "lastRepoSyncAt": 1795071235622,
+      "path": "registry/components/service-category-grid",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "index.css",
+        "manifest.json",
+        "preview.png"
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "comp-1794989377194-vo0t2",
+      "slug": "creative-grid-poster",
+      "name": "CreativeGridPoster",
+      "description": "An interactive 13x14 Swiss-grid editorial quote poster combining staggered typography, 17 vector artifact tiles, and hover museum-label captions.",
+      "category": "Custom",
+      "isBuiltIn": false,
+      "updatedAt": 1794994109822,
+      "lastRepoSyncAt": 1794994120980,
+      "path": "registry/components/creative-grid-poster",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "index.css",
+        "manifest.json",
+        "preview.png"
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "comp-1794990574287-6zazx",
+      "slug": "text-scroll-reveal",
+      "name": "TextScrollReveal",
+      "description": "",
+      "category": "Custom",
+      "isBuiltIn": false,
+      "updatedAt": 1794991657697,
+      "lastRepoSyncAt": 1794991668883,
+      "path": "registry/components/text-scroll-reveal",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "index.css",
+        "manifest.json",
+        "preview.png"
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "comp-1794984337235-ww84y",
+      "slug": "sticky-services-stack",
+      "name": "StickyServicesStack",
+      "description": "An editorial scroll-stacking services section with oversized index numerals, animated motion preview cards, and scroll-linked depth dimming as each layer pins.",
+      "category": "Custom",
+      "isBuiltIn": false,
+      "updatedAt": 1794985587522,
+      "lastRepoSyncAt": 1794985596945,
+      "path": "registry/components/sticky-services-stack",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "index.css",
+        "manifest.json",
+        "preview.png"
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "comp-1794935044468-dg8nw",
+      "slug": "isometric-ranking-stack",
+      "name": "IsometricRankingStack",
+      "description": "Interactive isometric 4-tier AI visibility cube stack with cumulative layer shading, floating prompt/answer cards, and spring-tracked step callouts.",
+      "category": "Custom",
+      "isBuiltIn": false,
+      "updatedAt": 1794936097649,
+      "lastRepoSyncAt": 1794936109089,
+      "path": "registry/components/isometric-ranking-stack",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "index.css",
+        "manifest.json",
+        "preview.png"
+      ],
+      "dependencies": [
+        "framer-motion"
+      ]
+    },
+    {
+      "id": "comp-1794933862605-fmpfy",
+      "slug": "ai-search-hero",
+      "name": "AiSearchHero",
+      "description": "SaaS hero section with inline AI platform squircle badges, staggered blur-to-sharp text reveal, and a top-lit gradient primary CTA.",
+      "category": "Custom",
+      "isBuiltIn": false,
+      "updatedAt": 1794934914168,
+      "lastRepoSyncAt": 1794935062388,
+      "path": "registry/components/ai-search-hero",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "index.css",
+        "manifest.json",
+        "preview.png"
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "comp-1794928690536-i4n5g",
+      "slug": "spatial-card-carousel",
+      "name": "SpatialCardCarousel",
+      "description": "A 3D orbital card showcase that keeps one editorial card centered in crisp focus while surrounding satellite cards drift across layered Z-depths, supporting light/dark themes, pointer tilt, and keyboa",
+      "category": "Custom",
+      "isBuiltIn": false,
+      "updatedAt": 1794929302919,
+      "lastRepoSyncAt": 1794929312022,
+      "path": "registry/components/spatial-card-carousel",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "index.css",
+        "manifest.json",
+        "preview.png"
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "comp-1794928292961-lnv9u",
+      "slug": "legal-bento-showcase",
+      "name": "LegalBentoShowcase",
+      "description": "Asymmetric 5-card editorial bento showcase for AI legal and compliance research platforms, featuring an interactive document-action stack, staggered category grid, and natural-language download comman",
+      "category": "Custom",
+      "isBuiltIn": false,
+      "updatedAt": 1794928473522,
+      "lastRepoSyncAt": 1794928483637,
+      "path": "registry/components/legal-bento-showcase",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "index.css",
+        "manifest.json",
+        "preview.png"
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "comp-1794923856828-2l2cs",
+      "slug": "pill-pagination",
+      "name": "PillPagination",
+      "description": "",
+      "category": "Custom",
+      "isBuiltIn": false,
+      "updatedAt": 1794927178528,
+      "lastRepoSyncAt": 1794927187467,
+      "path": "registry/components/pill-pagination",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "index.css",
+        "manifest.json",
+        "preview.png"
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "comp-1794925219975-ryx72",
+      "slug": "photo-box",
+      "name": "PhotoBox",
+      "description": "An interactive keepsake photo box with a frosted translucent sleeve, sliding Polaroid print tray, hover lift physics, and an accessible full-bleed print viewer modal.",
+      "category": "Custom",
+      "isBuiltIn": false,
+      "updatedAt": 1794925872335,
+      "lastRepoSyncAt": 1794925881783,
+      "path": "registry/components/photo-box",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "index.css",
+        "manifest.json",
+        "preview.png"
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "comp-1794914807480-pm3um",
+      "slug": "leather-wallet-widget",
+      "name": "LeatherWalletWidget",
+      "description": "",
+      "category": "Custom",
+      "isBuiltIn": false,
+      "updatedAt": 1794915670444,
+      "lastRepoSyncAt": 1794915679452,
+      "path": "registry/components/leather-wallet-widget",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "index.css",
+        "manifest.json",
+        "preview.png"
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "comp-1794911670084-bxw3x",
+      "slug": "alarm-wighht",
+      "name": "AlarmWighht",
+      "description": "",
+      "category": "Custom",
+      "isBuiltIn": false,
+      "updatedAt": 1794913072109,
+      "lastRepoSyncAt": 1794913081661,
+      "path": "registry/components/alarm-wighht",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "index.css",
+        "manifest.json",
+        "preview.png"
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "comp-1794888607294-l6uu5",
+      "slug": "thermaldialwidget",
+      "name": "Thermaldialwidget",
+      "description": "",
+      "category": "Cards",
+      "isBuiltIn": false,
+      "updatedAt": 1794912633039,
+      "lastRepoSyncAt": 1794912643137,
+      "path": "registry/components/thermaldialwidget",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "index.css",
+        "manifest.json"
+      ],
+      "dependencies": [
+        "lucide-react"
+      ]
+    },
+    {
+      "id": "comp-1794818189282-2mauz",
+      "slug": "unlimiteddesignhero",
+      "name": "Unlimiteddesignhero",
+      "description": "",
+      "category": "Custom",
+      "isBuiltIn": false,
+      "updatedAt": 1794834850194,
+      "lastRepoSyncAt": 1794834863194,
+      "path": "registry/components/unlimiteddesignhero",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "index.css",
+        "manifest.json",
+        "preview.png"
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "comp-1794745474910-4muv7",
+      "slug": "fontdownloadcard",
+      "name": "Fontdownloadcard",
+      "description": "",
+      "category": "Custom",
+      "isBuiltIn": false,
+      "updatedAt": 1794752922464,
+      "lastRepoSyncAt": 1794752954368,
+      "path": "registry/components/fontdownloadcard",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "index.css",
+        "manifest.json",
+        "preview.png"
+      ],
+      "dependencies": []
+    },
     {
       "id": "comp-1794725302138-x0bba",
       "slug": "bookacallbutton",
@@ -132,25 +581,6 @@
       "updatedAt": 1794666731864,
       "lastRepoSyncAt": 1794678849696,
       "path": "registry/components/value",
-      "files": [
-        "component.tsx",
-        "default.tsx",
-        "index.css",
-        "manifest.json",
-        "preview.png"
-      ],
-      "dependencies": []
-    },
-    {
-      "id": "comp-1794635799526-1ellv",
-      "slug": "retro-hardware-handheld-clock",
-      "name": "Retro Hardware Handheld Clock",
-      "description": "",
-      "category": "Cards",
-      "isBuiltIn": false,
-      "updatedAt": 1794663782134,
-      "lastRepoSyncAt": 1794678944924,
-      "path": "registry/components/retro-hardware-handheld-clock",
       "files": [
         "component.tsx",
         "default.tsx",
@@ -488,6 +918,168 @@
       "dependencies": [
         "clsx",
         "tailwind-merge"
+      ]
+    },
+    {
+      "id": "shimmer-button",
+      "slug": "shimmer-button",
+      "name": "Aurora Shimmer Button",
+      "description": "High-contrast border shimmer button with glowing conic gradient aura and micro-press physics.",
+      "category": "Buttons",
+      "isBuiltIn": true,
+      "updatedAt": 1700000000000,
+      "lastRepoSyncAt": 1795108017535,
+      "path": "registry/components/shimmer-button",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "index.css",
+        "manifest.json"
+      ],
+      "dependencies": [
+        "framer-motion",
+        "lucide-react"
+      ]
+    },
+    {
+      "id": "neon-glow-button",
+      "slug": "neon-glow-button",
+      "name": "Neon Glow Interactive Button",
+      "description": "Cyberpunk-inspired interactive button with luminous border glow, particle pulse, and ripple feedback.",
+      "category": "Buttons",
+      "isBuiltIn": true,
+      "updatedAt": 1700000000000,
+      "lastRepoSyncAt": 1795108017535,
+      "path": "registry/components/neon-glow-button",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "index.css",
+        "manifest.json"
+      ],
+      "dependencies": [
+        "lucide-react"
+      ]
+    },
+    {
+      "id": "spotlight-card",
+      "slug": "spotlight-card",
+      "name": "Interactive Spotlight Card",
+      "description": "A high-performance modern card with dynamic pointer-following radial glow, border gradient, and micro-interactions.",
+      "category": "Cards",
+      "isBuiltIn": true,
+      "updatedAt": 1700000000000,
+      "lastRepoSyncAt": 1795108017535,
+      "path": "registry/components/spotlight-card",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "index.css",
+        "manifest.json"
+      ],
+      "dependencies": [
+        "framer-motion",
+        "lucide-react",
+        "clsx",
+        "tailwind-merge"
+      ]
+    },
+    {
+      "id": "live-ping-status-pill",
+      "slug": "live-ping-status-pill",
+      "name": "Live Telemetry Health Pill",
+      "description": "Real-time service health pill with animated beacon ping, latency counter, and status indicator.",
+      "category": "Badges",
+      "isBuiltIn": true,
+      "updatedAt": 1700000000000,
+      "lastRepoSyncAt": 1795108017535,
+      "path": "registry/components/live-ping-status-pill",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "index.css",
+        "manifest.json"
+      ],
+      "dependencies": [
+        "lucide-react"
+      ]
+    },
+    {
+      "id": "metric-badge",
+      "slug": "metric-badge",
+      "name": "Live Status Radar Badge",
+      "description": "Compact telemetry badge with animated pulsing ping, status tooltip, and gradient border.",
+      "category": "Badges",
+      "isBuiltIn": true,
+      "updatedAt": 1700000000000,
+      "lastRepoSyncAt": 1795108017535,
+      "path": "registry/components/metric-badge",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "index.css",
+        "manifest.json"
+      ],
+      "dependencies": [
+        "lucide-react"
+      ]
+    },
+    {
+      "id": "aurora-ambient-hero",
+      "slug": "aurora-ambient-hero",
+      "name": "Aurora Ambient Mesh Hero",
+      "description": "Vibrant ambient blur aurora hero with dual CTA buttons, live headline gradient, and responsive design.",
+      "category": "Heroes",
+      "isBuiltIn": true,
+      "updatedAt": 1700000000000,
+      "lastRepoSyncAt": 1795108017535,
+      "path": "registry/components/aurora-ambient-hero",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "index.css",
+        "manifest.json"
+      ],
+      "dependencies": [
+        "lucide-react"
+      ]
+    },
+    {
+      "id": "ink-orbit-hero",
+      "slug": "ink-orbit-hero",
+      "name": "Ink Orbit 3D Hero",
+      "description": "Generative 3D ink sculpture hero with interactive canvas physics, phrase blur cycling, and live workflow demo dialog.",
+      "category": "Heroes",
+      "isBuiltIn": true,
+      "updatedAt": 1700000000000,
+      "lastRepoSyncAt": 1795108017535,
+      "path": "registry/components/ink-orbit-hero",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "index.css",
+        "manifest.json"
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "bento-metric-grid",
+      "slug": "bento-metric-grid",
+      "name": "Bento Metric Showcase Card",
+      "description": "Bento-style card showcasing real-time metrics, interactive sparkline charts, and micro-hover states.",
+      "category": "Cards",
+      "isBuiltIn": true,
+      "updatedAt": 1700000000000,
+      "lastRepoSyncAt": 1795108017535,
+      "path": "registry/components/bento-metric-grid",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "index.css",
+        "manifest.json"
+      ],
+      "dependencies": [
+        "lucide-react"
       ]
     }
   ]

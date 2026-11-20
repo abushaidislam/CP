@@ -179,4 +179,29 @@ describe("Live Canvas Snapshot Capture Protocol (compileSandboxHtml)", () => {
     expect(result.html).toContain('stage: "hydrating-deps"');
     expect(result.html).toContain('stage: "mounting"');
   });
+
+  it("should generate syntactically valid Video Studio Auto-Pilot choreography script with properly escaped regexes", async () => {
+    const { buildVideoStudioRuntimeScript } = await import("../video-choreography-runtime");
+    const scriptCode = buildVideoStudioRuntimeScript();
+
+    // Must parse as valid JavaScript without throwing any SyntaxError
+    expect(() => new Function(scriptCode)).not.toThrow();
+
+    // Must not contain raw ASCII backspace (\x08) from unescaped \b inside template literals
+    expect(scriptCode.includes("\x08")).toBe(false);
+    expect(scriptCode).toContain("VIDEO_STUDIO_START_AUTOPILOT");
+    expect(scriptCode).toContain("VIDEO_STUDIO_CHOREOGRAPHY_COMPLETE");
+
+    const videoResult = compileSandboxHtml(
+      sampleComponent,
+      sampleDemo,
+      "",
+      ["react", "react-dom"],
+      "dark",
+      "dark",
+      { videoStudio: true }
+    );
+    expect(videoResult.error).toBeNull();
+    expect(videoResult.html).toContain("initVideoStudioRuntime");
+  });
 });

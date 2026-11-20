@@ -1,0 +1,13 @@
+{
+  "id": "comp-1794933862605-fmpfy",
+  "slug": "ai-search-hero",
+  "name": "AiSearchHero",
+  "description": "SaaS hero section with inline AI platform squircle badges, staggered blur-to-sharp text reveal, and a top-lit gradient primary CTA.",
+  "category": "Custom",
+  "isBuiltIn": false,
+  "createdAt": 1794933862605,
+  "updatedAt": 1794934914168,
+  "lastRepoSyncAt": 1794935062388,
+  "dependencies": [],
+  "previewImage": "./preview.png"
+}

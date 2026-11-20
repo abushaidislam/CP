@@ -41,7 +41,7 @@ const nextConfig: NextConfig = {
         ],
       },
       {
-        source: "/api/(.*)",
+        source: "/api/((?!repo-sync/preview/).*)",
         headers: [
           {
             key: "Cache-Control",

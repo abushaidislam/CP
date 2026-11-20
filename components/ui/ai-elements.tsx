@@ -22,6 +22,10 @@ import {
   Sparkles,
   Terminal,
   Clock,
+  Square,
+  Slash,
+  BookmarkPlus,
+  PackagePlus,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -579,9 +583,11 @@ export interface ChangeApprovalCardProps {
   changedFiles: Partial<Record<string, string>>;
   baselineFiles: Record<string, string>;
   approvalStatus: "pending" | "approved" | "rejected";
+  addedDependencies?: string[];
   onApprove: () => void;
   onReject: () => void;
   onRevert: () => void;
+  onSaveCheckpoint?: () => void;
   className?: string;
 }
 
@@ -589,9 +595,11 @@ export function ChangeApprovalCard({
   changedFiles,
   baselineFiles,
   approvalStatus,
+  addedDependencies = [],
   onApprove,
   onReject,
   onRevert,
+  onSaveCheckpoint,
   className,
 }: ChangeApprovalCardProps) {
   const fileNames = React.useMemo(
@@ -750,6 +758,27 @@ export function ChangeApprovalCard({
             </div>
           );
         })}
+        {addedDependencies.length > 0 && (
+          <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-1.5 text-xs bg-primary/[0.03]">
+            <div className="flex items-center gap-1.5 min-w-0">
+              <PackagePlus className="size-3.5 text-primary shrink-0" />
+              <span className="text-[11px] font-sans text-muted-foreground">
+                Dependencies synced:
+              </span>
+            </div>
+            <div className="flex flex-wrap items-center gap-1">
+              {addedDependencies.map((dep) => (
+                <Badge
+                  key={dep}
+                  variant="outline"
+                  className="rounded-none text-[9px] py-0 px-1.5 font-mono text-foreground border-border/70"
+                >
+                  {dep}
+                </Badge>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* 3. Expandable Diff & Code Inspector */}
@@ -938,15 +967,28 @@ export function ChangeApprovalCard({
                 </Button>
               </div>
             ) : (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setConfirmRevert(true)}
-                className="h-6.5 px-2 text-[11px] font-medium text-muted-foreground hover:text-foreground gap-1 rounded-none font-sans shrink-0"
-              >
-                <RotateCcw className="size-3" />
-                <span>Revert</span>
-              </Button>
+              <div className="flex items-center gap-1.5 shrink-0">
+                {onSaveCheckpoint && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={onSaveCheckpoint}
+                    className="h-6.5 px-2 text-[11px] font-medium text-muted-foreground hover:text-foreground gap-1 rounded-none font-sans shrink-0"
+                  >
+                    <BookmarkPlus className="size-3" />
+                    <span className="hidden @[380px]:inline">Checkpoint</span>
+                  </Button>
+                )}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setConfirmRevert(true)}
+                  className="h-6.5 px-2 text-[11px] font-medium text-muted-foreground hover:text-foreground gap-1 rounded-none font-sans shrink-0"
+                >
+                  <RotateCcw className="size-3" />
+                  <span>Revert</span>
+                </Button>
+              </div>
             )}
           </>
         )}
@@ -1467,10 +1509,79 @@ export function CodePreviewDialog({
 // ==========================================
 // 6. PROMPT INPUT (Command-Grade Workspace Input with Image & Code Attachments)
 // ==========================================
+export interface SlashCommandItem {
+  command: string;
+  label: string;
+  description: string;
+  prompt: string;
+  action?: "chat" | "autofix" | "audit";
+}
+
+export const DEFAULT_SLASH_COMMANDS: SlashCommandItem[] = [
+  {
+    command: "/fix",
+    label: "Fix Compiler & Runtime Errors",
+    description: "Resolve TypeScript, JSX, or import errors without altering UI",
+    prompt:
+      "Fix any compiler, runtime, or TypeScript errors in component.tsx and default.tsx cleanly while keeping the existing UI design 100% unchanged.",
+    action: "chat",
+  },
+  {
+    command: "/audit",
+    label: "Audit & Auto-Fix 21st.dev Rules",
+    description: "Ensure cn() merge, Props interface, and 'use client' compliance",
+    prompt:
+      "Audit component.tsx, default.tsx, and index.css against all 21st.dev standards and auto-fix all missing requirements while preserving the visual design.",
+    action: "autofix",
+  },
+  {
+    command: "/motion",
+    label: "Add Framer Motion Physics",
+    description: "Add spring entry, hover lift, and tap micro-interactions",
+    prompt:
+      "Add smooth Framer Motion spring animations, hover elevation, and tactile tap feedback to component.tsx while preserving layout structure.",
+    action: "chat",
+  },
+  {
+    command: "/theme",
+    label: "Dark & Light Theme Tokens",
+    description: "Support adaptive dark/light contrast across all surfaces",
+    prompt:
+      "Add complete dark and light mode support using semantic Tailwind tokens and dark: classes while keeping the existing component aesthetic.",
+    action: "chat",
+  },
+  {
+    command: "/responsive",
+    label: "Mobile & Container Responsive",
+    description: "Make layout fluid across mobile, tablet, and desktop widths",
+    prompt:
+      "Make component.tsx fully responsive across mobile (375px), tablet (768px), and desktop viewports with clean flex/grid wrapping and overflow protection.",
+    action: "chat",
+  },
+  {
+    command: "/controls",
+    label: "Interactive Demo Controls",
+    description: "Add interactive prop toggles & state playground in default.tsx",
+    prompt:
+      "Enhance default.tsx with a sleek interactive showcase toolbar allowing the developer to toggle component variants, sizes, and states live in the preview canvas.",
+    action: "chat",
+  },
+  {
+    command: "/a11y",
+    label: "WCAG Accessibility & Keyboard Nav",
+    description: "Add ARIA attributes, focus-visible rings, and keyboard support",
+    prompt:
+      "Audit and upgrade component.tsx with full WCAG AA accessibility, semantic ARIA roles/labels, keyboard navigation (Enter/Space/Escape/Arrows), and focus-visible rings.",
+    action: "chat",
+  },
+];
+
 export interface PromptInputProps {
   value: string;
   onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void;
   onSubmit: () => void;
+  onStop?: () => void;
+  onSlashCommandSelect?: (cmd: SlashCommandItem) => void;
   isLoading?: boolean;
   placeholder?: string;
   modelBadge?: React.ReactNode;
@@ -1492,8 +1603,10 @@ export function PromptInput({
   value,
   onChange,
   onSubmit,
+  onStop,
+  onSlashCommandSelect,
   isLoading = false,
-  placeholder = "Ask Copilot to refactor code, audit guidelines, or add components...",
+  placeholder = "Ask Copilot or type / for commands...",
   modelBadge,
   className,
   attachedImages = [],
@@ -1508,8 +1621,67 @@ export function PromptInput({
 }: PromptInputProps) {
   const textareaRef = React.useRef<HTMLTextAreaElement>(null);
   const [isDragOver, setIsDragOver] = React.useState(false);
+  const [showSlashMenu, setShowSlashMenu] = React.useState(false);
+  const [selectedSlashIndex, setSelectedSlashIndex] = React.useState(0);
+
+  const filteredSlashCommands = React.useMemo(() => {
+    const trimmed = value.trim();
+    if (trimmed.startsWith("/")) {
+      const q = trimmed.toLowerCase();
+      return DEFAULT_SLASH_COMMANDS.filter(
+        (c) =>
+          c.command.toLowerCase().includes(q) ||
+          c.label.toLowerCase().includes(q.slice(1))
+      );
+    }
+    return showSlashMenu ? DEFAULT_SLASH_COMMANDS : [];
+  }, [value, showSlashMenu]);
+
+  const isSlashPaletteVisible =
+    !isLoading &&
+    filteredSlashCommands.length > 0 &&
+    (value.trim().startsWith("/") || showSlashMenu);
+
+  React.useEffect(() => {
+    setSelectedSlashIndex(0);
+  }, [filteredSlashCommands.length]);
+
+  const handleSelectCommand = (cmd: SlashCommandItem) => {
+    setShowSlashMenu(false);
+    if (onSlashCommandSelect) {
+      onSlashCommandSelect(cmd);
+    }
+  };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (isSlashPaletteVisible) {
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        setSelectedSlashIndex((prev) => (prev + 1) % filteredSlashCommands.length);
+        return;
+      }
+      if (e.key === "ArrowUp") {
+        e.preventDefault();
+        setSelectedSlashIndex(
+          (prev) => (prev - 1 + filteredSlashCommands.length) % filteredSlashCommands.length
+        );
+        return;
+      }
+      if (e.key === "Enter" || e.key === "Tab") {
+        const picked = filteredSlashCommands[selectedSlashIndex];
+        if (picked) {
+          e.preventDefault();
+          handleSelectCommand(picked);
+          return;
+        }
+      }
+      if (e.key === "Escape") {
+        e.preventDefault();
+        setShowSlashMenu(false);
+        return;
+      }
+    }
+
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       const hasContent =
@@ -1582,11 +1754,50 @@ export function PromptInput({
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
       className={cn(
-        "@container flex flex-col rounded-none border border-border bg-background/95 shadow-2xs transition-all duration-150 focus-within:border-primary/60 focus-within:ring-1 focus-within:ring-primary/20 focus-within:bg-background",
+        "@container relative flex flex-col rounded-none border border-border bg-background/95 shadow-2xs transition-all duration-150 focus-within:border-primary/60 focus-within:ring-1 focus-within:ring-primary/20 focus-within:bg-background",
         isDragOver && "border-primary ring-2 ring-primary/20 bg-primary/5",
         className
       )}
     >
+      {/* Slash Command Floating Palette */}
+      {isSlashPaletteVisible && (
+        <div className="border-b border-border bg-card/95 p-1.5 animate-in fade-in slide-in-from-bottom-1 duration-150 max-h-52 overflow-y-auto font-sans">
+          <div className="flex items-center justify-between px-2 py-1 text-[10px] text-muted-foreground">
+            <span className="font-mono uppercase tracking-wider text-[9px] font-medium">
+              COPILOT SLASH COMMANDS
+            </span>
+            <span className="font-sans text-[10px]">↑↓ Navigate · Enter to run</span>
+          </div>
+          <div className="space-y-0.5">
+            {filteredSlashCommands.map((cmd, idx) => (
+              <Button
+                key={cmd.command}
+                type="button"
+                variant={idx === selectedSlashIndex ? "secondary" : "ghost"}
+                size="sm"
+                onClick={() => handleSelectCommand(cmd)}
+                className="w-full h-auto justify-between items-center px-2 py-1.5 rounded-none text-left font-sans"
+              >
+                <div className="flex items-center gap-2 min-w-0">
+                  <Badge
+                    variant="outline"
+                    className="rounded-none font-mono text-[10px] px-1.5 py-0 text-primary border-primary/30 bg-primary/5 shrink-0"
+                  >
+                    {cmd.command}
+                  </Badge>
+                  <span className="text-xs font-medium text-foreground truncate font-sans">
+                    {cmd.label}
+                  </span>
+                </div>
+                <span className="text-[10px] text-muted-foreground truncate max-w-[160px] hidden @[420px]:inline font-sans">
+                  {cmd.description}
+                </span>
+              </Button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Top Context Strip: Active File & Model / UI Skill Controls */}
       <div className="flex flex-wrap items-center justify-between gap-1.5 px-2.5 py-1.5 border-b border-border/60 bg-muted/25 select-none">
         <div className="flex items-center gap-1.5 min-w-0">
@@ -1623,11 +1834,13 @@ export function PromptInput({
               className="group relative flex items-center gap-2 rounded-none border border-border/80 bg-card/90 p-1.5 pr-2 hover:bg-muted/60 transition-colors min-w-0"
             >
               {/* Thumbnail image with preview zoom on click */}
-              <button
+              <Button
                 type="button"
+                variant="ghost"
+                size="icon-sm"
                 onClick={() => onPreviewImage?.(img)}
                 title="Click to preview image"
-                className="relative size-7 shrink-0 overflow-hidden rounded-none border border-border/70 cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                className="relative size-7 p-0 shrink-0 overflow-hidden rounded-none border border-border/70 cursor-pointer"
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
@@ -1635,7 +1848,7 @@ export function PromptInput({
                   alt={img.name}
                   className="size-full object-cover"
                 />
-              </button>
+              </Button>
 
               <div
                 onClick={() => onPreviewImage?.(img)}
@@ -1735,6 +1948,25 @@ export function PromptInput({
       {/* Bottom Command Toolbar */}
       <div className="flex flex-wrap items-center justify-between gap-1.5 px-2 py-1.5 border-t border-border/60 bg-muted/15 select-none">
         <div className="flex items-center gap-1 min-w-0">
+          {/* Slash Commands Trigger */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                type="button"
+                variant={showSlashMenu ? "secondary" : "outline"}
+                size="sm"
+                onClick={() => setShowSlashMenu((prev) => !prev)}
+                className="h-6.5 gap-1 px-2 text-[11px] font-normal text-muted-foreground hover:text-foreground bg-background/70 hover:bg-muted border-border/70 font-sans rounded-none shrink-0"
+              >
+                <Slash className="size-3 shrink-0" />
+                <span className="hidden @[380px]:inline">Commands</span>
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="top" className="font-sans text-xs">
+              Open slash commands menu (/fix, /audit, /motion, /theme)
+            </TooltipContent>
+          </Tooltip>
+
           {/* Attach Image Button */}
           {onAttachImageClick && (
             <Tooltip>
@@ -1768,8 +2000,7 @@ export function PromptInput({
                   className="h-6.5 gap-1.5 px-2 text-[11px] font-normal text-muted-foreground hover:text-foreground bg-background/70 hover:bg-muted border-border/70 font-sans rounded-none shrink-0"
                 >
                   <Code2 className="size-3.5 shrink-0" />
-                  <span className="hidden @[340px]:inline">Paste Code</span>
-                  <span className="@[340px]:hidden">Code</span>
+                  <span className="hidden @[360px]:inline">Code</span>
                 </Button>
               </TooltipTrigger>
               <TooltipContent side="top" className="font-sans text-xs">
@@ -1780,40 +2011,54 @@ export function PromptInput({
         </div>
 
         <div className="flex items-center gap-2 shrink-0 ml-auto">
-          <span className="text-[10px] text-muted-foreground/70 hidden @[400px]:inline-flex items-center gap-1 font-sans">
+          <span className="text-[10px] text-muted-foreground/70 hidden @[420px]:inline-flex items-center gap-1 font-sans">
             <kbd className="px-1 py-0.5 rounded-none bg-muted font-mono text-[9px] border border-border/60">
               Enter
             </kbd>
             <span>to send</span>
           </span>
 
-          <Button
-            type="button"
-            variant="default"
-            size="sm"
-            onClick={onSubmit}
-            disabled={!canSubmit}
-            className={cn(
-              "h-6.5 px-2.5 gap-1 rounded-none shrink-0 font-sans text-[11px] font-medium transition-all duration-150 shadow-none",
-              canSubmit
-                ? "bg-primary text-primary-foreground hover:bg-primary/90"
-                : "opacity-45"
-            )}
-            title="Send prompt (Enter)"
-          >
-            {isLoading ? (
-              <>
-                <Loader2 className="size-3.5 animate-spin shrink-0" />
-                <span className="hidden @[320px]:inline">Working</span>
-              </>
-            ) : (
-              <>
-                <span className="hidden @[320px]:inline">Send</span>
-                <ArrowUp className="size-3.5 stroke-[2.2] shrink-0" />
-              </>
-            )}
-            <span className="sr-only">Send prompt</span>
-          </Button>
+          {isLoading && onStop ? (
+            <Button
+              type="button"
+              variant="destructive"
+              size="sm"
+              onClick={onStop}
+              className="h-6.5 px-2.5 gap-1 rounded-none shrink-0 font-sans text-[11px] font-medium shadow-none"
+              title="Stop AI generation"
+            >
+              <Square className="size-3 fill-current shrink-0" />
+              <span>Stop</span>
+            </Button>
+          ) : (
+            <Button
+              type="button"
+              variant="default"
+              size="sm"
+              onClick={onSubmit}
+              disabled={!canSubmit}
+              className={cn(
+                "h-6.5 px-2.5 gap-1 rounded-none shrink-0 font-sans text-[11px] font-medium transition-all duration-150 shadow-none",
+                canSubmit
+                  ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                  : "opacity-45"
+              )}
+              title="Send prompt (Enter)"
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="size-3.5 animate-spin shrink-0" />
+                  <span className="hidden @[320px]:inline">Working</span>
+                </>
+              ) : (
+                <>
+                  <span className="hidden @[320px]:inline">Send</span>
+                  <ArrowUp className="size-3.5 stroke-[2.2] shrink-0" />
+                </>
+              )}
+              <span className="sr-only">Send prompt</span>
+            </Button>
+          )}
         </div>
       </div>
     </div>

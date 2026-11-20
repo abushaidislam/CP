@@ -1,0 +1,13 @@
+{
+  "id": "comp-1794990574287-6zazx",
+  "slug": "text-scroll-reveal",
+  "name": "TextScrollReveal",
+  "description": "",
+  "category": "Custom",
+  "isBuiltIn": false,
+  "createdAt": 1794990574287,
+  "updatedAt": 1794991657697,
+  "lastRepoSyncAt": 1794991668883,
+  "dependencies": [],
+  "previewImage": "./preview.png"
+}

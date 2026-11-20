@@ -1,0 +1,17 @@
+{
+  "id": "comp-1795072783869-qjna8",
+  "slug": "card-shuffle-deck",
+  "name": "CardShuffleDeck",
+  "description": "An interactive fanned card deck that continuously flings the front card out to the bottom-left and tucks it smoothly behind the stack, with click, drag-to-flick, and keyboard navigation.",
+  "category": "Cards",
+  "isBuiltIn": false,
+  "createdAt": 1795072783869,
+  "updatedAt": 1795085055153,
+  "lastRepoSyncAt": 1795085064718,
+  "dependencies": [
+    "framer-motion",
+    "clsx",
+    "tailwind-merge"
+  ],
+  "previewImage": "./preview.png"
+}

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
+import { useShallow } from "zustand/react/shallow";
 import { useStudioStore } from "@/lib/store/studio-store";
 import {
   Dialog,
@@ -43,9 +44,19 @@ export function SecurityShieldModal({
     isSecurityModalOpen,
     setSecurityModalOpen,
     isOwnerAuthenticated,
+    ownerSessionToken,
     securityTelemetry,
     setSecurityTelemetry,
-  } = useStudioStore();
+  } = useStudioStore(
+    useShallow((state) => ({
+      isSecurityModalOpen: state.isSecurityModalOpen,
+      setSecurityModalOpen: state.setSecurityModalOpen,
+      isOwnerAuthenticated: state.isOwnerAuthenticated,
+      ownerSessionToken: state.ownerSessionToken,
+      securityTelemetry: state.securityTelemetry,
+      setSecurityTelemetry: state.setSecurityTelemetry,
+    }))
+  );
 
   const isOpen =
     controlledOpen !== undefined ? controlledOpen : isSecurityModalOpen;
@@ -70,9 +81,18 @@ export function SecurityShieldModal({
   const fetchSessionStatus = useCallback(async () => {
     setIsLoadingStatus(true);
     try {
+      const headers: Record<string, string> = {
+        "X-Studio-Client": "component-studio",
+      };
+      const currentToken = useStudioStore.getState().ownerSessionToken;
+      if (currentToken) {
+        headers["X-Studio-Owner-Token"] = currentToken;
+      }
       const res = await fetch("/api/auth/session", {
         method: "GET",
+        headers,
         cache: "no-store",
+        credentials: "same-origin",
       });
       if (res.ok) {
         const data = await res.json();
@@ -110,6 +130,7 @@ export function SecurityShieldModal({
     try {
       const res = await fetch("/api/auth/session", {
         method: "POST",
+        credentials: "same-origin",
         headers: {
           "Content-Type": "application/json",
           "X-Studio-Client": "component-studio",
@@ -130,7 +151,7 @@ export function SecurityShieldModal({
 
       setSecurityTelemetry(data);
       setPasscode("");
-      setStatusNotice("Owner session unlocked. Signed HttpOnly cookie active.");
+      setStatusNotice("Owner session unlocked. Signed session token active.");
     } catch {
       setErrorMsg("Failed to verify owner passcode. Please try again.");
     } finally {
@@ -146,8 +167,10 @@ export function SecurityShieldModal({
     try {
       const res = await fetch("/api/auth/session", {
         method: "DELETE",
+        credentials: "same-origin",
         headers: {
           "X-Studio-Client": "component-studio",
+          ...(ownerSessionToken ? { "X-Studio-Owner-Token": ownerSessionToken } : {}),
         },
       });
       if (res.ok) {
@@ -170,9 +193,11 @@ export function SecurityShieldModal({
     try {
       const res = await fetch("/api/auth/session", {
         method: "POST",
+        credentials: "same-origin",
         headers: {
           "Content-Type": "application/json",
           "X-Studio-Client": "component-studio",
+          ...(ownerSessionToken ? { "X-Studio-Owner-Token": ownerSessionToken } : {}),
         },
         body: JSON.stringify({
           action: "update-settings",
@@ -197,9 +222,11 @@ export function SecurityShieldModal({
     try {
       const res = await fetch("/api/auth/session", {
         method: "POST",
+        credentials: "same-origin",
         headers: {
           "Content-Type": "application/json",
           "X-Studio-Client": "component-studio",
+          ...(ownerSessionToken ? { "X-Studio-Owner-Token": ownerSessionToken } : {}),
         },
         body: JSON.stringify({
           action: "update-settings",

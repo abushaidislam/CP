@@ -1,0 +1,13 @@
+{
+  "id": "comp-1795071437892-ej5ud",
+  "slug": "case-study-carousel",
+  "name": "Case Study Carousel",
+  "description": "A multi-card depth carousel for SaaS and agency case studies powered by Framer Motion spring transitions, peeking side cards, swipe gestures, and KPI metrics.",
+  "category": "Custom",
+  "isBuiltIn": false,
+  "createdAt": 1795071437892,
+  "updatedAt": 1795071957163,
+  "lastRepoSyncAt": 1795071968917,
+  "dependencies": [],
+  "previewImage": "./preview.png"
+}

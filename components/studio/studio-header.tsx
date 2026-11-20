@@ -1,11 +1,13 @@
 "use client";
 
 import React, { useState } from "react";
+import { useShallow } from "zustand/react/shallow";
 import { useStudioStore } from "@/lib/store/studio-store";
 import { DEFAULT_TEMPLATES } from "@/lib/sandbox/default-templates";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { AppLogo } from "@/components/ui/app-logo";
 import {
   Tooltip,
   TooltipContent,
@@ -46,6 +48,7 @@ import {
   ShieldCheck,
   Lock,
   FolderGit2,
+  Video,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -77,7 +80,38 @@ export function StudioHeader() {
     setHistorySheetOpen,
     isOwnerAuthenticated,
     setSecurityModalOpen,
-  } = useStudioStore();
+    isRecordingModalOpen,
+    setRecordingModalOpen,
+  } = useStudioStore(
+    useShallow((state) => ({
+      currentTemplateId: state.currentTemplateId,
+      userComponents: state.userComponents,
+      loadTemplate: state.loadTemplate,
+      loadComponent: state.loadComponent,
+      setRepoSyncModalOpen: state.setRepoSyncModalOpen,
+      repoSyncStatus: state.repoSyncStatus,
+      saveComponentToProjectRepo: state.saveComponentToProjectRepo,
+      isTerminalOpen: state.isTerminalOpen,
+      toggleTerminal: state.toggleTerminal,
+      terminalLogs: state.terminalLogs,
+      isAiPanelOpen: state.isAiPanelOpen,
+      toggleAiPanel: state.toggleAiPanel,
+      layoutMode: state.layoutMode,
+      setLayoutMode: state.setLayoutMode,
+      variantsByTemplate: state.variantsByTemplate,
+      activeVariantByTemplate: state.activeVariantByTemplate,
+      switchVariant: state.switchVariant,
+      deleteVariant: state.deleteVariant,
+      setCreateVariantDialogOpen: state.setCreateVariantDialogOpen,
+      setSaveCheckpointDialogOpen: state.setSaveCheckpointDialogOpen,
+      isHistorySheetOpen: state.isHistorySheetOpen,
+      setHistorySheetOpen: state.setHistorySheetOpen,
+      isOwnerAuthenticated: state.isOwnerAuthenticated,
+      setSecurityModalOpen: state.setSecurityModalOpen,
+      isRecordingModalOpen: state.isRecordingModalOpen,
+      setRecordingModalOpen: state.setRecordingModalOpen,
+    }))
+  );
 
   const [isDark, setIsDark] = useState(true);
   const [isCapturing, setIsCapturing] = useState(false);
@@ -204,15 +238,8 @@ export function StudioHeader() {
           </TooltipContent>
         </Tooltip>
 
-        {/* Geometric Brand Mark */}
-        <div className="flex size-7 items-center justify-center rounded-none bg-foreground text-background shrink-0">
-          <svg
-            viewBox="0 0 24 24"
-            className="size-3.5 fill-current transform -translate-y-px"
-          >
-            <polygon points="12,2 22,20 2,20" />
-          </svg>
-        </div>
+        {/* Brand Mark */}
+        <AppLogo size="md" priority />
 
         {/* Unified Logical Breadcrumb Navigation */}
         <nav aria-label="Breadcrumb" className="flex items-center gap-1 sm:gap-1.5 text-xs font-sans min-w-0">
@@ -847,6 +874,28 @@ export function StudioHeader() {
                 <span className="flex-1">
                   {capturedSuccess ? "Snapshot Saved!" : isCapturing ? "Capturing..." : "Capture Preview"}
                 </span>
+              </DropdownMenuItem>
+
+              {/* Video Capture Side Panel */}
+              <DropdownMenuItem
+                onClick={() => {
+                  const nextOpen = !isRecordingModalOpen;
+                  if (nextOpen && layoutMode === "editor") {
+                    setLayoutMode("split");
+                  }
+                  setRecordingModalOpen(nextOpen);
+                }}
+                className="gap-2.5 cursor-pointer rounded-none font-sans text-xs"
+              >
+                <Video className="size-3.5 text-primary" />
+                <span className="flex-1">
+                  {isRecordingModalOpen
+                    ? "Close Video Capture Panel"
+                    : "Video Capture Side Panel"}
+                </span>
+                <kbd className="px-1 py-0.2 rounded-none bg-muted-foreground/10 text-[9px] font-mono text-muted-foreground">
+                  ⇧E
+                </kbd>
               </DropdownMenuItem>
 
               {/* Version History */}

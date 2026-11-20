@@ -1,0 +1,13 @@
+{
+  "id": "comp-1795070872332-xpn9o",
+  "slug": "service-category-grid",
+  "name": "ServiceCategoryGrid",
+  "description": "A pastel-accented 2x2 service category card grid with capability pill tags, crisp white action footers, and reduced-motion-aware hover transitions.",
+  "category": "Custom",
+  "isBuiltIn": false,
+  "createdAt": 1795070872332,
+  "updatedAt": 1795071225001,
+  "lastRepoSyncAt": 1795071235622,
+  "dependencies": [],
+  "previewImage": "./preview.png"
+}

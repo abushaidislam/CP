@@ -1,4 +1,5 @@
 import { parseComponentAST } from "@/lib/sandbox/ast-parser";
+import { parseDemoControls } from "@/lib/sandbox/demo-controls";
 
 export interface GuidelineCheckItem {
   id: string;
@@ -190,6 +191,24 @@ export function auditComponentGuidelines(
     passed: hasValidDemo && demoImportsComponent,
     fixSuggestion:
       'In default.tsx, use: import Component from "../components/ui/component"; export default function Demo() { return <div className="p-8"><Component /></div>; }',
+  });
+
+  // 8b. 21st.dev Native Demo Controls Contract (const settings + Demo(props))
+  const demoControls = parseDemoControls(demoCode, componentCode);
+  checks.push({
+    id: "demo-native-controls",
+    category: "demo",
+    title: "21st.dev Native Demo Controls (const settings)",
+    description:
+      demoControls.status === "active"
+        ? `Exports ${demoControls.controls.length} native 21st.dev interactive control${demoControls.controls.length === 1 ? "" : "s"} via const settings + Demo(props).`
+        : demoControls.status === "missing-props"
+        ? "Found const settings, but default export Demo() does not accept props: Partial<typeof settings>."
+        : "Optional: Add a module-level const settings = { ... } object and Demo(props: Partial<typeof settings>) to unlock 21st.dev native controls.",
+    severity: demoControls.status === "active" ? "success" : "warning",
+    passed: demoControls.status === "active",
+    fixSuggestion:
+      'Declare `const settings = { ... }` at module level in default.tsx and merge incoming props: `export default function Demo(props: Partial<typeof settings>) { const s = { ...settings, ...props }; ... }`',
   });
 
   // 9. External Package Dependencies Verification

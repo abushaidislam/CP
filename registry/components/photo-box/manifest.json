@@ -1,0 +1,13 @@
+{
+  "id": "comp-1794925219975-ryx72",
+  "slug": "photo-box",
+  "name": "PhotoBox",
+  "description": "An interactive keepsake photo box with a frosted translucent sleeve, sliding Polaroid print tray, hover lift physics, and an accessible full-bleed print viewer modal.",
+  "category": "Custom",
+  "isBuiltIn": false,
+  "createdAt": 1794925219975,
+  "updatedAt": 1794925872335,
+  "lastRepoSyncAt": 1794925881783,
+  "dependencies": [],
+  "previewImage": "./preview.png"
+}

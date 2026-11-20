@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo, useRef } from "react";
 import CodeMirror, { Prec } from "@uiw/react-codemirror";
 import { EditorView, keymap } from "@codemirror/view";
 import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
@@ -141,6 +141,11 @@ const vercelDarkHighlight = HighlightStyle.define([
 
 export function CodeEditor({ filename, value, onChange, onFormat }: CodeEditorProps) {
   const [isDark, setIsDark] = useState(false);
+  const onFormatRef = useRef(onFormat);
+
+  useEffect(() => {
+    onFormatRef.current = onFormat;
+  }, [onFormat]);
 
   // Sync theme with document dark mode
   useEffect(() => {
@@ -170,21 +175,22 @@ export function CodeEditor({ filename, value, onChange, onFormat }: CodeEditorPr
     const activeTheme = isDark ? vercelDarkTheme : vercelLightTheme;
     const activeHighlight = isDark ? vercelDarkHighlight : vercelLightHighlight;
 
-    const customKeymaps = onFormat
-      ? [
-          Prec.highest(
-            keymap.of([
-              {
-                key: "Mod-s",
-                run: () => {
-                  onFormat();
-                  return true;
-                },
-              },
-            ])
-          ),
-        ]
-      : [];
+    const customKeymaps = [
+      Prec.highest(
+        keymap.of([
+          {
+            key: "Shift-Alt-f",
+            run: () => {
+              if (onFormatRef.current) {
+                onFormatRef.current();
+                return true;
+              }
+              return false;
+            },
+          },
+        ])
+      ),
+    ];
 
     return [
       baseEditorTheme,
@@ -197,7 +203,7 @@ export function CodeEditor({ filename, value, onChange, onFormat }: CodeEditorPr
         "aria-label": `Code editor for ${filename}`,
       }),
     ];
-  }, [filename, isDark, onFormat]);
+  }, [filename, isDark]);
 
   return (
     <div className="relative h-full w-full overflow-hidden bg-background">

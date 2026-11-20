@@ -1,0 +1,13 @@
+{
+  "id": "comp-1795077612417-mgl7x",
+  "slug": "frequency-selector",
+  "name": "Frequency Selector",
+  "description": "A compact pill-shaped recurrence selector that morphs into an inline segmented picker with blur-dissolve transitions and an expandable weekday row when Weekly is chosen.",
+  "category": "Custom",
+  "isBuiltIn": false,
+  "createdAt": 1795077612417,
+  "updatedAt": 1795077776767,
+  "lastRepoSyncAt": 1795077786586,
+  "dependencies": [],
+  "previewImage": "./preview.png"
+}

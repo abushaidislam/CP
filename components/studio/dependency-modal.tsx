@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
+import { useShallow } from "zustand/react/shallow";
 import { useStudioStore } from "@/lib/store/studio-store";
 import {
   CURATED_PACKAGES,
@@ -54,7 +55,20 @@ export function DependencyModal() {
     clearAllDependencies,
     isDependencyModalOpen,
     setDependencyModalOpen,
-  } = useStudioStore();
+  } = useStudioStore(
+    useShallow((state) => ({
+      files: state.files,
+      dependencies: state.dependencies,
+      addDependency: state.addDependency,
+      removeDependency: state.removeDependency,
+      toggleDependency: state.toggleDependency,
+      syncDependenciesWithCode: state.syncDependenciesWithCode,
+      pruneUnusedDependencies: state.pruneUnusedDependencies,
+      clearAllDependencies: state.clearAllDependencies,
+      isDependencyModalOpen: state.isDependencyModalOpen,
+      setDependencyModalOpen: state.setDependencyModalOpen,
+    }))
+  );
 
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
@@ -65,7 +79,9 @@ export function DependencyModal() {
 
   const codeImports = useMemo(() => {
     const compImports = extractCodeImports(files["component.tsx"] || "");
-    const demoImports = extractCodeImports(files["demo.tsx"] || "");
+    const demoImports = extractCodeImports(
+      files["default.tsx"] || files["demo.tsx"] || ""
+    );
     return Array.from(new Set([...compImports, ...demoImports]));
   }, [files]);
 

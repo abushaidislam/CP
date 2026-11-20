@@ -140,7 +140,7 @@ describe("VersionHistorySheet", () => {
     expect(html).toContain("Initial layout");
     expect(html).toContain("Restore Checkpoint");
     expect(html).toContain("component.tsx");
-    expect(html).toContain("demo.tsx");
+    expect(html).toContain("default.tsx");
     expect(html).toContain("index.css");
     // Contains diff content
     expect(html).toContain("Initial");

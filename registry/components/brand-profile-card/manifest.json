@@ -1,0 +1,18 @@
+{
+  "id": "comp-1795087680744-pfft4",
+  "slug": "brand-profile-card",
+  "name": "Brand Profile Card",
+  "description": "A sleek social brand profile card with an atmospheric mesh-gradient banner, overlapping emblem avatar, social links, and an animated Follow button with live follower count updates.",
+  "category": "Custom",
+  "isBuiltIn": false,
+  "createdAt": 1795087680744,
+  "updatedAt": 1795087951250,
+  "lastRepoSyncAt": 1795087962490,
+  "dependencies": [
+    "framer-motion",
+    "lucide-react",
+    "clsx",
+    "tailwind-merge"
+  ],
+  "previewImage": "./preview.png"
+}

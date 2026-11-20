@@ -1,0 +1,13 @@
+{
+  "id": "comp-1794923856828-2l2cs",
+  "slug": "pill-pagination",
+  "name": "PillPagination",
+  "description": "",
+  "category": "Custom",
+  "isBuiltIn": false,
+  "createdAt": 1794923856828,
+  "updatedAt": 1794927178528,
+  "lastRepoSyncAt": 1794927187467,
+  "dependencies": [],
+  "previewImage": "./preview.png"
+}

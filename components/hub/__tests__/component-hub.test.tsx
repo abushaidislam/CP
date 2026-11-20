@@ -121,6 +121,11 @@ mock.module(import.meta.resolve("@/components/ui/input"), () => ({
   },
 }));
 
+// Mock next/image for Bun SSR test environment
+mock.module("next/image", () => ({
+  default: ({ priority: _priority, ...props }: any) => <img {...props} />,
+}));
+
 // Mock @/components/ui/tooltip
 mock.module(import.meta.resolve("@/components/ui/tooltip"), () => ({
   TooltipProvider: ({ children }: any) => <>{children}</>,

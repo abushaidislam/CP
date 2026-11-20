@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useRef } from "react";
+import { useShallow } from "zustand/react/shallow";
 import { useStudioStore } from "@/lib/store/studio-store";
 import {
   Dialog,
@@ -60,7 +61,13 @@ export function CreateComponentDialog({ onCreated }: CreateComponentDialogProps)
     isCreateComponentDialogOpen,
     setCreateComponentDialogOpen,
     createComponent,
-  } = useStudioStore();
+  } = useStudioStore(
+    useShallow((state) => ({
+      isCreateComponentDialogOpen: state.isCreateComponentDialogOpen,
+      setCreateComponentDialogOpen: state.setCreateComponentDialogOpen,
+      createComponent: state.createComponent,
+    }))
+  );
 
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -204,7 +211,7 @@ export function CreateComponentDialog({ onCreated }: CreateComponentDialogProps)
                 Category
               </label>
               <div
-                role="radiogroup"
+                role="group"
                 aria-labelledby="component-category-label"
                 className="grid grid-cols-5 gap-px bg-border border border-border rounded-none overflow-hidden"
               >
@@ -272,7 +279,7 @@ export function CreateComponentDialog({ onCreated }: CreateComponentDialogProps)
               </div>
 
               <div
-                role="radiogroup"
+                role="group"
                 aria-labelledby="starter-template-label"
                 className="grid grid-cols-1 sm:grid-cols-2 gap-px bg-border border border-border rounded-none overflow-hidden"
               >

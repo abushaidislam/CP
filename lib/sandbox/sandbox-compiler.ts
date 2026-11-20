@@ -1,5 +1,14 @@
 import { transform } from "sucrase";
 import { extractCodeImports } from "@/lib/sandbox/package-utils";
+import { buildVideoStudioRuntimeScript } from "@/lib/sandbox/video-choreography-runtime";
+
+export type PreviewFitMode = "normal" | "scale" | "crop";
+
+export interface CompileSandboxOptions {
+  videoStudio?: boolean;
+  initialDemoProps?: Record<string, unknown>;
+  fitMode?: PreviewFitMode;
+}
 
 export interface CompileResult {
   html: string;
@@ -50,9 +59,13 @@ export function compileSandboxHtml(
   cssCode: string,
   dependencies: string[],
   canvasBg: string = "dark",
-  previewTheme: "dark" | "light" = "dark"
+  previewTheme: "dark" | "light" = "dark",
+  options?: CompileSandboxOptions
 ): CompileResult {
   const isDark = previewTheme === "dark";
+  const isVideoStudio = Boolean(options?.videoStudio);
+  const initialDemoPropsJson = JSON.stringify(options?.initialDemoProps || {}).replace(/<\/script>/gi, "<\\/script>");
+  const initialFitMode: PreviewFitMode = options?.fitMode || "normal";
 
   // Transpile component.tsx
   const compTranspiled = transpileTsx(componentCode);
@@ -173,6 +186,7 @@ export function compileSandboxHtml(
   const safeCompJs = JSON.stringify(cleanedComponentJs).replace(/<\/script>/gi, "<\\/script>");
   const safeDemoJs = JSON.stringify(cleanedDemoJs).replace(/<\/script>/gi, "<\\/script>");
   const safeDemoDataUri = JSON.stringify(demoDataUri).replace(/<\/script>/gi, "<\\/script>");
+  const safeCssCode = (cssCode || "").replace(/<\/style/gi, "<\\/style");
 
   // Base background style inside preview according to canvasBg and previewTheme
   let bgClass = isDark ? "bg-zinc-950 text-zinc-100" : "bg-white text-zinc-900";
@@ -191,7 +205,7 @@ export function compileSandboxHtml(
   }
 
   const html = `<!DOCTYPE html>
-<html lang="en" class="h-full ${isDark ? "dark" : ""}">
+<html lang="en" class="h-full ${isDark ? "dark" : ""}" data-fit-mode="${initialFitMode}">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -311,6 +325,23 @@ export function compileSandboxHtml(
       display: flex;
       flex-direction: column;
     }
+    html[data-fit-mode="scale"] #root {
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+    html[data-fit-mode="crop"] #root {
+      align-items: flex-start;
+      justify-content: flex-start;
+      overflow: hidden;
+      mask-image: linear-gradient(to bottom, black 82%, transparent 100%);
+      -webkit-mask-image: linear-gradient(to bottom, black 82%, transparent 100%);
+    }
+    html[data-fit-mode="scale"] [data-fit-hide],
+    html[data-fit-mode="crop"] [data-fit-hide] {
+      display: none !important;
+    }
+    ${isVideoStudio ? "html, body { overflow-x: hidden; }" : ""}
 
     /* Clean scrollbars */
     ::-webkit-scrollbar {
@@ -353,7 +384,7 @@ export function compileSandboxHtml(
         radial-gradient(at 50% 100%, rgba(236, 72, 153, 0.12) 0px, transparent 50%);
     }
 
-    ${cssCode}
+    ${safeCssCode}
   </style>
 
   <!-- Import Map -->
@@ -372,6 +403,15 @@ export function compileSandboxHtml(
       } catch (e) {}
     }
 
+    function escapeHtmlText(str) {
+      return String(str ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+    }
+
     notifyParent({
       type: "SANDBOX_STAGE",
       stage: "hydrating-deps",
@@ -386,9 +426,9 @@ export function compileSandboxHtml(
           <div style="padding: 20px; max-width: 550px; font-family: ui-monospace, monospace; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 12px; color: #fca5a5; font-size: 12px; line-height: 1.6; margin: 20px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);">
             <div style="font-weight: 700; color: #f87171; margin-bottom: 8px; font-size: 13px; display: flex; align-items: center; gap: 6px;">
               <span>⚠️</span>
-              <span>\${title}</span>
+              <span>\${escapeHtmlText(title)}</span>
             </div>
-            <div style="white-space: pre-wrap; word-break: break-word;">\${msg}</div>
+            <div style="white-space: pre-wrap; word-break: break-word;">\${escapeHtmlText(msg)}</div>
           </div>
         \`;
       }
@@ -473,6 +513,15 @@ export function compileSandboxHtml(
       sendConsoleLog("info", args);
     };
 
+    function escapeModuleHtmlText(str) {
+      return String(str ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+    }
+
     function renderErrorOverlay(title, msg) {
       _origError("[Runtime Error]:", msg);
       const rootEl = document.getElementById("root");
@@ -481,9 +530,9 @@ export function compileSandboxHtml(
           <div style="padding: 20px; max-width: 550px; font-family: ui-monospace, monospace; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 12px; color: #fca5a5; font-size: 12px; line-height: 1.6; margin: 20px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);">
             <div style="font-weight: 700; color: #f87171; margin-bottom: 8px; font-size: 13px; display: flex; align-items: center; gap: 6px;">
               <span>⚠️</span>
-              <span>\${title}</span>
+              <span>\${escapeModuleHtmlText(title)}</span>
             </div>
-            <div style="white-space: pre-wrap; word-break: break-word;">\${msg}</div>
+            <div style="white-space: pre-wrap; word-break: break-word;">\${escapeModuleHtmlText(msg)}</div>
           </div>
         \`;
       }
@@ -536,6 +585,13 @@ export function compileSandboxHtml(
           packages: ${JSON.stringify(detectedDeps)}
         });
 
+        const createdBlobUrls = [];
+        window.addEventListener("beforeunload", () => {
+          for (const url of createdBlobUrls) {
+            try { URL.revokeObjectURL(url); } catch (e) {}
+          }
+        });
+
         // 1. Import component.tsx module (try import map bare specifier first, then relative, fallback to blob)
         let componentModule;
         try {
@@ -548,6 +604,7 @@ export function compileSandboxHtml(
               const componentCode = ${safeCompJs};
               const componentBlob = new Blob([componentCode], { type: "text/javascript" });
               const componentUrl = URL.createObjectURL(componentBlob);
+              createdBlobUrls.push(componentUrl);
               componentModule = await import(componentUrl);
             } catch (blobErr) {
               renderErrorOverlay("Failed to import component.tsx", blobErr.message);
@@ -578,6 +635,7 @@ export function compileSandboxHtml(
               } catch (demoErr2) {
                 const demoBlob = new Blob([rawDemoCode], { type: "text/javascript" });
                 const demoUrl = URL.createObjectURL(demoBlob);
+                createdBlobUrls.push(demoUrl);
                 demoModule = await import(demoUrl);
               }
             }
@@ -596,9 +654,32 @@ export function compileSandboxHtml(
         if (!rootEl) return;
         const root = ReactDOM.createRoot(rootEl);
 
+        const initialDemoProps = ${initialDemoPropsJson};
+        let activeDemoProps = initialDemoProps && typeof initialDemoProps === "object" ? { ...initialDemoProps } : {};
+        const demoPropsListeners = new Set();
+
+        window.__STUDIO_SET_DEMO_PROPS__ = (nextProps) => {
+          activeDemoProps = nextProps && typeof nextProps === "object" ? { ...nextProps } : {};
+          demoPropsListeners.forEach((fn) => fn(activeDemoProps));
+        };
+
+        window.__STUDIO_RESET_DEMO_PROPS__ = () => {
+          activeDemoProps = {};
+          demoPropsListeners.forEach((fn) => fn(activeDemoProps));
+        };
+
         function App() {
+          const [demoProps, setDemoProps] = React.useState(activeDemoProps);
+
           React.useEffect(() => {
+            const listener = (next) => setDemoProps(next);
+            demoPropsListeners.add(listener);
+            window.__STUDIO_COMPONENT_MOUNTED__ = true;
+            window.dispatchEvent(new CustomEvent("__STUDIO_COMPONENT_MOUNTED__"));
             notifyParent({ type: "RENDER_SUCCESS" });
+            return () => {
+              demoPropsListeners.delete(listener);
+            };
           }, []);
 
           const renderFallbackComponent = (err) => {
@@ -612,7 +693,7 @@ export function compileSandboxHtml(
             return React.createElement(
               "div",
               { className: "min-h-full w-full flex flex-col items-center justify-center p-6" },
-              React.createElement(ComponentFromCode, null)
+              React.createElement(ComponentFromCode, demoProps)
             );
           };
 
@@ -623,7 +704,7 @@ export function compileSandboxHtml(
           return React.createElement(
             ErrorBoundary,
             { fallback: renderFallbackComponent },
-            React.createElement(DemoComponent, null)
+            React.createElement(DemoComponent, demoProps)
           );
         }
 
@@ -639,8 +720,23 @@ export function compileSandboxHtml(
     // Stitch Simulated Interaction, Theme, and Interactive Command REPL Handler
     let simulationTimer = null;
     window.addEventListener("message", (event) => {
+      if (event.source !== window.parent) return;
       if (event.data && event.data.type === "TRIGGER_SIMULATED_HOVER") {
         runSimulatedHover(event.data.durationMs || 4000);
+      }
+      if (event.data && event.data.type === "SET_DEMO_PROPS") {
+        if (typeof window.__STUDIO_SET_DEMO_PROPS__ === "function") {
+          window.__STUDIO_SET_DEMO_PROPS__(event.data.props || {});
+        }
+      }
+      if (event.data && event.data.type === "RESET_DEMO_PROPS") {
+        if (typeof window.__STUDIO_RESET_DEMO_PROPS__ === "function") {
+          window.__STUDIO_RESET_DEMO_PROPS__();
+        }
+      }
+      if (event.data && event.data.type === "SET_FIT_MODE") {
+        const mode = event.data.fitMode || "normal";
+        document.documentElement.setAttribute("data-fit-mode", mode);
       }
       if (event.data && event.data.type === "SET_PREVIEW_THEME") {
         const theme = event.data.theme;
@@ -835,10 +931,20 @@ export function compileSandboxHtml(
       }, interval);
     }
   </script>
+  ${isVideoStudio ? `<script>${buildVideoStudioRuntimeScript()}</script>` : ""}
 </body>
 </html>`;
 
   return { html, error: null, detectedDependencies: detectedDeps };
+}
+
+function escapeHtml(input: string): string {
+  return String(input)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 }
 
 /**
@@ -856,6 +962,8 @@ function generateErrorHtml(
   const titleColor = isDark ? "text-red-400" : "text-red-600";
   const descColor = isDark ? "text-red-300" : "text-red-700";
   const hintColor = isDark ? "text-zinc-500 border-red-500/20" : "text-zinc-600 border-red-200";
+  const safeTitle = escapeHtml(title);
+  const safeMessage = escapeHtml(message);
 
   return `<!DOCTYPE html>
 <html lang="en" class="h-full ${isDark ? "dark" : ""}">
@@ -869,9 +977,9 @@ function generateErrorHtml(
       <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
       </svg>
-      <span>${title}</span>
+      <span>${safeTitle}</span>
     </div>
-    <p class="text-xs ${descColor} leading-relaxed whitespace-pre-wrap break-all">${message}</p>
+    <p class="text-xs ${descColor} leading-relaxed whitespace-pre-wrap break-all">${safeMessage}</p>
     <div class="mt-4 pt-3 border-t ${hintColor} text-[11px] font-sans">
       Fix the syntax in your editor panel to restore live preview.
     </div>

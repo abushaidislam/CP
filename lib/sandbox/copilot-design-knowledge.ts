@@ -81,11 +81,15 @@ NOTE: Apply the visual styling guidelines below ONLY when the developer explicit
 - DIRECTORY & IMPORT ARCHITECTURE:
   * "default.tsx" (under demos/) MUST import the component using:
     import Component from "../components/ui/component";
-  * "default.tsx" MUST export:
-    export default function Demo() { return <div className="flex min-h-[350px] w-full items-center justify-center p-4"><Component /></div>; }
+  * "default.tsx" SHOULD follow the 21st.dev Native Demo Controls contract whenever the component has configurable props:
+    const settings = { ... } // static JSON-like literals: booleans (toggles), numbers (sliders), CSS colors (pickers), color arrays (palettes), short strings (inputs), or union literals (selects); max 24 flat top-level keys; no reserved keys (key, ref, constructor, prototype, __proto__).
+    export default function Demo(props: Partial<typeof settings>) {
+      const s = { ...settings, ...props };
+      return <div className="flex min-h-[350px] w-full items-center justify-center p-4"><Component {...s} /></div>;
+    }
   * "component.tsx" MUST start with "use client"; at the very top (line 1) whenever hooks, state, or animations are used.
   * "component.tsx" MUST export as default: export default function Component(...) or export default function <Name>(...).
   * "component.tsx" MUST accept and forward className?: string using cn(...) from "@/lib/utils" while keeping all existing visual classes intact.
 - ZERO-MODIFICATION 21ST.DEV COPY-PASTE GUARANTEE:
-  * All code must be 100% copy-pasteable directly into 21st.dev's sandbox without requiring any path modifications.
+  * All code must be 100% copy-pasteable directly into 21st.dev's sandbox without requiring any path modifications, and its native controls must work identically in both Component Studio and 21st.dev.
 `;

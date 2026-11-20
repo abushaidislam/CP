@@ -118,6 +118,10 @@ mock.module("next/navigation", () => ({
   usePathname: () => `/studio/${mockParams.id || ""}`,
 }));
 
+mock.module("next/image", () => ({
+  default: ({ priority: _priority, ...props }: any) => <img {...props} />,
+}));
+
 // Registry to capture onClick handlers from rendered Buttons
 const buttonClickMap = new Map<string, () => void>();
 
@@ -199,7 +203,9 @@ const { TooltipProvider } = await import("@/components/ui/tooltip");
 const { StudioHeader } = await import("../studio-header");
 const { CanvasPreview } = await import("../canvas-preview");
 const HomePage = (await import("@/app/page")).default;
+const { HomeHubClient } = await import("@/components/hub/home-hub-client");
 const StudioWorkspacePage = (await import("@/app/studio/[id]/page")).default;
+const { StudioRouteClient } = await import("@/components/studio/studio-route-client");
 const StudioRedirectPage = (await import("@/app/studio/page")).default;
 
 describe("StudioHeader Navigation & Route Integration", () => {
@@ -460,7 +466,23 @@ describe("StudioHeader Navigation & Route Integration", () => {
       expect(messageHandler).toBeDefined();
 
       const sampleDataUrl = "data:image/svg+xml;base64,PHN2Zz5wb2xsPC9zdmc+";
+
+      // Verify messages from an untrusted source are rejected
       messageHandler({
+        source: {},
+        data: {
+          type: "PREVIEW_CAPTURED",
+          componentId: "custom-neon-button",
+          dataUrl: "data:image/png;base64,EVIL",
+        },
+      });
+      expect(
+        useStudioStore.getState().userComponents["custom-neon-button"].previewImage
+      ).not.toBe("data:image/png;base64,EVIL");
+
+      // Verify messages from the active preview iframe contentWindow are accepted
+      messageHandler({
+        source: mockIframeRef.current.contentWindow,
         data: {
           type: "PREVIEW_CAPTURED",
           componentId: "custom-neon-button",
@@ -506,25 +528,42 @@ describe("StudioHeader Navigation & Route Integration", () => {
   });
 
   describe("Route Integration", () => {
-    it("app/page.tsx should render ComponentHub and route to /studio/[id] on navigation", () => {
-      const element = HomePage() as any;
-      expect(element).toBeDefined();
-      expect(typeof element.props.onNavigateStudio).toBe("function");
+    it("app/page.tsx should load SSR summaries and HomeHubClient should route to /studio/[id] on navigation", async () => {
+      const serverElement = (await HomePage()) as any;
+      expect(serverElement).toBeDefined();
+      expect(Array.isArray(serverElement.props.initialSummaries)).toBe(true);
+
+      const clientElement = HomeHubClient({
+        initialSummaries: serverElement.props.initialSummaries,
+      }) as any;
+      expect(clientElement).toBeDefined();
+      expect(typeof clientElement.props.onNavigateStudio).toBe("function");
 
       // Trigger navigation callback
-      element.props.onNavigateStudio("glass-card");
+      clientElement.props.onNavigateStudio("glass-card");
       expect(mockPush).toHaveBeenCalledWith("/studio/glass-card");
     });
 
-    it("app/studio/[id]/page.tsx should resolve id param, load component, and render StudioContainer", () => {
+    it("app/studio/[id]/page.tsx should resolve id param, load component, and render StudioContainer", async () => {
       mockParams = { id: "custom-neon-button" };
       useStudioStore.setState({ currentTemplateId: "ink-orbit-hero" });
 
-      const element = StudioWorkspacePage();
-      expect(element.props.componentId).toBe("custom-neon-button");
+      const serverElement = (await StudioWorkspacePage({
+        params: Promise.resolve({ id: "custom-neon-button" }),
+      })) as any;
+      expect(serverElement.props.id).toBe("custom-neon-button");
+
+      const clientElement = StudioRouteClient({
+        id: serverElement.props.id,
+        initialComponent: serverElement.props.initialComponent,
+        initialVariants: serverElement.props.initialVariants,
+        initialActiveVariantId: serverElement.props.initialActiveVariantId,
+      }) as any;
+      expect(clientElement.props.componentId).toBe("custom-neon-button");
 
       // Run effect
       runEffects();
+      await Promise.resolve();
       expect(useStudioStore.getState().currentTemplateId).toBe("custom-neon-button");
     });
 

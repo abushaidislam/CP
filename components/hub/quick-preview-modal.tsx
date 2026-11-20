@@ -1,9 +1,16 @@
 "use client";
 
 import React, { useState, useMemo, useEffect, useRef } from "react";
+import { useShallow } from "zustand/react/shallow";
 import { useStudioStore, PreviewTheme, StudioFileName } from "@/lib/store/studio-store";
 import { DEFAULT_TEMPLATES } from "@/lib/sandbox/default-templates";
 import { compileSandboxHtml } from "@/lib/sandbox/sandbox-compiler";
+import {
+  parseDemoControls,
+  bakeSettingsIntoDemoCode,
+  type DemoControlValue,
+} from "@/lib/sandbox/demo-controls";
+import { DemoControlsPanel } from "@/components/studio/demo-controls-panel";
 import { formatRelativeTime } from "@/lib/utils";
 import {
   Dialog,
@@ -26,6 +33,7 @@ import {
   Code2,
   History,
   Loader2,
+  SlidersHorizontal,
 } from "lucide-react";
 
 export interface QuickPreviewModalProps {
@@ -48,8 +56,20 @@ export function QuickPreviewModal({
     variantsByTemplate,
     activeVariantByTemplate,
     loadComponent,
+    ensureComponentFilesLoaded,
     previewTheme: globalPreviewTheme,
-  } = useStudioStore();
+  } = useStudioStore(
+    useShallow((s) => ({
+      quickPreviewComponentId: s.quickPreviewComponentId,
+      setQuickPreviewComponentId: s.setQuickPreviewComponentId,
+      userComponents: s.userComponents,
+      variantsByTemplate: s.variantsByTemplate,
+      activeVariantByTemplate: s.activeVariantByTemplate,
+      loadComponent: s.loadComponent,
+      ensureComponentFilesLoaded: s.ensureComponentFilesLoaded,
+      previewTheme: s.previewTheme,
+    }))
+  );
 
   const [activeTab, setActiveTab] = useState<"preview" | "code" | "history">(defaultTab);
   const [selectedCodeFile, setSelectedCodeFile] = useState<StudioFileName>(defaultCodeFile);
@@ -61,6 +81,11 @@ export function QuickPreviewModal({
   const [previewHydrationStage, setPreviewHydrationStage] = useState<
     "compiling" | "hydrating-deps" | "mounting"
   >("compiling");
+  const [showControls, setShowControls] = useState<boolean>(false);
+  const [controlOverrides, setControlOverrides] = useState<Record<string, DemoControlValue>>({});
+  const quickIframeRef = useRef<HTMLIFrameElement | null>(null);
+  const controlOverridesRef = useRef<Record<string, DemoControlValue>>({});
+  controlOverridesRef.current = controlOverrides;
   const copyTimerRef = useRef<NodeJS.Timeout | null>(null);
   const cliTimerRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -88,6 +113,15 @@ export function QuickPreviewModal({
     );
   }, [quickPreviewComponentId, userComponents]);
 
+  // Lazily hydrate full source files when opening Quick Preview on a summary-only repo component
+  useEffect(() => {
+    if (!quickPreviewComponentId) return;
+    const target = userComponents?.[quickPreviewComponentId];
+    if (target && (target.filesLoaded === false || !target.files?.["component.tsx"])) {
+      void ensureComponentFilesLoaded(quickPreviewComponentId);
+    }
+  }, [quickPreviewComponentId, userComponents, ensureComponentFilesLoaded]);
+
   const handleOpenStudio = () => {
     if (!component) return;
     loadComponent(component.id);
@@ -109,22 +143,117 @@ export function QuickPreviewModal({
     return false;
   };
 
+  const resolveComponentFile = (fileKey: StudioFileName): string => {
+    if (!component?.files) return "";
+    if (fileKey === "default.tsx" || fileKey === "demo.tsx") {
+      return (
+        component.files["default.tsx"] ?? component.files["demo.tsx"] ?? ""
+      );
+    }
+    return component.files[fileKey] || "";
+  };
+
   const handleCopyCode = async () => {
     if (!component) return;
-    const code = component.files?.[selectedCodeFile] || "";
+    const code = resolveComponentFile(selectedCodeFile);
     await copyText(code);
     setCopiedCode(true);
     if (copyTimerRef.current) clearTimeout(copyTimerRef.current);
     copyTimerRef.current = setTimeout(() => setCopiedCode(false), 2000);
   };
 
+  const cliSlug =
+    component && "repoSlug" in component && component.repoSlug
+      ? component.repoSlug
+      : component?.id || "";
+
   const handleCopyCli = async () => {
     if (!component) return;
-    const cli = `npx shadcn@latest add ${component.id}`;
+    const cli = `npx shadcn@latest add ${cliSlug}`;
     await copyText(cli);
     setCopiedCli(true);
     if (cliTimerRef.current) clearTimeout(cliTimerRef.current);
     cliTimerRef.current = setTimeout(() => setCopiedCli(false), 2000);
+  };
+
+  const demoSourceForControls = useMemo(() => {
+    if (!component?.files) return "";
+    return component.files["default.tsx"] || component.files["demo.tsx"] || "";
+  }, [component]);
+
+  const parsedDemoControls = useMemo(() => {
+    if (!component?.files) {
+      return parseDemoControls("");
+    }
+    return parseDemoControls(demoSourceForControls, component.files["component.tsx"]);
+  }, [component, demoSourceForControls]);
+
+  useEffect(() => {
+    setControlOverrides({});
+    controlOverridesRef.current = {};
+    setShowControls(parsedDemoControls.status === "active" && parsedDemoControls.controls.length > 0);
+  }, [component?.id, parsedDemoControls.status, parsedDemoControls.controls.length]);
+
+  const effectiveControlValues = useMemo(() => {
+    return {
+      ...parsedDemoControls.defaultValues,
+      ...controlOverrides,
+    };
+  }, [parsedDemoControls.defaultValues, controlOverrides]);
+
+  const modifiedControlKeys = useMemo(() => {
+    return Object.keys(controlOverrides).filter((k) => {
+      return (
+        JSON.stringify(parsedDemoControls.defaultValues[k]) !==
+        JSON.stringify(controlOverrides[k])
+      );
+    });
+  }, [controlOverrides, parsedDemoControls.defaultValues]);
+
+  const pushQuickDemoProps = (nextOverrides: Record<string, DemoControlValue>) => {
+    if (quickIframeRef.current?.contentWindow) {
+      quickIframeRef.current.contentWindow.postMessage(
+        { type: "SET_DEMO_PROPS", props: nextOverrides },
+        "*"
+      );
+    }
+  };
+
+  const handleQuickControlChange = (key: string, value: DemoControlValue) => {
+    setControlOverrides((prev) => {
+      const next = { ...prev };
+      if (JSON.stringify(parsedDemoControls.defaultValues[key]) === JSON.stringify(value)) {
+        delete next[key];
+      } else {
+        next[key] = value;
+      }
+      controlOverridesRef.current = next;
+      pushQuickDemoProps(next);
+      return next;
+    });
+  };
+
+  const handleQuickResetKey = (key: string) => {
+    setControlOverrides((prev) => {
+      const next = { ...prev };
+      delete next[key];
+      controlOverridesRef.current = next;
+      pushQuickDemoProps(next);
+      return next;
+    });
+  };
+
+  const handleQuickResetAll = () => {
+    setControlOverrides({});
+    controlOverridesRef.current = {};
+    if (quickIframeRef.current?.contentWindow) {
+      quickIframeRef.current.contentWindow.postMessage({ type: "RESET_DEMO_PROPS" }, "*");
+    }
+  };
+
+  const handleCopyBakedDemo = async () => {
+    const baked = bakeSettingsIntoDemoCode(demoSourceForControls, controlOverrides);
+    await copyText(baked);
   };
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -133,7 +262,7 @@ export function QuickPreviewModal({
     try {
       const res = compileSandboxHtml(
         component.files["component.tsx"] || "",
-        component.files["demo.tsx"] || "",
+        demoSourceForControls,
         component.files["index.css"] || "",
         component.dependencies || [],
         previewTheme === "dark" ? "dark" : "light",
@@ -146,9 +275,9 @@ export function QuickPreviewModal({
         compileError: err instanceof Error ? err.message : String(err),
       };
     }
-  }, [component, previewTheme, reloadKey]);
+  }, [component, demoSourceForControls, previewTheme, reloadKey]);
 
-  const activeCodeContent = component?.files?.[selectedCodeFile] || "";
+  const activeCodeContent = resolveComponentFile(selectedCodeFile);
   const codeLines = useMemo(() => {
     return activeCodeContent.split("\n");
   }, [activeCodeContent]);
@@ -177,6 +306,9 @@ export function QuickPreviewModal({
       );
     }, 90);
     const handleMsg = (e: MessageEvent) => {
+      if (quickIframeRef.current && e.source !== quickIframeRef.current.contentWindow) {
+        return;
+      }
       if (
         e.data?.type === "SANDBOX_STAGE" &&
         (e.data.stage === "hydrating-deps" || e.data.stage === "mounting")
@@ -185,6 +317,9 @@ export function QuickPreviewModal({
       }
       if (e.data?.type === "RENDER_SUCCESS" || e.data?.type === "RUNTIME_ERROR") {
         setIsIframeLoading(false);
+        if (e.data?.type === "RENDER_SUCCESS" && Object.keys(controlOverridesRef.current).length > 0) {
+          pushQuickDemoProps(controlOverridesRef.current);
+        }
       }
     };
     window.addEventListener("message", handleMsg);
@@ -292,6 +427,21 @@ export function QuickPreviewModal({
                     <RotateCcw className="size-3.5" />
                     <span>Reset Preview</span>
                   </Button>
+                  {parsedDemoControls.status === "active" &&
+                    parsedDemoControls.controls.length > 0 && (
+                      <Button
+                        variant={showControls ? "secondary" : "outline"}
+                        size="sm"
+                        className="rounded-none gap-1.5 font-sans h-8 text-xs"
+                        onClick={() => setShowControls((v) => !v)}
+                      >
+                        <SlidersHorizontal className="size-3.5" />
+                        <span>Controls</span>
+                        <span className="font-mono text-[10px] text-muted-foreground tabular-nums">
+                          ({parsedDemoControls.controls.length})
+                        </span>
+                      </Button>
+                    )}
                 </div>
                 {component.description && (
                   <p className="font-sans text-xs text-muted-foreground truncate max-w-md">
@@ -321,7 +471,8 @@ export function QuickPreviewModal({
                 </div>
               )}
 
-              <div className="w-full h-[440px] rounded-none border border-border bg-background overflow-hidden relative">
+              <div className="w-full h-[440px] rounded-none border border-border bg-background overflow-hidden relative flex">
+                <div className="relative flex-1 min-w-0 h-full overflow-hidden">
                 {isIframeLoading && !compileError && (
                   <div
                     role="status"
@@ -376,12 +527,29 @@ export function QuickPreviewModal({
                   </div>
                 )}
                 <iframe
+                  ref={quickIframeRef}
                   key={`${component.id}-${reloadKey}-${previewTheme}`}
                   title={`${component.name} Preview`}
                   srcDoc={compiledHtml}
-                  sandbox="allow-scripts allow-same-origin allow-modals allow-popups"
+                  sandbox="allow-scripts allow-modals allow-popups"
                   className="w-full h-full border-0"
                 />
+                </div>
+
+                {showControls && parsedDemoControls.status === "active" && (
+                  <DemoControlsPanel
+                    parsed={parsedDemoControls}
+                    values={effectiveControlValues}
+                    modifiedKeys={modifiedControlKeys}
+                    onChangeValue={handleQuickControlChange}
+                    onResetKey={handleQuickResetKey}
+                    onResetAll={handleQuickResetAll}
+                    onCopyBakedCode={handleCopyBakedDemo}
+                    onClose={() => setShowControls(false)}
+                    readOnly
+                    className="w-64 sm:w-72"
+                  />
+                )}
               </div>
             </TabsContent>
 
@@ -397,8 +565,8 @@ export function QuickPreviewModal({
                     <TabsTrigger value="component.tsx" className="rounded-none font-sans text-xs">
                       component.tsx
                     </TabsTrigger>
-                    <TabsTrigger value="demo.tsx" className="rounded-none font-sans text-xs">
-                      demo.tsx
+                    <TabsTrigger value="default.tsx" className="rounded-none font-sans text-xs">
+                      default.tsx
                     </TabsTrigger>
                     <TabsTrigger value="index.css" className="rounded-none font-sans text-xs">
                       index.css
@@ -423,7 +591,7 @@ export function QuickPreviewModal({
 
               {/* CLI Command Block */}
               <div className="flex items-center justify-between bg-muted/60 px-3 py-2 rounded-none font-mono text-xs border border-border">
-                <span className="truncate select-all">{`npx shadcn@latest add ${component.id}`}</span>
+                <span className="truncate select-all">{`npx shadcn@latest add ${cliSlug}`}</span>
                 <Button
                   variant="ghost"
                   size="icon"

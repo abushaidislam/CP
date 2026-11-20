@@ -1,0 +1,13 @@
+{
+  "id": "comp-1795089925039-noo1w",
+  "slug": "thermal-receipt",
+  "name": "ThermalReceipt",
+  "description": "An interactive thermal receipt printer card that feeds order line items one by one with live print progress, serrated tear edges, a scan-to-pay QR reveal, and a tactile tear-off reset.",
+  "category": "Cards",
+  "isBuiltIn": false,
+  "createdAt": 1795089925039,
+  "updatedAt": 1795090685233,
+  "lastRepoSyncAt": 1795090696235,
+  "dependencies": [],
+  "previewImage": "./preview.png"
+}

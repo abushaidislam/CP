@@ -1,17 +1,23 @@
 "use client";
 
-import React, { useState, useMemo, useEffect } from "react";
-import { useStudioStore, UserComponent } from "@/lib/store/studio-store";
+import React, { useState, useMemo, useEffect, useCallback, useRef } from "react";
+import { useShallow } from "zustand/react/shallow";
+import {
+  useStudioStore,
+  type RepoSummaryInput,
+  type UserComponent,
+} from "@/lib/store/studio-store";
+import { useSyncSecuritySession } from "@/lib/hooks/use-sync-security-session";
 import { ComponentCard } from "./component-card";
 import { CreateComponentDialog } from "./create-component-dialog";
 import { QuickPreviewModal } from "./quick-preview-modal";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { AppLogo } from "@/components/ui/app-logo";
 import {
   Tooltip,
   TooltipContent,
-  TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
@@ -38,6 +44,7 @@ export interface ComponentHubProps {
   onNavigateStudio?: (componentId: string) => void;
   initialSearchQuery?: string;
   initialCategory?: CategoryType;
+  initialSummaries?: RepoSummaryInput[];
 }
 
 const CATEGORIES = [
@@ -58,11 +65,17 @@ export function ComponentHub({
   onNavigateStudio,
   initialSearchQuery = "",
   initialCategory = "All",
+  initialSummaries,
 }: ComponentHubProps) {
   const {
     userComponents,
     recentComponentIds,
     variantsByTemplate,
+    quickPreviewComponentId,
+    isCreateComponentDialogOpen,
+    isSecurityModalOpen,
+    isRepoSyncModalOpen,
+    isPublishModalOpen,
     setQuickPreviewComponentId,
     setCreateComponentDialogOpen,
     duplicateUserComponent,
@@ -72,19 +85,54 @@ export function ComponentHub({
     setSecurityModalOpen,
     setRepoSyncModalOpen,
     hydrateFromProjectRepo,
-  } = useStudioStore();
+    seedRepoSummaries,
+  } = useStudioStore(
+    useShallow((state) => ({
+      userComponents: state.userComponents,
+      recentComponentIds: state.recentComponentIds,
+      variantsByTemplate: state.variantsByTemplate,
+      quickPreviewComponentId: state.quickPreviewComponentId,
+      isCreateComponentDialogOpen: state.isCreateComponentDialogOpen,
+      isSecurityModalOpen: state.isSecurityModalOpen,
+      isRepoSyncModalOpen: state.isRepoSyncModalOpen,
+      isPublishModalOpen: state.isPublishModalOpen,
+      setQuickPreviewComponentId: state.setQuickPreviewComponentId,
+      setCreateComponentDialogOpen: state.setCreateComponentDialogOpen,
+      duplicateUserComponent: state.duplicateUserComponent,
+      deleteUserComponent: state.deleteUserComponent,
+      loadComponent: state.loadComponent,
+      isOwnerAuthenticated: state.isOwnerAuthenticated,
+      setSecurityModalOpen: state.setSecurityModalOpen,
+      setRepoSyncModalOpen: state.setRepoSyncModalOpen,
+      hydrateFromProjectRepo: state.hydrateFromProjectRepo,
+      seedRepoSummaries: state.seedRepoSummaries,
+    }))
+  );
+
+  const hasSeededSummariesRef = useRef(false);
+  const [hasHydratedSummaries, setHasHydratedSummaries] = useState(false);
+
+  useSyncSecuritySession();
 
   const [searchQuery, setSearchQuery] = useState(initialSearchQuery);
   const [selectedCategory, setSelectedCategory] = useState<CategoryType>(initialCategory);
   const [isDark, setIsDark] = useState(true);
   const [isShortcutsOpen, setIsShortcutsOpen] = useState(false);
 
-  // Sync theme with document element & hydrate saved repo components
+  // Sync theme with document element & seed/hydrate saved repo components post-render
   useEffect(() => {
     const root = document.documentElement;
     setIsDark(root.classList.contains("dark"));
-    hydrateFromProjectRepo?.();
-  }, [hydrateFromProjectRepo]);
+    if (initialSummaries && initialSummaries.length > 0) {
+      if (!hasSeededSummariesRef.current) {
+        hasSeededSummariesRef.current = true;
+        seedRepoSummaries(initialSummaries);
+        setHasHydratedSummaries(true);
+      }
+    } else {
+      hydrateFromProjectRepo?.();
+    }
+  }, [hydrateFromProjectRepo, initialSummaries, seedRepoSummaries]);
 
   const toggleTheme = () => {
     const root = document.documentElement;
@@ -97,9 +145,49 @@ export function ComponentHub({
     }
   };
 
+  const effectiveUserComponents = useMemo<Record<string, UserComponent>>(() => {
+    const base = userComponents || {};
+    if (
+      hasHydratedSummaries ||
+      !initialSummaries ||
+      initialSummaries.length === 0
+    ) {
+      return base;
+    }
+    const merged: Record<string, UserComponent> = { ...base };
+    for (const s of initialSummaries) {
+      const existing = merged[s.id];
+      if (!existing) {
+        merged[s.id] = {
+          id: s.id,
+          name: s.name,
+          description: s.description,
+          category: s.category,
+          isBuiltIn: s.isBuiltIn,
+          createdAt: s.createdAt,
+          updatedAt: s.updatedAt,
+          files: {
+            "component.tsx": "",
+            "default.tsx": "",
+            "demo.tsx": "",
+            "index.css": "",
+          },
+          dependencies: s.dependencies || [],
+          previewImage: s.previewImage,
+          repoSlug: s.repoSlug,
+          repoPath: s.repoPath,
+          savedInRepo: true,
+          lastRepoSyncAt: s.lastRepoSyncAt,
+          filesLoaded: false,
+        };
+      }
+    }
+    return merged;
+  }, [userComponents, initialSummaries, hasHydratedSummaries]);
+
   const allComponents = useMemo(
-    () => Object.values(userComponents || {}),
-    [userComponents]
+    () => Object.values(effectiveUserComponents),
+    [effectiveUserComponents]
   );
 
   const recentCount = useMemo(() => {
@@ -159,7 +247,7 @@ export function ComponentHub({
     let list: UserComponent[] = [];
 
     if (selectedCategory === "Recent Work") {
-      const compMap = userComponents || {};
+      const compMap = effectiveUserComponents;
       list = (recentComponentIds || [])
         .map((id) => compMap[id])
         .filter((c): c is UserComponent => Boolean(c));
@@ -196,7 +284,7 @@ export function ComponentHub({
 
     return list;
   }, [
-    userComponents,
+    effectiveUserComponents,
     allComponents,
     newestComponents,
     popularComponents,
@@ -266,20 +354,47 @@ export function ComponentHub({
     return sections;
   }, [newestComponents, popularComponents]);
 
-  const handleOpenStudio = (id: string) => {
-    loadComponent(id);
-    onNavigateStudio?.(id);
-  };
+  const handleOpenStudio = useCallback(
+    (id: string) => {
+      loadComponent(id);
+      onNavigateStudio?.(id);
+    },
+    [loadComponent, onNavigateStudio]
+  );
 
-  const handleCreated = (newId: string) => {
-    loadComponent(newId);
-    onNavigateStudio?.(newId);
-  };
+  const handleCreated = useCallback(
+    (newId: string) => {
+      loadComponent(newId);
+      onNavigateStudio?.(newId);
+    },
+    [loadComponent, onNavigateStudio]
+  );
 
-  const renderCardGrid = (items: UserComponent[]) => (
+  const handlePreview = useCallback(
+    (id: string) => {
+      setQuickPreviewComponentId(id);
+    },
+    [setQuickPreviewComponentId]
+  );
+
+  const handleDuplicate = useCallback(
+    (id: string) => {
+      duplicateUserComponent(id);
+    },
+    [duplicateUserComponent]
+  );
+
+  const handleDelete = useCallback(
+    (id: string) => {
+      deleteUserComponent(id);
+    },
+    [deleteUserComponent]
+  );
+
+  const renderCardGrid = (items: UserComponent[], prioritizeFirstRow = false) => (
     <div className="rounded-none border border-border overflow-hidden bg-border">
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-px bg-border">
-        {items.map((component) => {
+        {items.map((component, idx) => {
           const variants = variantsByTemplate?.[component.id] || [];
           const variantsCount = variants.length || 1;
           const checkpointsCount = variants.reduce(
@@ -295,10 +410,11 @@ export function ComponentHub({
               variantsCount={variantsCount}
               checkpointsCount={checkpointsCount}
               isRecent={isRecent}
-              onPreview={(id) => setQuickPreviewComponentId(id)}
+              priority={prioritizeFirstRow && idx < 4}
+              onPreview={handlePreview}
               onOpenStudio={handleOpenStudio}
-              onDuplicate={(id) => duplicateUserComponent(id)}
-              onDelete={(id) => deleteUserComponent(id)}
+              onDuplicate={handleDuplicate}
+              onDelete={handleDelete}
             />
           );
         })}
@@ -310,23 +426,12 @@ export function ComponentHub({
     selectedCategory === "All" && !searchQuery.trim() && filteredComponents.length > 0;
 
   return (
-    <TooltipProvider delayDuration={150}>
       <div className="studio-grid-backdrop flex flex-col min-h-screen w-full bg-background text-foreground font-sans selection:bg-primary/20 selection:text-foreground">
         {/* 1. Top Navigation Bar with Pure Icon Action Buttons */}
         <header className="studio-glass-header sticky top-0 z-20 flex h-14 shrink-0 items-center justify-between border-b border-border px-4 sm:px-6 select-none">
           {/* Brand / Title & Workspace Eyebrow */}
-          <div className="flex items-center gap-3">
-            <div className="flex size-7 items-center justify-center rounded-none bg-foreground text-background">
-              <svg
-                width="14"
-                height="14"
-                viewBox="0 0 24 24"
-                fill="currentColor"
-                aria-hidden="true"
-              >
-                <polygon points="12,2 22,20 2,20" />
-              </svg>
-            </div>
+          <div className="flex items-center gap-2.5">
+            <AppLogo size="md" priority />
             <div className="flex items-center gap-2">
               <h1 className="font-sans font-semibold text-sm sm:text-base tracking-tight text-foreground m-0">
                 Component Studio
@@ -532,7 +637,7 @@ export function ComponentHub({
           <section aria-label="Component cards grid" className="space-y-8">
             {filteredComponents.length > 0 ? (
               showCuratedSections ? (
-                showcaseSections.map((section) => (
+                showcaseSections.map((section, sectionIndex) => (
                   <div key={section.id} className="rounded-none bg-card/80 backdrop-blur-xs">
                     {/* Integrated Architectural Section Header Bar */}
                     <div className="studio-toolbar-surface flex items-center justify-between border border-b-0 border-border px-4 py-2.5 rounded-none">
@@ -569,7 +674,7 @@ export function ComponentHub({
                         </TooltipContent>
                       </Tooltip>
                     </div>
-                    {renderCardGrid(section.items)}
+                    {renderCardGrid(section.items, sectionIndex === 0)}
                   </div>
                 ))
               ) : (
@@ -616,7 +721,7 @@ export function ComponentHub({
                       </Tooltip>
                     )}
                   </div>
-                  {renderCardGrid(filteredComponents)}
+                  {renderCardGrid(filteredComponents, true)}
                 </div>
               )
             ) : (
@@ -674,13 +779,12 @@ export function ComponentHub({
           </section>
         </main>
 
-        {/* Modal Integration */}
-        <CreateComponentDialog onCreated={handleCreated} />
-        <QuickPreviewModal onOpenStudio={handleOpenStudio} />
+        {/* Modal Integration (Conditionally mounted when active to avoid idle hook/render overhead) */}
+        {isCreateComponentDialogOpen && <CreateComponentDialog onCreated={handleCreated} />}
+        {Boolean(quickPreviewComponentId) && <QuickPreviewModal onOpenStudio={handleOpenStudio} />}
         <KeyboardShortcutsDialog open={isShortcutsOpen} onOpenChange={setIsShortcutsOpen} />
-        <SecurityShieldModal />
-        <RepoSyncModal />
+        {isSecurityModalOpen && <SecurityShieldModal />}
+        {(isRepoSyncModalOpen || isPublishModalOpen) && <RepoSyncModal />}
       </div>
-    </TooltipProvider>
   );
 }
