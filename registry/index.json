@@ -1,8 +1,26 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-20T16:00:34.066Z",
-  "totalComponents": 58,
+  "updatedAt": "2026-11-20T16:13:56.766Z",
+  "totalComponents": 59,
   "components": [
+    {
+      "id": "comp-1795191221625-1myv8",
+      "slug": "iridescent-orb",
+      "name": "IridescentOrb",
+      "description": "A WebGL-powered 3D iridescent caustic ribbon orb with Fresnel rim dispersion, pointer-reactive field tilt, and state-driven AI presence animations.",
+      "category": "Custom",
+      "isBuiltIn": false,
+      "updatedAt": 1795191232823,
+      "lastRepoSyncAt": 1795191236621,
+      "path": "registry/components/iridescent-orb",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "index.css",
+        "manifest.json"
+      ],
+      "dependencies": []
+    },
     {
       "id": "comp-1795158023910-or7yk",
       "slug": "built-to-scale",
@@ -976,6 +994,26 @@
       ]
     },
     {
+      "id": "aurora-ambient-hero",
+      "slug": "aurora-ambient-hero",
+      "name": "Aurora Ambient Mesh Hero",
+      "description": "Vibrant ambient blur aurora hero with dual CTA buttons, live headline gradient, and responsive design.",
+      "category": "Heroes",
+      "isBuiltIn": true,
+      "updatedAt": 1700000000000,
+      "lastRepoSyncAt": 1795190434052,
+      "path": "registry/components/aurora-ambient-hero",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "index.css",
+        "manifest.json"
+      ],
+      "dependencies": [
+        "lucide-react"
+      ]
+    },
+    {
       "id": "bento-metric-grid",
       "slug": "bento-metric-grid",
       "name": "Bento Metric Showcase Card",
@@ -994,6 +1032,24 @@
       "dependencies": [
         "lucide-react"
       ]
+    },
+    {
+      "id": "ink-orbit-hero",
+      "slug": "ink-orbit-hero",
+      "name": "Ink Orbit 3D Hero",
+      "description": "Generative 3D ink sculpture hero with interactive canvas physics, phrase blur cycling, and live workflow demo dialog.",
+      "category": "Heroes",
+      "isBuiltIn": true,
+      "updatedAt": 1700000000000,
+      "lastRepoSyncAt": 1795190434052,
+      "path": "registry/components/ink-orbit-hero",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "index.css",
+        "manifest.json"
+      ],
+      "dependencies": []
     },
     {
       "id": "live-ping-status-pill",
@@ -1016,15 +1072,15 @@
       ]
     },
     {
-      "id": "aurora-ambient-hero",
-      "slug": "aurora-ambient-hero",
-      "name": "Aurora Ambient Mesh Hero",
-      "description": "Vibrant ambient blur aurora hero with dual CTA buttons, live headline gradient, and responsive design.",
-      "category": "Heroes",
+      "id": "metric-badge",
+      "slug": "metric-badge",
+      "name": "Live Status Radar Badge",
+      "description": "Compact telemetry badge with animated pulsing ping, status tooltip, and gradient border.",
+      "category": "Badges",
       "isBuiltIn": true,
       "updatedAt": 1700000000000,
       "lastRepoSyncAt": 1795190434052,
-      "path": "registry/components/aurora-ambient-hero",
+      "path": "registry/components/metric-badge",
       "files": [
         "component.tsx",
         "default.tsx",
@@ -1036,15 +1092,15 @@
       ]
     },
     {
-      "id": "metric-badge",
-      "slug": "metric-badge",
-      "name": "Live Status Radar Badge",
-      "description": "Compact telemetry badge with animated pulsing ping, status tooltip, and gradient border.",
-      "category": "Badges",
+      "id": "neon-glow-button",
+      "slug": "neon-glow-button",
+      "name": "Neon Glow Interactive Button",
+      "description": "Cyberpunk-inspired interactive button with luminous border glow, particle pulse, and ripple feedback.",
+      "category": "Buttons",
       "isBuiltIn": true,
       "updatedAt": 1700000000000,
       "lastRepoSyncAt": 1795190434052,
-      "path": "registry/components/metric-badge",
+      "path": "registry/components/neon-glow-button",
       "files": [
         "component.tsx",
         "default.tsx",
@@ -1077,24 +1133,6 @@
       ]
     },
     {
-      "id": "ink-orbit-hero",
-      "slug": "ink-orbit-hero",
-      "name": "Ink Orbit 3D Hero",
-      "description": "Generative 3D ink sculpture hero with interactive canvas physics, phrase blur cycling, and live workflow demo dialog.",
-      "category": "Heroes",
-      "isBuiltIn": true,
-      "updatedAt": 1700000000000,
-      "lastRepoSyncAt": 1795190434052,
-      "path": "registry/components/ink-orbit-hero",
-      "files": [
-        "component.tsx",
-        "default.tsx",
-        "index.css",
-        "manifest.json"
-      ],
-      "dependencies": []
-    },
-    {
       "id": "spotlight-card",
       "slug": "spotlight-card",
       "name": "Interactive Spotlight Card",
@@ -1115,26 +1153,6 @@
         "lucide-react",
         "clsx",
         "tailwind-merge"
-      ]
-    },
-    {
-      "id": "neon-glow-button",
-      "slug": "neon-glow-button",
-      "name": "Neon Glow Interactive Button",
-      "description": "Cyberpunk-inspired interactive button with luminous border glow, particle pulse, and ripple feedback.",
-      "category": "Buttons",
-      "isBuiltIn": true,
-      "updatedAt": 1700000000000,
-      "lastRepoSyncAt": 1795190434052,
-      "path": "registry/components/neon-glow-button",
-      "files": [
-        "component.tsx",
-        "default.tsx",
-        "index.css",
-        "manifest.json"
-      ],
-      "dependencies": [
-        "lucide-react"
       ]
     }
   ]
