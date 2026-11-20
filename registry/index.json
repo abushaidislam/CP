@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-20T07:00:39.811Z",
+  "updatedAt": "2026-11-20T07:00:48.254Z",
   "totalComponents": 51,
   "components": [
     {
@@ -10,8 +10,8 @@
       "description": "",
       "category": "Custom",
       "isBuiltIn": false,
-      "updatedAt": 1795158036603,
-      "lastRepoSyncAt": 1795158039664,
+      "updatedAt": 1795158044676,
+      "lastRepoSyncAt": 1795158048217,
       "path": "registry/components/built-to-scale",
       "files": [
         "component.tsx",
