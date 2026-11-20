@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-20T18:22:05.528Z",
+  "updatedAt": "2026-11-20T18:22:32.410Z",
   "totalComponents": 61,
   "components": [
     {
@@ -10,14 +10,15 @@
       "description": "",
       "category": "Custom",
       "isBuiltIn": false,
-      "updatedAt": 1795198921501,
-      "lastRepoSyncAt": 1795198925476,
+      "updatedAt": 1795198947899,
+      "lastRepoSyncAt": 1795198952305,
       "path": "registry/components/lenticular-glyph",
       "files": [
         "component.tsx",
         "default.tsx",
         "index.css",
-        "manifest.json"
+        "manifest.json",
+        "preview.png"
       ],
       "dependencies": []
     },
