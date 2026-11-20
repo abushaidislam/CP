@@ -566,18 +566,44 @@ async function startDirectStageCapture(
   ctx.imageSmoothingEnabled = true;
   ctx.imageSmoothingQuality = "high";
 
-  // Dedicated backing frame buffer so SVG foreignObject blobs are rasterized ONCE while their
-  // object URL is still valid (never revoked prematurely!) and blitted at 60fps in <0.1ms.
-  const frameBufferCanvas = document.createElement("canvas");
+  // Dedicated backing frame buffer so incoming frames are validated for origin-cleanliness
+  // BEFORE ever touching the recording compositor `canvas` (preventing `captureStream` SecurityErrors).
+  let frameBufferCanvas = document.createElement("canvas");
   frameBufferCanvas.width = width;
   frameBufferCanvas.height = height;
-  const frameBufferCtx = frameBufferCanvas.getContext("2d", { alpha: false });
-  if (frameBufferCtx) {
-    frameBufferCtx.fillStyle = isDark ? "#09090b" : "#ffffff";
-    frameBufferCtx.fillRect(0, 0, width, height);
-    frameBufferCtx.imageSmoothingEnabled = true;
-    frameBufferCtx.imageSmoothingQuality = "high";
-  }
+  let frameBufferCtx = frameBufferCanvas.getContext("2d", { alpha: false });
+
+  const initFrameBufferCtx = (targetCtx: CanvasRenderingContext2D | null) => {
+    if (!targetCtx) return;
+    targetCtx.fillStyle = isDark ? "#09090b" : "#ffffff";
+    targetCtx.fillRect(0, 0, width, height);
+    targetCtx.imageSmoothingEnabled = true;
+    targetCtx.imageSmoothingQuality = "high";
+  };
+  initFrameBufferCtx(frameBufferCtx);
+
+  const isCanvasOriginClean = (testCtx: CanvasRenderingContext2D | null): boolean => {
+    if (!testCtx) return false;
+    try {
+      testCtx.getImageData(0, 0, 1, 1);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  // HTML5 never resets a tainted canvas's origin-clean flag on width reset; must allocate a new element.
+  const recreateCleanFrameBuffer = () => {
+    frameBufferCanvas = document.createElement("canvas");
+    frameBufferCanvas.width = width;
+    frameBufferCanvas.height = height;
+    frameBufferCtx = frameBufferCanvas.getContext("2d", { alpha: false });
+    initFrameBufferCtx(frameBufferCtx);
+  };
+
+  // Pre-fill compositor canvas so initial state is always valid and origin-clean
+  ctx.fillStyle = isDark ? "#09090b" : "#ffffff";
+  ctx.fillRect(0, 0, width, height);
 
   let active = true;
   let rafId = 0;
@@ -585,7 +611,9 @@ async function startDirectStageCapture(
   let lastHandledReqId = -1;
   let inFlightFrame = false;
   let hasDrawnFrame = false;
+  let frameBufferClean = true;
   let useSafeMode = false;
+  let useCanvasMode = false;
   let nextPollTimer: ReturnType<typeof setTimeout> | null = null;
   let safetyTimer: ReturnType<typeof setTimeout> | null = null;
   let firstFrameReadyResolve: (() => void) | null = null;
@@ -627,7 +655,7 @@ async function startDirectStageCapture(
   const scheduleNextCapture = (lastCaptureMs = 14) => {
     if (!active) return;
     if (nextPollTimer) clearTimeout(nextPollTimer);
-    const delay = Math.max(10, Math.min(36, Math.round(lastCaptureMs * 0.55)));
+    const delay = Math.max(8, Math.min(34, Math.round(lastCaptureMs * 0.55)));
     nextPollTimer = setTimeout(requestSandboxFrame, delay);
   };
 
@@ -641,6 +669,7 @@ async function startDirectStageCapture(
           type: "VIDEO_STUDIO_CAPTURE_FRAME",
           requestId: frameReqId,
           safeMode: useSafeMode,
+          canvasMode: useCanvasMode,
         },
         "*"
       );
@@ -657,7 +686,7 @@ async function startDirectStageCapture(
   };
 
   const renderCompositeFrameOnce = () => {
-    if (hasDrawnFrame) {
+    if (hasDrawnFrame && frameBufferClean) {
       ctx.drawImage(frameBufferCanvas, 0, 0, width, height);
     } else {
       ctx.fillStyle = isDark ? "#09090b" : "#ffffff";
@@ -675,23 +704,38 @@ async function startDirectStageCapture(
   const loadImageUrlIntoFrame = (url: string, shouldRevoke: boolean, captureMs: number) => {
     const img = new Image();
     img.onload = () => {
-      if (active && frameBufferCtx) {
-        try {
-          frameBufferCtx.fillStyle = isDark ? "#09090b" : "#ffffff";
-          frameBufferCtx.fillRect(0, 0, width, height);
-          frameBufferCtx.drawImage(img, 0, 0, width, height);
-          hasDrawnFrame = true;
-          renderCompositeFrameOnce();
-          notifyFirstFrameReady();
-        } catch {
-          // Ignore transient draw error
-        }
-      }
       if (shouldRevoke) {
         URL.revokeObjectURL(url);
       }
-      if (active) {
-        scheduleNextCapture(captureMs);
+      if (!active || !frameBufferCtx) return;
+
+      try {
+        frameBufferCtx.fillStyle = isDark ? "#09090b" : "#ffffff";
+        frameBufferCtx.fillRect(0, 0, width, height);
+        frameBufferCtx.drawImage(img, 0, 0, width, height);
+
+        // Verify that drawing `img` did NOT taint `frameBufferCanvas` before touching `canvas`
+        if (isCanvasOriginClean(frameBufferCtx)) {
+          hasDrawnFrame = true;
+          frameBufferClean = true;
+          renderCompositeFrameOnce();
+          notifyFirstFrameReady();
+          scheduleNextCapture(captureMs);
+          return;
+        }
+      } catch {
+        // Ignore transient draw error
+      }
+
+      // `frameBufferCanvas` was tainted by SVG <foreignObject> in this browser:
+      // Replace `frameBufferCanvas` with a fresh untainted canvas and switch immediately to pure Canvas 2D mode!
+      recreateCleanFrameBuffer();
+      if (!useCanvasMode) {
+        useCanvasMode = true;
+        requestSandboxFrame();
+      } else {
+        notifyFirstFrameReady();
+        scheduleNextCapture(Math.max(captureMs, 24));
       }
     };
     img.onerror = () => {
@@ -699,10 +743,12 @@ async function startDirectStageCapture(
         URL.revokeObjectURL(url);
       }
       if (active) {
-        // If XML foreignObject failed to parse once, switch to safeMode (inline computed styles) and retry immediately
         if (!useSafeMode) {
           useSafeMode = true;
-          scheduleNextCapture(4);
+          scheduleNextCapture(2);
+        } else if (!useCanvasMode) {
+          useCanvasMode = true;
+          scheduleNextCapture(2);
         } else {
           notifyFirstFrameReady();
           scheduleNextCapture(Math.max(captureMs, 32));
@@ -729,11 +775,16 @@ async function startDirectStageCapture(
         frameBufferCtx.fillStyle = isDark ? "#09090b" : "#ffffff";
         frameBufferCtx.fillRect(0, 0, width, height);
         frameBufferCtx.drawImage(bitmap, 0, 0, width, height);
-        hasDrawnFrame = true;
-        renderCompositeFrameOnce();
-        notifyFirstFrameReady();
+        if (isCanvasOriginClean(frameBufferCtx)) {
+          hasDrawnFrame = true;
+          frameBufferClean = true;
+          renderCompositeFrameOnce();
+          notifyFirstFrameReady();
+        } else {
+          recreateCleanFrameBuffer();
+        }
       } catch {
-        // Ignore
+        recreateCleanFrameBuffer();
       }
     }
     closeBitmapIfNeeded(bitmap);
@@ -752,6 +803,23 @@ async function startDirectStageCapture(
     if (safetyTimer) clearTimeout(safetyTimer);
     if (!blob || !active) {
       scheduleNextCapture(captureMs);
+      return;
+    }
+    // Chromium Bug 294129: Drawing an SVG <foreignObject> from a blob: URL taints the canvas,
+    // whereas drawing it from a data:image/svg+xml;charset=utf-8, URL keeps it origin-clean.
+    if (blob.type.includes("svg") && typeof blob.text === "function") {
+      blob
+        .text()
+        .then((svgText) => {
+          if (!active) return;
+          const dataUrl = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svgText);
+          loadImageUrlIntoFrame(dataUrl, false, captureMs);
+        })
+        .catch(() => {
+          if (!active) return;
+          const objectUrl = URL.createObjectURL(blob);
+          loadImageUrlIntoFrame(objectUrl, true, captureMs);
+        });
       return;
     }
     const objectUrl = URL.createObjectURL(blob);
@@ -812,7 +880,7 @@ async function startDirectStageCapture(
       const prewarmTimeout = setTimeout(() => {
         firstFrameReadyResolve = null;
         resolve();
-      }, 550);
+      }, 650);
       const origResolve = firstFrameReadyResolve;
       firstFrameReadyResolve = () => {
         clearTimeout(prewarmTimeout);

@@ -1786,7 +1786,7 @@ export function buildVideoStudioRuntimeScript(): string {
           scratchImgCanvas.height = h;
           scratchImgCtx.clearRect(0, 0, w, h);
           scratchImgCtx.drawImage(liveImg, 0, 0, w, h);
-          const isPngOrSvg = /\.png|\.svg|\.webp/i.test(rawSrc);
+          const isPngOrSvg = /\\.png|\\.svg|\\.webp/i.test(rawSrc);
           const dataUrl = scratchImgCanvas.toDataURL(
             isPngOrSvg ? "image/png" : "image/jpeg",
             0.85
@@ -1795,7 +1795,10 @@ export function buildVideoStudioRuntimeScript(): string {
             state.externalImgCache.set(rawSrc, dataUrl);
             return dataUrl;
           }
-        } catch (e) {}
+        } catch (e) {
+          scratchImgCanvas = null;
+          scratchImgCtx = null;
+        }
         return null;
       }
 
@@ -1888,10 +1891,11 @@ export function buildVideoStudioRuntimeScript(): string {
         // Disable CSS animation/transition resets inside static SVG foreignObject so baked live computed transforms/opacities are authoritative
         stylesText += nl + "*, *::before, *::after { animation-play-state: paused !important; transition: none !important; }" + nl;
 
-        // Prevent accidental CDATA termination inside XML SVG foreignObject and strip external rules
+        // Prevent accidental CDATA termination inside XML SVG foreignObject and strip external rules/URLs
         stylesText = stylesText.replace(/\\]\\]>/g, "");
         stylesText = stylesText.replace(/@import\\s+[^;]+;/gi, "");
         stylesText = stylesText.replace(/@charset\\s+[^;]+;/gi, "");
+        stylesText = stylesText.replace(/url\\(\\s*['"]?(?!data:|#)[^'")]+['"]?\\s*\\)/gi, "none");
         state.cachedStyleSig = sig;
         state.cachedStylesText = stylesText;
         return stylesText;
@@ -1905,13 +1909,31 @@ export function buildVideoStudioRuntimeScript(): string {
           const attr = el.attributes[i];
           if (!attr) continue;
           const name = attr.name || "";
-          if (
-            !VALID_XML_ATTR_RE.test(name) ||
-            name.toLowerCase().startsWith("on")
-          ) {
+          const lower = name.toLowerCase();
+          if (!VALID_XML_ATTR_RE.test(name) || lower.startsWith("on")) {
             try {
               el.removeAttribute(name);
             } catch (e) {}
+            continue;
+          }
+          if (lower === "style" && attr.value && attr.value.indexOf("url(") !== -1) {
+            try {
+              el.setAttribute(
+                "style",
+                attr.value.replace(/url\\(\\s*['"]?(?!data:|#)[^'")]+['"]?\\s*\\)/gi, "none")
+              );
+            } catch (e) {}
+          }
+          if ((lower === "href" || lower === "xlink:href") && el.tagName) {
+            const tag = el.tagName.toLowerCase();
+            if (tag === "image" || tag === "feimage" || tag === "use") {
+              const val = (attr.value || "").trim();
+              if (val && !val.startsWith("data:") && !val.startsWith("#")) {
+                try {
+                  el.removeAttribute(name);
+                } catch (e) {}
+              }
+            }
           }
         }
       }
@@ -2041,8 +2063,10 @@ export function buildVideoStudioRuntimeScript(): string {
       function prepareCloneForXml(sourceNode, clonedNode, safeMode) {
         if (!sourceNode || !clonedNode || !(clonedNode instanceof Element)) return;
 
-        // 1. Remove nested scripts, styles, iframes, objects from cloned DOM
-        const removable = clonedNode.querySelectorAll("script, style, iframe, object, embed");
+        // 1. Remove nested scripts, styles, links, media, iframes, objects from cloned DOM
+        const removable = clonedNode.querySelectorAll(
+          "script, style, link, iframe, object, embed, video, audio, source, track"
+        );
         for (let i = 0; i < removable.length; i++) {
           removable[i].remove();
         }
@@ -2099,25 +2123,25 @@ export function buildVideoStudioRuntimeScript(): string {
         }
 
         // 5. Inline data URLs for ALL non-data: images (http, https, relative /assets/..., blob:)
-        // because SVG loaded in new Image() blocks every non-data: image URI
-        const liveImgs = sourceNode.querySelectorAll("img[src]");
-        const clonedImgs = clonedNode.querySelectorAll("img[src]");
+        const liveImgs = sourceNode.querySelectorAll("img");
+        const clonedImgs = clonedNode.querySelectorAll("img");
         for (let i = 0; i < clonedImgs.length; i++) {
           const imgEl = clonedImgs[i];
           const liveImg = liveImgs[i] || null;
           const src = imgEl.getAttribute("src") || "";
           imgEl.removeAttribute("crossorigin");
           imgEl.removeAttribute("loading");
+          imgEl.removeAttribute("decoding");
           imgEl.removeAttribute("srcset");
-          if (src && !src.startsWith("data:")) {
-            let cached = state.externalImgCache.get(src);
-            if (!cached && liveImg) {
+          if (!src || !src.startsWith("data:")) {
+            let cached = src ? state.externalImgCache.get(src) : null;
+            if (!cached && liveImg && src) {
               cached = tryInlineLiveImg(liveImg, src);
             }
             if (cached) {
               imgEl.setAttribute("src", cached);
             } else {
-              warmExternalImageCache();
+              if (src) warmExternalImageCache();
               imgEl.setAttribute(
                 "src",
                 "data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Crect width='100%25' height='100%25' fill='%2327272a' fill-opacity='0.35'/%3E%3C/svg%3E"
@@ -2160,7 +2184,499 @@ export function buildVideoStudioRuntimeScript(): string {
           : "background-color:#ffffff;color:#09090b;";
       }
 
-      async function captureFastFrame(requestId, safeMode) {
+      // -----------------------------------------------------------------------
+      // Pure Canvas 2D DOM + Canvas + SVG + Text Renderer (Zero-<foreignObject> Fallback)
+      // Guarantees 100% OriginClean ImageBitmap frames even in browsers that taint all <foreignObject> SVGs.
+      // -----------------------------------------------------------------------
+      let directRasterCanvas = null;
+      let directRasterCtx = null;
+      let sharedTextRange = null;
+
+      function isTransparentColor(c) {
+        if (!c) return true;
+        return c === "transparent" || c === "rgba(0, 0, 0, 0)" || c === "rgba(0,0,0,0)";
+      }
+
+      function buildRoundedRectPath(ctx, x, y, w, h, rTL, rTR, rBR, rBL) {
+        const maxR = Math.min(w, h) * 0.5;
+        const tl = Math.max(0, Math.min(maxR, rTL || 0));
+        const tr = Math.max(0, Math.min(maxR, rTR || 0));
+        const br = Math.max(0, Math.min(maxR, rBR || 0));
+        const bl = Math.max(0, Math.min(maxR, rBL || 0));
+        ctx.beginPath();
+        if (tl === 0 && tr === 0 && br === 0 && bl === 0) {
+          ctx.rect(x, y, w, h);
+          return;
+        }
+        ctx.moveTo(x + tl, y);
+        ctx.lineTo(x + w - tr, y);
+        if (tr > 0) ctx.arcTo(x + w, y, x + w, y + tr, tr);
+        ctx.lineTo(x + w, y + h - br);
+        if (br > 0) ctx.arcTo(x + w, y + h, x + w - br, y + h, br);
+        ctx.lineTo(x + bl, y + h);
+        if (bl > 0) ctx.arcTo(x, y + h, x, y + h - bl, bl);
+        ctx.lineTo(x, y + tl);
+        if (tl > 0) ctx.arcTo(x, y, x + tl, y, tl);
+        ctx.closePath();
+      }
+
+      function drawSvgElementToCanvas2D(ctx, svgEl, rect, parentCs) {
+        if (!svgEl || rect.width < 1 || rect.height < 1) return;
+        let vbX = 0;
+        let vbY = 0;
+        let vbW = rect.width;
+        let vbH = rect.height;
+        const vbAttr = svgEl.getAttribute("viewBox");
+        if (vbAttr) {
+          const parts = vbAttr.trim().split(/[\\s,]+/).map(Number);
+          if (parts.length === 4 && parts[2] > 0 && parts[3] > 0) {
+            vbX = parts[0];
+            vbY = parts[1];
+            vbW = parts[2];
+            vbH = parts[3];
+          }
+        } else {
+          const wAttr = parseFloat(svgEl.getAttribute("width") || "0");
+          const hAttr = parseFloat(svgEl.getAttribute("height") || "0");
+          if (wAttr > 0 && hAttr > 0) {
+            vbW = wAttr;
+            vbH = hAttr;
+          }
+        }
+
+        const svgCs = parentCs || window.getComputedStyle(svgEl);
+        const currentColor = (svgCs && svgCs.color) || "#fafafa";
+        const rootFill = svgEl.getAttribute("fill") || "none";
+        const rootStroke = svgEl.getAttribute("stroke") || "none";
+        const rootStrokeWidth = parseFloat(svgEl.getAttribute("stroke-width") || "1.75");
+
+        ctx.save();
+        ctx.translate(rect.left, rect.top);
+        ctx.scale(rect.width / Math.max(1, vbW), rect.height / Math.max(1, vbH));
+        ctx.translate(-vbX, -vbY);
+
+        const shapes = svgEl.querySelectorAll("rect, circle, ellipse, path, line, polyline, polygon");
+        for (let i = 0; i < shapes.length; i++) {
+          const shape = shapes[i];
+          if (shape.closest && shape.closest("defs, clipPath, mask")) continue;
+          const tag = shape.tagName.toLowerCase();
+          const scs = window.getComputedStyle(shape);
+          if (scs.display === "none" || scs.visibility === "hidden") continue;
+
+          let fill = shape.getAttribute("fill") || scs.fill || rootFill;
+          let stroke = shape.getAttribute("stroke") || scs.stroke || rootStroke;
+          if (fill === "currentColor") fill = scs.color || currentColor;
+          if (stroke === "currentColor") stroke = scs.color || currentColor;
+          if (fill && fill.startsWith("url(")) fill = currentColor;
+
+          const sw = parseFloat(
+            shape.getAttribute("stroke-width") || scs.strokeWidth || String(rootStrokeWidth || 1.5)
+          );
+          const fillOp = parseFloat(shape.getAttribute("fill-opacity") || scs.fillOpacity || "1");
+          const strokeOp = parseFloat(shape.getAttribute("stroke-opacity") || scs.strokeOpacity || "1");
+          const shapeOp = parseFloat(shape.getAttribute("opacity") || scs.opacity || "1");
+
+          ctx.save();
+          ctx.lineCap = shape.getAttribute("stroke-linecap") || scs.strokeLinecap || "round";
+          ctx.lineJoin = shape.getAttribute("stroke-linejoin") || scs.strokeLinejoin || "round";
+
+          let path2d = null;
+          if (tag === "path") {
+            const d = shape.getAttribute("d");
+            if (d && typeof Path2D !== "undefined") {
+              try {
+                path2d = new Path2D(d);
+              } catch (e) {}
+            }
+          } else {
+            ctx.beginPath();
+            if (tag === "rect") {
+              const rx = parseFloat(shape.getAttribute("rx") || "0");
+              const x = parseFloat(shape.getAttribute("x") || "0");
+              const y = parseFloat(shape.getAttribute("y") || "0");
+              const w = parseFloat(shape.getAttribute("width") || "0");
+              const h = parseFloat(shape.getAttribute("height") || "0");
+              buildRoundedRectPath(ctx, x, y, w, h, rx, rx, rx, rx);
+            } else if (tag === "circle") {
+              const cx = parseFloat(shape.getAttribute("cx") || "0");
+              const cy = parseFloat(shape.getAttribute("cy") || "0");
+              const r = parseFloat(shape.getAttribute("r") || "0");
+              if (r > 0) ctx.arc(cx, cy, r, 0, Math.PI * 2);
+            } else if (tag === "ellipse") {
+              const cx = parseFloat(shape.getAttribute("cx") || "0");
+              const cy = parseFloat(shape.getAttribute("cy") || "0");
+              const rx = parseFloat(shape.getAttribute("rx") || "0");
+              const ry = parseFloat(shape.getAttribute("ry") || "0");
+              if (rx > 0 && ry > 0) ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
+            } else if (tag === "line") {
+              ctx.moveTo(
+                parseFloat(shape.getAttribute("x1") || "0"),
+                parseFloat(shape.getAttribute("y1") || "0")
+              );
+              ctx.lineTo(
+                parseFloat(shape.getAttribute("x2") || "0"),
+                parseFloat(shape.getAttribute("y2") || "0")
+              );
+            } else if (tag === "polyline" || tag === "polygon") {
+              const pts = (shape.getAttribute("points") || "")
+                .trim()
+                .split(/[\\s,]+/)
+                .map(Number);
+              for (let p = 0; p + 1 < pts.length; p += 2) {
+                if (p === 0) ctx.moveTo(pts[p], pts[p + 1]);
+                else ctx.lineTo(pts[p], pts[p + 1]);
+              }
+              if (tag === "polygon") ctx.closePath();
+            }
+          }
+
+          if (fill && fill !== "none" && !isTransparentColor(fill)) {
+            ctx.globalAlpha = Math.max(0, Math.min(1, shapeOp * fillOp));
+            ctx.fillStyle = fill;
+            if (path2d) ctx.fill(path2d);
+            else ctx.fill();
+          }
+          if (stroke && stroke !== "none" && !isTransparentColor(stroke) && sw > 0) {
+            ctx.globalAlpha = Math.max(0, Math.min(1, shapeOp * strokeOp));
+            ctx.strokeStyle = stroke;
+            ctx.lineWidth = sw;
+            if (path2d) ctx.stroke(path2d);
+            else ctx.stroke();
+          }
+          ctx.restore();
+        }
+
+        ctx.restore();
+      }
+
+      function applyTextTransform(text, transform) {
+        if (!transform || transform === "none") return text;
+        if (transform === "uppercase") return text.toUpperCase();
+        if (transform === "lowercase") return text.toLowerCase();
+        if (transform === "capitalize") {
+          return text.replace(/\\b\\w/g, (ch) => ch.toUpperCase());
+        }
+        return text;
+      }
+
+      function drawElementTextNodes2D(ctx, el, cs) {
+        if (!el || !el.childNodes || el.childNodes.length === 0) return;
+        if (!sharedTextRange && typeof document.createRange === "function") {
+          sharedTextRange = document.createRange();
+        }
+        if (!sharedTextRange) return;
+
+        const fontStyle = cs.fontStyle || "normal";
+        const fontWeight = cs.fontWeight || "400";
+        const fontSize = cs.fontSize || "14px";
+        const fontSizePx = parseFloat(fontSize) || 14;
+        const fontFamily =
+          cs.fontFamily ||
+          'ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+
+        ctx.font = fontStyle + " " + fontWeight + " " + fontSize + " " + fontFamily;
+        ctx.fillStyle = cs.color || "#fafafa";
+        ctx.textBaseline = "alphabetic";
+
+        for (let i = 0; i < el.childNodes.length; i++) {
+          const node = el.childNodes[i];
+          if (!node || node.nodeType !== 3) continue;
+          const raw = node.nodeValue || "";
+          if (!raw.trim()) continue;
+
+          const collapsed =
+            cs.whiteSpace && cs.whiteSpace.indexOf("pre") === 0
+              ? raw
+              : raw.replace(/\\s+/g, " ").trim();
+          const displayStr = applyTextTransform(collapsed, cs.textTransform);
+          if (!displayStr) continue;
+
+          try {
+            sharedTextRange.selectNodeContents(node);
+            const rects = sharedTextRange.getClientRects();
+            if (!rects || rects.length === 0) continue;
+
+            if (rects.length === 1) {
+              const r = rects[0];
+              if (r.width < 1 || r.height < 1) continue;
+              const baselineY = r.top + (r.height + fontSizePx * 0.72) * 0.5;
+              ctx.fillText(displayStr, r.left, baselineY);
+            } else {
+              // Multi-line wrapped text node: word-wrap across the exact line rects returned by the browser
+              let maxLineW = 0;
+              for (let k = 0; k < rects.length; k++) {
+                if (rects[k].width > maxLineW) maxLineW = rects[k].width;
+              }
+              maxLineW = Math.max(40, maxLineW + 6);
+              const words = displayStr.split(" ");
+              const lines = [];
+              let currentLine = "";
+              for (let w = 0; w < words.length; w++) {
+                const candidate = currentLine ? currentLine + " " + words[w] : words[w];
+                if (currentLine && ctx.measureText(candidate).width > maxLineW) {
+                  lines.push(currentLine);
+                  currentLine = words[w];
+                } else {
+                  currentLine = candidate;
+                }
+              }
+              if (currentLine) lines.push(currentLine);
+
+              for (let ln = 0; ln < lines.length; ln++) {
+                const r = rects[Math.min(ln, rects.length - 1)];
+                const lineH = r.height || parseFloat(cs.lineHeight) || fontSizePx * 1.4;
+                const topY =
+                  ln < rects.length
+                    ? r.top
+                    : rects[rects.length - 1].top + (ln - (rects.length - 1)) * lineH;
+                const baselineY = topY + (lineH + fontSizePx * 0.72) * 0.5;
+                ctx.fillText(lines[ln], r.left, baselineY);
+              }
+            }
+          } catch (e) {}
+        }
+      }
+
+      function renderDomToCanvas2D(root, width, height) {
+        if (!directRasterCanvas) {
+          directRasterCanvas = document.createElement("canvas");
+          directRasterCtx = directRasterCanvas.getContext("2d", { alpha: false });
+        }
+        if (!directRasterCtx) return null;
+        if (directRasterCanvas.width !== width || directRasterCanvas.height !== height) {
+          directRasterCanvas.width = width;
+          directRasterCanvas.height = height;
+        }
+        const ctx = directRasterCtx;
+        const isDark = document.documentElement.classList.contains("dark");
+        const bgMode = document.body.getAttribute("data-canvas-bg") || "dark";
+
+        // 1. Fill stage background
+        let baseBgColor = isDark ? "#09090b" : "#ffffff";
+        if (bgMode === "black") baseBgColor = isDark ? "#000000" : "#f4f4f5";
+        else if (bgMode === "light") baseBgColor = isDark ? "#18181b" : "#f4f4f5";
+        else if (bgMode === "grid" || bgMode === "mesh") baseBgColor = isDark ? "#09090b" : "#fafafa";
+
+        ctx.save();
+        ctx.fillStyle = baseBgColor;
+        ctx.fillRect(0, 0, width, height);
+
+        // 2. Collect visible elements in paint order (respecting z-index stacking)
+        const items = [];
+        let domOrder = 0;
+
+        function collect(el, inheritedOpacity, inheritedZ) {
+          if (!el || !(el instanceof Element)) return;
+          if (el.id === "__video_studio_overlay__") return;
+          const tag = el.tagName.toUpperCase();
+          if (
+            tag === "SCRIPT" ||
+            tag === "STYLE" ||
+            tag === "LINK" ||
+            tag === "META" ||
+            tag === "HEAD" ||
+            tag === "DEFS" ||
+            tag === "CLIPPATH"
+          ) {
+            return;
+          }
+
+          let cs;
+          try {
+            cs = window.getComputedStyle(el);
+          } catch (e) {
+            return;
+          }
+          if (!cs || cs.display === "none" || cs.visibility === "hidden") return;
+          const op = parseFloat(cs.opacity || "1") * inheritedOpacity;
+          if (op <= 0.01) return;
+
+          let z = inheritedZ;
+          if (cs.position !== "static" && cs.zIndex && cs.zIndex !== "auto") {
+            const parsedZ = parseInt(cs.zIndex, 10);
+            if (!Number.isNaN(parsedZ)) z = parsedZ;
+          }
+
+          const rect = el.getBoundingClientRect();
+          const isOnScreen =
+            rect.width >= 0.5 &&
+            rect.height >= 0.5 &&
+            rect.bottom >= -4 &&
+            rect.top <= height + 4 &&
+            rect.right >= -4 &&
+            rect.left <= width + 4;
+
+          if (isOnScreen) {
+            items.push({
+              el,
+              tag,
+              cs,
+              rect,
+              opacity: op,
+              z,
+              order: domOrder++,
+            });
+          }
+
+          // Do not descend into <svg> children because drawSvgElementToCanvas2D renders the full SVG vector tree
+          if (tag === "SVG") return;
+
+          const children = el.children;
+          for (let i = 0; i < children.length; i++) {
+            collect(children[i], op, z);
+          }
+        }
+
+        collect(root, 1, 0);
+        const bodyChildren = document.body.children;
+        for (let i = 0; i < bodyChildren.length; i++) {
+          const child = bodyChildren[i];
+          if (child.id === "root" || child.id === "__video_studio_overlay__") continue;
+          collect(child, 1, 50);
+        }
+
+        items.sort((a, b) => {
+          if (a.z !== b.z) return a.z - b.z;
+          return a.order - b.order;
+        });
+
+        // 3. Paint elements onto directRasterCanvas
+        for (let i = 0; i < items.length; i++) {
+          const item = items[i];
+          const { el, tag, cs, rect, opacity } = item;
+
+          ctx.save();
+          ctx.globalAlpha = Math.max(0, Math.min(1, opacity));
+
+          const rTL = parseFloat(cs.borderTopLeftRadius) || 0;
+          const rTR = parseFloat(cs.borderTopRightRadius) || 0;
+          const rBR = parseFloat(cs.borderBottomRightRadius) || 0;
+          const rBL = parseFloat(cs.borderBottomLeftRadius) || 0;
+
+          // Background fill
+          const bgColor = cs.backgroundColor;
+          if (bgColor && !isTransparentColor(bgColor)) {
+            buildRoundedRectPath(ctx, rect.left, rect.top, rect.width, rect.height, rTL, rTR, rBR, rBL);
+            ctx.fillStyle = bgColor;
+            ctx.fill();
+          }
+
+          // Border stroke
+          const bTop = parseFloat(cs.borderTopWidth) || 0;
+          const bRight = parseFloat(cs.borderRightWidth) || 0;
+          const bBottom = parseFloat(cs.borderBottomWidth) || 0;
+          const bLeft = parseFloat(cs.borderLeftWidth) || 0;
+          if (bTop > 0 && bTop === bRight && bTop === bBottom && bTop === bLeft) {
+            const bColor = cs.borderTopColor;
+            if (bColor && !isTransparentColor(bColor) && cs.borderTopStyle !== "none") {
+              buildRoundedRectPath(
+                ctx,
+                rect.left + bTop * 0.5,
+                rect.top + bTop * 0.5,
+                Math.max(0, rect.width - bTop),
+                Math.max(0, rect.height - bTop),
+                rTL,
+                rTR,
+                rBR,
+                rBL
+              );
+              ctx.strokeStyle = bColor;
+              ctx.lineWidth = bTop;
+              ctx.stroke();
+            }
+          } else {
+            if (bBottom > 0 && cs.borderBottomStyle !== "none" && !isTransparentColor(cs.borderBottomColor)) {
+              ctx.beginPath();
+              ctx.moveTo(rect.left, rect.bottom - bBottom * 0.5);
+              ctx.lineTo(rect.right, rect.bottom - bBottom * 0.5);
+              ctx.strokeStyle = cs.borderBottomColor;
+              ctx.lineWidth = bBottom;
+              ctx.stroke();
+            }
+            if (bTop > 0 && cs.borderTopStyle !== "none" && !isTransparentColor(cs.borderTopColor)) {
+              ctx.beginPath();
+              ctx.moveTo(rect.left, rect.top + bTop * 0.5);
+              ctx.lineTo(rect.right, rect.top + bTop * 0.5);
+              ctx.strokeStyle = cs.borderTopColor;
+              ctx.lineWidth = bTop;
+              ctx.stroke();
+            }
+          }
+
+          // Live <canvas> element (e.g. 3D DottedGlobeCanvas, Three.js WebGL, interactive shaders)
+          if (tag === "CANVAS" && el.width > 0 && el.height > 0) {
+            try {
+              ctx.save();
+              if (rTL > 0 || rTR > 0 || rBR > 0 || rBL > 0) {
+                buildRoundedRectPath(ctx, rect.left, rect.top, rect.width, rect.height, rTL, rTR, rBR, rBL);
+                ctx.clip();
+              }
+              ctx.drawImage(el, rect.left, rect.top, rect.width, rect.height);
+              const parentCs = el.parentElement ? window.getComputedStyle(el.parentElement) : null;
+              const maskImg =
+                (cs.maskImage && cs.maskImage !== "none" ? cs.maskImage : "") ||
+                (cs.webkitMaskImage && cs.webkitMaskImage !== "none" ? cs.webkitMaskImage : "") ||
+                (parentCs && parentCs.maskImage && parentCs.maskImage !== "none" ? parentCs.maskImage : "") ||
+                (parentCs && parentCs.webkitMaskImage && parentCs.webkitMaskImage !== "none"
+                  ? parentCs.webkitMaskImage
+                  : "");
+              if (maskImg && maskImg.indexOf("transparent") !== -1) {
+                const fadeGrad = ctx.createLinearGradient(0, rect.top + rect.height * 0.65, 0, rect.bottom);
+                fadeGrad.addColorStop(0, "rgba(10, 10, 10, 0)");
+                fadeGrad.addColorStop(1, isDark ? "#0a0a0a" : "#fafafa");
+                ctx.fillStyle = fadeGrad;
+                ctx.fillRect(rect.left, rect.top + rect.height * 0.65, rect.width, rect.height * 0.35);
+              }
+              ctx.restore();
+            } catch (e) {}
+          } else if (tag === "SVG") {
+            drawSvgElementToCanvas2D(ctx, el, rect, cs);
+          } else if (tag === "IMG" && el.complete && el.naturalWidth > 0) {
+            try {
+              const rawSrc = el.getAttribute("src") || el.src || "";
+              const isSafeImg =
+                rawSrc.startsWith("data:") || Boolean(tryInlineLiveImg(el, rawSrc));
+              ctx.save();
+              if (rTL > 0 || rTR > 0 || rBR > 0 || rBL > 0) {
+                buildRoundedRectPath(ctx, rect.left, rect.top, rect.width, rect.height, rTL, rTR, rBR, rBL);
+                ctx.clip();
+              }
+              if (isSafeImg) {
+                ctx.drawImage(el, rect.left, rect.top, rect.width, rect.height);
+              } else {
+                ctx.fillStyle = isDark ? "rgba(39, 39, 42, 0.55)" : "rgba(228, 228, 231, 0.7)";
+                ctx.fillRect(rect.left, rect.top, rect.width, rect.height);
+              }
+              ctx.restore();
+            } catch (e) {}
+          } else if (tag === "INPUT" || tag === "TEXTAREA") {
+            const val = el.value || el.getAttribute("placeholder") || "";
+            if (val) {
+              const padL = parseFloat(cs.paddingLeft) || 10;
+              const fontSizePx = parseFloat(cs.fontSize) || 13;
+              ctx.font =
+                (cs.fontStyle || "normal") +
+                " " +
+                (cs.fontWeight || "400") +
+                " " +
+                (cs.fontSize || "13px") +
+                " " +
+                (cs.fontFamily || "sans-serif");
+              ctx.fillStyle = el.value ? cs.color || "#fafafa" : "rgba(161, 161, 170, 0.7)";
+              ctx.fillText(val, rect.left + padL, rect.top + (rect.height + fontSizePx * 0.72) * 0.5);
+            }
+          }
+
+          // Direct text nodes of this element
+          drawElementTextNodes2D(ctx, el, cs);
+          ctx.restore();
+        }
+
+        ctx.restore();
+        return directRasterCanvas;
+      }
+
+      async function captureFastFrame(requestId, safeMode, canvasMode) {
         const t0 = performance.now();
         try {
           const root = document.getElementById("root");
@@ -2171,6 +2687,34 @@ export function buildVideoStudioRuntimeScript(): string {
 
           const width = Math.max(window.innerWidth || 1280, 320);
           const height = Math.max(window.innerHeight || 720, 180);
+
+          // Fast Path 0: Pure Canvas 2D DOM+Canvas+SVG+Text Renderer (100% immune to <foreignObject> canvas tainting!)
+          if (canvasMode) {
+            const rasterCanvas = renderDomToCanvas2D(root, width, height);
+            if (rasterCanvas) {
+              if (typeof createImageBitmap === "function") {
+                try {
+                  const bitmap = await createImageBitmap(rasterCanvas);
+                  const captureMs = Math.max(1, Math.round(performance.now() - t0));
+                  window.parent.postMessage(
+                    { type: "VIDEO_STUDIO_FRAME_BITMAP", requestId, bitmap, captureMs },
+                    "*",
+                    [bitmap]
+                  );
+                  return;
+                } catch (e) {}
+              }
+              const dataUrl = rasterCanvas.toDataURL("image/jpeg", 0.92);
+              const captureMs = Math.max(1, Math.round(performance.now() - t0));
+              postToParent({
+                type: "VIDEO_STUDIO_FRAME_DATA",
+                requestId,
+                dataUrl,
+                captureMs,
+              });
+              return;
+            }
+          }
 
           // Fast Path 1: Only use direct ImageBitmap when the component is a pure full-stage canvas with no HTML UI
           const allCanvases = root.querySelectorAll("canvas");
@@ -2196,7 +2740,8 @@ export function buildVideoStudioRuntimeScript(): string {
             }
           }
 
-          // Fast Path 2: Full DOM + Hybrid Canvas Compositor via SVG foreignObject Blob
+          // Fast Path 2: Full DOM + Hybrid Canvas Compositor via data:image/svg+xml;charset=utf-8,
+          // (Never use new Blob() inside a sandboxed null-origin iframe because Chromium taints blob: <foreignObject>!)
           const stylesText = safeMode ? "" : getCachedStylesText();
           const serializer = new XMLSerializer();
           const scrollY = window.scrollY || document.documentElement.scrollTop || 0;
@@ -2267,13 +2812,13 @@ export function buildVideoStudioRuntimeScript(): string {
             "</foreignObject>" +
             "</svg>";
 
-          const svgBlob = new Blob([svgString], { type: "image/svg+xml;charset=utf-8" });
+          const svgDataUrl = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svgString);
           const captureMs = Math.max(1, Math.round(performance.now() - t0));
 
           postToParent({
-            type: "VIDEO_STUDIO_FRAME_BLOB",
+            type: "VIDEO_STUDIO_FRAME_DATA",
             requestId,
-            blob: svgBlob,
+            dataUrl: svgDataUrl,
             captureMs,
           });
         } catch (err) {
@@ -2478,7 +3023,7 @@ export function buildVideoStudioRuntimeScript(): string {
         }
 
         if (msg.type === "VIDEO_STUDIO_CAPTURE_FRAME") {
-          captureFastFrame(msg.requestId, Boolean(msg.safeMode));
+          captureFastFrame(msg.requestId, Boolean(msg.safeMode), Boolean(msg.canvasMode));
         }
       });
 

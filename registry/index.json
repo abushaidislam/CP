@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-20T14:45:15.123Z",
+  "updatedAt": "2026-11-20T16:00:34.066Z",
   "totalComponents": 58,
   "components": [
     {
@@ -976,6 +976,46 @@
       ]
     },
     {
+      "id": "bento-metric-grid",
+      "slug": "bento-metric-grid",
+      "name": "Bento Metric Showcase Card",
+      "description": "Bento-style card showcasing real-time metrics, interactive sparkline charts, and micro-hover states.",
+      "category": "Cards",
+      "isBuiltIn": true,
+      "updatedAt": 1700000000000,
+      "lastRepoSyncAt": 1795190434052,
+      "path": "registry/components/bento-metric-grid",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "index.css",
+        "manifest.json"
+      ],
+      "dependencies": [
+        "lucide-react"
+      ]
+    },
+    {
+      "id": "live-ping-status-pill",
+      "slug": "live-ping-status-pill",
+      "name": "Live Telemetry Health Pill",
+      "description": "Real-time service health pill with animated beacon ping, latency counter, and status indicator.",
+      "category": "Badges",
+      "isBuiltIn": true,
+      "updatedAt": 1700000000000,
+      "lastRepoSyncAt": 1795190434052,
+      "path": "registry/components/live-ping-status-pill",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "index.css",
+        "manifest.json"
+      ],
+      "dependencies": [
+        "lucide-react"
+      ]
+    },
+    {
       "id": "aurora-ambient-hero",
       "slug": "aurora-ambient-hero",
       "name": "Aurora Ambient Mesh Hero",
@@ -983,8 +1023,28 @@
       "category": "Heroes",
       "isBuiltIn": true,
       "updatedAt": 1700000000000,
-      "lastRepoSyncAt": 1795185915107,
+      "lastRepoSyncAt": 1795190434052,
       "path": "registry/components/aurora-ambient-hero",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "index.css",
+        "manifest.json"
+      ],
+      "dependencies": [
+        "lucide-react"
+      ]
+    },
+    {
+      "id": "metric-badge",
+      "slug": "metric-badge",
+      "name": "Live Status Radar Badge",
+      "description": "Compact telemetry badge with animated pulsing ping, status tooltip, and gradient border.",
+      "category": "Badges",
+      "isBuiltIn": true,
+      "updatedAt": 1700000000000,
+      "lastRepoSyncAt": 1795190434052,
+      "path": "registry/components/metric-badge",
       "files": [
         "component.tsx",
         "default.tsx",
@@ -1003,7 +1063,7 @@
       "category": "Buttons",
       "isBuiltIn": true,
       "updatedAt": 1700000000000,
-      "lastRepoSyncAt": 1795185915107,
+      "lastRepoSyncAt": 1795190434052,
       "path": "registry/components/shimmer-button",
       "files": [
         "component.tsx",
@@ -1024,7 +1084,7 @@
       "category": "Heroes",
       "isBuiltIn": true,
       "updatedAt": 1700000000000,
-      "lastRepoSyncAt": 1795185915107,
+      "lastRepoSyncAt": 1795190434052,
       "path": "registry/components/ink-orbit-hero",
       "files": [
         "component.tsx",
@@ -1035,66 +1095,6 @@
       "dependencies": []
     },
     {
-      "id": "live-ping-status-pill",
-      "slug": "live-ping-status-pill",
-      "name": "Live Telemetry Health Pill",
-      "description": "Real-time service health pill with animated beacon ping, latency counter, and status indicator.",
-      "category": "Badges",
-      "isBuiltIn": true,
-      "updatedAt": 1700000000000,
-      "lastRepoSyncAt": 1795185915107,
-      "path": "registry/components/live-ping-status-pill",
-      "files": [
-        "component.tsx",
-        "default.tsx",
-        "index.css",
-        "manifest.json"
-      ],
-      "dependencies": [
-        "lucide-react"
-      ]
-    },
-    {
-      "id": "bento-metric-grid",
-      "slug": "bento-metric-grid",
-      "name": "Bento Metric Showcase Card",
-      "description": "Bento-style card showcasing real-time metrics, interactive sparkline charts, and micro-hover states.",
-      "category": "Cards",
-      "isBuiltIn": true,
-      "updatedAt": 1700000000000,
-      "lastRepoSyncAt": 1795185915107,
-      "path": "registry/components/bento-metric-grid",
-      "files": [
-        "component.tsx",
-        "default.tsx",
-        "index.css",
-        "manifest.json"
-      ],
-      "dependencies": [
-        "lucide-react"
-      ]
-    },
-    {
-      "id": "metric-badge",
-      "slug": "metric-badge",
-      "name": "Live Status Radar Badge",
-      "description": "Compact telemetry badge with animated pulsing ping, status tooltip, and gradient border.",
-      "category": "Badges",
-      "isBuiltIn": true,
-      "updatedAt": 1700000000000,
-      "lastRepoSyncAt": 1795185915107,
-      "path": "registry/components/metric-badge",
-      "files": [
-        "component.tsx",
-        "default.tsx",
-        "index.css",
-        "manifest.json"
-      ],
-      "dependencies": [
-        "lucide-react"
-      ]
-    },
-    {
       "id": "spotlight-card",
       "slug": "spotlight-card",
       "name": "Interactive Spotlight Card",
@@ -1102,7 +1102,7 @@
       "category": "Cards",
       "isBuiltIn": true,
       "updatedAt": 1700000000000,
-      "lastRepoSyncAt": 1795185915107,
+      "lastRepoSyncAt": 1795190434052,
       "path": "registry/components/spotlight-card",
       "files": [
         "component.tsx",
@@ -1125,7 +1125,7 @@
       "category": "Buttons",
       "isBuiltIn": true,
       "updatedAt": 1700000000000,
-      "lastRepoSyncAt": 1795185915107,
+      "lastRepoSyncAt": 1795190434052,
       "path": "registry/components/neon-glow-button",
       "files": [
         "component.tsx",
