@@ -1,18 +1,18 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-21T14:34:46.762Z",
+  "updatedAt": "2026-11-21T14:34:57.375Z",
   "totalComponents": 65,
   "components": [
     {
-      "id": "comp-1795158023910-or7yk",
-      "slug": "built-to-scale",
-      "name": "BuiltToScale",
-      "description": "",
-      "category": "Custom",
+      "id": "perspective-stack-gallery",
+      "slug": "perspective-stack-gallery",
+      "name": "Perspective Stack Gallery",
+      "description": "An interactive 3D perspective card stack gallery with receding depth geometry, tactile hover-peek previews, forward-tilting exit transitions, wheel and swipe navigation, and a vertical dot indicator rail.",
+      "category": "Cards",
       "isBuiltIn": false,
-      "updatedAt": 1795271682919,
-      "lastRepoSyncAt": 1795271686670,
-      "path": "registry/components/built-to-scale",
+      "updatedAt": 1795271693922,
+      "lastRepoSyncAt": 1795271697311,
+      "path": "registry/components/perspective-stack-gallery",
       "files": [
         "component.tsx",
         "default.tsx",
@@ -21,8 +21,7 @@
         "preview.png"
       ],
       "dependencies": [
-        "framer-motion",
-        "lucide-react"
+        "framer-motion"
       ]
     },
     {
@@ -48,15 +47,15 @@
       ]
     },
     {
-      "id": "perspective-stack-gallery",
-      "slug": "perspective-stack-gallery",
-      "name": "Perspective Stack Gallery",
-      "description": "An interactive 3D perspective card stack gallery with receding depth geometry, tactile hover-peek previews, forward-tilting exit transitions, wheel and swipe navigation, and a vertical dot indicator rail.",
-      "category": "Cards",
+      "id": "comp-1795158023910-or7yk",
+      "slug": "built-to-scale",
+      "name": "BuiltToScale",
+      "description": "",
+      "category": "Custom",
       "isBuiltIn": false,
-      "updatedAt": 1795264104072,
-      "lastRepoSyncAt": 1795264108631,
-      "path": "registry/components/perspective-stack-gallery",
+      "updatedAt": 1795270116439,
+      "lastRepoSyncAt": 1795270121638,
+      "path": "registry/components/built-to-scale",
       "files": [
         "component.tsx",
         "default.tsx",
@@ -65,7 +64,8 @@
         "preview.png"
       ],
       "dependencies": [
-        "framer-motion"
+        "framer-motion",
+        "lucide-react"
       ]
     },
     {

@@ -14,6 +14,14 @@ function cn(...classes: (string | undefined | null | false)[]) {
   return classes.filter(Boolean).join(" ");
 }
 
+function getStackOffsetY(offset: number): number {
+  let total = 0;
+  for (let k = 1; k <= offset; k++) {
+    total += 27 * Math.pow(0.915, k - 1);
+  }
+  return -total;
+}
+
 export interface GalleryCardItem {
   id: string;
   category: string;
@@ -734,8 +742,8 @@ export const PerspectiveStackGallery = React.forwardRef<
 
     const floorShadowStyle =
       theme === "dark"
-        ? "radial-gradient(ellipse 52% 48% at 50% 50%, rgba(0, 0, 0, 0.62) 0%, rgba(0, 0, 0, 0.28) 52%, transparent 82%)"
-        : "radial-gradient(ellipse 52% 48% at 50% 50%, rgba(15, 23, 42, 0.14) 0%, rgba(15, 23, 42, 0.06) 52%, transparent 82%)";
+        ? "radial-gradient(ellipse 54% 48% at 50% 50%, rgba(0, 0, 0, 0.62) 0%, rgba(0, 0, 0, 0.28) 52%, transparent 82%)"
+        : "radial-gradient(ellipse 54% 48% at 50% 50%, rgba(15, 23, 42, 0.14) 0%, rgba(15, 23, 42, 0.06) 52%, transparent 82%)";
 
     return (
       <div
@@ -749,7 +757,7 @@ export const PerspectiveStackGallery = React.forwardRef<
         onPointerDown={handlePointerDown}
         onPointerUp={handlePointerUp}
         className={cn(
-          "relative flex min-h-[560px] w-full select-none flex-col items-center justify-between overflow-hidden px-4 py-8 outline-none focus-visible:ring-2 focus-visible:ring-neutral-400/60 sm:min-h-[600px] sm:px-8 sm:py-10",
+          "relative flex min-h-[620px] w-full select-none flex-col items-center justify-between overflow-hidden px-4 py-8 outline-none focus-visible:ring-2 focus-visible:ring-neutral-400/60 sm:min-h-[660px] sm:px-8 sm:py-10",
           themeClasses,
           className
         )}
@@ -804,7 +812,7 @@ export const PerspectiveStackGallery = React.forwardRef<
 
         {/* 3D Perspective Stack Stage */}
         <div
-          className="relative flex w-full flex-1 items-center justify-center pt-28 pb-12 sm:pt-32 sm:pb-14"
+          className="relative flex w-full flex-1 items-center justify-center pt-48 pb-16 sm:pt-56 sm:pb-20"
           style={{
             perspective: "1150px",
             perspectiveOrigin: "50% 42%",
@@ -826,17 +834,11 @@ export const PerspectiveStackGallery = React.forwardRef<
               const isFront = offset === 0;
               const isHovered = hoveredOffset === offset && !isFront;
 
-              const baseY =
-                offset === 0
-                  ? 0
-                  : -(offset * 16.5 - Math.pow(offset, 1.32) * 0.42);
-              const scale = Math.pow(0.952, offset);
-              const peekLift = isHovered ? -18 : 0;
+              const baseY = getStackOffsetY(offset);
+              const scale = Math.pow(0.946, offset);
+              const peekLift = isHovered ? -24 : 0;
               const y = baseY + peekLift;
-              const opacity =
-                offset >= clampedVisible - 1
-                  ? 0.72
-                  : Math.max(0.84, 1 - offset * 0.02);
+              const opacity = offset >= clampedVisible - 1 ? 0.88 : 1;
 
               return (
                 <motion.button
@@ -869,8 +871,8 @@ export const PerspectiveStackGallery = React.forwardRef<
                             opacity: 0,
                           }
                         : {
-                            y: baseY - 14,
-                            scale: scale * 0.96,
+                            y: baseY - 16,
+                            scale: scale * 0.95,
                             rotateX: 0,
                             opacity: 0,
                           }
@@ -878,7 +880,7 @@ export const PerspectiveStackGallery = React.forwardRef<
                   animate={{
                     y,
                     scale,
-                    rotateX: isHovered ? -4 : 0,
+                    rotateX: isHovered ? -3 : 0,
                     opacity,
                   }}
                   transition={
@@ -893,13 +895,13 @@ export const PerspectiveStackGallery = React.forwardRef<
                   }
                   style={{
                     zIndex: clampedVisible - offset,
-                    transformOrigin: "50% 85%",
+                    transformOrigin: "50% 0%",
                     boxShadow: isFront
-                      ? "0 22px 48px -14px rgba(0, 0, 0, 0.22), 0 4px 12px -2px rgba(0, 0, 0, 0.08)"
-                      : "0 10px 24px -10px rgba(0, 0, 0, 0.16)",
+                      ? "0 24px 52px -14px rgba(0, 0, 0, 0.24), 0 -4px 14px -4px rgba(0, 0, 0, 0.12)"
+                      : "0 -3px 12px -4px rgba(0, 0, 0, 0.14), 0 12px 24px -10px rgba(0, 0, 0, 0.14)",
                   }}
                   className={cn(
-                    "absolute inset-0 h-full w-full cursor-pointer overflow-hidden rounded-[18px] text-left outline-none ring-1 ring-inset ring-black/[0.08] focus-visible:ring-2 focus-visible:ring-neutral-900 dark:ring-white/[0.12] dark:focus-visible:ring-neutral-100 sm:rounded-[22px]"
+                    "absolute inset-0 h-full w-full cursor-pointer overflow-hidden rounded-[18px] text-left outline-none ring-1 ring-inset ring-black/[0.08] focus-visible:ring-2 focus-visible:ring-neutral-900 dark:ring-white/[0.14] dark:focus-visible:ring-neutral-100 sm:rounded-[22px]"
                   )}
                 >
                   {item.image ? (
@@ -919,7 +921,7 @@ export const PerspectiveStackGallery = React.forwardRef<
                     aria-hidden="true"
                     className="pointer-events-none absolute inset-0 rounded-[inherit]"
                     style={{
-                      boxShadow: "inset 0 1px 0 0 rgba(255, 255, 255, 0.28)",
+                      boxShadow: "inset 0 1px 0 0 rgba(255, 255, 255, 0.34)",
                     }}
                   />
                 </motion.button>

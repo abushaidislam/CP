@@ -5,7 +5,7 @@ import { PerspectiveStackGallery } from "@/components/ui/component";
 
 const settings = {
   theme: "auto",
-  visibleCards: 10,
+  visibleCards: 11,
   enableWheel: true,
   showIndicators: true,
 };
@@ -31,16 +31,23 @@ export function PerspectiveStackGalleryDemo(
     typeof config.visibleCards === "number" &&
     Number.isFinite(config.visibleCards)
       ? Math.max(3, Math.min(12, Math.round(config.visibleCards)))
-      : 10;
+      : 11;
 
   return (
-    <div className="flex min-h-[580px] w-full items-center justify-center p-4 sm:p-8">
-      <PerspectiveStackGallery
-        theme={resolvedTheme}
-        visibleCards={resolvedVisibleCards}
-        enableWheel={Boolean(config.enableWheel)}
-        showIndicators={Boolean(config.showIndicators)}
-      />
+    <div className="flex min-h-[620px] w-full flex-col items-center justify-center overflow-hidden">
+      <div className="relative flex w-full max-w-4xl flex-col items-center justify-center">
+        <PerspectiveStackGallery
+          theme={resolvedTheme}
+          visibleCards={resolvedVisibleCards}
+          enableWheel={Boolean(config.enableWheel)}
+          showIndicators={Boolean(config.showIndicators)}
+          className="min-h-[580px] py-6 sm:min-h-[620px] sm:py-8"
+        />
+        <div
+          aria-hidden="true"
+          className="pointer-events-none mx-auto h-px w-[min(78%,520px)] bg-neutral-200/80 dark:bg-neutral-800/80"
+        />
+      </div>
     </div>
   );
 }
