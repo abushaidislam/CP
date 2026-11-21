@@ -200,13 +200,19 @@ export function compileSandboxHtml(
   <script>
     (function() {
       try {
-        var origGetContext = HTMLCanvasElement.prototype.getContext;
-        HTMLCanvasElement.prototype.getContext = function(type, attributes) {
-          if (type === "webgl" || type === "webgl2" || type === "experimental-webgl") {
-            attributes = Object.assign({}, attributes || {}, { preserveDrawingBuffer: true });
-          }
-          return origGetContext.call(this, type, attributes);
-        };
+        if (!HTMLCanvasElement.prototype.__studioPatchedGetContext) {
+          var origGetContext = HTMLCanvasElement.prototype.getContext;
+          HTMLCanvasElement.prototype.getContext = function(type, attributes) {
+            if (type === "webgl" || type === "webgl2" || type === "experimental-webgl") {
+              attributes = Object.assign({}, attributes || {}, { preserveDrawingBuffer: true });
+            }
+            return origGetContext.call(this, type, attributes);
+          };
+          Object.defineProperty(HTMLCanvasElement.prototype, "__studioPatchedGetContext", {
+            value: true,
+            configurable: true
+          });
+        }
       } catch (e) {}
       try {
         window.localStorage.getItem("__test__");
@@ -223,15 +229,6 @@ export function compileSandboxHtml(
         try { Object.defineProperty(window, "localStorage", { value: fakeStorage }); } catch (err) {}
         try { Object.defineProperty(window, "sessionStorage", { value: fakeStorage }); } catch (err) {}
       }
-      try {
-        var origGetContext = HTMLCanvasElement.prototype.getContext;
-        HTMLCanvasElement.prototype.getContext = function(type, attrs) {
-          if (type === "webgl" || type === "webgl2" || type === "experimental-webgl") {
-            attrs = Object.assign({}, attrs || {}, { preserveDrawingBuffer: true });
-          }
-          return origGetContext.call(this, type, attrs);
-        };
-      } catch (e) {}
     })();
   </script>
   
@@ -763,9 +760,13 @@ export function compileSandboxHtml(
               );
             }
             return React.createElement(
-              "div",
-              { className: "min-h-full w-full flex flex-col items-center justify-center p-6" },
-              React.createElement(ComponentFromCode, demoProps)
+              ErrorBoundary,
+              null,
+              React.createElement(
+                "div",
+                { className: "min-h-full w-full flex flex-col items-center justify-center p-6" },
+                React.createElement(ComponentFromCode, demoProps)
+              )
             );
           };
 

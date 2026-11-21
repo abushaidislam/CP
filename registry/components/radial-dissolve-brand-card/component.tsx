@@ -337,7 +337,12 @@ function RadialDissolveCanvas({
 }: RadialDissolveCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const offscreenRef = useRef<HTMLCanvasElement | null>(null);
+  const startTimeRef = useRef<number | null>(null);
   const manualStartRef = useRef<number>(0);
+  const activeModeRef = useRef<DissolveMode>(activeMode);
+  activeModeRef.current = activeMode;
+  const onAutoModeSyncRef = useRef(onAutoModeSync);
+  onAutoModeSyncRef.current = onAutoModeSync;
   const lastReportedModeRef = useRef<DissolveMode>(activeMode);
 
   useEffect(() => {
@@ -370,7 +375,10 @@ function RadialDissolveCanvas({
     canvas.height = logicalSize * dpr;
 
     let rafId = 0;
-    const startTime = performance.now();
+    if (startTimeRef.current === null) {
+      startTimeRef.current = performance.now();
+    }
+    const startTime = startTimeRef.current;
     const safeDuration = Math.max(2400, cycleDuration);
 
     // 9 spoke steps per cycle (9 * 45deg = 405deg) -> 0.644s per spoke step, seamless 8-fold loop
@@ -391,8 +399,9 @@ function RadialDissolveCanvas({
       ctx.fillStyle = accentColor;
       ctx.fillRect(0, 0, logicalSize, logicalSize);
 
-      let baseMode: DissolveMode = activeMode;
-      let nextMode: DissolveMode = activeMode;
+      const currentActiveMode = activeModeRef.current;
+      let baseMode: DissolveMode = currentActiveMode;
+      let nextMode: DissolveMode = currentActiveMode;
       let wipeT = 0;
 
       if (autoCycle && !reducedMotion) {
@@ -433,14 +442,14 @@ function RadialDissolveCanvas({
         const effectiveMode = wipeT > 0.5 ? nextMode : baseMode;
         if (lastReportedModeRef.current !== effectiveMode) {
           lastReportedModeRef.current = effectiveMode;
-          onAutoModeSync(effectiveMode);
+          onAutoModeSyncRef.current(effectiveMode);
         }
       } else if (manualWipeTrigger > 0 && !reducedMotion) {
         const manualElapsed = now - manualStartRef.current;
         const manualDuration = 580;
         if (manualElapsed < manualDuration) {
           baseMode = prevManualMode;
-          nextMode = activeMode;
+          nextMode = currentActiveMode;
           wipeT = easeInOutQuart(Math.min(1, manualElapsed / manualDuration));
         }
       }
@@ -493,11 +502,9 @@ function RadialDissolveCanvas({
     accentColor,
     autoCycle,
     cycleDuration,
-    activeMode,
     manualWipeTrigger,
     prevManualMode,
     reducedMotion,
-    onAutoModeSync,
   ]);
 
   return (

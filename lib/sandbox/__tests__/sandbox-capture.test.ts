@@ -204,4 +204,20 @@ describe("Live Canvas Snapshot Capture Protocol (compileSandboxHtml)", () => {
     expect(videoResult.error).toBeNull();
     expect(videoResult.html).toContain("initVideoStudioRuntime");
   });
+
+  it("should patch HTMLCanvasElement.prototype.getContext only once and wrap fallback ComponentFromCode in an inner ErrorBoundary", () => {
+    const result = compileSandboxHtml(
+      sampleComponent,
+      sampleDemo,
+      "",
+      ["react", "react-dom"]
+    );
+
+    expect(result.error).toBeNull();
+    const origGetContextMatches = result.html.match(/var origGetContext = HTMLCanvasElement\.prototype\.getContext/g) || [];
+    expect(origGetContextMatches.length).toBe(1);
+    expect(result.html).toContain("__studioPatchedGetContext");
+    expect(result.html).toContain("React.createElement(\n              ErrorBoundary,\n              null,");
+  });
 });
+
