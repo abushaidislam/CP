@@ -6,8 +6,8 @@
   "category": "Custom",
   "isBuiltIn": false,
   "createdAt": 1795086871704,
-  "updatedAt": 1795281696171,
-  "lastRepoSyncAt": 1795281702141,
+  "updatedAt": 1795281762012,
+  "lastRepoSyncAt": 1795281771990,
   "dependencies": [
     "clsx",
     "tailwind-merge",

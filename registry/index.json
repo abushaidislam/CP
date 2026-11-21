@@ -1,7 +1,7 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-21T17:21:42.359Z",
-  "totalComponents": 66,
+  "updatedAt": "2026-11-21T17:22:52.293Z",
+  "totalComponents": 69,
   "components": [
     {
       "id": "comp-1795086871704-ydhci",
@@ -10,8 +10,8 @@
       "description": "A sleek, detaching accordion where the active item smoothly splits away from adjacent rows into an elevated rounded card while collapsed neighbors seamlessly re-merge.",
       "category": "Custom",
       "isBuiltIn": false,
-      "updatedAt": 1795281696171,
-      "lastRepoSyncAt": 1795281702141,
+      "updatedAt": 1795281762012,
+      "lastRepoSyncAt": 1795281771990,
       "path": "registry/components/split-accordion",
       "files": [
         "component.tsx",
@@ -27,14 +27,79 @@
       ]
     },
     {
+      "id": "task-notification-stack",
+      "slug": "task-notification-stack",
+      "name": "TaskNotificationStack",
+      "description": "A tactile double-bezel stacked task notification widget with spring-animated completion, snooze cycling, and contextual overflow actions.",
+      "category": "Widgets",
+      "isBuiltIn": false,
+      "updatedAt": 1795280922977,
+      "lastRepoSyncAt": 1795280925880,
+      "path": "registry/components/task-notification-stack",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "index.css",
+        "manifest.json",
+        "preview.png"
+      ],
+      "dependencies": [
+        "framer-motion",
+        "lucide-react"
+      ]
+    },
+    {
+      "id": "followers-trend-card",
+      "slug": "followers-trend-card",
+      "name": "FollowersTrendCard",
+      "description": "Interactive pastel analytics card visualizing follower growth with 31 scrubbable vertical bars, a decaying hover wake trail, spring-tracked floating tooltip pill, and staggered rolling KPI digits.",
+      "category": "Cards",
+      "isBuiltIn": false,
+      "updatedAt": 1795280903993,
+      "lastRepoSyncAt": 1795280907133,
+      "path": "registry/components/followers-trend-card",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "index.css",
+        "manifest.json",
+        "preview.png"
+      ],
+      "dependencies": [
+        "framer-motion",
+        "lucide-react"
+      ]
+    },
+    {
+      "id": "workflow-integration-card",
+      "slug": "workflow-integration-card",
+      "name": "WorkflowIntegrationCard",
+      "description": "Tailored operations bento card featuring an interactive dot-grid workflow integration diagram with animated dashed connector pulses, crisp SVG app clusters, and a diagonal-hatched footer.",
+      "category": "Cards",
+      "isBuiltIn": false,
+      "updatedAt": 1795280019106,
+      "lastRepoSyncAt": 1795280023381,
+      "path": "registry/components/workflow-integration-card",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "index.css",
+        "manifest.json",
+        "preview.png"
+      ],
+      "dependencies": [
+        "framer-motion"
+      ]
+    },
+    {
       "id": "bento-brand-footer",
       "slug": "bento-brand-footer",
       "name": "Bento Brand Footer",
       "description": "A modern SaaS bento-grid footer featuring a textured royal-blue gradient brand card, an interactive 3D glossy floating badge, dual navigation columns, an email newsletter capture form, and an oversized background wordmark.",
       "category": "Navigation",
       "isBuiltIn": false,
-      "updatedAt": 1795279024770,
-      "lastRepoSyncAt": 1795279044049,
+      "updatedAt": 1795279606304,
+      "lastRepoSyncAt": 1795279616118,
       "path": "registry/components/bento-brand-footer",
       "files": [
         "component.tsx",
