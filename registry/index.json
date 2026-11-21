@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-21T13:58:16.889Z",
+  "updatedAt": "2026-11-21T14:08:41.875Z",
   "totalComponents": 65,
   "components": [
     {
@@ -10,15 +10,14 @@
       "description": "",
       "category": "Custom",
       "isBuiltIn": false,
-      "updatedAt": 1795269490499,
-      "lastRepoSyncAt": 1795269496810,
+      "updatedAt": 1795270116439,
+      "lastRepoSyncAt": 1795270121638,
       "path": "registry/components/built-to-scale",
       "files": [
         "component.tsx",
         "default.tsx",
         "index.css",
-        "manifest.json",
-        "preview.png"
+        "manifest.json"
       ],
       "dependencies": [
         "framer-motion",
@@ -32,8 +31,8 @@
       "description": "A Swiss-editorial brand identity bento card featuring a real-time 60fps radial dissolve shader that morphs an 8-spoke emblem across smooth, scanline halftone, and ASCII matrix states, paired with isometric mobile app icon and browser favicon mockups.",
       "category": "Cards",
       "isBuiltIn": false,
-      "updatedAt": 1795267308486,
-      "lastRepoSyncAt": 1795267314132,
+      "updatedAt": 1795269645542,
+      "lastRepoSyncAt": 1795269645542,
       "path": "registry/components/radial-dissolve-brand-card",
       "files": [
         "component.tsx",
