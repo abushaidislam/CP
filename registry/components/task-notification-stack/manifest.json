@@ -6,8 +6,8 @@
   "category": "Widgets",
   "isBuiltIn": false,
   "createdAt": 1795280872014,
-  "updatedAt": 1795282575637,
-  "lastRepoSyncAt": 1795282580718,
+  "updatedAt": 1795282818071,
+  "lastRepoSyncAt": 1795282823545,
   "dependencies": [
     "framer-motion",
     "lucide-react"

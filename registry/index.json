@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-21T17:36:20.960Z",
+  "updatedAt": "2026-11-21T17:40:23.633Z",
   "totalComponents": 69,
   "components": [
     {
@@ -10,8 +10,8 @@
       "description": "A tactile double-bezel stacked task notification widget with swipe-to-act gestures, hover stack fan-out, icon micro-animations, optional undo toast, and subtle Web Audio chimes.",
       "category": "Widgets",
       "isBuiltIn": false,
-      "updatedAt": 1795282575637,
-      "lastRepoSyncAt": 1795282580718,
+      "updatedAt": 1795282818071,
+      "lastRepoSyncAt": 1795282823545,
       "path": "registry/components/task-notification-stack",
       "files": [
         "component.tsx",
