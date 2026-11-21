@@ -1,8 +1,30 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-21T17:22:52.293Z",
+  "updatedAt": "2026-11-21T17:36:20.960Z",
   "totalComponents": 69,
   "components": [
+    {
+      "id": "task-notification-stack",
+      "slug": "task-notification-stack",
+      "name": "TaskNotificationStack",
+      "description": "A tactile double-bezel stacked task notification widget with swipe-to-act gestures, hover stack fan-out, icon micro-animations, optional undo toast, and subtle Web Audio chimes.",
+      "category": "Widgets",
+      "isBuiltIn": false,
+      "updatedAt": 1795282575637,
+      "lastRepoSyncAt": 1795282580718,
+      "path": "registry/components/task-notification-stack",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "index.css",
+        "manifest.json",
+        "preview.png"
+      ],
+      "dependencies": [
+        "framer-motion",
+        "lucide-react"
+      ]
+    },
     {
       "id": "comp-1795086871704-ydhci",
       "slug": "split-accordion",
@@ -17,33 +39,12 @@
         "component.tsx",
         "default.tsx",
         "index.css",
-        "manifest.json"
-      ],
-      "dependencies": [
-        "clsx",
-        "tailwind-merge",
-        "framer-motion",
-        "lucide-react"
-      ]
-    },
-    {
-      "id": "task-notification-stack",
-      "slug": "task-notification-stack",
-      "name": "TaskNotificationStack",
-      "description": "A tactile double-bezel stacked task notification widget with spring-animated completion, snooze cycling, and contextual overflow actions.",
-      "category": "Widgets",
-      "isBuiltIn": false,
-      "updatedAt": 1795280922977,
-      "lastRepoSyncAt": 1795280925880,
-      "path": "registry/components/task-notification-stack",
-      "files": [
-        "component.tsx",
-        "default.tsx",
-        "index.css",
         "manifest.json",
         "preview.png"
       ],
       "dependencies": [
+        "clsx",
+        "tailwind-merge",
         "framer-motion",
         "lucide-react"
       ]

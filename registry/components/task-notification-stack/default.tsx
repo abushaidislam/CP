@@ -10,6 +10,9 @@ const settings = {
   primaryLabel: "Mark as Done",
   secondaryLabel: "Remind Me Later",
   stackDepth: 3,
+  enableSwipe: true,
+  soundEnabled: true,
+  showUndoToast: false,
 };
 
 const VALID_THEMES = ["auto", "light", "dark"] as const;
@@ -19,7 +22,9 @@ export default function TaskNotificationStackDemo(
 ) {
   const config = { ...settings, ...props };
 
-  const theme = VALID_THEMES.includes(config.theme as (typeof VALID_THEMES)[number])
+  const theme = VALID_THEMES.includes(
+    config.theme as (typeof VALID_THEMES)[number]
+  )
     ? (config.theme as "auto" | "light" | "dark")
     : "auto";
 
@@ -37,6 +42,9 @@ export default function TaskNotificationStackDemo(
         primaryLabel={config.primaryLabel}
         secondaryLabel={config.secondaryLabel}
         stackDepth={stackDepth}
+        enableSwipe={Boolean(config.enableSwipe)}
+        soundEnabled={Boolean(config.soundEnabled)}
+        showUndoToast={Boolean(config.showUndoToast)}
       />
     </div>
   );
