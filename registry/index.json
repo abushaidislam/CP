@@ -1,24 +1,42 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-21T17:46:04.235Z",
-  "totalComponents": 70,
+  "updatedAt": "2026-11-21T18:11:19.816Z",
+  "totalComponents": 71,
   "components": [
+    {
+      "id": "developer-profile-grid",
+      "slug": "developer-profile-grid",
+      "name": "DeveloperProfileGrid",
+      "description": "A responsive multi-card grid of layered dark developer availability profile cards with neon cradle trays, animated availability filtering, per-card clipboard copy, and hover lift motion.",
+      "category": "Cards",
+      "isBuiltIn": false,
+      "updatedAt": 1795284679570,
+      "lastRepoSyncAt": 1795284679570,
+      "path": "registry/components/developer-profile-grid",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "manifest.json"
+      ],
+      "dependencies": [
+        "framer-motion",
+        "lucide-react"
+      ]
+    },
     {
       "id": "developer-profile-card",
       "slug": "developer-profile-card",
       "name": "DeveloperProfileCard",
-      "description": "A layered dark developer availability profile card cradled in a neon-lime status tray, featuring live availability pulse, clipboard copy feedback, and tactile Framer Motion hover lift.",
+      "description": "A layered dark developer availability profile card cradled in a neon-lime bottom status tray, featuring live availability pulse, clipboard copy feedback, and tactile Framer Motion hover lift.",
       "category": "Cards",
       "isBuiltIn": false,
-      "updatedAt": 1795283159737,
-      "lastRepoSyncAt": 1795283164167,
+      "updatedAt": 1795283347128,
+      "lastRepoSyncAt": 1795283347128,
       "path": "registry/components/developer-profile-card",
       "files": [
         "component.tsx",
         "default.tsx",
-        "index.css",
-        "manifest.json",
-        "preview.png"
+        "manifest.json"
       ],
       "dependencies": [
         "framer-motion",
@@ -39,8 +57,7 @@
         "component.tsx",
         "default.tsx",
         "index.css",
-        "manifest.json",
-        "preview.png"
+        "manifest.json"
       ],
       "dependencies": [
         "clsx",
