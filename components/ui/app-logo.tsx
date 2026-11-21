@@ -13,31 +13,31 @@ const SIZE_CONFIG = {
 export interface AppLogoProps {
   size?: keyof typeof SIZE_CONFIG;
   /**
-   * "tile" renders the icon on a crisp white framed tile that pops cleanly
-   * in both dark and light mode headers. "mark" renders the transparent cutout.
+   * "mark" renders the transparent brand mark cutout with natural shadows.
+   * "tile" renders the icon on a framed tile with subtle depth.
    */
-  variant?: "tile" | "mark";
+  variant?: "mark" | "tile";
   priority?: boolean;
   className?: string;
 }
 
 export function AppLogo({
   size = "md",
-  variant = "tile",
+  variant = "mark",
   priority = false,
   className,
 }: AppLogoProps) {
   const { px, boxClass } = SIZE_CONFIG[size];
   const src =
-    variant === "mark" ? "/brand/logo-mark.png" : "/brand/app-icon-512.png";
+    variant === "tile" ? "/brand/app-icon-512.png" : "/brand/logo-mark.png";
 
   return (
     <span
       className={cn(
-        "relative inline-flex shrink-0 items-center justify-center overflow-hidden select-none",
+        "relative inline-flex shrink-0 items-center justify-center select-none",
         boxClass,
         variant === "tile" &&
-          "bg-white ring-1 ring-inset ring-black/10 dark:ring-white/15 shadow-2xs rounded-[4px]",
+          "bg-zinc-900/80 dark:bg-zinc-900 ring-1 ring-inset ring-white/10 dark:ring-white/15 shadow-2xs rounded-[6px] overflow-hidden p-0.5",
         className
       )}
     >
