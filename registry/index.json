@@ -1,18 +1,18 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-21T17:08:27.408Z",
+  "updatedAt": "2026-11-21T17:08:45.948Z",
   "totalComponents": 67,
   "components": [
     {
-      "id": "followers-trend-card",
-      "slug": "followers-trend-card",
-      "name": "FollowersTrendCard",
-      "description": "Interactive pastel analytics card visualizing follower growth with 31 scrubbable vertical bars, a decaying hover wake trail, spring-tracked floating tooltip pill, and staggered rolling KPI digits.",
-      "category": "Cards",
+      "id": "task-notification-stack",
+      "slug": "task-notification-stack",
+      "name": "TaskNotificationStack",
+      "description": "A tactile double-bezel stacked task notification widget with spring-animated completion, snooze cycling, and contextual overflow actions.",
+      "category": "Widgets",
       "isBuiltIn": false,
-      "updatedAt": 1795280903993,
-      "lastRepoSyncAt": 1795280907133,
-      "path": "registry/components/followers-trend-card",
+      "updatedAt": 1795280922977,
+      "lastRepoSyncAt": 1795280925880,
+      "path": "registry/components/task-notification-stack",
       "files": [
         "component.tsx",
         "default.tsx",
