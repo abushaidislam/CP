@@ -2,13 +2,7 @@
 
 import React, { useId, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
-import {
-  Droplet,
-  SquarePen,
-  LayoutGrid,
-  Flag,
-  AlertCircle,
-} from "lucide-react";
+import { Flag } from "lucide-react";
 
 function cn(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");
@@ -66,29 +60,29 @@ export interface RetainerSolutionShowcaseProps
 }
 
 const DEFAULT_USAGE_METRICS: UsageBreakdownItem[] = [
-  { id: "spent", label: "Spent", value: 8, color: "#79A8F8" },
-  { id: "projected", label: "Projected", value: 15, color: "#B689EC" },
+  { id: "spent", label: "Spent", value: 8, color: "#7DA9F7" },
+  { id: "projected", label: "Projected", value: 15, color: "#B884EB" },
   { id: "available", label: "Available", value: 23, color: "#EE9777" },
-  { id: "rollover", label: "Rollover", value: 12, color: "#EED268" },
+  { id: "rollover", label: "Rollover", value: 12, color: "#E9CC65" },
 ];
 
 const DEFAULT_TASK_STATUSES: TaskStatusItem[] = [
-  { id: "todo", label: "To do", count: 8, percent: 42, color: "#6FA3F7" },
+  { id: "todo", label: "To do", count: 8, percent: 54, color: "#72A4F5" },
   {
     id: "design",
     label: "In design",
     count: 12,
-    percent: 68,
-    color: "#B689EC",
+    percent: 76,
+    color: "#B986EB",
   },
-  { id: "dev", label: "In dev", count: 10, percent: 56, color: "#EE9268" },
-  { id: "client", label: "In client", count: 5, percent: 28, color: "#E8C858" },
+  { id: "dev", label: "In dev", count: 10, percent: 67, color: "#E68D6A" },
+  { id: "client", label: "In client", count: 5, percent: 34, color: "#DFC05B" },
 ];
 
 const SMOOTH_EASE: [number, number, number, number] = [0.22, 1, 0.36, 1];
 
 /* -------------------------------------------------------------------------- */
-/* Pure SVG Brand Marks (Zero <svg><text>)                                    */
+/* Pure SVG Brand Marks & Custom Card Header Icons (Zero <svg><text>)         */
 /* -------------------------------------------------------------------------- */
 
 function AsanaLogo() {
@@ -181,11 +175,25 @@ function ClickUpLogo({ uid }: { uid: string }) {
         className="shrink-0"
       >
         <defs>
-          <linearGradient id={topGradId} x1="3" y1="11" x2="19" y2="3" gradientUnits="userSpaceOnUse">
+          <linearGradient
+            id={topGradId}
+            x1="3"
+            y1="11"
+            x2="19"
+            y2="3"
+            gradientUnits="userSpaceOnUse"
+          >
             <stop stopColor="#FD71AF" />
             <stop offset="1" stopColor="#FFC800" />
           </linearGradient>
-          <linearGradient id={botGradId} x1="2" y1="18" x2="20" y2="18" gradientUnits="userSpaceOnUse">
+          <linearGradient
+            id={botGradId}
+            x1="2"
+            y1="18"
+            x2="20"
+            y2="18"
+            gradientUnits="userSpaceOnUse"
+          >
             <stop stopColor="#7B68EE" />
             <stop offset="1" stopColor="#49CCF9" />
           </linearGradient>
@@ -265,17 +273,125 @@ function HubEmblem() {
   );
 }
 
+/** Half-filled droplet icon matching reference Card 1 */
+function UsageDropletIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      width="17"
+      height="17"
+      viewBox="0 0 18 18"
+      fill="none"
+      aria-hidden="true"
+      className={cn("shrink-0", className)}
+    >
+      <path
+        d="M9 2.2C9 2.2 4 7.7 4 11.2C4 14 6.24 16.2 9 16.2C11.76 16.2 14 14 14 11.2C14 7.7 9 2.2 9 2.2Z"
+        stroke="currentColor"
+        strokeOpacity="0.32"
+        strokeWidth="1.35"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M5.15 11.7H12.85C12.55 13.65 10.95 15.1 9 15.1C7.05 15.1 5.45 13.65 5.15 11.7Z"
+        fill="currentColor"
+      />
+    </svg>
+  );
+}
+
+/** Clipboard with solid inner pencil icon matching reference Card 2 */
+function TaskClipboardIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      width="17"
+      height="17"
+      viewBox="0 0 18 18"
+      fill="none"
+      aria-hidden="true"
+      className={cn("shrink-0", className)}
+    >
+      <rect
+        x="2.6"
+        y="3.2"
+        width="12.8"
+        height="12.6"
+        rx="2.6"
+        stroke="currentColor"
+        strokeOpacity="0.32"
+        strokeWidth="1.3"
+      />
+      <path
+        d="M6.8 3.2V2.4C6.8 2.07 7.07 1.8 7.4 1.8H10.6C10.93 1.8 11.2 2.07 11.2 2.4V3.2"
+        stroke="currentColor"
+        strokeOpacity="0.38"
+        strokeWidth="1.25"
+        strokeLinecap="round"
+      />
+      <path
+        d="M10.95 6.35L12.15 7.55L7.95 11.75L6.2 12.25L6.7 10.5L10.95 6.35Z"
+        fill="currentColor"
+      />
+    </svg>
+  );
+}
+
+/** 2x2 grid icon with top-left solid square matching reference Card 3 */
+function PortalGridIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 18 18"
+      fill="none"
+      aria-hidden="true"
+      className={cn("shrink-0", className)}
+    >
+      <rect x="2.2" y="2.2" width="5.6" height="5.6" rx="1.4" fill="currentColor" />
+      <rect
+        x="10.2"
+        y="2.2"
+        width="5.6"
+        height="5.6"
+        rx="1.4"
+        stroke="currentColor"
+        strokeOpacity="0.32"
+        strokeWidth="1.3"
+      />
+      <rect
+        x="2.2"
+        y="10.2"
+        width="5.6"
+        height="5.6"
+        rx="1.4"
+        stroke="currentColor"
+        strokeOpacity="0.32"
+        strokeWidth="1.3"
+      />
+      <rect
+        x="10.2"
+        y="10.2"
+        width="5.6"
+        height="5.6"
+        rx="1.4"
+        stroke="currentColor"
+        strokeOpacity="0.32"
+        strokeWidth="1.3"
+      />
+    </svg>
+  );
+}
+
 function MiniAvatar({
   initials,
-  bg,
+  gradient,
 }: {
   initials: string;
-  bg: string;
+  gradient: string;
 }) {
   return (
     <span
-      className="inline-flex h-4 w-4 items-center justify-center rounded-full text-[7px] font-semibold text-white ring-[1.5px] ring-white dark:ring-zinc-900"
-      style={{ backgroundColor: bg }}
+      className="inline-flex h-[18px] w-[18px] items-center justify-center rounded-full text-[7px] font-semibold text-white ring-[1.5px] ring-white dark:ring-zinc-900 shadow-sm"
+      style={{ background: gradient }}
       aria-hidden="true"
     >
       {initials}
@@ -380,12 +496,32 @@ export const RetainerSolutionShowcase = React.forwardRef<
     "dark:border-zinc-400/50 dark:ring-white/10 dark:shadow-[0_10px_24px_-8px_rgba(0,0,0,0.6)]"
   );
 
+  const getMeshStyle = (rgba: string): React.CSSProperties => ({
+    backgroundImage: `linear-gradient(to right, ${rgba} 1px, transparent 1px), linear-gradient(to bottom, ${rgba} 1px, transparent 1px)`,
+    backgroundSize: "5px 5px",
+    maskImage:
+      "linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.35) 30%, rgba(0,0,0,0.95) 100%)",
+    WebkitMaskImage:
+      "linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.35) 30%, rgba(0,0,0,0.95) 100%)",
+  });
+
+  const revealInitial = (y = 16, x = 0, scale = 1) =>
+    prefersReducedMotion ? false : { opacity: 0, y, x, scale };
+
+  const revealAnimate = { opacity: 1, y: 0, x: 0, scale: 1 };
+
+  const pathRevealInitial = prefersReducedMotion
+    ? false
+    : { pathLength: 0, opacity: 0 };
+
+  const pathRevealAnimate = { pathLength: 1, opacity: 1 };
+
   return (
     <section
       ref={ref}
       aria-labelledby={`${uid}-heading`}
       className={cn(
-        "relative w-full max-w-[1040px] mx-auto overflow-hidden rounded-[28px] border px-5 py-10 sm:px-9 sm:py-12 lg:px-14 lg:py-14 font-sans antialiased transition-colors duration-200",
+        "relative w-full max-w-[1060px] mx-auto overflow-hidden rounded-[28px] border px-5 py-10 sm:px-9 sm:py-12 lg:px-14 lg:py-14 font-sans antialiased transition-colors duration-200",
         themeClass(
           "bg-[#F6F6F8] border-[#EBEBF0] text-[#18181F] shadow-[0_18px_50px_-24px_rgba(15,23,42,0.12)]",
           "bg-[#101014] border-zinc-800/90 text-zinc-100 shadow-[0_24px_60px_-24px_rgba(0,0,0,0.65)]",
@@ -408,10 +544,13 @@ export const RetainerSolutionShowcase = React.forwardRef<
         )}
       />
 
-      {/* Header Block */}
+      {/* Beat 1: Header Block */}
       <header className="mx-auto flex max-w-[660px] flex-col items-center text-center">
         {eyebrow && (
-          <div
+          <motion.div
+            initial={revealInitial(10, 0, 0.94)}
+            animate={revealAnimate}
+            transition={{ duration: 0.45, ease: SMOOTH_EASE }}
             className={cn(
               "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em]",
               themeClass(
@@ -436,7 +575,7 @@ export const RetainerSolutionShowcase = React.forwardRef<
               />
             </span>
             <span>{eyebrow}</span>
-          </div>
+          </motion.div>
         )}
 
         <h2
@@ -447,38 +586,57 @@ export const RetainerSolutionShowcase = React.forwardRef<
           )}
         >
           {headingLines.map((line, idx) => (
-            <React.Fragment key={idx}>
+            <motion.span
+              key={idx}
+              className="block"
+              initial={
+                prefersReducedMotion
+                  ? false
+                  : { opacity: 0, y: 16, filter: "blur(6px)" }
+              }
+              animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+              transition={{
+                duration: 0.55,
+                delay: 0.08 + idx * 0.08,
+                ease: SMOOTH_EASE,
+              }}
+            >
               {line}
-              {idx < headingLines.length - 1 && <br />}
-            </React.Fragment>
+            </motion.span>
           ))}
         </h2>
 
         {subtitle && (
-          <p
+          <motion.p
+            initial={revealInitial(12)}
+            animate={revealAnimate}
+            transition={{ duration: 0.5, delay: 0.22, ease: SMOOTH_EASE }}
             className={cn(
               "mt-3.5 max-w-[440px] text-[13.5px] sm:text-[14.5px] leading-[1.52]",
               themeClass("text-[#6E6E7A]", "text-zinc-400", "dark:text-zinc-400")
             )}
           >
             {subtitle}
-          </p>
+          </motion.p>
         )}
       </header>
 
-      {/* Integration Hub + Connector Architecture */}
+      {/* Beat 2: Integration Hub + Connector Architecture */}
       <div className="relative mt-9 sm:mt-11">
         {/* Desktop SVG Connector Lines */}
         <svg
           aria-hidden="true"
-          viewBox="0 0 928 214"
+          viewBox="0 0 948 214"
           fill="none"
           preserveAspectRatio="none"
           className="pointer-events-none absolute inset-x-0 top-0 hidden h-[214px] w-full md:block"
         >
           {/* Left Top (Asana) -> Left Junction */}
-          <path
-            d="M 184 27 L 246 27 Q 260 27 260 41 L 260 68"
+          <motion.path
+            d="M 184 27 L 250 27 Q 264 27 264 41 L 264 68"
+            initial={pathRevealInitial}
+            animate={pathRevealAnimate}
+            transition={{ duration: 0.55, delay: 0.36, ease: SMOOTH_EASE }}
             className={cn(
               "transition-colors duration-200",
               activeHighlightTool === "asana"
@@ -488,8 +646,11 @@ export const RetainerSolutionShowcase = React.forwardRef<
             strokeWidth={activeHighlightTool === "asana" ? 1.5 : 1.15}
           />
           {/* Left Bottom (Monday) -> Left Junction */}
-          <path
-            d="M 184 109 L 246 109 Q 260 109 260 95 L 260 68"
+          <motion.path
+            d="M 184 109 L 250 109 Q 264 109 264 95 L 264 68"
+            initial={pathRevealInitial}
+            animate={pathRevealAnimate}
+            transition={{ duration: 0.55, delay: 0.42, ease: SMOOTH_EASE }}
             className={cn(
               "transition-colors duration-200",
               activeHighlightTool === "monday"
@@ -499,8 +660,11 @@ export const RetainerSolutionShowcase = React.forwardRef<
             strokeWidth={activeHighlightTool === "monday" ? 1.5 : 1.15}
           />
           {/* Left Junction -> Center Hub */}
-          <path
-            d="M 260 68 L 352 68"
+          <motion.path
+            d="M 264 68 L 362 68"
+            initial={pathRevealInitial}
+            animate={pathRevealAnimate}
+            transition={{ duration: 0.4, delay: 0.5, ease: SMOOTH_EASE }}
             className={cn(
               "transition-colors duration-200",
               activeHighlightTool === "asana" || activeHighlightTool === "monday"
@@ -515,8 +679,11 @@ export const RetainerSolutionShowcase = React.forwardRef<
           />
 
           {/* Right Top (Trello) -> Right Junction */}
-          <path
-            d="M 744 27 L 682 27 Q 668 27 668 41 L 668 68"
+          <motion.path
+            d="M 764 27 L 698 27 Q 684 27 684 41 L 684 68"
+            initial={pathRevealInitial}
+            animate={pathRevealAnimate}
+            transition={{ duration: 0.55, delay: 0.36, ease: SMOOTH_EASE }}
             className={cn(
               "transition-colors duration-200",
               activeHighlightTool === "trello"
@@ -526,8 +693,11 @@ export const RetainerSolutionShowcase = React.forwardRef<
             strokeWidth={activeHighlightTool === "trello" ? 1.5 : 1.15}
           />
           {/* Right Bottom (ClickUp) -> Right Junction */}
-          <path
-            d="M 744 109 L 682 109 Q 668 109 668 95 L 668 68"
+          <motion.path
+            d="M 764 109 L 698 109 Q 684 109 684 95 L 684 68"
+            initial={pathRevealInitial}
+            animate={pathRevealAnimate}
+            transition={{ duration: 0.55, delay: 0.42, ease: SMOOTH_EASE }}
             className={cn(
               "transition-colors duration-200",
               activeHighlightTool === "clickup"
@@ -537,8 +707,11 @@ export const RetainerSolutionShowcase = React.forwardRef<
             strokeWidth={activeHighlightTool === "clickup" ? 1.5 : 1.15}
           />
           {/* Right Junction -> Center Hub */}
-          <path
-            d="M 668 68 L 576 68"
+          <motion.path
+            d="M 684 68 L 586 68"
+            initial={pathRevealInitial}
+            animate={pathRevealAnimate}
+            transition={{ duration: 0.4, delay: 0.5, ease: SMOOTH_EASE }}
             className={cn(
               "transition-colors duration-200",
               activeHighlightTool === "trello" || activeHighlightTool === "clickup"
@@ -553,8 +726,11 @@ export const RetainerSolutionShowcase = React.forwardRef<
           />
 
           {/* Center Hub -> Bottom Junction */}
-          <path
-            d="M 464 106 L 464 166"
+          <motion.path
+            d="M 474 106 L 474 166"
+            initial={pathRevealInitial}
+            animate={pathRevealAnimate}
+            transition={{ duration: 0.4, delay: 0.52, ease: SMOOTH_EASE }}
             className={cn(
               "transition-colors duration-200",
               hoveredCard || activeHighlightTool
@@ -565,8 +741,11 @@ export const RetainerSolutionShowcase = React.forwardRef<
           />
 
           {/* Bottom Junction -> Card 1 (Usage) */}
-          <path
-            d="M 464 166 L 164 166 Q 150 166 150 180 L 150 214"
+          <motion.path
+            d="M 474 166 L 166 166 Q 152 166 152 180 L 152 214"
+            initial={pathRevealInitial}
+            animate={pathRevealAnimate}
+            transition={{ duration: 0.55, delay: 0.6, ease: SMOOTH_EASE }}
             className={cn(
               "transition-colors duration-200",
               hoveredCard === "usage" ? activeLineStrokeClass : lineStrokeClass
@@ -574,8 +753,11 @@ export const RetainerSolutionShowcase = React.forwardRef<
             strokeWidth={hoveredCard === "usage" ? 1.5 : 1.15}
           />
           {/* Bottom Junction -> Card 2 (Collaboration) */}
-          <path
-            d="M 464 166 L 464 214"
+          <motion.path
+            d="M 474 166 L 474 214"
+            initial={pathRevealInitial}
+            animate={pathRevealAnimate}
+            transition={{ duration: 0.4, delay: 0.62, ease: SMOOTH_EASE }}
             className={cn(
               "transition-colors duration-200",
               hoveredCard === "collaboration"
@@ -585,8 +767,11 @@ export const RetainerSolutionShowcase = React.forwardRef<
             strokeWidth={hoveredCard === "collaboration" ? 1.5 : 1.15}
           />
           {/* Bottom Junction -> Card 3 (Portal) */}
-          <path
-            d="M 464 166 L 764 166 Q 778 166 778 180 L 778 214"
+          <motion.path
+            d="M 474 166 L 782 166 Q 796 166 796 180 L 796 214"
+            initial={pathRevealInitial}
+            animate={pathRevealAnimate}
+            transition={{ duration: 0.55, delay: 0.6, ease: SMOOTH_EASE }}
             className={cn(
               "transition-colors duration-200",
               hoveredCard === "portal" ? activeLineStrokeClass : lineStrokeClass
@@ -594,11 +779,11 @@ export const RetainerSolutionShowcase = React.forwardRef<
             strokeWidth={hoveredCard === "portal" ? 1.5 : 1.15}
           />
 
-          {/* Animated Data Beams */}
+          {/* Continuous Animated Data Beams */}
           {shouldAnimate && (
             <>
               <motion.path
-                d="M 184 27 L 246 27 Q 260 27 260 41 L 260 68 L 352 68"
+                d="M 184 27 L 250 27 Q 264 27 264 41 L 264 68 L 362 68"
                 stroke="#F06A6A"
                 strokeWidth="1.75"
                 strokeLinecap="round"
@@ -609,13 +794,14 @@ export const RetainerSolutionShowcase = React.forwardRef<
                 }}
                 transition={{
                   duration: 2.8,
+                  delay: 1.1,
                   repeat: Infinity,
                   repeatDelay: 1.4,
                   ease: "easeInOut",
                 }}
               />
               <motion.path
-                d="M 184 109 L 246 109 Q 260 109 260 95 L 260 68 L 352 68"
+                d="M 184 109 L 250 109 Q 264 109 264 95 L 264 68 L 362 68"
                 stroke="#FFCB00"
                 strokeWidth="1.75"
                 strokeLinecap="round"
@@ -626,14 +812,14 @@ export const RetainerSolutionShowcase = React.forwardRef<
                 }}
                 transition={{
                   duration: 2.8,
-                  delay: 0.9,
+                  delay: 2.0,
                   repeat: Infinity,
                   repeatDelay: 1.4,
                   ease: "easeInOut",
                 }}
               />
               <motion.path
-                d="M 744 27 L 682 27 Q 668 27 668 41 L 668 68 L 576 68"
+                d="M 764 27 L 698 27 Q 684 27 684 41 L 684 68 L 586 68"
                 stroke="#0079BF"
                 strokeWidth="1.75"
                 strokeLinecap="round"
@@ -644,14 +830,14 @@ export const RetainerSolutionShowcase = React.forwardRef<
                 }}
                 transition={{
                   duration: 2.8,
-                  delay: 0.45,
+                  delay: 1.55,
                   repeat: Infinity,
                   repeatDelay: 1.4,
                   ease: "easeInOut",
                 }}
               />
               <motion.path
-                d="M 744 109 L 682 109 Q 668 109 668 95 L 668 68 L 576 68"
+                d="M 764 109 L 698 109 Q 684 109 684 95 L 684 68 L 586 68"
                 stroke="#7B68EE"
                 strokeWidth="1.75"
                 strokeLinecap="round"
@@ -662,7 +848,7 @@ export const RetainerSolutionShowcase = React.forwardRef<
                 }}
                 transition={{
                   duration: 2.8,
-                  delay: 1.35,
+                  delay: 2.45,
                   repeat: Infinity,
                   repeatDelay: 1.4,
                   ease: "easeInOut",
@@ -670,8 +856,8 @@ export const RetainerSolutionShowcase = React.forwardRef<
               />
               {/* Outgoing hub pulses to cards */}
               <motion.path
-                d="M 464 106 L 464 166 L 164 166 Q 150 166 150 180 L 150 214"
-                stroke="#B689EC"
+                d="M 474 106 L 474 166 L 166 166 Q 152 166 152 180 L 152 214"
+                stroke="#B884EB"
                 strokeWidth="1.75"
                 strokeLinecap="round"
                 initial={{ pathLength: 0.14, pathOffset: 0, opacity: 0 }}
@@ -681,15 +867,15 @@ export const RetainerSolutionShowcase = React.forwardRef<
                 }}
                 transition={{
                   duration: 2.4,
-                  delay: 1.8,
+                  delay: 2.9,
                   repeat: Infinity,
                   repeatDelay: 1.8,
                   ease: "easeInOut",
                 }}
               />
               <motion.path
-                d="M 464 106 L 464 214"
-                stroke="#6FA3F7"
+                d="M 474 106 L 474 214"
+                stroke="#72A4F5"
                 strokeWidth="1.75"
                 strokeLinecap="round"
                 initial={{ pathLength: 0.24, pathOffset: 0, opacity: 0 }}
@@ -699,15 +885,15 @@ export const RetainerSolutionShowcase = React.forwardRef<
                 }}
                 transition={{
                   duration: 1.8,
-                  delay: 2.0,
+                  delay: 3.1,
                   repeat: Infinity,
                   repeatDelay: 2.4,
                   ease: "easeInOut",
                 }}
               />
               <motion.path
-                d="M 464 106 L 464 166 L 764 166 Q 778 166 778 180 L 778 214"
-                stroke="#EE9268"
+                d="M 474 106 L 474 166 L 782 166 Q 796 166 796 180 L 796 214"
+                stroke="#E68D6A"
                 strokeWidth="1.75"
                 strokeLinecap="round"
                 initial={{ pathLength: 0.14, pathOffset: 0, opacity: 0 }}
@@ -717,7 +903,7 @@ export const RetainerSolutionShowcase = React.forwardRef<
                 }}
                 transition={{
                   duration: 2.4,
-                  delay: 2.2,
+                  delay: 3.3,
                   repeat: Infinity,
                   repeatDelay: 1.8,
                   ease: "easeInOut",
@@ -727,148 +913,206 @@ export const RetainerSolutionShowcase = React.forwardRef<
           )}
 
           {/* Junction Nodes */}
-          <circle cx="260" cy="68" r="3" className={nodeFillClass} strokeWidth="1.2" />
-          <circle cx="668" cy="68" r="3" className={nodeFillClass} strokeWidth="1.2" />
-          <circle cx="464" cy="166" r="3" className={nodeFillClass} strokeWidth="1.2" />
+          <motion.circle
+            cx="264"
+            cy="68"
+            r="3"
+            initial={prefersReducedMotion ? false : { opacity: 0, scale: 0 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.3, delay: 0.56, ease: SMOOTH_EASE }}
+            className={nodeFillClass}
+            strokeWidth="1.2"
+          />
+          <motion.circle
+            cx="684"
+            cy="68"
+            r="3"
+            initial={prefersReducedMotion ? false : { opacity: 0, scale: 0 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.3, delay: 0.56, ease: SMOOTH_EASE }}
+            className={nodeFillClass}
+            strokeWidth="1.2"
+          />
+          <motion.circle
+            cx="474"
+            cy="166"
+            r="3"
+            initial={prefersReducedMotion ? false : { opacity: 0, scale: 0 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.3, delay: 0.62, ease: SMOOTH_EASE }}
+            className={nodeFillClass}
+            strokeWidth="1.2"
+          />
         </svg>
 
         {/* Top Integration Row */}
         <div className="relative z-10 grid grid-cols-1 items-center gap-4 md:h-[136px] md:grid-cols-[184px_1fr_184px] md:gap-0">
           {/* Left Stack: Asana + Monday */}
           <div className="grid grid-cols-2 gap-3 md:flex md:flex-col md:justify-between md:gap-7">
-            <button
-              type="button"
-              aria-pressed={selectedTool === "asana"}
-              onClick={() => handleToolClick("asana")}
-              onMouseEnter={() => setHoveredTool("asana")}
-              onMouseLeave={() => setHoveredTool(null)}
-              className={cn(
-                pmCardBase,
-                selectedTool === "asana" && pmCardSelected
-              )}
+            <motion.div
+              initial={revealInitial(0, -18)}
+              animate={revealAnimate}
+              transition={{ duration: 0.48, delay: 0.3, ease: SMOOTH_EASE }}
             >
-              <AsanaLogo />
-            </button>
+              <button
+                type="button"
+                aria-pressed={selectedTool === "asana"}
+                onClick={() => handleToolClick("asana")}
+                onMouseEnter={() => setHoveredTool("asana")}
+                onMouseLeave={() => setHoveredTool(null)}
+                className={cn(
+                  pmCardBase,
+                  selectedTool === "asana" && pmCardSelected
+                )}
+              >
+                <AsanaLogo />
+              </button>
+            </motion.div>
 
-            <button
-              type="button"
-              aria-pressed={selectedTool === "monday"}
-              onClick={() => handleToolClick("monday")}
-              onMouseEnter={() => setHoveredTool("monday")}
-              onMouseLeave={() => setHoveredTool(null)}
-              className={cn(
-                pmCardBase,
-                selectedTool === "monday" && pmCardSelected
-              )}
+            <motion.div
+              initial={revealInitial(0, -18)}
+              animate={revealAnimate}
+              transition={{ duration: 0.48, delay: 0.38, ease: SMOOTH_EASE }}
             >
-              <MondayLogo />
-            </button>
+              <button
+                type="button"
+                aria-pressed={selectedTool === "monday"}
+                onClick={() => handleToolClick("monday")}
+                onMouseEnter={() => setHoveredTool("monday")}
+                onMouseLeave={() => setHoveredTool(null)}
+                className={cn(
+                  pmCardBase,
+                  selectedTool === "monday" && pmCardSelected
+                )}
+              >
+                <MondayLogo />
+              </button>
+            </motion.div>
           </div>
 
           {/* Center Hub Pill: retainable */}
           <div className="flex items-center justify-center py-2 md:py-0">
             <motion.div
-              animate={
-                activeHighlightTool && !prefersReducedMotion
-                  ? { scale: 1.02 }
-                  : { scale: 1 }
-              }
-              transition={{ duration: 0.25, ease: SMOOTH_EASE }}
-              className={cn(
-                "rounded-full p-[6px] transition-shadow duration-300",
-                themeClass(
-                  "bg-white/95 border border-white shadow-[0_18px_36px_-8px_rgba(15,23,42,0.22),0_4px_12px_-2px_rgba(15,23,42,0.1)]",
-                  "bg-zinc-800/80 border border-zinc-700/80 shadow-[0_18px_36px_-8px_rgba(0,0,0,0.75)]",
-                  "dark:bg-zinc-800/80 dark:border-zinc-700/80 dark:shadow-[0_18px_36px_-8px_rgba(0,0,0,0.75)]"
-                )
-              )}
+              initial={revealInitial(8, 0, 0.9)}
+              animate={revealAnimate}
+              transition={{ duration: 0.5, delay: 0.24, ease: SMOOTH_EASE }}
             >
-              <div
+              <motion.div
+                animate={
+                  activeHighlightTool && !prefersReducedMotion
+                    ? { scale: 1.02 }
+                    : { scale: 1 }
+                }
+                transition={{ duration: 0.22, ease: SMOOTH_EASE }}
                 className={cn(
-                  "flex items-center justify-center gap-3 rounded-full px-7 py-3.5",
-                  "bg-gradient-to-b from-[#2B2B32] via-[#1B1B20] to-[#121216] text-white",
-                  "shadow-[inset_0_1px_1px_rgba(255,255,255,0.25),inset_0_-2px_5px_rgba(0,0,0,0.55)]"
+                  "rounded-full p-[6px] transition-shadow duration-300",
+                  themeClass(
+                    "bg-white/95 border border-white shadow-[0_18px_36px_-8px_rgba(15,23,42,0.22),0_4px_12px_-2px_rgba(15,23,42,0.1)]",
+                    "bg-zinc-800/80 border border-zinc-700/80 shadow-[0_18px_36px_-8px_rgba(0,0,0,0.75)]",
+                    "dark:bg-zinc-800/80 dark:border-zinc-700/80 dark:shadow-[0_18px_36px_-8px_rgba(0,0,0,0.75)]"
+                  )
                 )}
               >
-                <HubEmblem />
-                <span className="text-[19px] font-medium tracking-[-0.025em] leading-none">
-                  {hubLabel}
-                </span>
-              </div>
+                <div
+                  className={cn(
+                    "flex items-center justify-center gap-3 rounded-full px-7 py-3.5",
+                    "bg-gradient-to-b from-[#2B2B32] via-[#1B1B20] to-[#121216] text-white",
+                    "shadow-[inset_0_1px_1px_rgba(255,255,255,0.25),inset_0_-2px_5px_rgba(0,0,0,0.55)]"
+                  )}
+                >
+                  <HubEmblem />
+                  <span className="text-[19px] font-medium tracking-[-0.025em] leading-none">
+                    {hubLabel}
+                  </span>
+                </div>
+              </motion.div>
             </motion.div>
           </div>
 
           {/* Right Stack: Trello + ClickUp */}
           <div className="grid grid-cols-2 gap-3 md:flex md:flex-col md:justify-between md:gap-7">
-            <button
-              type="button"
-              aria-pressed={selectedTool === "trello"}
-              onClick={() => handleToolClick("trello")}
-              onMouseEnter={() => setHoveredTool("trello")}
-              onMouseLeave={() => setHoveredTool(null)}
-              className={cn(
-                pmCardBase,
-                selectedTool === "trello" && pmCardSelected
-              )}
+            <motion.div
+              initial={revealInitial(0, 18)}
+              animate={revealAnimate}
+              transition={{ duration: 0.48, delay: 0.3, ease: SMOOTH_EASE }}
             >
-              <TrelloLogo />
-            </button>
+              <button
+                type="button"
+                aria-pressed={selectedTool === "trello"}
+                onClick={() => handleToolClick("trello")}
+                onMouseEnter={() => setHoveredTool("trello")}
+                onMouseLeave={() => setHoveredTool(null)}
+                className={cn(
+                  pmCardBase,
+                  selectedTool === "trello" && pmCardSelected
+                )}
+              >
+                <TrelloLogo />
+              </button>
+            </motion.div>
 
-            <button
-              type="button"
-              aria-pressed={selectedTool === "clickup"}
-              onClick={() => handleToolClick("clickup")}
-              onMouseEnter={() => setHoveredTool("clickup")}
-              onMouseLeave={() => setHoveredTool(null)}
-              className={cn(
-                pmCardBase,
-                selectedTool === "clickup" && pmCardSelected
-              )}
+            <motion.div
+              initial={revealInitial(0, 18)}
+              animate={revealAnimate}
+              transition={{ duration: 0.48, delay: 0.38, ease: SMOOTH_EASE }}
             >
-              <ClickUpLogo uid={uid} />
-            </button>
+              <button
+                type="button"
+                aria-pressed={selectedTool === "clickup"}
+                onClick={() => handleToolClick("clickup")}
+                onMouseEnter={() => setHoveredTool("clickup")}
+                onMouseLeave={() => setHoveredTool(null)}
+                className={cn(
+                  pmCardBase,
+                  selectedTool === "clickup" && pmCardSelected
+                )}
+              >
+                <ClickUpLogo uid={uid} />
+              </button>
+            </motion.div>
           </div>
         </div>
 
-        {/* Bottom 3 Pastel Feature Cards */}
+        {/* Beat 3: Bottom 3 Pastel Feature Cards */}
         <div className="mt-8 grid grid-cols-1 gap-5 md:mt-[78px] md:grid-cols-3">
-          {/* CARD 1: Usage transparency (Lavender) */}
-          <article
+          {/* ============================================================== */}
+          {/* CARD 1: Usage transparency (Lavender)                          */}
+          {/* ============================================================== */}
+          <motion.article
+            initial={revealInitial(26, 0, 0.98)}
+            animate={revealAnimate}
+            transition={{ duration: 0.58, delay: 0.5, ease: SMOOTH_EASE }}
             onMouseEnter={() => setHoveredCard("usage")}
             onMouseLeave={() => setHoveredCard(null)}
             className={cn(
-              "group relative flex h-[346px] flex-col overflow-hidden rounded-[20px] border-[3px] transition-shadow duration-300",
+              "group relative flex h-[368px] flex-col overflow-hidden rounded-[20px] border-[3px] transition-shadow duration-300",
               themeClass(
-                "border-white bg-gradient-to-b from-[#F4ECFA] via-[#F1E8F8] to-[#EDE2F6] shadow-[0_10px_28px_-10px_rgba(15,23,42,0.09)] hover:shadow-[0_16px_36px_-12px_rgba(88,48,140,0.16)]",
+                "border-white bg-gradient-to-b from-[#F7F1FC] via-[#F2E9F9] to-[#E9DDF5] shadow-[0_10px_28px_-10px_rgba(15,23,42,0.09)] hover:shadow-[0_16px_36px_-12px_rgba(88,48,140,0.16)]",
                 "border-zinc-800/90 bg-gradient-to-b from-[#231B2E] via-[#1D1726] to-[#181320] shadow-[0_12px_32px_-12px_rgba(0,0,0,0.6)]",
                 "dark:border-zinc-800/90 dark:bg-gradient-to-b dark:from-[#231B2E] dark:via-[#1D1726] dark:to-[#181320] dark:shadow-[0_12px_32px_-12px_rgba(0,0,0,0.6)]"
               )
             )}
           >
-            {/* Subtle dot-grid texture */}
+            {/* Fine woven micro-grid texture */}
             <div
               aria-hidden="true"
-              className="pointer-events-none absolute inset-0 opacity-[0.35]"
-              style={{
-                backgroundImage:
-                  "radial-gradient(rgba(120, 90, 160, 0.22) 1px, transparent 1px)",
-                backgroundSize: "10px 10px",
-              }}
+              className="pointer-events-none absolute inset-0"
+              style={getMeshStyle("rgba(130, 95, 175, 0.11)")}
             />
 
             {/* Card Header */}
-            <div className="relative z-10 px-5 pt-5">
+            <div className="relative z-10 px-6 pt-6">
               <div className="flex items-center gap-2">
-                <Droplet
-                  className={cn(
-                    "h-4 w-4 shrink-0",
-                    themeClass("text-[#1E1E26]", "text-purple-200", "dark:text-purple-200")
+                <UsageDropletIcon
+                  className={themeClass(
+                    "text-[#23232B]",
+                    "text-purple-200",
+                    "dark:text-purple-200"
                   )}
-                  strokeWidth={2}
                 />
                 <h3
                   className={cn(
-                    "text-[15.5px] font-semibold tracking-[-0.018em]",
+                    "text-[16px] font-semibold tracking-[-0.02em]",
                     themeClass("text-[#18181F]", "text-zinc-50", "dark:text-zinc-50")
                   )}
                 >
@@ -877,7 +1121,7 @@ export const RetainerSolutionShowcase = React.forwardRef<
               </div>
               <p
                 className={cn(
-                  "mt-1.5 text-[12.5px] leading-[1.45]",
+                  "mt-2 text-[12.5px] leading-[1.48]",
                   themeClass("text-[#5F5E6B]", "text-zinc-400", "dark:text-zinc-400")
                 )}
               >
@@ -887,179 +1131,207 @@ export const RetainerSolutionShowcase = React.forwardRef<
             </div>
 
             {/* Card 1 Inner UI Mockup */}
-            <div className="relative z-10 mt-auto h-[212px] w-full">
-              {/* Base Hours Card */}
+            <div className="relative z-10 mt-auto h-[232px] w-full">
+              {/* Outer frosted glass bezel around Hours card (z-10) */}
               <div
                 className={cn(
-                  "absolute bottom-5 left-4 right-[-16px] rounded-[14px] border p-4",
+                  "absolute bottom-6 left-7 right-[-22px] z-10 rounded-[16px] border p-[4px]",
                   themeClass(
-                    "bg-white/95 border-white shadow-[0_10px_26px_-8px_rgba(40,20,80,0.1)]",
-                    "bg-zinc-900/90 border-zinc-800 shadow-[0_10px_26px_-8px_rgba(0,0,0,0.5)]",
-                    "dark:bg-zinc-900/90 dark:border-zinc-800 dark:shadow-[0_10px_26px_-8px_rgba(0,0,0,0.5)]"
+                    "bg-white/45 border-white/80 shadow-[0_12px_28px_-10px_rgba(55,25,95,0.12)]",
+                    "bg-zinc-800/40 border-zinc-700/60 shadow-[0_12px_28px_-10px_rgba(0,0,0,0.5)]",
+                    "dark:bg-zinc-800/40 dark:border-zinc-700/60 dark:shadow-[0_12px_28px_-10px_rgba(0,0,0,0.5)]"
                   )
                 )}
               >
                 <div
                   className={cn(
-                    "text-[10.5px] font-medium",
-                    themeClass("text-[#52525E]", "text-zinc-400", "dark:text-zinc-400")
+                    "rounded-[12px] border px-4 py-4",
+                    themeClass(
+                      "bg-white/95 border-[#EFEAF6]",
+                      "bg-zinc-900/95 border-zinc-800",
+                      "dark:bg-zinc-900/95 dark:border-zinc-800"
+                    )
                   )}
                 >
-                  Hours
-                </div>
+                  <div
+                    className={cn(
+                      "text-[11px] font-medium",
+                      themeClass("text-[#42424E]", "text-zinc-300", "dark:text-zinc-300")
+                    )}
+                  >
+                    Hours
+                  </div>
 
-                {/* Multi-Segment Bar */}
-                <div className="mt-2.5 flex h-[15px] w-full overflow-hidden rounded-[5px] bg-zinc-100 dark:bg-zinc-800">
-                  {usageMetrics.map((seg) => {
-                    const widthPct = (Math.max(0, seg.value) / totalUsage) * 100;
-                    const dimmed =
-                      hoveredUsageId !== null && hoveredUsageId !== seg.id;
-                    return (
-                      <div
-                        key={seg.id}
-                        onMouseEnter={() => setHoveredUsageId(seg.id)}
-                        onMouseLeave={() => setHoveredUsageId(null)}
-                        style={{
-                          width: `${widthPct}%`,
-                          backgroundColor: seg.color,
-                        }}
-                        className={cn(
-                          "h-full transition-opacity duration-200 cursor-pointer",
-                          dimmed ? "opacity-35" : "opacity-100"
-                        )}
-                        title={`${seg.label}: ${seg.value} hr`}
-                      />
-                    );
-                  })}
-                </div>
+                  {/* Isolated Multi-Segment Progress Bar */}
+                  <motion.div
+                    initial={prefersReducedMotion ? false : { scaleX: 0 }}
+                    animate={{ scaleX: 1 }}
+                    transition={{
+                      duration: 0.65,
+                      delay: 0.72,
+                      ease: SMOOTH_EASE,
+                    }}
+                    style={{ transformOrigin: "left center" }}
+                    className={cn(
+                      "isolate mt-3 flex h-[17px] w-full overflow-hidden rounded-[4px]",
+                      themeClass("bg-[#F1EFF6]", "bg-zinc-800", "dark:bg-zinc-800")
+                    )}
+                  >
+                    {usageMetrics.map((seg, idx) => {
+                      const widthPct = (Math.max(0, seg.value) / totalUsage) * 100;
+                      const dimmed =
+                        hoveredUsageId !== null && hoveredUsageId !== seg.id;
+                      return (
+                        <div
+                          key={seg.id}
+                          onMouseEnter={() => setHoveredUsageId(seg.id)}
+                          onMouseLeave={() => setHoveredUsageId(null)}
+                          style={{
+                            width: `${widthPct}%`,
+                            backgroundColor: seg.color,
+                          }}
+                          className={cn(
+                            "relative h-full cursor-pointer transition-opacity duration-200",
+                            idx === 0 && "z-20 rounded-r-full",
+                            idx === 1 && "-ml-2 pl-2 z-10",
+                            dimmed ? "opacity-35" : "opacity-100"
+                          )}
+                          title={`${seg.label}: ${seg.value} hr`}
+                        />
+                      );
+                    })}
+                  </motion.div>
 
-                {/* 4 KPI Figures */}
-                <div className="mt-4 grid grid-cols-4 gap-1.5 pr-4">
-                  {usageMetrics.map((metric) => {
-                    const active = hoveredUsageId === metric.id;
-                    return (
-                      <div
-                        key={metric.id}
-                        onMouseEnter={() => setHoveredUsageId(metric.id)}
-                        onMouseLeave={() => setHoveredUsageId(null)}
-                        className="cursor-pointer transition-opacity duration-200"
-                      >
+                  {/* 4 KPI Metrics */}
+                  <div className="mt-4 grid grid-cols-4 gap-2 pr-6">
+                    {usageMetrics.map((metric) => {
+                      const active = hoveredUsageId === metric.id;
+                      return (
                         <div
-                          className={cn(
-                            "text-[21px] font-light leading-none tracking-[-0.03em] tabular-nums transition-colors duration-200",
-                            active
-                              ? themeClass("text-[#111116]", "text-white", "dark:text-white")
-                              : themeClass("text-[#2B2B34]", "text-zinc-200", "dark:text-zinc-200")
-                          )}
+                          key={metric.id}
+                          onMouseEnter={() => setHoveredUsageId(metric.id)}
+                          onMouseLeave={() => setHoveredUsageId(null)}
+                          className="cursor-pointer"
                         >
-                          {metric.value}
+                          <div
+                            className={cn(
+                              "text-[24px] font-light leading-none tracking-[-0.03em] tabular-nums transition-colors duration-200",
+                              active
+                                ? themeClass("text-[#111116]", "text-white", "dark:text-white")
+                                : themeClass("text-[#262630]", "text-zinc-100", "dark:text-zinc-100")
+                            )}
+                          >
+                            {metric.value}
+                          </div>
+                          <div
+                            className={cn(
+                              "mt-1.5 text-[9.5px] leading-tight truncate",
+                              themeClass("text-[#6F6E7B]", "text-zinc-400", "dark:text-zinc-400")
+                            )}
+                          >
+                            {metric.label}
+                          </div>
                         </div>
-                        <div
-                          className={cn(
-                            "mt-1 text-[9.5px] leading-tight truncate",
-                            themeClass("text-[#7D7D8A]", "text-zinc-500", "dark:text-zinc-500")
-                          )}
-                        >
-                          {metric.label}
-                        </div>
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
 
-              {/* Floating Available Hours Popover */}
+              {/* Floating Frosted Available Hours Popover (z-30) */}
               <motion.div
-                animate={
-                  hoveredCard === "usage" && !prefersReducedMotion
-                    ? { y: -3 }
-                    : { y: 0 }
-                }
-                transition={{ duration: 0.25, ease: SMOOTH_EASE }}
-                className={cn(
-                  "absolute right-4 top-2 w-[134px] rounded-[13px] border px-3.5 py-3 backdrop-blur-md",
-                  themeClass(
-                    "bg-white/95 border-white shadow-[0_16px_32px_-8px_rgba(38,20,74,0.16)]",
-                    "bg-zinc-900/95 border-zinc-700/80 shadow-[0_16px_32px_-8px_rgba(0,0,0,0.65)]",
-                    "dark:bg-zinc-900/95 dark:border-zinc-700/80 dark:shadow-[0_16px_32px_-8px_rgba(0,0,0,0.65)]"
-                  )
-                )}
+                initial={revealInitial(16, 0, 0.96)}
+                animate={revealAnimate}
+                transition={{ duration: 0.52, delay: 0.68, ease: SMOOTH_EASE }}
+                className="absolute right-7 top-4 z-30 w-[138px]"
               >
                 <div
                   className={cn(
-                    "text-[9.5px] font-medium",
-                    themeClass("text-[#6B6B78]", "text-zinc-400", "dark:text-zinc-400")
+                    "rounded-[14px] border px-4 py-3.5 backdrop-blur-xl transition-transform duration-200 group-hover:-translate-y-1",
+                    themeClass(
+                      "bg-white/82 border-white/95 shadow-[0_16px_36px_-8px_rgba(45,22,82,0.16)]",
+                      "bg-zinc-900/88 border-zinc-700/80 shadow-[0_16px_36px_-8px_rgba(0,0,0,0.65)]",
+                      "dark:bg-zinc-900/88 dark:border-zinc-700/80 dark:shadow-[0_16px_36px_-8px_rgba(0,0,0,0.65)]"
+                    )
                   )}
                 >
-                  Available hours
-                </div>
-                <div className="mt-1 flex items-baseline gap-0.5">
-                  <span
+                  <div
                     className={cn(
-                      "text-[30px] font-light leading-none tracking-[-0.04em] tabular-nums",
-                      themeClass("text-[#18181F]", "text-zinc-50", "dark:text-zinc-50")
+                      "text-[9.5px] font-medium",
+                      themeClass("text-[#585866]", "text-zinc-300", "dark:text-zinc-300")
                     )}
                   >
-                    {availableHours}
-                  </span>
-                  <span
+                    Available hours
+                  </div>
+                  <div className="mt-1.5 flex items-baseline gap-1">
+                    <span
+                      className={cn(
+                        "text-[36px] font-light leading-none tracking-[-0.045em] tabular-nums",
+                        themeClass("text-[#1C1C24]", "text-zinc-50", "dark:text-zinc-50")
+                      )}
+                    >
+                      {availableHours}
+                    </span>
+                    <span
+                      className={cn(
+                        "text-[14px] font-normal",
+                        themeClass("text-[#3E3E4A]", "text-zinc-400", "dark:text-zinc-400")
+                      )}
+                    >
+                      hr
+                    </span>
+                  </div>
+                  <div
                     className={cn(
-                      "text-[13px] font-normal",
-                      themeClass("text-[#4B4B57]", "text-zinc-400", "dark:text-zinc-400")
+                      "mt-2 text-[9px]",
+                      themeClass("text-[#6D6C79]", "text-zinc-400", "dark:text-zinc-400")
                     )}
                   >
-                    hr
-                  </span>
-                </div>
-                <div
-                  className={cn(
-                    "mt-1.5 text-[8.5px]",
-                    themeClass("text-[#8A8A96]", "text-zinc-500", "dark:text-zinc-500")
-                  )}
-                >
-                  {daysRemainingText}
+                    {daysRemainingText}
+                  </div>
                 </div>
               </motion.div>
             </div>
-          </article>
+          </motion.article>
 
-          {/* CARD 2: Task collaboration (Sky Blue) */}
-          <article
+          {/* ============================================================== */}
+          {/* CARD 2: Task collaboration (Sky Blue)                          */}
+          {/* ============================================================== */}
+          <motion.article
+            initial={revealInitial(26, 0, 0.98)}
+            animate={revealAnimate}
+            transition={{ duration: 0.58, delay: 0.6, ease: SMOOTH_EASE }}
             onMouseEnter={() => setHoveredCard("collaboration")}
             onMouseLeave={() => setHoveredCard(null)}
             className={cn(
-              "group relative flex h-[346px] flex-col overflow-hidden rounded-[20px] border-[3px] transition-shadow duration-300",
+              "group relative flex h-[368px] flex-col overflow-hidden rounded-[20px] border-[3px] transition-shadow duration-300",
               themeClass(
-                "border-white bg-gradient-to-b from-[#E8F3FC] via-[#E3EFFB] to-[#DCE9F9] shadow-[0_10px_28px_-10px_rgba(15,23,42,0.09)] hover:shadow-[0_16px_36px_-12px_rgba(25,75,145,0.16)]",
+                "border-white bg-gradient-to-b from-[#EDF6FE] via-[#E5F1FC] to-[#DCEAFB] shadow-[0_10px_28px_-10px_rgba(15,23,42,0.09)] hover:shadow-[0_16px_36px_-12px_rgba(25,75,145,0.16)]",
                 "border-zinc-800/90 bg-gradient-to-b from-[#162233] via-[#131D2B] to-[#101824] shadow-[0_12px_32px_-12px_rgba(0,0,0,0.6)]",
                 "dark:border-zinc-800/90 dark:bg-gradient-to-b dark:from-[#162233] dark:via-[#131D2B] dark:to-[#101824] dark:shadow-[0_12px_32px_-12px_rgba(0,0,0,0.6)]"
               )
             )}
           >
-            {/* Subtle dot-grid texture */}
+            {/* Fine woven micro-grid texture */}
             <div
               aria-hidden="true"
-              className="pointer-events-none absolute inset-0 opacity-[0.35]"
-              style={{
-                backgroundImage:
-                  "radial-gradient(rgba(55, 115, 185, 0.22) 1px, transparent 1px)",
-                backgroundSize: "10px 10px",
-              }}
+              className="pointer-events-none absolute inset-0"
+              style={getMeshStyle("rgba(60, 120, 195, 0.11)")}
             />
 
             {/* Card Header */}
-            <div className="relative z-10 px-5 pt-5">
+            <div className="relative z-10 px-6 pt-6">
               <div className="flex items-center gap-2">
-                <SquarePen
-                  className={cn(
-                    "h-4 w-4 shrink-0",
-                    themeClass("text-[#1E1E26]", "text-sky-200", "dark:text-sky-200")
+                <TaskClipboardIcon
+                  className={themeClass(
+                    "text-[#23232B]",
+                    "text-sky-200",
+                    "dark:text-sky-200"
                   )}
-                  strokeWidth={2}
                 />
                 <h3
                   className={cn(
-                    "text-[15.5px] font-semibold tracking-[-0.018em]",
+                    "text-[16px] font-semibold tracking-[-0.02em]",
                     themeClass("text-[#18181F]", "text-zinc-50", "dark:text-zinc-50")
                   )}
                 >
@@ -1068,7 +1340,7 @@ export const RetainerSolutionShowcase = React.forwardRef<
               </div>
               <p
                 className={cn(
-                  "mt-1.5 text-[12.5px] leading-[1.45]",
+                  "mt-2 text-[12.5px] leading-[1.48]",
                   themeClass("text-[#5F5E6B]", "text-zinc-400", "dark:text-zinc-400")
                 )}
               >
@@ -1078,183 +1350,223 @@ export const RetainerSolutionShowcase = React.forwardRef<
             </div>
 
             {/* Card 2 Inner UI Mockup */}
-            <div className="relative z-10 mt-auto h-[212px] w-full">
+            <div className="relative z-10 mt-auto h-[232px] w-full">
               {/* Background Task Table */}
               <div
                 className={cn(
-                  "absolute inset-x-0 bottom-0 h-[132px] border-t px-4 pt-2.5 text-[9px]",
+                  "absolute inset-x-0 bottom-0 z-10 h-[154px] border-t px-4 pt-3 text-[9.5px]",
                   themeClass(
-                    "bg-white/60 border-white/80 text-[#52525E]",
+                    "bg-white/62 border-white/90 text-[#4E4E5A]",
                     "bg-zinc-900/55 border-zinc-800/80 text-zinc-400",
                     "dark:bg-zinc-900/55 dark:border-zinc-800/80 dark:text-zinc-400"
                   )
                 )}
               >
-                <div className="flex items-center justify-between text-[7.5px] font-medium uppercase tracking-[0.06em] opacity-70">
+                <div className="flex items-center justify-between text-[7.5px] font-medium uppercase tracking-[0.06em] opacity-65">
                   <span>Priority</span>
                   <span>Assignee</span>
                 </div>
-                <div className="mt-2.5 space-y-2.5">
-                  <div className="flex items-center justify-between">
-                    <span className="inline-flex items-center gap-1 font-medium">
+
+                <div
+                  className={cn(
+                    "mt-2 divide-y",
+                    themeClass(
+                      "divide-[#E2E9F4]",
+                      "divide-zinc-800/70",
+                      "dark:divide-zinc-800/70"
+                    )
+                  )}
+                >
+                  <div className="flex items-center justify-between py-2.5">
+                    <span className="inline-flex items-center gap-1.5 font-medium">
                       <Flag className="h-2.5 w-2.5 fill-[#6FA3F7] text-[#6FA3F7]" />
                       Medium
                     </span>
-                    <span className="flex -space-x-1">
-                      <MiniAvatar initials="AL" bg="#5B8DEF" />
-                      <MiniAvatar initials="MK" bg="#9B72CF" />
+                    <span className="flex -space-x-1.5">
+                      <MiniAvatar
+                        initials="AL"
+                        gradient="linear-gradient(135deg, #4F86F7, #2B59C3)"
+                      />
+                      <MiniAvatar
+                        initials="MK"
+                        gradient="linear-gradient(135deg, #C07A9B, #8E4A6D)"
+                      />
                     </span>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <span className="inline-flex items-center gap-1 font-medium">
+
+                  <div className="flex items-center justify-between py-2.5">
+                    <span className="inline-flex items-center gap-1.5 font-medium">
                       <Flag className="h-2.5 w-2.5 fill-[#6FA3F7] text-[#6FA3F7]" />
                       Medium
                     </span>
-                    <MiniAvatar initials="SR" bg="#E88B63" />
+                    <MiniAvatar
+                      initials="SR"
+                      gradient="linear-gradient(135deg, #E2856E, #B4523E)"
+                    />
                   </div>
-                  <div className="flex items-center justify-between pt-0.5">
-                    <span className="inline-flex items-center gap-1 font-medium">
-                      <Flag className="h-2.5 w-2.5 fill-[#E86F51] text-[#E86F51]" />
+
+                  <div className="flex items-center justify-between py-2.5">
+                    <span className="inline-flex items-center gap-1.5 font-medium">
+                      <Flag className="h-2.5 w-2.5 fill-[#E87A5D] text-[#E87A5D]" />
                       High
                     </span>
-                    <span className="text-[8.5px] tabular-nums opacity-75">
+                    <span className="text-[9px] tabular-nums opacity-80">
                       05/11
                     </span>
-                    <span className="text-[8.5px] tabular-nums opacity-75">
+                    <span className="text-[9px] tabular-nums opacity-80">
                       2 to 4 hr
                     </span>
-                    <span className="text-[8.5px] tabular-nums opacity-75">
+                    <span className="text-[9px] tabular-nums opacity-80">
                       03:30 hrs
                     </span>
-                    <span className="flex -space-x-1">
-                      <MiniAvatar initials="JD" bg="#4A77D4" />
-                      <MiniAvatar initials="EL" bg="#D97B54" />
+                    <span className="flex -space-x-1.5">
+                      <MiniAvatar
+                        initials="JD"
+                        gradient="linear-gradient(135deg, #5680E9, #3652A3)"
+                      />
+                      <MiniAvatar
+                        initials="EL"
+                        gradient="linear-gradient(135deg, #D98A6C, #9E563B)"
+                      />
                     </span>
                   </div>
                 </div>
               </div>
 
-              {/* Floating Task's Status Card */}
+              {/* Floating Task's Status Card (z-30) */}
               <motion.div
-                animate={
-                  hoveredCard === "collaboration" && !prefersReducedMotion
-                    ? { y: -3 }
-                    : { y: 0 }
-                }
-                transition={{ duration: 0.25, ease: SMOOTH_EASE }}
-                className={cn(
-                  "absolute left-1/2 top-2 w-[184px] -translate-x-1/2 rounded-[14px] border p-3.5 backdrop-blur-md",
-                  themeClass(
-                    "bg-white/95 border-white shadow-[0_16px_34px_-8px_rgba(15,40,85,0.16)]",
-                    "bg-zinc-900/95 border-zinc-700/80 shadow-[0_16px_34px_-8px_rgba(0,0,0,0.65)]",
-                    "dark:bg-zinc-900/95 dark:border-zinc-700/80 dark:shadow-[0_16px_34px_-8px_rgba(0,0,0,0.65)]"
-                  )
-                )}
+                initial={revealInitial(16, 0, 0.96)}
+                animate={revealAnimate}
+                transition={{ duration: 0.52, delay: 0.78, ease: SMOOTH_EASE }}
+                className="absolute left-1/2 top-2 z-30 w-[198px] -translate-x-1/2"
               >
                 <div
                   className={cn(
-                    "text-[11px] font-semibold tracking-[-0.01em]",
-                    themeClass("text-[#1E1E26]", "text-zinc-100", "dark:text-zinc-100")
+                    "rounded-[14px] border px-4 py-3.5 backdrop-blur-md transition-transform duration-200 group-hover:-translate-y-1",
+                    themeClass(
+                      "bg-gradient-to-b from-white/80 via-white/94 to-white border-white shadow-[0_16px_36px_-8px_rgba(18,45,95,0.16)]",
+                      "bg-zinc-900/92 border-zinc-700/80 shadow-[0_16px_36px_-8px_rgba(0,0,0,0.65)]",
+                      "dark:bg-zinc-900/92 dark:border-zinc-700/80 dark:shadow-[0_16px_36px_-8px_rgba(0,0,0,0.65)]"
+                    )
                   )}
                 >
-                  Task&apos;s status
-                </div>
-                <div className="mt-2.5 space-y-2">
-                  {taskStatuses.map((status) => {
-                    const isDimmed =
-                      hoveredStatusId !== null && hoveredStatusId !== status.id;
-                    return (
-                      <div
-                        key={status.id}
-                        onMouseEnter={() => setHoveredStatusId(status.id)}
-                        onMouseLeave={() => setHoveredStatusId(null)}
-                        className={cn(
-                          "cursor-pointer transition-opacity duration-150",
-                          isDimmed ? "opacity-45" : "opacity-100"
-                        )}
-                      >
-                        <div className="flex items-center justify-between text-[8.5px]">
-                          <span
-                            className={themeClass(
-                              "text-[#5C5C68]",
-                              "text-zinc-300",
-                              "dark:text-zinc-300"
+                  <div
+                    className={cn(
+                      "text-[11.5px] font-semibold tracking-[-0.015em]",
+                      themeClass("text-[#1E1E26]", "text-zinc-100", "dark:text-zinc-100")
+                    )}
+                  >
+                    Task&apos;s status
+                  </div>
+                  <div className="mt-3 space-y-2.5">
+                    {taskStatuses.map((status, idx) => {
+                      const isDimmed =
+                        hoveredStatusId !== null && hoveredStatusId !== status.id;
+                      return (
+                        <div
+                          key={status.id}
+                          onMouseEnter={() => setHoveredStatusId(status.id)}
+                          onMouseLeave={() => setHoveredStatusId(null)}
+                          className={cn(
+                            "cursor-pointer transition-opacity duration-150",
+                            isDimmed ? "opacity-45" : "opacity-100"
+                          )}
+                        >
+                          <div
+                            className={cn(
+                              "text-[9px] font-medium leading-none",
+                              themeClass(
+                                "text-[#545460]",
+                                "text-zinc-300",
+                                "dark:text-zinc-300"
+                              )
                             )}
                           >
                             {status.label}
-                          </span>
-                          <span
-                            className={cn(
-                              "tabular-nums",
-                              themeClass("text-[#8A8A96]", "text-zinc-500", "dark:text-zinc-500")
-                            )}
-                          >
-                            {status.count}
-                          </span>
+                          </div>
+                          <div className="mt-1.5 flex items-center gap-2.5">
+                            <div
+                              className={cn(
+                                "h-[4.5px] flex-1 overflow-hidden rounded-full",
+                                themeClass("bg-[#EDF0F6]", "bg-zinc-800", "dark:bg-zinc-800")
+                              )}
+                            >
+                              <motion.div
+                                initial={
+                                  prefersReducedMotion
+                                    ? { width: `${status.percent}%` }
+                                    : { width: "0%" }
+                                }
+                                animate={{ width: `${status.percent}%` }}
+                                transition={{
+                                  duration: 0.7,
+                                  delay: 0.85 + idx * 0.08,
+                                  ease: SMOOTH_EASE,
+                                }}
+                                style={{ backgroundColor: status.color }}
+                                className="h-full rounded-full"
+                              />
+                            </div>
+                            <span
+                              className={cn(
+                                "w-4 text-right text-[8.5px] font-medium tabular-nums",
+                                themeClass(
+                                  "text-[#8E929E]",
+                                  "text-zinc-400",
+                                  "dark:text-zinc-400"
+                                )
+                              )}
+                            >
+                              {status.count}
+                            </span>
+                          </div>
                         </div>
-                        <div
-                          className={cn(
-                            "mt-1 h-[4px] w-full overflow-hidden rounded-full",
-                            themeClass("bg-[#F0F0F5]", "bg-zinc-800", "dark:bg-zinc-800")
-                          )}
-                        >
-                          <motion.div
-                            initial={
-                              prefersReducedMotion
-                                ? { width: `${status.percent}%` }
-                                : { width: "0%" }
-                            }
-                            animate={{ width: `${status.percent}%` }}
-                            transition={{ duration: 0.7, ease: SMOOTH_EASE }}
-                            style={{ backgroundColor: status.color }}
-                            className="h-full rounded-full"
-                          />
-                        </div>
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
+                  </div>
                 </div>
               </motion.div>
             </div>
-          </article>
+          </motion.article>
 
-          {/* CARD 3: Client-facing portal (Peach / Apricot) */}
-          <article
+          {/* ============================================================== */}
+          {/* CARD 3: Client-facing portal (Peach / Apricot)                 */}
+          {/* ============================================================== */}
+          <motion.article
+            initial={revealInitial(26, 0, 0.98)}
+            animate={revealAnimate}
+            transition={{ duration: 0.58, delay: 0.7, ease: SMOOTH_EASE }}
             onMouseEnter={() => setHoveredCard("portal")}
             onMouseLeave={() => setHoveredCard(null)}
             className={cn(
-              "group relative flex h-[346px] flex-col overflow-hidden rounded-[20px] border-[3px] transition-shadow duration-300",
+              "group relative flex h-[368px] flex-col overflow-hidden rounded-[20px] border-[3px] transition-shadow duration-300",
               themeClass(
-                "border-white bg-gradient-to-b from-[#FCEEE4] via-[#FAEAE0] to-[#F7E3D6] shadow-[0_10px_28px_-10px_rgba(15,23,42,0.09)] hover:shadow-[0_16px_36px_-12px_rgba(165,85,40,0.16)]",
+                "border-white bg-gradient-to-b from-[#FDF2EA] via-[#FBECE2] to-[#F8E4D8] shadow-[0_10px_28px_-10px_rgba(15,23,42,0.09)] hover:shadow-[0_16px_36px_-12px_rgba(165,85,40,0.16)]",
                 "border-zinc-800/90 bg-gradient-to-b from-[#2B1F1A] via-[#241A16] to-[#1D1512] shadow-[0_12px_32px_-12px_rgba(0,0,0,0.6)]",
                 "dark:border-zinc-800/90 dark:bg-gradient-to-b dark:from-[#2B1F1A] dark:via-[#241A16] dark:to-[#1D1512] dark:shadow-[0_12px_32px_-12px_rgba(0,0,0,0.6)]"
               )
             )}
           >
-            {/* Subtle dot-grid texture */}
+            {/* Fine woven micro-grid texture */}
             <div
               aria-hidden="true"
-              className="pointer-events-none absolute inset-0 opacity-[0.35]"
-              style={{
-                backgroundImage:
-                  "radial-gradient(rgba(185, 110, 65, 0.22) 1px, transparent 1px)",
-                backgroundSize: "10px 10px",
-              }}
+              className="pointer-events-none absolute inset-0"
+              style={getMeshStyle("rgba(185, 115, 70, 0.1)")}
             />
 
             {/* Card Header */}
-            <div className="relative z-10 px-5 pt-5">
+            <div className="relative z-10 px-6 pt-6">
               <div className="flex items-center gap-2">
-                <LayoutGrid
-                  className={cn(
-                    "h-4 w-4 shrink-0",
-                    themeClass("text-[#1E1E26]", "text-orange-200", "dark:text-orange-200")
+                <PortalGridIcon
+                  className={themeClass(
+                    "text-[#23232B]",
+                    "text-orange-200",
+                    "dark:text-orange-200"
                   )}
-                  strokeWidth={2}
                 />
                 <h3
                   className={cn(
-                    "text-[15.5px] font-semibold tracking-[-0.018em]",
+                    "text-[16px] font-semibold tracking-[-0.02em]",
                     themeClass("text-[#18181F]", "text-zinc-50", "dark:text-zinc-50")
                   )}
                 >
@@ -1263,7 +1575,7 @@ export const RetainerSolutionShowcase = React.forwardRef<
               </div>
               <p
                 className={cn(
-                  "mt-1.5 text-[12.5px] leading-[1.45]",
+                  "mt-2 text-[12.5px] leading-[1.48]",
                   themeClass("text-[#5F5E6B]", "text-zinc-400", "dark:text-zinc-400")
                 )}
               >
@@ -1273,174 +1585,188 @@ export const RetainerSolutionShowcase = React.forwardRef<
             </div>
 
             {/* Card 3 Inner UI Mockup */}
-            <div className="relative z-10 mt-auto h-[212px] w-full">
-              {/* Background Client Portal Surface */}
+            <div className="relative z-10 mt-auto h-[232px] w-full">
+              {/* Outer frosted double-border around Portal window (z-10) */}
               <div
                 className={cn(
-                  "absolute bottom-0 left-9 right-[-18px] top-3 rounded-tl-[14px] border-l border-t p-3.5",
+                  "absolute bottom-0 left-[64px] right-[-10px] top-1 z-10 rounded-tl-[18px] border-l border-t p-[4px] pb-0 pr-0",
                   themeClass(
-                    "bg-white/88 border-white shadow-[0_8px_24px_-6px_rgba(80,40,15,0.08)]",
-                    "bg-zinc-900/85 border-zinc-800 shadow-[0_8px_24px_-6px_rgba(0,0,0,0.5)]",
-                    "dark:bg-zinc-900/85 dark:border-zinc-800 dark:shadow-[0_8px_24px_-6px_rgba(0,0,0,0.5)]"
+                    "bg-white/45 border-white/85",
+                    "bg-zinc-800/40 border-zinc-700/60",
+                    "dark:bg-zinc-800/40 dark:border-zinc-700/60"
                   )
                 )}
               >
                 <div
                   className={cn(
-                    "text-[10.5px] font-semibold tracking-[-0.01em] truncate",
-                    themeClass("text-[#22222A]", "text-zinc-100", "dark:text-zinc-100")
+                    "h-full w-full rounded-tl-[14px] border-l border-t px-4 pt-3.5",
+                    themeClass(
+                      "bg-white/92 border-[#F6ECE6]",
+                      "bg-zinc-900/90 border-zinc-800",
+                      "dark:bg-zinc-900/90 dark:border-zinc-800"
+                    )
                   )}
                 >
-                  Hello {clientName}!
-                </div>
-
-                {/* Secondary Available Hours Peek (Right Side) */}
-                <div className="mt-2.5 flex justify-end pr-3">
                   <div
                     className={cn(
-                      "w-[106px] rounded-[10px] border px-2.5 py-2",
-                      themeClass(
-                        "bg-[#FAFAFC] border-[#F0F0F5]",
-                        "bg-zinc-800/70 border-zinc-700/60",
-                        "dark:bg-zinc-800/70 dark:border-zinc-700/60"
-                      )
+                      "text-[11px] font-semibold tracking-[-0.015em] truncate",
+                      themeClass("text-[#22222A]", "text-zinc-100", "dark:text-zinc-100")
                     )}
                   >
+                    Hello {clientName}!
+                  </div>
+
+                  {/* Secondary Available Hours Card */}
+                  <div className="mt-2.5 flex justify-end">
                     <div
                       className={cn(
-                        "text-[8px] font-medium",
-                        themeClass("text-[#6B6B78]", "text-zinc-400", "dark:text-zinc-400")
+                        "w-[104px] rounded-[12px] border px-3 py-3",
+                        themeClass(
+                          "bg-white border-[#F3ECE8] shadow-[0_8px_20px_-8px_rgba(90,45,15,0.08)]",
+                          "bg-zinc-800/80 border-zinc-700/70",
+                          "dark:bg-zinc-800/80 dark:border-zinc-700/70"
+                        )
                       )}
                     >
-                      Available hours
+                      <div
+                        className={cn(
+                          "text-[9px] font-medium truncate",
+                          themeClass("text-[#555562]", "text-zinc-300", "dark:text-zinc-300")
+                        )}
+                      >
+                        Available hours
+                      </div>
+                      <div className="mt-1.5 flex items-baseline gap-0.5">
+                        <span
+                          className={cn(
+                            "text-[28px] font-light leading-none tracking-[-0.045em] tabular-nums",
+                            themeClass("text-[#1C1C24]", "text-zinc-50", "dark:text-zinc-50")
+                          )}
+                        >
+                          {availableHours}
+                        </span>
+                        <span
+                          className={cn(
+                            "text-[12px]",
+                            themeClass("text-[#4B4B57]", "text-zinc-400", "dark:text-zinc-400")
+                          )}
+                        >
+                          hr
+                        </span>
+                      </div>
+                      <div
+                        className={cn(
+                          "mt-2 truncate text-[8px]",
+                          themeClass("text-[#7D7A78]", "text-zinc-400", "dark:text-zinc-400")
+                        )}
+                      >
+                        {daysRemainingText} them
+                      </div>
                     </div>
-                    <div className="mt-0.5 flex items-baseline gap-0.5">
-                      <span
-                        className={cn(
-                          "text-[22px] font-light leading-none tracking-[-0.04em] tabular-nums",
-                          themeClass("text-[#18181F]", "text-zinc-100", "dark:text-zinc-100")
-                        )}
-                      >
-                        {availableHours}
-                      </span>
-                      <span
-                        className={cn(
-                          "text-[10px]",
-                          themeClass("text-[#555562]", "text-zinc-400", "dark:text-zinc-400")
-                        )}
-                      >
-                        hr
-                      </span>
+                  </div>
+
+                  {/* Latest Tasks Mini Table */}
+                  <div className="mt-4 pr-3">
+                    <div
+                      className={cn(
+                        "text-[9px] font-medium",
+                        themeClass("text-[#4A4A55]", "text-zinc-300", "dark:text-zinc-300")
+                      )}
+                    >
+                      Latest tasks
                     </div>
                     <div
                       className={cn(
-                        "mt-1 truncate text-[7.5px]",
-                        themeClass("text-[#8A8A96]", "text-zinc-500", "dark:text-zinc-500")
+                        "mt-1.5 grid grid-cols-[1fr_auto_auto] gap-2.5 text-[6.8px] font-medium uppercase tracking-[0.05em]",
+                        themeClass("text-[#9B9795]", "text-zinc-500", "dark:text-zinc-500")
                       )}
                     >
-                      {daysRemainingText} them
+                      <span>Task title</span>
+                      <span>Priority</span>
+                      <span>Due date</span>
                     </div>
-                  </div>
-                </div>
-
-                {/* Latest Tasks Mini Table */}
-                <div className="mt-3.5 pr-4">
-                  <div
-                    className={cn(
-                      "text-[8.5px] font-semibold",
-                      themeClass("text-[#3B3B45]", "text-zinc-300", "dark:text-zinc-300")
-                    )}
-                  >
-                    Latest tasks
-                  </div>
-                  <div
-                    className={cn(
-                      "mt-1.5 grid grid-cols-[1fr_auto_auto] gap-2 text-[6.8px] font-medium uppercase tracking-[0.05em]",
-                      themeClass("text-[#9494A0]", "text-zinc-500", "dark:text-zinc-500")
-                    )}
-                  >
-                    <span>Task title</span>
-                    <span>Priority</span>
-                    <span>Due date</span>
-                  </div>
-                  <div
-                    className={cn(
-                      "mt-1.5 grid grid-cols-[1fr_auto_auto] items-center gap-2 text-[8px] leading-[1.3]",
-                      themeClass("text-[#3F3F4A]", "text-zinc-300", "dark:text-zinc-300")
-                    )}
-                  >
-                    <span className="line-clamp-2">
-                      Review and incorporate feedback from the client
-                    </span>
-                    <span className="inline-flex items-center gap-1 whitespace-nowrap">
-                      <Flag className="h-2.5 w-2.5 fill-[#6FA3F7] text-[#6FA3F7]" />
-                      Medium
-                    </span>
-                    <span className="tabular-nums opacity-80">04/12</span>
+                    <div
+                      className={cn(
+                        "mt-1.5 grid grid-cols-[1fr_auto_auto] items-center gap-2.5 text-[8px] leading-[1.32]",
+                        themeClass("text-[#363640]", "text-zinc-300", "dark:text-zinc-300")
+                      )}
+                    >
+                      <span className="line-clamp-2">
+                        Review and incorporate feedback from the client
+                      </span>
+                      <span className="inline-flex items-center gap-1 whitespace-nowrap">
+                        <Flag className="h-2.5 w-2.5 fill-[#6FA3F7] text-[#6FA3F7]" />
+                        Medium
+                      </span>
+                      <span className="tabular-nums opacity-85">04/12</span>
+                    </div>
                   </div>
                 </div>
               </div>
 
-              {/* Floating Agreement Card (Left Overlap) */}
+              {/* Floating Agreement Card (z-30) */}
               <motion.div
-                animate={
-                  hoveredCard === "portal" && !prefersReducedMotion
-                    ? { y: -3 }
-                    : { y: 0 }
-                }
-                transition={{ duration: 0.25, ease: SMOOTH_EASE }}
-                className={cn(
-                  "absolute left-4 top-[42px] w-[148px] rounded-[13px] border p-3.5 backdrop-blur-md",
-                  themeClass(
-                    "bg-white/95 border-white shadow-[0_16px_32px_-8px_rgba(80,35,10,0.16)]",
-                    "bg-zinc-900/95 border-zinc-700/80 shadow-[0_16px_32px_-8px_rgba(0,0,0,0.65)]",
-                    "dark:bg-zinc-900/95 dark:border-zinc-700/80 dark:shadow-[0_16px_32px_-8px_rgba(0,0,0,0.65)]"
-                  )
-                )}
+                initial={revealInitial(16, 0, 0.96)}
+                animate={revealAnimate}
+                transition={{ duration: 0.52, delay: 0.88, ease: SMOOTH_EASE }}
+                className="absolute left-5 top-[34px] z-30 w-[160px]"
               >
                 <div
                   className={cn(
-                    "text-[9.5px] font-medium",
-                    themeClass("text-[#6B6B78]", "text-zinc-400", "dark:text-zinc-400")
+                    "rounded-[14px] border px-4 py-3.5 backdrop-blur-xl transition-transform duration-200 group-hover:-translate-y-1",
+                    themeClass(
+                      "bg-white/92 border-white shadow-[0_16px_36px_-8px_rgba(95,45,15,0.14)]",
+                      "bg-zinc-900/95 border-zinc-700/80 shadow-[0_16px_36px_-8px_rgba(0,0,0,0.65)]",
+                      "dark:bg-zinc-900/95 dark:border-zinc-700/80 dark:shadow-[0_16px_36px_-8px_rgba(0,0,0,0.65)]"
+                    )
                   )}
                 >
-                  Agreement
-                </div>
-                <div className="mt-1 flex items-baseline gap-1">
-                  <span
+                  <div
                     className={cn(
-                      "text-[29px] font-light leading-none tracking-[-0.04em] tabular-nums",
-                      themeClass("text-[#18181F]", "text-zinc-50", "dark:text-zinc-50")
+                      "text-[9.5px] font-medium",
+                      themeClass("text-[#42424E]", "text-zinc-300", "dark:text-zinc-300")
                     )}
                   >
-                    {agreementHours}
-                  </span>
-                  <span
-                    className={cn(
-                      "text-[12px] font-normal",
-                      themeClass("text-[#4B4B57]", "text-zinc-400", "dark:text-zinc-400")
-                    )}
-                  >
-                    hr/mo
-                  </span>
-                </div>
-                <div className="mt-2 flex items-center gap-1">
-                  <AlertCircle
-                    className="h-3 w-3 shrink-0 fill-[#EA6A47] text-white dark:text-zinc-900"
-                    aria-hidden="true"
-                  />
-                  <span
-                    className={cn(
-                      "text-[8.5px] leading-none truncate",
-                      themeClass("text-[#7D7D8A]", "text-zinc-400", "dark:text-zinc-400")
-                    )}
-                  >
-                    {daysRemainingText} them
-                  </span>
+                    Agreement
+                  </div>
+                  <div className="mt-1.5 flex items-baseline gap-1">
+                    <span
+                      className={cn(
+                        "text-[36px] font-light leading-none tracking-[-0.045em] tabular-nums",
+                        themeClass("text-[#1C1C24]", "text-zinc-50", "dark:text-zinc-50")
+                      )}
+                    >
+                      {agreementHours}
+                    </span>
+                    <span
+                      className={cn(
+                        "text-[14px] font-normal",
+                        themeClass("text-[#3E3E4A]", "text-zinc-400", "dark:text-zinc-400")
+                      )}
+                    >
+                      hr/mo
+                    </span>
+                  </div>
+                  <div className="mt-2.5 flex items-center gap-1.5">
+                    <span
+                      aria-hidden="true"
+                      className="inline-flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full bg-[#E86A42] text-[8.5px] font-bold leading-none text-white"
+                    >
+                      !
+                    </span>
+                    <span
+                      className={cn(
+                        "text-[9px] leading-none truncate",
+                        themeClass("text-[#6F6C6A]", "text-zinc-400", "dark:text-zinc-400")
+                      )}
+                    >
+                      {daysRemainingText} them
+                    </span>
+                  </div>
                 </div>
               </motion.div>
             </div>
-          </article>
+          </motion.article>
         </div>
       </div>
     </section>
