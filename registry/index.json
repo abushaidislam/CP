@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-21T07:52:13.064Z",
+  "updatedAt": "2026-11-21T07:52:20.184Z",
   "totalComponents": 62,
   "components": [
     {
@@ -10,8 +10,8 @@
       "description": "A monochrome agency bento grid featuring a morphing brand logo, kinetic vertical typography marquee, layered social profile card, rotating procedural stardust orb, and an interactive Figma-style colla",
       "category": "Custom",
       "isBuiltIn": false,
-      "updatedAt": 1795247529241,
-      "lastRepoSyncAt": 1795247532901,
+      "updatedAt": 1795247536256,
+      "lastRepoSyncAt": 1795247540117,
       "path": "registry/components/agency-bento-showcase",
       "files": [
         "component.tsx",
