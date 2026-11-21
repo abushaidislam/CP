@@ -3,10 +3,13 @@
 import React, { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import { useShallow } from "zustand/react/shallow";
 import {
+  createInitialUserComponents,
   useStudioStore,
+  type ComponentVariant,
   type RepoSummaryInput,
   type UserComponent,
 } from "@/lib/store/studio-store";
+import { DEFAULT_TEMPLATES } from "@/lib/sandbox/default-templates";
 import { useSyncSecuritySession } from "@/lib/hooks/use-sync-security-session";
 import { ComponentCard } from "./component-card";
 import { CreateComponentDialog } from "./create-component-dialog";
@@ -41,6 +44,8 @@ import { KeyboardShortcutsDialog } from "@/components/studio/keyboard-shortcuts-
 import { SecurityShieldModal } from "@/components/studio/security-shield-modal";
 import { RepoSyncModal } from "@/components/studio/repo-sync-modal";
 import { McpConnectDialog } from "@/components/mcp/mcp-connect-dialog";
+import { CommandPaletteDialog } from "./command-palette-dialog";
+import { useMcpLiveSync } from "@/lib/hooks/use-mcp-live-sync";
 
 export interface ComponentHubProps {
   onNavigateStudio?: (componentId: string) => void;
@@ -121,6 +126,19 @@ export function ComponentHub({
   const [isDark, setIsDark] = useState(true);
   const [isShortcutsOpen, setIsShortcutsOpen] = useState(false);
   const [isMcpConnectOpen, setIsMcpConnectOpen] = useState(false);
+  const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
+  const { lastSyncedEvent } = useMcpLiveSync();
+
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setIsCommandPaletteOpen((prev) => !prev);
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
 
   // Sync theme with document element & seed/hydrate saved repo components post-render
   useEffect(() => {
@@ -130,11 +148,11 @@ export function ComponentHub({
       if (!hasSeededSummariesRef.current) {
         hasSeededSummariesRef.current = true;
         seedRepoSummaries(initialSummaries);
-        setHasHydratedSummaries(true);
       }
     } else {
       hydrateFromProjectRepo?.();
     }
+    setHasHydratedSummaries(true);
   }, [hydrateFromProjectRepo, initialSummaries, seedRepoSummaries]);
 
   const toggleTheme = () => {
@@ -148,17 +166,33 @@ export function ComponentHub({
     }
   };
 
-  const effectiveUserComponents = useMemo<Record<string, UserComponent>>(() => {
-    const base = userComponents || {};
-    if (
-      hasHydratedSummaries ||
-      !initialSummaries ||
-      initialSummaries.length === 0
-    ) {
-      return base;
+  // When initialSummaries is passed from SSR (app/page.tsx), use deterministic initial store state
+  // on both server and initial client hydration pass so persisted localStorage state never causes a hydration mismatch.
+  const isServerSeededInitialPass =
+    initialSummaries !== undefined && !hasHydratedSummaries;
+
+  const effectiveRecentComponentIds = useMemo<string[]>(() => {
+    if (isServerSeededInitialPass) {
+      return [DEFAULT_TEMPLATES[0].id];
     }
-    const merged: Record<string, UserComponent> = { ...base };
-    for (const s of initialSummaries) {
+    return recentComponentIds || [];
+  }, [isServerSeededInitialPass, recentComponentIds]);
+
+  const effectiveVariantsByTemplate = useMemo<
+    Record<string, ComponentVariant[]>
+  >(() => {
+    if (isServerSeededInitialPass) {
+      return {};
+    }
+    return variantsByTemplate || {};
+  }, [isServerSeededInitialPass, variantsByTemplate]);
+
+  const effectiveUserComponents = useMemo<Record<string, UserComponent>>(() => {
+    if (!isServerSeededInitialPass) {
+      return userComponents || {};
+    }
+    const merged: Record<string, UserComponent> = createInitialUserComponents();
+    for (const s of initialSummaries || []) {
       const existing = merged[s.id];
       if (!existing) {
         merged[s.id] = {
@@ -186,7 +220,7 @@ export function ComponentHub({
       }
     }
     return merged;
-  }, [userComponents, initialSummaries, hasHydratedSummaries]);
+  }, [userComponents, initialSummaries, isServerSeededInitialPass]);
 
   const allComponents = useMemo(
     () => Object.values(effectiveUserComponents),
@@ -195,8 +229,8 @@ export function ComponentHub({
 
   const recentCount = useMemo(() => {
     const existingIds = new Set(allComponents.map((c) => c.id));
-    return (recentComponentIds || []).filter((id) => existingIds.has(id)).length;
-  }, [allComponents, recentComponentIds]);
+    return effectiveRecentComponentIds.filter((id) => existingIds.has(id)).length;
+  }, [allComponents, effectiveRecentComponentIds]);
 
   // Sorted newest & popular lists
   const newestComponents = useMemo(
@@ -209,15 +243,15 @@ export function ComponentHub({
 
   const popularComponents = useMemo(() => {
     return [...allComponents].sort((a, b) => {
-      const aVariants = variantsByTemplate?.[a.id]?.length || 0;
-      const bVariants = variantsByTemplate?.[b.id]?.length || 0;
+      const aVariants = effectiveVariantsByTemplate[a.id]?.length || 0;
+      const bVariants = effectiveVariantsByTemplate[b.id]?.length || 0;
       if (bVariants !== aVariants) return bVariants - aVariants;
-      const aRecent = (recentComponentIds || []).includes(a.id) ? 1 : 0;
-      const bRecent = (recentComponentIds || []).includes(b.id) ? 1 : 0;
+      const aRecent = effectiveRecentComponentIds.includes(a.id) ? 1 : 0;
+      const bRecent = effectiveRecentComponentIds.includes(b.id) ? 1 : 0;
       if (bRecent !== aRecent) return bRecent - aRecent;
       return (a.createdAt || 0) - (b.createdAt || 0);
     });
-  }, [allComponents, variantsByTemplate, recentComponentIds]);
+  }, [allComponents, effectiveVariantsByTemplate, effectiveRecentComponentIds]);
 
   // Category counts
   const categoryCounts = useMemo(() => {
@@ -251,7 +285,7 @@ export function ComponentHub({
 
     if (selectedCategory === "Recent Work") {
       const compMap = effectiveUserComponents;
-      list = (recentComponentIds || [])
+      list = effectiveRecentComponentIds
         .map((id) => compMap[id])
         .filter((c): c is UserComponent => Boolean(c));
     } else if (selectedCategory === "All" || selectedCategory === "Newest") {
@@ -291,7 +325,7 @@ export function ComponentHub({
     allComponents,
     newestComponents,
     popularComponents,
-    recentComponentIds,
+    effectiveRecentComponentIds,
     selectedCategory,
     searchQuery,
   ]);
@@ -398,13 +432,13 @@ export function ComponentHub({
     <div className="rounded-none border border-border overflow-hidden bg-border">
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-px bg-border">
         {items.map((component, idx) => {
-          const variants = variantsByTemplate?.[component.id] || [];
+          const variants = effectiveVariantsByTemplate[component.id] || [];
           const variantsCount = variants.length || 1;
           const checkpointsCount = variants.reduce(
             (acc, v) => acc + (v.checkpoints?.length || 0),
             0
           );
-          const isRecent = (recentComponentIds || []).includes(component.id);
+          const isRecent = effectiveRecentComponentIds.includes(component.id);
 
           return (
             <ComponentCard
@@ -445,8 +479,38 @@ export function ComponentHub({
             </div>
           </div>
 
-          {/* Right Actions: Security Shield, Keyboard Shortcuts, Theme Toggle & New Component Button */}
+          {/* Right Actions: Command Palette, Security Shield, Keyboard Shortcuts, Theme Toggle & New Component Button */}
           <div className="flex items-center gap-1.5">
+            {lastSyncedEvent && (
+              <Badge
+                variant="secondary"
+                className="hidden sm:inline-flex font-sans text-[10px] rounded-none bg-sky-500/10 text-sky-400 border border-sky-500/30 gap-1.5 px-2 py-0.5"
+              >
+                <Cpu className="size-3" />
+                <span>{lastSyncedEvent.message}</span>
+              </Badge>
+            )}
+
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsCommandPaletteOpen(true)}
+                  className="hidden sm:inline-flex h-8 rounded-none border-border/80 bg-card/70 text-muted-foreground hover:text-foreground font-sans text-xs gap-2 px-2.5"
+                  aria-label="Open Command Palette (Ctrl+K)"
+                >
+                  <Search className="size-3.5" aria-hidden="true" />
+                  <span>Quick Jump</span>
+                  <kbd className="font-mono text-[10px] bg-muted px-1 py-0.2 border border-border/60">
+                    ⌘K
+                  </kbd>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="font-sans text-xs">
+                Command Palette &amp; shadcn CLI Search (⌘K / Ctrl+K)
+              </TooltipContent>
+            </Tooltip>
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
@@ -806,6 +870,12 @@ export function ComponentHub({
         {isSecurityModalOpen && <SecurityShieldModal />}
         {(isRepoSyncModalOpen || isPublishModalOpen) && <RepoSyncModal />}
         <McpConnectDialog open={isMcpConnectOpen} onOpenChange={setIsMcpConnectOpen} />
+        <CommandPaletteDialog
+          open={isCommandPaletteOpen}
+          onOpenChange={setIsCommandPaletteOpen}
+          onOpenMcpConnect={() => setIsMcpConnectOpen(true)}
+          onOpenCreateComponent={() => setCreateComponentDialogOpen(true)}
+        />
       </div>
   );
 }

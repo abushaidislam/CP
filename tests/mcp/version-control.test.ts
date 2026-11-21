@@ -114,4 +114,44 @@ describe("MCP AI Version Control & Checkpoint Engine", () => {
     expect(listRes.versions?.some((v) => v.id === "v2")).toBe(false);
     expect(listRes.totalVersions).toBe(2); // v3 and v4 remain
   });
+
+  it("should apply surgical patches via patchComponent and generate unified diff via diffVersions", async () => {
+    const patchRes = await componentRegistryService.patchComponent({
+      slug: testSlug,
+      patches: [
+        {
+          file: "component.tsx",
+          search: "Version 1 Content",
+          replace: "Version 5 Patched via MCP",
+        },
+      ],
+      changeMessage: "Patched heading text via patch_component",
+    });
+
+    expect(patchRes.success).toBe(true);
+    expect(patchRes.appliedPatches).toBe(1);
+    expect(patchRes.shadcnCommand).toContain(`/api/registry/${testSlug}`);
+
+    const diffRes = await componentRegistryService.diffVersions({
+      slug: testSlug,
+      fromVersion: "v4",
+      toVersion: patchRes.version,
+    });
+
+    expect(diffRes.success).toBe(true);
+    expect(diffRes.changedFiles).toContain("component.tsx");
+    expect(diffRes.addedLines).toBeGreaterThan(0);
+    expect(diffRes.unifiedDiff).toContain("+ export function VersionCard() { return <div>Version 5 Patched via MCP</div>; }");
+  });
+
+  it("should validate component syntax and auto-detect dependencies via validateComponent", async () => {
+    const validRes = await componentRegistryService.validateComponent({
+      componentCode: `"use client";\nimport React from "react";\nimport { Sparkles } from "lucide-react";\nexport function ValidBadge() { return <div className="dark:bg-zinc-900 w-full"><Sparkles /></div>; }`,
+      dependencies: [],
+    });
+
+    expect(validRes.compilesCleanly).toBe(true);
+    expect(validRes.detectedDependencies).toContain("lucide-react");
+    expect(validRes.missingDependencies).toContain("lucide-react");
+  });
 });

@@ -1,16 +1,78 @@
+import fs from "fs";
+import path from "path";
 import { Redis } from "@upstash/redis";
 import type {
   RepoComponentManifest,
-  RepoIndexEntry,
   RepoSummaryComponent,
 } from "@/lib/registry/server-registry";
 import type { StudioFiles, UserComponent } from "@/lib/store/studio-store";
 import { COMPONENTS_DIR_REL } from "@/lib/registry/server-registry";
 
-let redisInstance: Redis | null = null;
+interface RedisLikeClient {
+  get<T = unknown>(key: string): Promise<T | null>;
+  set(key: string, value: string): Promise<unknown>;
+  del(key: string): Promise<unknown>;
+  hset(key: string, kv: Record<string, string>): Promise<unknown>;
+  hgetall<T extends Record<string, unknown> = Record<string, unknown>>(
+    key: string
+  ): Promise<T | null>;
+  hdel(key: string, ...fields: string[]): Promise<unknown>;
+}
+
+const memoryKvStore = new Map<string, string>();
+const memoryHashStore = new Map<string, Map<string, string>>();
+
+const inMemoryRedisFallback: RedisLikeClient = {
+  async get<T = unknown>(key: string): Promise<T | null> {
+    const val = memoryKvStore.get(key);
+    return (val !== undefined ? (val as unknown as T) : null);
+  },
+  async set(key: string, value: string): Promise<string> {
+    memoryKvStore.set(key, value);
+    return "OK";
+  },
+  async del(key: string): Promise<number> {
+    return memoryKvStore.delete(key) ? 1 : 0;
+  },
+  async hset(key: string, kv: Record<string, string>): Promise<number> {
+    let hash = memoryHashStore.get(key);
+    if (!hash) {
+      hash = new Map<string, string>();
+      memoryHashStore.set(key, hash);
+    }
+    let added = 0;
+    for (const [field, val] of Object.entries(kv)) {
+      if (!hash.has(field)) added++;
+      hash.set(field, val);
+    }
+    return added;
+  },
+  async hgetall<T extends Record<string, unknown> = Record<string, unknown>>(
+    key: string
+  ): Promise<T | null> {
+    const hash = memoryHashStore.get(key);
+    if (!hash || hash.size === 0) return null;
+    const obj: Record<string, string> = {};
+    for (const [k, v] of hash.entries()) {
+      obj[k] = v;
+    }
+    return obj as unknown as T;
+  },
+  async hdel(key: string, ...fields: string[]): Promise<number> {
+    const hash = memoryHashStore.get(key);
+    if (!hash) return 0;
+    let removed = 0;
+    for (const f of fields) {
+      if (hash.delete(f)) removed++;
+    }
+    return removed;
+  },
+};
+
+let redisInstance: RedisLikeClient | null = null;
 let redisInitialized = false;
 
-export function getRedisClient(): Redis | null {
+export function getRedisClient(): RedisLikeClient | null {
   if (redisInitialized) {
     return redisInstance;
   }
@@ -25,9 +87,6 @@ export function getRedisClient(): Redis | null {
   // If running in local CLI or tests without preloaded .env.local, attempt graceful loading
   if ((!url || !token) && typeof process !== "undefined" && typeof process.cwd === "function") {
     try {
-      // Dynamic import/require to prevent bundling issues on Edge runtimes
-      const fs = require("fs");
-      const path = require("path");
       const envPath = path.join(process.cwd(), ".env.local");
       if (fs.existsSync(envPath)) {
         const content = fs.readFileSync(envPath, "utf-8") as string;
@@ -59,11 +118,11 @@ export function getRedisClient(): Redis | null {
         token,
       });
     } catch (err) {
-      console.warn("[Redis] Failed to initialize Upstash Redis client:", err);
-      redisInstance = null;
+      console.warn("[Redis] Failed to initialize Upstash Redis client, using in-memory fallback:", err);
+      redisInstance = inMemoryRedisFallback;
     }
   } else {
-    redisInstance = null;
+    redisInstance = inMemoryRedisFallback;
   }
 
   redisInitialized = true;

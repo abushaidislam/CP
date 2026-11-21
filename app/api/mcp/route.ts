@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { componentRegistryService } from "@/lib/mcp/component-service";
+import {
+  componentRegistryService,
+  getRecentMcpSyncEvents,
+} from "@/lib/mcp/component-service";
 import {
   createComponentSchema,
   updateComponentSchema,
@@ -7,11 +10,14 @@ import {
   listComponentsSchema,
   deleteComponentSchema,
   manageVersionsSchema,
+  validateComponentSchema,
+  patchComponentSchema,
+  diffVersionsSchema,
 } from "@/lib/mcp/schemas";
 
 const MCP_SERVER_INFO = {
   name: "component-studio-mcp",
-  version: "1.0.0",
+  version: "1.1.0",
   protocolVersion: "2024-11-05",
   capabilities: {
     tools: { listChanged: false },
@@ -24,7 +30,7 @@ const MCP_TOOLS_METADATA = [
   {
     name: "create_component",
     description:
-      "Creates a new component in the Component Studio registry and saves it instantly to Cloud Storage (Upstash Redis) for live preview at /studio/[slug].",
+      "Creates a new component in the Component Studio registry and saves it instantly to Cloud Storage (Upstash Redis) for live preview at /studio/[slug]. Also exposes a shadcn registry endpoint at /api/registry/[slug].",
     inputSchema: {
       type: "object",
       properties: {
@@ -42,7 +48,7 @@ const MCP_TOOLS_METADATA = [
   },
   {
     name: "get_component",
-    description: "Fetches the full code files, manifest, and metadata for a component by slug or ID.",
+    description: "Fetches the full code files, manifest, metadata, and npx shadcn@latest add command for a component by slug or ID.",
     inputSchema: {
       type: "object",
       properties: {
@@ -82,6 +88,71 @@ const MCP_TOOLS_METADATA = [
         baseVersion: { type: "string", description: "Optional past version identifier (e.g. 'v1' or 'v2') to base this update on" },
       },
       required: ["slug"],
+    },
+  },
+  {
+    name: "patch_component",
+    description:
+      "Applies fast, targeted search/replace code patches to an existing component without resending the entire file, and snapshots a new version checkpoint (e.g. v2, v3).",
+    inputSchema: {
+      type: "object",
+      properties: {
+        slug: { type: "string", description: "The slug of the component to patch" },
+        patches: {
+          type: "array",
+          description: "Ordered list of search/replace blocks to apply",
+          items: {
+            type: "object",
+            properties: {
+              file: {
+                type: "string",
+                enum: ["component.tsx", "default.tsx", "index.css"],
+                description: "Target file to patch (default: 'component.tsx')",
+              },
+              search: { type: "string", description: "Exact code block to find" },
+              replace: { type: "string", description: "Replacement code block" },
+            },
+            required: ["search", "replace"],
+          },
+        },
+        changeMessage: { type: "string", description: "Description of what was changed in this patched version" },
+        baseVersion: { type: "string", description: "Optional past version identifier (e.g. 'v1') to base this patch on" },
+      },
+      required: ["slug", "patches"],
+    },
+  },
+  {
+    name: "diff_versions",
+    description:
+      "Computes a line-by-line unified diff and change statistics between two versions of a component (e.g. 'v1' vs 'v2').",
+    inputSchema: {
+      type: "object",
+      properties: {
+        slug: { type: "string", description: "The component slug" },
+        fromVersion: { type: "string", description: "Base version ID (e.g. 'v1'). Defaults to previous version" },
+        toVersion: { type: "string", description: "Target version ID (e.g. 'v2'). Defaults to active version" },
+        file: {
+          type: "string",
+          enum: ["component.tsx", "default.tsx", "index.css", "all"],
+          description: "Which file to diff (default: 'all')",
+        },
+      },
+      required: ["slug"],
+    },
+  },
+  {
+    name: "validate_component",
+    description:
+      "Pre-flight compiler and guideline validator. Checks React 19 TSX syntax via Sucrase, auto-detects imported npm dependencies, and scores 21st.dev guideline compliance (0-100) before or after saving.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        componentCode: { type: "string", description: "React TSX source code for component.tsx to validate" },
+        defaultCode: { type: "string", description: "Optional default.tsx demo code to validate" },
+        css: { type: "string", description: "Optional index.css rules" },
+        dependencies: { type: "array", items: { type: "string" }, description: "Declared npm packages" },
+      },
+      required: ["componentCode"],
     },
   },
   {
@@ -170,8 +241,23 @@ export async function GET(req: NextRequest) {
 
   const { searchParams } = new URL(req.url);
   const format = searchParams.get("format");
+  const mode = searchParams.get("mode");
   const transport = searchParams.get("transport");
   const acceptHeader = req.headers.get("accept") || "";
+
+  // 0. Live Sync Events query for Studio & Hub auto-reload (?mode=events&since=...&slug=...)
+  if (mode === "events") {
+    const since = Number(searchParams.get("since") || "0") || 0;
+    const slugFilter = searchParams.get("slug")?.trim() || undefined;
+    const events = getRecentMcpSyncEvents(since, slugFilter);
+    return NextResponse.json(
+      {
+        events,
+        serverTime: Date.now(),
+      },
+      { headers: corsHeaders() }
+    );
+  }
 
   // 1. SSE Stream for MCP SSE Clients
   if (transport === "sse" || acceptHeader.includes("text/event-stream")) {
@@ -621,6 +707,46 @@ function normalizeArgs(toolName: string, raw: Record<string, unknown>): Record<s
     };
   }
 
+  if (toolName === "validate_component") {
+    return {
+      ...raw,
+      componentCode:
+        raw.componentCode ||
+        raw.component_code ||
+        raw.code ||
+        raw.component ||
+        "",
+      defaultCode:
+        raw.defaultCode ||
+        raw.default_code ||
+        raw.demoCode ||
+        raw.previewCode ||
+        "",
+      css: raw.css || "",
+      dependencies: raw.dependencies || [],
+    };
+  }
+
+  if (toolName === "patch_component") {
+    return {
+      ...raw,
+      slug: raw.slug || raw.id || "",
+      patches: Array.isArray(raw.patches) ? raw.patches : [],
+      changeMessage: raw.changeMessage || raw.change_message || raw.message || undefined,
+      baseVersion: raw.baseVersion || raw.base_version || undefined,
+    };
+  }
+
+  if (toolName === "diff_versions") {
+    return {
+      ...raw,
+      slug: raw.slug || raw.id || "",
+      fromVersion: raw.fromVersion || raw.from_version || raw.from || undefined,
+      toVersion: raw.toVersion || raw.to_version || raw.to || undefined,
+      file: raw.file || "all",
+    };
+  }
+
   return raw;
 }
 
@@ -642,6 +768,18 @@ async function executeTool(name: string, rawArgs: Record<string, unknown>): Prom
     case "update_component": {
       const parsed = updateComponentSchema.parse(normalized);
       return await componentRegistryService.updateComponent(parsed);
+    }
+    case "patch_component": {
+      const parsed = patchComponentSchema.parse(normalized);
+      return await componentRegistryService.patchComponent(parsed);
+    }
+    case "diff_versions": {
+      const parsed = diffVersionsSchema.parse(normalized);
+      return await componentRegistryService.diffVersions(parsed);
+    }
+    case "validate_component": {
+      const parsed = validateComponentSchema.parse(normalized);
+      return await componentRegistryService.validateComponent(parsed);
     }
     case "delete_component": {
       const parsed = deleteComponentSchema.parse(normalized);

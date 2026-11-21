@@ -24,7 +24,11 @@ import {
   type RepoComponentManifest,
   type RepoIndexEntry,
 } from "@/lib/registry/server-registry";
-import { saveRedisComponent } from "@/lib/storage/redis-client";
+import {
+  deleteRedisComponent,
+  getRedisComponent,
+  saveRedisComponent,
+} from "@/lib/storage/redis-client";
 
 export { toComponentSlug, type RepoComponentManifest, type RepoIndexEntry };
 
@@ -635,8 +639,8 @@ async function readAllRepoComponents(
           const previewPngPath = path.join(compDir, "preview.png");
           let hasPreviewPng = false;
           try {
-            await fs.access(previewPngPath);
-            hasPreviewPng = true;
+            const stat = await fs.stat(previewPngPath);
+            hasPreviewPng = stat.isFile() && stat.size > 0;
           } catch {
             // No preview.png on disk
           }
@@ -1279,28 +1283,43 @@ export async function DELETE(req: NextRequest) {
           (slugParam && c.manifest.slug === slugParam)
       );
 
-      if (!target) {
+      const candidateSlug = target?.manifest.slug || toComponentSlug(slugParam || id);
+      const redisExisting = candidateSlug
+        ? await getRedisComponent(candidateSlug).catch(() => null)
+        : null;
+
+      if (!target && !redisExisting) {
         return NextResponse.json({
           success: true,
           removed: false,
         });
       }
 
-      const compAbsDir = resolveSafeComponentDir(cwd, target.manifest.slug);
-      await fs.rm(compAbsDir, { recursive: true, force: true });
+      const resolvedSlug = target?.manifest.slug || redisExisting?.manifest.slug || candidateSlug;
+
+      if (target) {
+        const compAbsDir = resolveSafeComponentDir(cwd, resolvedSlug);
+        await fs.rm(compAbsDir, { recursive: true, force: true }).catch(() => {});
+      }
+
+      if (resolvedSlug) {
+        await deleteRedisComponent(resolvedSlug).catch(() => false);
+      }
 
       invalidateRepoReadCache();
       const { indexEntries } = await readAllRepoComponents(cwd, true);
-      await writeRegistryIndexFile(cwd, indexEntries);
-      await tryLocalGitCommit(
-        cwd,
-        `chore(registry): remove ${target.manifest.name} from project repo`
-      );
+      await writeRegistryIndexFile(cwd, indexEntries).catch(() => {});
+      if (target) {
+        await tryLocalGitCommit(
+          cwd,
+          `chore(registry): remove ${target.manifest.name} from project repo`
+        );
+      }
 
       return NextResponse.json({
         success: true,
         removed: true,
-        slug: target.manifest.slug,
+        slug: resolvedSlug,
         totalRepoComponents: indexEntries.length,
       });
     } catch (err: unknown) {

@@ -8,12 +8,16 @@ import {
   getComponentSchema,
   listComponentsSchema,
   deleteComponentSchema,
+  manageVersionsSchema,
+  validateComponentSchema,
+  patchComponentSchema,
+  diffVersionsSchema,
 } from "../lib/mcp/schemas";
 
 export function createComponentStudioMcpServer(): McpServer {
   const server = new McpServer({
     name: "component-studio-mcp",
-    version: "1.0.0",
+    version: "1.1.0",
   });
 
   // Tool: create_component
@@ -141,6 +145,110 @@ export function createComponentStudioMcpServer(): McpServer {
         return {
           isError: true,
           content: [{ type: "text", text: `Failed to delete component: ${msg}` }],
+        };
+      }
+    }
+  );
+
+  // Tool: manage_versions
+  server.tool(
+    "manage_versions",
+    "Manages version history, checkpoints, and revisions of a component. Supports 'list' (view all version snapshots), 'restore' (rollback/switch to a past version), and 'delete' (prune/delete specific versions).",
+    manageVersionsSchema.shape,
+    async (args) => {
+      try {
+        const result = await componentRegistryService.manageVersions(args);
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(result, null, 2),
+            },
+          ],
+        };
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        return {
+          isError: true,
+          content: [{ type: "text", text: `Failed to manage component versions: ${msg}` }],
+        };
+      }
+    }
+  );
+
+  // Tool: patch_component
+  server.tool(
+    "patch_component",
+    "Applies fast, targeted search/replace code patches to an existing component without resending the entire file, and snapshots a new version checkpoint (e.g. v2, v3).",
+    patchComponentSchema.shape,
+    async (args) => {
+      try {
+        const result = await componentRegistryService.patchComponent(args);
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(result, null, 2),
+            },
+          ],
+        };
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        return {
+          isError: true,
+          content: [{ type: "text", text: `Failed to patch component: ${msg}` }],
+        };
+      }
+    }
+  );
+
+  // Tool: diff_versions
+  server.tool(
+    "diff_versions",
+    "Computes a line-by-line unified diff and change statistics between two versions of a component (e.g. 'v1' vs 'v2').",
+    diffVersionsSchema.shape,
+    async (args) => {
+      try {
+        const result = await componentRegistryService.diffVersions(args);
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(result, null, 2),
+            },
+          ],
+        };
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        return {
+          isError: true,
+          content: [{ type: "text", text: `Failed to diff component versions: ${msg}` }],
+        };
+      }
+    }
+  );
+
+  // Tool: validate_component
+  server.tool(
+    "validate_component",
+    "Pre-flight compiler and guideline validator. Checks React 19 TSX syntax via Sucrase, auto-detects imported npm dependencies, and scores 21st.dev guideline compliance (0-100).",
+    validateComponentSchema.shape,
+    async (args) => {
+      try {
+        const result = await componentRegistryService.validateComponent(args);
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(result, null, 2),
+            },
+          ],
+        };
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        return {
+          isError: true,
+          content: [{ type: "text", text: `Failed to validate component: ${msg}` }],
         };
       }
     }

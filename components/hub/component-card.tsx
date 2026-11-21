@@ -82,6 +82,11 @@ function ComponentCardInner({
 }: ComponentCardProps) {
   const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
   const [failedPreviewSrc, setFailedPreviewSrc] = useState<string | null>(null);
+  const [isHydrated, setIsHydrated] = useState(false);
+
+  React.useEffect(() => {
+    setIsHydrated(true);
+  }, []);
 
   const isDeleteDialogOpen = controlledOpen !== undefined ? controlledOpen : uncontrolledOpen;
   const setIsDeleteDialogOpen = (open: boolean) => {
@@ -122,7 +127,9 @@ function ComponentCardInner({
     }
   };
 
-  const cachedBrowserPreview = getCachedPreviewSync(component.id);
+  const cachedBrowserPreview = isHydrated
+    ? getCachedPreviewSync(component.id)
+    : undefined;
   const isBlankPlaceholder =
     component.previewImage === "./preview.png" ||
     component.previewImage === DEFAULT_TEMPLATE_PREVIEWS["blank"];

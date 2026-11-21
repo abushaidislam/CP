@@ -77,3 +77,62 @@ export const deleteComponentSchema = z.object({
 
 export type DeleteComponentInput = z.input<typeof deleteComponentSchema>;
 export type DeleteComponentOutput = z.infer<typeof deleteComponentSchema>;
+
+export const validateComponentSchema = z.object({
+  componentCode: z.string().min(1, "component.tsx code is required").describe("React TSX source code for component.tsx to validate"),
+  defaultCode: z.string().optional().default("").describe("Optional default.tsx demo code to validate"),
+  css: z.string().optional().default("").describe("Optional index.css rules to validate"),
+  dependencies: z.preprocess(normalizeDependencies, z.array(z.string()).default([])).describe("Declared npm dependencies"),
+});
+
+export type ValidateComponentInput = z.input<typeof validateComponentSchema>;
+export type ValidateComponentOutput = z.infer<typeof validateComponentSchema>;
+
+export const patchOperationSchema = z.object({
+  file: z
+    .enum(["component.tsx", "default.tsx", "index.css"])
+    .default("component.tsx")
+    .describe("Target file to patch (default: 'component.tsx')"),
+  search: z.string().min(1, "Search block is required").describe("Exact substring to find in the target file"),
+  replace: z.string().describe("Replacement string to substitute in place of the search block"),
+});
+
+export const patchComponentSchema = z.object({
+  slug: z.string().min(1, "Component slug is required").describe("The slug of the component to patch"),
+  patches: z
+    .array(patchOperationSchema)
+    .min(1, "At least one patch operation is required")
+    .describe("Ordered list of search/replace patch blocks to apply"),
+  changeMessage: z
+    .string()
+    .optional()
+    .describe("Description of what was changed in this patched version"),
+  baseVersion: z
+    .string()
+    .optional()
+    .describe("Optional past version identifier (e.g. 'v1') to base this patch on"),
+});
+
+export type PatchComponentInput = z.input<typeof patchComponentSchema>;
+export type PatchComponentOutput = z.infer<typeof patchComponentSchema>;
+
+export const diffVersionsSchema = z.object({
+  slug: z.string().min(1, "Component slug is required").describe("The slug of the component"),
+  fromVersion: z
+    .string()
+    .optional()
+    .describe("Base version ID to compare from (e.g. 'v1'). Defaults to previous version"),
+  toVersion: z
+    .string()
+    .optional()
+    .describe("Target version ID to compare to (e.g. 'v2'). Defaults to current active version"),
+  file: z
+    .enum(["component.tsx", "default.tsx", "index.css", "all"])
+    .default("all")
+    .optional()
+    .describe("Which file to diff ('component.tsx', 'default.tsx', 'index.css', or 'all')"),
+});
+
+export type DiffVersionsInput = z.input<typeof diffVersionsSchema>;
+export type DiffVersionsOutput = z.infer<typeof diffVersionsSchema>;
+

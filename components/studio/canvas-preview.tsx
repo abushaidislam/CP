@@ -552,6 +552,22 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
           if (Object.keys(controlOverridesRef.current).length > 0) {
             pushDemoPropsToIframe(controlOverridesRef.current);
           }
+
+          // Auto-capture preview thumbnail once if this custom/MCP component has no previewImage yet
+          const activeComp = useStudioStore.getState().userComponents?.[currentTemplateId];
+          if (
+            activeComp &&
+            !activeComp.isBuiltIn &&
+            !activeComp.previewImage &&
+            iframeRef.current?.contentWindow
+          ) {
+            setTimeout(() => {
+              iframeRef.current?.contentWindow?.postMessage(
+                { type: "CAPTURE_PREVIEW", componentId: currentTemplateId },
+                "*"
+              );
+            }, 900);
+          }
         }
         if (event.data.type === "RUNTIME_ERROR") {
           setHydrationStage("error");

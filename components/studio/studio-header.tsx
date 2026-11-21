@@ -54,6 +54,8 @@ import {
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { McpConnectDialog } from "@/components/mcp/mcp-connect-dialog";
+import { CommandPaletteDialog } from "@/components/hub/command-palette-dialog";
+import { useMcpLiveSync } from "@/lib/hooks/use-mcp-live-sync";
 
 export function StudioHeader() {
   const router = useRouter();
@@ -123,7 +125,14 @@ export function StudioHeader() {
   const [isCapturing, setIsCapturing] = useState(false);
   const [capturedSuccess, setCapturedSuccess] = useState(false);
   const [isMcpConnectOpen, setIsMcpConnectOpen] = useState(false);
+  const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
   const captureTimeoutRef = React.useRef<NodeJS.Timeout | number | null>(null);
+
+  const activeComp = userComponents?.[currentTemplateId];
+  const activeSlug = activeComp
+    ? activeComp.repoSlug || activeComp.id
+    : currentTemplateId;
+  const { lastSyncedEvent } = useMcpLiveSync(activeSlug);
 
   React.useEffect(() => {
     let successTimer: NodeJS.Timeout | number | undefined;
@@ -183,6 +192,11 @@ export function StudioHeader() {
 
   React.useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key?.toLowerCase() === "k") {
+        e.preventDefault();
+        setIsCommandPaletteOpen((prev) => !prev);
+        return;
+      }
       if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key?.toLowerCase() === "s") {
         e.preventDefault();
         saveComponentToProjectRepo?.({ componentId: currentTemplateId });
@@ -1058,7 +1072,19 @@ export function StudioHeader() {
         </div>
       </div>
 
+      {lastSyncedEvent && (
+        <div className="fixed bottom-4 right-4 z-50 flex items-center gap-2 bg-card border border-sky-500/40 px-3 py-2 shadow-lg font-sans text-xs text-foreground">
+          <Cpu className="size-3.5 text-sky-400 shrink-0" />
+          <span>{lastSyncedEvent.message}</span>
+        </div>
+      )}
+
       <McpConnectDialog open={isMcpConnectOpen} onOpenChange={setIsMcpConnectOpen} />
+      <CommandPaletteDialog
+        open={isCommandPaletteOpen}
+        onOpenChange={setIsCommandPaletteOpen}
+        onOpenMcpConnect={() => setIsMcpConnectOpen(true)}
+      />
     </header>
   );
 }

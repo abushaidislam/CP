@@ -54,6 +54,10 @@ describe("Stdio MCP Server Protocol", () => {
     expect(stdoutData).toContain("list_components");
     expect(stdoutData).toContain("update_component");
     expect(stdoutData).toContain("delete_component");
+    expect(stdoutData).toContain("manage_versions");
+    expect(stdoutData).toContain("patch_component");
+    expect(stdoutData).toContain("diff_versions");
+    expect(stdoutData).toContain("validate_component");
 
     proc.kill();
   });
