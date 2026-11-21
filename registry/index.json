@@ -1,8 +1,30 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-21T13:21:54.324Z",
+  "updatedAt": "2026-11-21T13:57:56.501Z",
   "totalComponents": 65,
   "components": [
+    {
+      "id": "comp-1795158023910-or7yk",
+      "slug": "built-to-scale",
+      "name": "BuiltToScale",
+      "description": "",
+      "category": "Custom",
+      "isBuiltIn": false,
+      "updatedAt": 1795269469952,
+      "lastRepoSyncAt": 1795269476258,
+      "path": "registry/components/built-to-scale",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "index.css",
+        "manifest.json",
+        "preview.png"
+      ],
+      "dependencies": [
+        "framer-motion",
+        "lucide-react"
+      ]
+    },
     {
       "id": "radial-dissolve-brand-card",
       "slug": "radial-dissolve-brand-card",
@@ -131,25 +153,6 @@
       "updatedAt": 1795191980472,
       "lastRepoSyncAt": 1795191985025,
       "path": "registry/components/iridescent-orb",
-      "files": [
-        "component.tsx",
-        "default.tsx",
-        "index.css",
-        "manifest.json",
-        "preview.png"
-      ],
-      "dependencies": []
-    },
-    {
-      "id": "comp-1795158023910-or7yk",
-      "slug": "built-to-scale",
-      "name": "BuiltToScale",
-      "description": "",
-      "category": "Custom",
-      "isBuiltIn": false,
-      "updatedAt": 1795158226779,
-      "lastRepoSyncAt": 1795158230846,
-      "path": "registry/components/built-to-scale",
       "files": [
         "component.tsx",
         "default.tsx",
@@ -1120,7 +1123,7 @@
       "category": "Heroes",
       "isBuiltIn": true,
       "updatedAt": 1700000000000,
-      "lastRepoSyncAt": 1795190434052,
+      "lastRepoSyncAt": 1795265384870,
       "path": "registry/components/aurora-ambient-hero",
       "files": [
         "component.tsx",
@@ -1140,7 +1143,7 @@
       "category": "Cards",
       "isBuiltIn": true,
       "updatedAt": 1700000000000,
-      "lastRepoSyncAt": 1795190434052,
+      "lastRepoSyncAt": 1795265384870,
       "path": "registry/components/bento-metric-grid",
       "files": [
         "component.tsx",
@@ -1160,7 +1163,7 @@
       "category": "Heroes",
       "isBuiltIn": true,
       "updatedAt": 1700000000000,
-      "lastRepoSyncAt": 1795190434052,
+      "lastRepoSyncAt": 1795265384870,
       "path": "registry/components/ink-orbit-hero",
       "files": [
         "component.tsx",
@@ -1178,7 +1181,7 @@
       "category": "Badges",
       "isBuiltIn": true,
       "updatedAt": 1700000000000,
-      "lastRepoSyncAt": 1795190434052,
+      "lastRepoSyncAt": 1795265384870,
       "path": "registry/components/live-ping-status-pill",
       "files": [
         "component.tsx",
@@ -1198,7 +1201,7 @@
       "category": "Badges",
       "isBuiltIn": true,
       "updatedAt": 1700000000000,
-      "lastRepoSyncAt": 1795190434052,
+      "lastRepoSyncAt": 1795265384870,
       "path": "registry/components/metric-badge",
       "files": [
         "component.tsx",
@@ -1218,7 +1221,7 @@
       "category": "Buttons",
       "isBuiltIn": true,
       "updatedAt": 1700000000000,
-      "lastRepoSyncAt": 1795190434052,
+      "lastRepoSyncAt": 1795265384870,
       "path": "registry/components/neon-glow-button",
       "files": [
         "component.tsx",
@@ -1238,7 +1241,7 @@
       "category": "Buttons",
       "isBuiltIn": true,
       "updatedAt": 1700000000000,
-      "lastRepoSyncAt": 1795190434052,
+      "lastRepoSyncAt": 1795265384870,
       "path": "registry/components/shimmer-button",
       "files": [
         "component.tsx",
@@ -1259,7 +1262,7 @@
       "category": "Cards",
       "isBuiltIn": true,
       "updatedAt": 1700000000000,
-      "lastRepoSyncAt": 1795190434052,
+      "lastRepoSyncAt": 1795265384870,
       "path": "registry/components/spotlight-card",
       "files": [
         "component.tsx",

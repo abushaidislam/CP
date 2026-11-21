@@ -27,7 +27,15 @@ export type BuiltToScaleTheme = "auto" | "light" | "dark";
 
 export type TelemetryEventType = "signup" | "sale" | "click";
 
-export type CountryCode = "TR" | "US" | "DE" | "JP" | "GB" | "SG" | "BR";
+export type CountryCode =
+  | "BD"
+  | "TR"
+  | "US"
+  | "DE"
+  | "JP"
+  | "GB"
+  | "SG"
+  | "BR";
 
 export interface TelemetryEvent {
   id: string;
@@ -54,8 +62,7 @@ export interface ScaleMetrics {
   revenueTracked: number;
 }
 
-export interface BuiltToScaleProps
-  extends React.HTMLAttributes<HTMLElement> {
+export interface BuiltToScaleProps extends React.HTMLAttributes<HTMLElement> {
   /** Main section headline */
   title?: string;
   /** Supporting infrastructure description */
@@ -81,6 +88,7 @@ interface GlobeMarker {
   label: string;
   lat: number;
   lon: number;
+  isBangladesh?: boolean;
 }
 
 interface LandPoint {
@@ -88,6 +96,7 @@ interface LandPoint {
   lonRad: number;
   cosLat: number;
   sinLat: number;
+  isBangladesh?: boolean;
 }
 
 const DEFAULT_METRICS: ScaleMetrics = {
@@ -97,6 +106,7 @@ const DEFAULT_METRICS: ScaleMetrics = {
 };
 
 const GLOBE_MARKERS: GlobeMarker[] = [
+  { id: "dhk", label: "Dhaka, Bangladesh", lat: 23.8103, lon: 90.4125, isBangladesh: true },
   { id: "sf", label: "San Francisco", lat: 37.7749, lon: -122.4194 },
   { id: "nyc", label: "New York", lat: 40.7128, lon: -74.006 },
   { id: "lon", label: "London", lat: 51.5074, lon: -0.1278 },
@@ -111,23 +121,24 @@ const GLOBE_MARKERS: GlobeMarker[] = [
 const INITIAL_FEED: TelemetryEvent[] = [
   {
     id: "init-1",
-    type: "signup",
-    email: "****@hooli.com",
-    avatarTone: "amber",
-    coordinates: [37.7749, -122.4194],
+    type: "click",
+    country: "Bangladesh",
+    countryCode: "BD",
+    device: "Desktop",
+    coordinates: [23.8103, 90.4125],
   },
   {
     id: "init-2",
-    type: "sale",
-    amount: 3.0,
-    coordinates: [40.7128, -74.006],
+    type: "signup",
+    email: "****@hooli.com",
+    avatarTone: "amber",
+    coordinates: [23.8103, 90.4125],
   },
   {
     id: "init-3",
-    type: "signup",
-    email: "****@hooli.com",
-    avatarTone: "emerald",
-    coordinates: [51.5074, -0.1278],
+    type: "sale",
+    amount: 49.0,
+    coordinates: [1.3521, 103.8198],
   },
   {
     id: "init-4",
@@ -140,21 +151,28 @@ const INITIAL_FEED: TelemetryEvent[] = [
 const DEFAULT_EVENT_QUEUE: Omit<TelemetryEvent, "id">[] = [
   {
     type: "click",
-    country: "Turkey",
-    countryCode: "TR",
-    device: "Desktop",
-    coordinates: [41.0082, 28.9784],
+    country: "Bangladesh",
+    countryCode: "BD",
+    device: "Mobile",
+    coordinates: [23.8103, 90.4125],
   },
   {
     type: "signup",
     email: "****@acme.com",
-    avatarTone: "neutral",
+    avatarTone: "emerald",
     coordinates: [40.7128, -74.006],
   },
   {
     type: "sale",
-    amount: 49.0,
-    coordinates: [37.7749, -122.4194],
+    amount: 79.0,
+    coordinates: [23.8103, 90.4125],
+  },
+  {
+    type: "click",
+    country: "Turkey",
+    countryCode: "TR",
+    device: "Desktop",
+    coordinates: [41.0082, 28.9784],
   },
   {
     type: "click",
@@ -168,6 +186,13 @@ const DEFAULT_EVENT_QUEUE: Omit<TelemetryEvent, "id">[] = [
     email: "****@vercel.com",
     avatarTone: "emerald",
     coordinates: [51.5074, -0.1278],
+  },
+  {
+    type: "click",
+    country: "Bangladesh",
+    countryCode: "BD",
+    device: "Desktop",
+    coordinates: [23.8103, 90.4125],
   },
   {
     type: "sale",
@@ -200,6 +225,71 @@ const DEFAULT_EVENT_QUEUE: Omit<TelemetryEvent, "id">[] = [
     device: "Mobile",
     coordinates: [51.5074, -0.1278],
   },
+];
+
+// Accurate Bangladesh polygon [lat, lon] rendered distinctly on top of the 3D world globe
+const BANGLADESH_POLYGON: Array<[number, number]> = [
+  [26.63, 88.4],
+  [26.48, 88.65],
+  [26.32, 88.95],
+  [26.25, 89.38],
+  [26.12, 89.72],
+  [25.85, 89.86],
+  [25.45, 89.85],
+  [25.22, 89.88],
+  [25.18, 90.35],
+  [25.16, 90.85],
+  [25.19, 91.42],
+  [25.18, 92.05],
+  [25.05, 92.42],
+  [24.82, 92.48],
+  [24.55, 92.22],
+  [24.28, 92.08],
+  [24.12, 91.78],
+  [24.08, 91.42],
+  [23.78, 91.26],
+  [23.45, 91.28],
+  [23.15, 91.36],
+  [22.96, 91.5],
+  [23.22, 91.72],
+  [23.58, 91.95],
+  [23.72, 92.18],
+  [23.42, 92.42],
+  [22.85, 92.48],
+  [22.3, 92.55],
+  [21.75, 92.62],
+  [21.28, 92.48],
+  [20.82, 92.32],
+  [20.73, 92.34],
+  [21.05, 92.12],
+  [21.45, 91.95],
+  [21.95, 91.85],
+  [22.35, 91.76],
+  [22.72, 91.52],
+  [22.82, 91.15],
+  [22.72, 90.82],
+  [22.35, 90.68],
+  [21.95, 90.42],
+  [21.82, 90.08],
+  [21.7, 89.62],
+  [21.66, 89.2],
+  [21.72, 89.02],
+  [22.25, 88.95],
+  [22.85, 88.9],
+  [23.35, 88.78],
+  [23.78, 88.62],
+  [24.08, 88.75],
+  [24.38, 88.55],
+  [24.55, 88.25],
+  [24.72, 88.06],
+  [24.98, 88.22],
+  [25.18, 88.58],
+  [25.25, 88.88],
+  [25.45, 88.82],
+  [25.62, 88.62],
+  [25.85, 88.32],
+  [26.05, 88.14],
+  [26.38, 88.2],
 ];
 
 // Simplified geographic continent polygons [lat, lon] for zero-dependency 3D halftone globe
@@ -328,6 +418,11 @@ function pointInPolygon(
   return inside;
 }
 
+function isBangladeshPoint(lat: number, lon: number): boolean {
+  if (lat < 20.6 || lat > 26.7 || lon < 87.9 || lon > 92.8) return false;
+  return pointInPolygon(lat, lon, BANGLADESH_POLYGON);
+}
+
 function isLand(lat: number, lon: number): boolean {
   for (let i = 0; i < CONTINENT_POLYGONS.length; i++) {
     if (pointInPolygon(lat, lon, CONTINENT_POLYGONS[i])) {
@@ -338,6 +433,22 @@ function isLand(lat: number, lon: number): boolean {
 }
 
 let cachedLandPoints: LandPoint[] | null = null;
+let cachedBdBorderRad: Array<{ latRad: number; lonRad: number; cosLat: number; sinLat: number }> | null = null;
+
+function getBangladeshBorderRad() {
+  if (cachedBdBorderRad) return cachedBdBorderRad;
+  cachedBdBorderRad = BANGLADESH_POLYGON.map(([lat, lon]) => {
+    const latRad = (lat * Math.PI) / 180;
+    const lonRad = (lon * Math.PI) / 180;
+    return {
+      latRad,
+      lonRad,
+      cosLat: Math.cos(latRad),
+      sinLat: Math.sin(latRad),
+    };
+  });
+  return cachedBdBorderRad;
+}
 
 function getLandPoints(): LandPoint[] {
   if (cachedLandPoints) return cachedLandPoints;
@@ -357,13 +468,32 @@ function getLandPoints(): LandPoint[] {
     const latDeg = (latRad * 180) / Math.PI;
     const lonDeg = (lonRad * 180) / Math.PI;
 
-    if (isLand(latDeg, lonDeg)) {
+    const inBd = isBangladeshPoint(latDeg, lonDeg);
+    if (inBd || isLand(latDeg, lonDeg)) {
       points.push({
         latRad,
         lonRad,
         cosLat: Math.cos(latRad),
         sinLat: y,
+        isBangladesh: inBd,
       });
+    }
+  }
+
+  // Add high-density Bangladesh surface dots so Bangladesh's silhouette is crisp on the 3D globe
+  for (let lat = 20.75; lat <= 26.6; lat += 0.28) {
+    for (let lon = 88.1; lon <= 92.6; lon += 0.28) {
+      if (isBangladeshPoint(lat, lon)) {
+        const latRad = (lat * Math.PI) / 180;
+        const lonRad = (lon * Math.PI) / 180;
+        points.push({
+          latRad,
+          lonRad,
+          cosLat: Math.cos(latRad),
+          sinLat: Math.sin(latRad),
+          isBangladesh: true,
+        });
+      }
     }
   }
 
@@ -382,16 +512,23 @@ function formatCurrency(value: number): string {
   })}`;
 }
 
-function CountryFlag({
-  code,
-  uid,
-}: {
-  code?: CountryCode;
-  uid: string;
-}) {
-  const clipId = `${uid}-flag-${code ?? "TR"}`;
+function CountryFlag({ code, uid }: { code?: CountryCode; uid: string }) {
+  const clipId = `${uid}-flag-${code ?? "BD"}`;
 
   switch (code) {
+    case "BD":
+      return (
+        <svg
+          width="16"
+          height="12"
+          viewBox="0 0 16 12"
+          className="shrink-0 rounded-[2px] shadow-[0_0_0_0.5px_rgba(0,0,0,0.08)]"
+          aria-hidden="true"
+        >
+          <rect width="16" height="12" fill="#006A4E" />
+          <circle cx="7.2" cy="6" r="3.3" fill="#F42A41" />
+        </svg>
+      );
     case "TR":
       return (
         <svg
@@ -494,8 +631,8 @@ function CountryFlag({
           className="shrink-0 rounded-[2px] shadow-[0_0_0_0.5px_rgba(0,0,0,0.08)]"
           aria-hidden="true"
         >
-          <rect width="16" height="6" fill="#EF3340" />
-          <rect y="6" width="16" height="6" fill="#FFFFFF" />
+          <rect width="16" height="12" fill="#006A4E" />
+          <circle cx="7.2" cy="6" r="3.3" fill="#F42A41" />
         </svg>
       );
   }
@@ -555,17 +692,18 @@ function DottedGlobeCanvas({
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const landPoints = useMemo(() => getLandPoints(), []);
+  const bdBorder = useMemo(() => getBangladeshBorderRad(), []);
 
-  // Rotation angles in radians: rotY = center longitude, rotX = center latitude tilt
+  // Start the 3D globe directly facing Bangladesh (90.4E, 23.7N)
   const rotRef = useRef({
-    lon: (-72 * Math.PI) / 180,
-    lat: (22 * Math.PI) / 180,
+    lon: (90.4 * Math.PI) / 180,
+    lat: (23.7 * Math.PI) / 180,
     velLon: 0,
     velLat: 0,
     targetLon: null as number | null,
     targetLat: null as number | null,
-    pulseLat: 37.7749,
-    pulseLon: -122.4194,
+    pulseLat: 23.8103,
+    pulseLon: 90.4125,
     pulseStart: 0,
   });
 
@@ -592,7 +730,6 @@ function DottedGlobeCanvas({
         -0.55,
         Math.min(0.65, (focusTarget.lat * Math.PI) / 180)
       );
-      // Shortest angular path around longitude
       let diff = targetLonRad - r.lon;
       while (diff > Math.PI) diff -= Math.PI * 2;
       while (diff < -Math.PI) diff += Math.PI * 2;
@@ -786,7 +923,7 @@ function DottedGlobeCanvas({
       const cosLatRot = Math.cos(r.lat);
       const sinLatRot = Math.sin(r.lat);
 
-      // 3. Halftone land dots
+      // 3. Halftone world land dots (with Bangladesh highlighted in emerald)
       const dotBase = Math.max(0.85, radius * 0.0046);
       for (let i = 0; i < landPoints.length; i++) {
         const pt = landPoints[i];
@@ -800,18 +937,73 @@ function DottedGlobeCanvas({
 
         const px = cx + rx * radius * 0.985;
         const py = cy - ry * radius * 0.985;
-        const dotR = dotBase * (0.68 + rz * 0.56);
-        const alpha = Math.pow(rz, 0.65) * (isDark ? 0.52 : 0.48);
 
-        ctx.fillStyle = isDark
-          ? `rgba(212, 212, 216, ${alpha.toFixed(3)})`
-          : `rgba(82, 82, 91, ${alpha.toFixed(3)})`;
-        ctx.beginPath();
-        ctx.arc(px, py, dotR, 0, Math.PI * 2);
-        ctx.fill();
+        if (pt.isBangladesh) {
+          const bdDotR = dotBase * (0.95 + rz * 0.65);
+          const bdAlpha = Math.min(1, Math.pow(rz, 0.5) * 0.98);
+          ctx.fillStyle = isDark
+            ? `rgba(16, 185, 129, ${bdAlpha.toFixed(3)})`
+            : `rgba(0, 106, 78, ${bdAlpha.toFixed(3)})`;
+          ctx.beginPath();
+          ctx.arc(px, py, bdDotR, 0, Math.PI * 2);
+          ctx.fill();
+        } else {
+          const dotR = dotBase * (0.68 + rz * 0.56);
+          const alpha = Math.pow(rz, 0.65) * (isDark ? 0.52 : 0.48);
+          ctx.fillStyle = isDark
+            ? `rgba(212, 212, 216, ${alpha.toFixed(3)})`
+            : `rgba(82, 82, 91, ${alpha.toFixed(3)})`;
+          ctx.beginPath();
+          ctx.arc(px, py, dotR, 0, Math.PI * 2);
+          ctx.fill();
+        }
       }
 
-      // 4. Coral-orange infrastructure beacons
+      // 3b. Crisp projected 3D spherical border contour around Bangladesh
+      let bdVisibleCount = 0;
+      let bdAvgRz = 0;
+      const bdProjected: Array<{ x: number; y: number }> = [];
+      for (let i = 0; i < bdBorder.length; i++) {
+        const pt = bdBorder[i];
+        const dLon = pt.lonRad - r.lon;
+        const rx = pt.cosLat * Math.sin(dLon);
+        const rz0 = pt.cosLat * Math.cos(dLon);
+        const ry = pt.sinLat * cosLatRot - rz0 * sinLatRot;
+        const rz = pt.sinLat * sinLatRot + rz0 * cosLatRot;
+        if (rz > 0.04) {
+          bdVisibleCount += 1;
+          bdAvgRz += rz;
+          bdProjected.push({
+            x: cx + rx * radius * 0.985,
+            y: cy - ry * radius * 0.985,
+          });
+        }
+      }
+
+      if (bdVisibleCount === bdBorder.length && bdProjected.length > 2) {
+        const avgRz = bdAvgRz / bdVisibleCount;
+        const borderAlpha = Math.min(1, Math.pow(avgRz, 0.55) * 0.95);
+        ctx.save();
+        ctx.beginPath();
+        for (let i = 0; i < bdProjected.length; i++) {
+          const p = bdProjected[i];
+          if (i === 0) ctx.moveTo(p.x, p.y);
+          else ctx.lineTo(p.x, p.y);
+        }
+        ctx.closePath();
+        ctx.fillStyle = isDark
+          ? `rgba(16, 185, 129, ${(0.22 * borderAlpha).toFixed(3)})`
+          : `rgba(0, 106, 78, ${(0.18 * borderAlpha).toFixed(3)})`;
+        ctx.fill();
+        ctx.strokeStyle = isDark
+          ? `rgba(52, 211, 153, ${(0.9 * borderAlpha).toFixed(3)})`
+          : `rgba(0, 106, 78, ${(0.88 * borderAlpha).toFixed(3)})`;
+        ctx.lineWidth = 1.4;
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      // 4. Infrastructure beacons (Dhaka highlighted in Bangladesh crimson-red, global hubs in coral)
       const pulseElapsed = (now - r.pulseStart) / 1000;
       for (let i = 0; i < GLOBE_MARKERS.length; i++) {
         const m = GLOBE_MARKERS[i];
@@ -831,9 +1023,12 @@ function DottedGlobeCanvas({
         const px = cx + rx * radius * 0.985;
         const py = cy - ry * radius * 0.985;
         const depthAlpha = Math.min(1, Math.pow(rz, 0.55) * 1.12);
-        const markerR = Math.max(3.6, radius * 0.0175) * (0.78 + rz * 0.28);
+        const markerR =
+          Math.max(3.6, radius * (m.isBangladesh ? 0.0195 : 0.0175)) *
+          (0.78 + rz * 0.28);
 
-        // Pulse ring on the most recently active region
+        const rgb = m.isBangladesh ? "244, 42, 65" : "240, 109, 66";
+
         const isPulsing =
           !reducedMotion &&
           pulseElapsed >= 0 &&
@@ -843,25 +1038,25 @@ function DottedGlobeCanvas({
 
         if (isPulsing) {
           const p = pulseElapsed / 1.6;
-          const ringR = markerR + p * markerR * 3.2;
-          const ringAlpha = (1 - p) * 0.45 * depthAlpha;
+          const ringR = markerR + p * markerR * 3.4;
+          const ringAlpha = (1 - p) * 0.5 * depthAlpha;
           ctx.beginPath();
           ctx.arc(px, py, ringR, 0, Math.PI * 2);
-          ctx.strokeStyle = `rgba(240, 109, 66, ${ringAlpha.toFixed(3)})`;
+          ctx.strokeStyle = `rgba(${rgb}, ${ringAlpha.toFixed(3)})`;
           ctx.lineWidth = 1.5;
           ctx.stroke();
         }
 
         // Subtle outer halo
         ctx.beginPath();
-        ctx.arc(px, py, markerR * 1.55, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(240, 109, 66, ${(0.18 * depthAlpha).toFixed(3)})`;
+        ctx.arc(px, py, markerR * 1.65, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(${rgb}, ${(0.22 * depthAlpha).toFixed(3)})`;
         ctx.fill();
 
-        // Crisp coral-orange core dot
+        // Core dot
         ctx.beginPath();
         ctx.arc(px, py, markerR, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(240, 109, 66, ${depthAlpha.toFixed(3)})`;
+        ctx.fillStyle = `rgba(${rgb}, ${depthAlpha.toFixed(3)})`;
         ctx.fill();
       }
 
@@ -874,7 +1069,7 @@ function DottedGlobeCanvas({
       cancelAnimationFrame(rafId);
       ro.disconnect();
     };
-  }, [autoRotate, isDark, landPoints, reducedMotion, rotationSpeed]);
+  }, [autoRotate, bdBorder, isDark, landPoints, reducedMotion, rotationSpeed]);
 
   return (
     <div
@@ -891,7 +1086,7 @@ function DottedGlobeCanvas({
         ref={canvasRef}
         tabIndex={0}
         role="application"
-        aria-label="Interactive global infrastructure globe. Drag or use arrow keys to rotate."
+        aria-label="Interactive global infrastructure globe with Bangladesh highlighted. Drag or use arrow keys to rotate."
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={endDrag}
@@ -1101,7 +1296,7 @@ export const BuiltToScale = forwardRef<HTMLElement, BuiltToScaleProps>(
 
           {/* Right Column: Interactive 3D Dotted Globe + Floating Live Event Stack */}
           <div className="relative flex min-h-[460px] items-center justify-center sm:min-h-[560px] lg:col-span-7 lg:min-h-[600px]">
-            {/* 3D Dotted Globe */}
+            {/* 3D Dotted Globe with Bangladesh Highlighted */}
             <div className="w-full max-w-[540px] lg:-ml-16 lg:max-w-[600px]">
               <DottedGlobeCanvas
                 isDark={isDark}
@@ -1212,7 +1407,7 @@ export const BuiltToScale = forwardRef<HTMLElement, BuiltToScaleProps>(
                           <div className="flex items-center gap-2.5 rounded-[9px] border border-neutral-200/80 bg-white px-3 py-2 text-[13px] text-neutral-700 shadow-[0_1px_2px_rgba(0,0,0,0.02)] dark:border-neutral-800 dark:bg-neutral-950/80 dark:text-neutral-200">
                             <CountryFlag code={event.countryCode} uid={uid} />
                             <span className="truncate">
-                              {event.country ?? "Turkey"}
+                              {event.country ?? "Bangladesh"}
                             </span>
                           </div>
                           <div className="flex items-center gap-2.5 rounded-[9px] border border-neutral-200/80 bg-white px-3 py-2 text-[13px] text-neutral-700 shadow-[0_1px_2px_rgba(0,0,0,0.02)] dark:border-neutral-800 dark:bg-neutral-950/80 dark:text-neutral-200">
