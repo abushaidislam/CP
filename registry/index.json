@@ -1,24 +1,22 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-21T17:40:23.633Z",
-  "totalComponents": 69,
+  "updatedAt": "2026-11-21T17:45:26.999Z",
+  "totalComponents": 70,
   "components": [
     {
-      "id": "task-notification-stack",
-      "slug": "task-notification-stack",
-      "name": "TaskNotificationStack",
-      "description": "A tactile double-bezel stacked task notification widget with swipe-to-act gestures, hover stack fan-out, icon micro-animations, optional undo toast, and subtle Web Audio chimes.",
-      "category": "Widgets",
+      "id": "developer-profile-card",
+      "slug": "developer-profile-card",
+      "name": "DeveloperProfileCard",
+      "description": "A layered dark developer availability profile card cradled in a neon-lime status tray, featuring live availability pulse, clipboard copy feedback, and tactile Framer Motion hover lift.",
+      "category": "Cards",
       "isBuiltIn": false,
-      "updatedAt": 1795282818071,
-      "lastRepoSyncAt": 1795282823545,
-      "path": "registry/components/task-notification-stack",
+      "updatedAt": 1795283126829,
+      "lastRepoSyncAt": 1795283126829,
+      "path": "registry/components/developer-profile-card",
       "files": [
         "component.tsx",
         "default.tsx",
-        "index.css",
-        "manifest.json",
-        "preview.png"
+        "manifest.json"
       ],
       "dependencies": [
         "framer-motion",
@@ -39,12 +37,33 @@
         "component.tsx",
         "default.tsx",
         "index.css",
-        "manifest.json",
-        "preview.png"
+        "manifest.json"
       ],
       "dependencies": [
         "clsx",
         "tailwind-merge",
+        "framer-motion",
+        "lucide-react"
+      ]
+    },
+    {
+      "id": "task-notification-stack",
+      "slug": "task-notification-stack",
+      "name": "TaskNotificationStack",
+      "description": "A tactile double-bezel stacked task notification widget with spring-animated completion, snooze cycling, and contextual overflow actions.",
+      "category": "Widgets",
+      "isBuiltIn": false,
+      "updatedAt": 1795280922977,
+      "lastRepoSyncAt": 1795280925880,
+      "path": "registry/components/task-notification-stack",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "index.css",
+        "manifest.json",
+        "preview.png"
+      ],
+      "dependencies": [
         "framer-motion",
         "lucide-react"
       ]
