@@ -1,0 +1,12 @@
+{
+  "id": "perspective-stack-gallery",
+  "slug": "perspective-stack-gallery",
+  "name": "Perspective Stack Gallery",
+  "description": "Interactive perspective gallery",
+  "category": "Cards",
+  "isBuiltIn": false,
+  "createdAt": 1795261845243,
+  "updatedAt": 1795261845243,
+  "lastRepoSyncAt": 1795261845243,
+  "dependencies": []
+}

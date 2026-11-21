@@ -1,18 +1,18 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-21T11:50:19.436Z",
+  "updatedAt": "2026-11-21T11:50:45.280Z",
   "totalComponents": 63,
   "components": [
     {
-      "id": "probe-button",
-      "slug": "probe-button",
-      "name": "Probe Button",
-      "description": "Test",
-      "category": "Buttons",
+      "id": "perspective-stack-gallery",
+      "slug": "perspective-stack-gallery",
+      "name": "Perspective Stack Gallery",
+      "description": "Interactive perspective gallery",
+      "category": "Cards",
       "isBuiltIn": false,
-      "updatedAt": 1795261819433,
-      "lastRepoSyncAt": 1795261819433,
-      "path": "registry/components/probe-button",
+      "updatedAt": 1795261845243,
+      "lastRepoSyncAt": 1795261845243,
+      "path": "registry/components/perspective-stack-gallery",
       "files": [
         "component.tsx",
         "default.tsx",
