@@ -1,7 +1,7 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-21T18:11:19.816Z",
-  "totalComponents": 71,
+  "updatedAt": "2026-11-21T18:18:53.568Z",
+  "totalComponents": 70,
   "components": [
     {
       "id": "developer-profile-grid",
@@ -10,33 +10,15 @@
       "description": "A responsive multi-card grid of layered dark developer availability profile cards with neon cradle trays, animated availability filtering, per-card clipboard copy, and hover lift motion.",
       "category": "Cards",
       "isBuiltIn": false,
-      "updatedAt": 1795284679570,
-      "lastRepoSyncAt": 1795284679570,
+      "updatedAt": 1795285129914,
+      "lastRepoSyncAt": 1795285133287,
       "path": "registry/components/developer-profile-grid",
       "files": [
         "component.tsx",
         "default.tsx",
-        "manifest.json"
-      ],
-      "dependencies": [
-        "framer-motion",
-        "lucide-react"
-      ]
-    },
-    {
-      "id": "developer-profile-card",
-      "slug": "developer-profile-card",
-      "name": "DeveloperProfileCard",
-      "description": "A layered dark developer availability profile card cradled in a neon-lime bottom status tray, featuring live availability pulse, clipboard copy feedback, and tactile Framer Motion hover lift.",
-      "category": "Cards",
-      "isBuiltIn": false,
-      "updatedAt": 1795283347128,
-      "lastRepoSyncAt": 1795283347128,
-      "path": "registry/components/developer-profile-card",
-      "files": [
-        "component.tsx",
-        "default.tsx",
-        "manifest.json"
+        "index.css",
+        "manifest.json",
+        "preview.png"
       ],
       "dependencies": [
         "framer-motion",
@@ -57,7 +39,8 @@
         "component.tsx",
         "default.tsx",
         "index.css",
-        "manifest.json"
+        "manifest.json",
+        "preview.png"
       ],
       "dependencies": [
         "clsx",
