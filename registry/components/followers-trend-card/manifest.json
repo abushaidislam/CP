@@ -6,8 +6,8 @@
   "category": "Cards",
   "isBuiltIn": false,
   "createdAt": 1795280793733,
-  "updatedAt": 1795280863981,
-  "lastRepoSyncAt": 1795280867796,
+  "updatedAt": 1795280903993,
+  "lastRepoSyncAt": 1795280907133,
   "dependencies": [
     "framer-motion",
     "lucide-react"
