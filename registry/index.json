@@ -1,8 +1,26 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-20T18:40:54.654Z",
-  "totalComponents": 60,
+  "updatedAt": "2026-11-21T07:52:13.064Z",
+  "totalComponents": 62,
   "components": [
+    {
+      "id": "comp-1795247514740-7ss4h",
+      "slug": "agency-bento-showcase",
+      "name": "Agency Bento Showcase",
+      "description": "A monochrome agency bento grid featuring a morphing brand logo, kinetic vertical typography marquee, layered social profile card, rotating procedural stardust orb, and an interactive Figma-style colla",
+      "category": "Custom",
+      "isBuiltIn": false,
+      "updatedAt": 1795247529241,
+      "lastRepoSyncAt": 1795247532901,
+      "path": "registry/components/agency-bento-showcase",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "index.css",
+        "manifest.json"
+      ],
+      "dependencies": []
+    },
     {
       "id": "comp-1795198052646-cc84b",
       "slug": "networking-card",
@@ -13,6 +31,25 @@
       "updatedAt": 1795200050427,
       "lastRepoSyncAt": 1795200054589,
       "path": "registry/components/networking-card",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "index.css",
+        "manifest.json",
+        "preview.png"
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "comp-1795198904500-i870q",
+      "slug": "lenticular-glyph",
+      "name": "Lenticular Glyph",
+      "description": "",
+      "category": "Custom",
+      "isBuiltIn": false,
+      "updatedAt": 1795198947899,
+      "lastRepoSyncAt": 1795198952305,
+      "path": "registry/components/lenticular-glyph",
       "files": [
         "component.tsx",
         "default.tsx",
