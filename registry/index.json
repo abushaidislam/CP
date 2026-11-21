@@ -1,18 +1,18 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-21T14:35:11.445Z",
+  "updatedAt": "2026-11-21T15:04:25.442Z",
   "totalComponents": 65,
   "components": [
     {
-      "id": "probe-button",
-      "slug": "probe-button",
-      "name": "Probe Button",
-      "description": "Test",
-      "category": "Buttons",
+      "id": "comp-1795247514740-7ss4h",
+      "slug": "agency-bento-showcase",
+      "name": "Agency Bento Showcase",
+      "description": "A monochrome agency bento grid featuring a morphing brand logo, kinetic vertical typography marquee, layered social profile card, rotating procedural stardust orb, and an interactive Figma-style colla",
+      "category": "Custom",
       "isBuiltIn": false,
-      "updatedAt": 1795271708877,
-      "lastRepoSyncAt": 1795271711399,
-      "path": "registry/components/probe-button",
+      "updatedAt": 1795273460508,
+      "lastRepoSyncAt": 1795273465367,
+      "path": "registry/components/agency-bento-showcase",
       "files": [
         "component.tsx",
         "default.tsx",
@@ -88,21 +88,20 @@
       ]
     },
     {
-      "id": "comp-1795247514740-7ss4h",
-      "slug": "agency-bento-showcase",
-      "name": "Agency Bento Showcase",
-      "description": "A monochrome agency bento grid featuring a morphing brand logo, kinetic vertical typography marquee, layered social profile card, rotating procedural stardust orb, and an interactive Figma-style colla",
-      "category": "Custom",
+      "id": "probe-button",
+      "slug": "probe-button",
+      "name": "Probe Button",
+      "description": "Test",
+      "category": "Buttons",
       "isBuiltIn": false,
-      "updatedAt": 1795247958595,
-      "lastRepoSyncAt": 1795247963662,
-      "path": "registry/components/agency-bento-showcase",
+      "updatedAt": 1795261819433,
+      "lastRepoSyncAt": 1795261819433,
+      "path": "registry/components/probe-button",
       "files": [
         "component.tsx",
         "default.tsx",
         "index.css",
-        "manifest.json",
-        "preview.png"
+        "manifest.json"
       ],
       "dependencies": []
     },
