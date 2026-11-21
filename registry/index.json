@@ -1,17 +1,17 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-21T18:23:58.702Z",
+  "updatedAt": "2026-11-21T18:34:13.768Z",
   "totalComponents": 70,
   "components": [
     {
       "id": "developer-profile-grid",
       "slug": "developer-profile-grid",
       "name": "DeveloperProfileGrid",
-      "description": "A responsive multi-card grid of layered dark developer availability profile cards with neon cradle trays, interactive follower badges, animated availability filtering, and hover lift motion.",
+      "description": "A responsive multi-card grid of layered dark developer availability profile cards with neon cradle trays, dedicated Follow buttons with inline follower counts, animated availability filtering, and hover lift motion.",
       "category": "Cards",
       "isBuiltIn": false,
-      "updatedAt": 1795285435119,
-      "lastRepoSyncAt": 1795285438455,
+      "updatedAt": 1795286049337,
+      "lastRepoSyncAt": 1795286053653,
       "path": "registry/components/developer-profile-grid",
       "files": [
         "component.tsx",

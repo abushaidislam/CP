@@ -2,7 +2,7 @@
 
 import React, { useCallback, useEffect, useId, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { AlarmClock, Check, Copy, PlusCircle, Users, Zap } from "lucide-react";
+import { AlarmClock, Check, Copy, PlusCircle, UserCheck, UserPlus, Zap } from "lucide-react";
 
 function cn(...classes: Array<string | false | null | undefined>): string {
   return classes.filter(Boolean).join(" ");
@@ -35,7 +35,7 @@ export interface DeveloperProfileGridProps
   accentMode?: "lime" | "multicolor";
   /** Show interactive All / Available / Booked filter bar above the grid */
   showFilter?: boolean;
-  /** Show interactive follower count badge on each card */
+  /** Show follower count and Follow button on each card */
   showFollowers?: boolean;
   /** Display live local clock instead of static timeLabel */
   liveClock?: boolean;
@@ -43,7 +43,7 @@ export interface DeveloperProfileGridProps
   onHireProfile?: (profile: DeveloperProfileGridItem) => void;
   /** Fired when Copy Email is clicked on any card */
   onCopyProfileEmail?: (profile: DeveloperProfileGridItem) => void;
-  /** Fired when Follow pill is toggled on any card */
+  /** Fired when Follow button is toggled on any card */
   onToggleFollow?: (profile: DeveloperProfileGridItem, following: boolean) => void;
 }
 
@@ -109,7 +109,7 @@ const ACCENT_STYLES: Record<
     text: string;
     dot: string;
     copiedText: string;
-    followActive: string;
+    followingPill: string;
   }
 > = {
   lime: {
@@ -117,28 +117,32 @@ const ACCENT_STYLES: Record<
     text: "text-[#111c06]",
     dot: "bg-[#a0ff63]",
     copiedText: "text-[#b2fc68]",
-    followActive: "bg-[#a7f75b]/15 text-[#b2fc68] ring-[#a7f75b]/40",
+    followingPill:
+      "bg-[#a7f75b]/14 text-[#b2fc68] ring-1 ring-[#a7f75b]/35 hover:bg-[#a7f75b]/20",
   },
   mint: {
     tray: "bg-gradient-to-b from-[#6df5c4] to-[#7cf8cc] border-[#4cd9a6]",
     text: "text-[#062017]",
     dot: "bg-[#6df5c4]",
     copiedText: "text-[#7cf8cc]",
-    followActive: "bg-[#6df5c4]/15 text-[#7cf8cc] ring-[#6df5c4]/40",
+    followingPill:
+      "bg-[#6df5c4]/14 text-[#7cf8cc] ring-1 ring-[#6df5c4]/35 hover:bg-[#6df5c4]/20",
   },
   amber: {
     tray: "bg-gradient-to-b from-[#ffd859] to-[#ffdf6e] border-[#e4bc3b]",
     text: "text-[#261c04]",
     dot: "bg-[#ffd859]",
     copiedText: "text-[#ffdf6e]",
-    followActive: "bg-[#ffd859]/15 text-[#ffdf6e] ring-[#ffd859]/40",
+    followingPill:
+      "bg-[#ffd859]/14 text-[#ffdf6e] ring-1 ring-[#ffd859]/35 hover:bg-[#ffd859]/20",
   },
   sky: {
     tray: "bg-gradient-to-b from-[#8cc0ff] to-[#9bc9ff] border-[#6ba4ea]",
     text: "text-[#08192e]",
     dot: "bg-[#8cc0ff]",
     copiedText: "text-[#9bc9ff]",
-    followActive: "bg-[#8cc0ff]/15 text-[#9bc9ff] ring-[#8cc0ff]/40",
+    followingPill:
+      "bg-[#8cc0ff]/14 text-[#9bc9ff] ring-1 ring-[#8cc0ff]/35 hover:bg-[#8cc0ff]/20",
   },
 };
 
@@ -382,8 +386,31 @@ function GridProfileCard({
               <h3 className="text-[20px] sm:text-[21px] font-medium leading-[1.2] tracking-[-0.018em] text-[#f3f3f4] truncate">
                 {profile.name}
               </h3>
-              <p className="mt-0.5 text-[13.5px] font-normal leading-[1.3] text-[#8d8d92] truncate">
-                {profile.role}
+              <p className="mt-0.5 flex items-center gap-1.5 text-[13px] font-normal leading-[1.3] text-[#8d8d92] truncate">
+                <span className="truncate">{profile.role}</span>
+                {showFollowers && (
+                  <>
+                    <span aria-hidden="true" className="opacity-50">
+                      ·
+                    </span>
+                    <span className="inline-flex items-baseline gap-1 shrink-0 tabular-nums">
+                      <motion.span
+                        key={displayedFollowers}
+                        initial={
+                          prefersReducedMotion
+                            ? false
+                            : { y: following ? -4 : 4, opacity: 0.45 }
+                        }
+                        animate={{ y: 0, opacity: 1 }}
+                        transition={{ duration: 0.16, ease: "easeOut" }}
+                        className="font-medium text-[#c4c4ca]"
+                      >
+                        {formatFollowers(displayedFollowers)}
+                      </motion.span>
+                      <span className="text-[#8d8d92]">followers</span>
+                    </span>
+                  </>
+                )}
               </p>
             </div>
           </div>
@@ -394,33 +421,44 @@ function GridProfileCard({
               onClick={handleFollowToggle}
               aria-pressed={following}
               aria-label={
-                following
-                  ? `Following ${profile.name}, ${formatFollowers(displayedFollowers)} followers`
-                  : `Follow ${profile.name}, ${formatFollowers(displayedFollowers)} followers`
+                following ? `Unfollow ${profile.name}` : `Follow ${profile.name}`
               }
               whileTap={prefersReducedMotion ? undefined : { scale: 0.94 }}
               transition={{ type: "spring", stiffness: 520, damping: 28 }}
               className={cn(
-                "shrink-0 inline-flex flex-col items-end rounded-[14px] px-3 py-1.5 ring-1 transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#a7f75b]",
+                "shrink-0 inline-flex items-center justify-center gap-1.5 rounded-full px-3.5 py-1.5 text-[12.5px] font-medium tracking-[-0.005em] transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#a7f75b] focus-visible:ring-offset-2 focus-visible:ring-offset-[#212121]",
                 following
-                  ? style.followActive
-                  : "bg-white/[0.04] text-[#d4d4d8] ring-white/[0.08] hover:bg-white/[0.08]"
+                  ? style.followingPill
+                  : "bg-[#f4f4f5] text-[#141416] hover:bg-white shadow-[0_2px_8px_rgba(0,0,0,0.28)]"
               )}
             >
-              <span className="inline-flex items-center gap-1.5 text-[13.5px] font-medium leading-tight tabular-nums">
-                <Users className="h-[12.5px] w-[12.5px] opacity-80" strokeWidth={2} />
-                <motion.span
-                  key={displayedFollowers}
-                  initial={prefersReducedMotion ? false : { y: following ? -4 : 4, opacity: 0.5 }}
-                  animate={{ y: 0, opacity: 1 }}
-                  transition={{ duration: 0.16, ease: "easeOut" }}
-                >
-                  {formatFollowers(displayedFollowers)}
-                </motion.span>
-              </span>
-              <span className="text-[10.5px] font-normal tracking-wide opacity-70 leading-tight mt-0.5">
-                {following ? "Following" : "Followers"}
-              </span>
+              <AnimatePresence mode="wait" initial={false}>
+                {following ? (
+                  <motion.span
+                    key="following"
+                    initial={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, y: 3 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, y: -3 }}
+                    transition={{ duration: 0.13 }}
+                    className="inline-flex items-center gap-1.5"
+                  >
+                    <UserCheck className="h-[13px] w-[13px]" strokeWidth={2.2} />
+                    <span>Following</span>
+                  </motion.span>
+                ) : (
+                  <motion.span
+                    key="follow"
+                    initial={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, y: 3 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, y: -3 }}
+                    transition={{ duration: 0.13 }}
+                    className="inline-flex items-center gap-1.5"
+                  >
+                    <UserPlus className="h-[13px] w-[13px]" strokeWidth={2.2} />
+                    <span>Follow</span>
+                  </motion.span>
+                )}
+              </AnimatePresence>
             </motion.button>
           )}
         </div>
@@ -578,7 +616,7 @@ export const DeveloperProfileGrid = React.forwardRef<
       ? "max-w-[468px]"
       : columns === 3
       ? "max-w-[1260px]"
-      : "max-w-[900px]";
+      : "max-w-[920px]";
 
   const gridColsClass =
     columns === 1
