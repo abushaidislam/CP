@@ -1,8 +1,15 @@
 "use client";
 
-import React, { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { motion, useReducedMotion } from "framer-motion";
-import { ArrowLeft, ArrowRight, Home, Lock, RotateCw } from "lucide-react";
+import { ArrowLeft, ArrowRight, Home, RotateCw } from "lucide-react";
 
 function cn(...classes: (string | undefined | null | false)[]) {
   return classes.filter(Boolean).join(" ");
@@ -20,7 +27,7 @@ export interface RadialDissolveBrandCardProps
   poemLines?: string[];
   /** Automatically cycle through Smooth, Halftone, and ASCII dissolve modes */
   autoCycle?: boolean;
-  /** Full 3-phase cycle duration in milliseconds */
+  /** Full 3-phase cycle duration in milliseconds (reference: 5800ms) */
   cycleDuration?: number;
   /** Initial visual shader mode */
   initialMode?: DissolveMode;
@@ -38,65 +45,63 @@ const DEFAULT_POEM_LINES = [
 ];
 
 const MODE_ORDER: DissolveMode[] = ["smooth", "halftone", "ascii"];
-
 const SPOKE_COUNT = 8;
 
-function easeInOutCubic(t: number): number {
-  return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+function easeInOutQuart(t: number): number {
+  return t < 0.5 ? 8 * t * t * t * t : 1 - Math.pow(-2 * t + 2, 4) / 2;
 }
 
+/**
+ * Draws the 8-spoke asymmetric radial luminance field.
+ * Spokes orbit continuously around (cx, cy) while their outer reach is modulated
+ * by angular proximity to 9 o'clock (longest comet ray) vs 3 o'clock (compact dot).
+ */
 function drawSpokeField(
   ctx: CanvasRenderingContext2D,
   size: number,
   phase: number,
-  softness: number
+  blurPx: number
 ) {
   ctx.clearRect(0, 0, size, size);
 
-  const cx = size * 0.585;
+  const cx = size * 0.615;
   const cy = size * 0.5;
   const innerR = size * 0.145;
-  const spokeWidth = size * 0.094;
+  const spokeWidth = size * 0.118;
   const halfW = spokeWidth * 0.5;
+
+  ctx.save();
+  if (blurPx > 0) {
+    ctx.filter = `blur(${blurPx}px)`;
+  }
 
   for (let i = 0; i < SPOKE_COUNT; i++) {
     const theta = (i * Math.PI * 2) / SPOKE_COUNT + phase;
     const norm = (1 - Math.cos(theta)) * 0.5;
-    const lengthFactor = Math.pow(norm, 0.88);
-    const outerR = size * (0.215 + 0.255 * lengthFactor);
+    const lengthFactor = Math.pow(norm, 0.82);
+    const outerR = size * (0.215 + 0.305 * lengthFactor);
 
     ctx.save();
     ctx.translate(cx, cy);
     ctx.rotate(theta);
 
-    if (outerR - innerR < spokeWidth * 0.95) {
-      // Short focal dot near 3 o'clock
-      const dotX = outerR - halfW * 0.35;
-      const dotR = halfW * (0.94 + 0.06 * softness);
-      const radGrad = ctx.createRadialGradient(
-        dotX,
-        0,
-        dotR * 0.65,
-        dotX,
-        0,
-        dotR * (1.06 + 0.1 * softness)
-      );
-      radGrad.addColorStop(0, "rgba(255,255,255,1)");
-      radGrad.addColorStop(0.82, "rgba(255,255,255,0.96)");
-      radGrad.addColorStop(1, "rgba(255,255,255,0)");
-      ctx.fillStyle = radGrad;
+    if (outerR - innerR < spokeWidth * 0.72) {
+      // Compact luminous dot near 3 o'clock
+      const dotX = outerR - halfW * 0.22;
+      const dotR = halfW * 0.96;
+      ctx.fillStyle = "#FFFFFF";
       ctx.beginPath();
-      ctx.arc(dotX, 0, dotR * (1.06 + 0.1 * softness), 0, Math.PI * 2);
+      ctx.arc(dotX, 0, dotR, 0, Math.PI * 2);
       ctx.fill();
     } else {
-      // Tapered glowing radial capsule fading smoothly inward
-      const startX = innerR * 0.72;
+      // Rounded-tip comet ray fading smoothly into the hollow core
+      const startX = innerR * 0.55;
       const tipX = outerR;
       const grad = ctx.createLinearGradient(startX, 0, tipX, 0);
       grad.addColorStop(0, "rgba(255,255,255,0)");
-      grad.addColorStop(0.24, "rgba(255,255,255,0.16)");
-      grad.addColorStop(0.55, "rgba(255,255,255,0.68)");
-      grad.addColorStop(0.8, "rgba(255,255,255,0.98)");
+      grad.addColorStop(0.26, "rgba(255,255,255,0.14)");
+      grad.addColorStop(0.56, "rgba(255,255,255,0.68)");
+      grad.addColorStop(0.78, "rgba(255,255,255,0.98)");
       grad.addColorStop(1, "rgba(255,255,255,1)");
 
       ctx.strokeStyle = grad;
@@ -107,8 +112,8 @@ function drawSpokeField(
       ctx.lineTo(tipX - halfW, 0);
       ctx.stroke();
 
-      // Crisp rounded outer highlight cap
-      ctx.fillStyle = "rgba(255,255,255,0.98)";
+      // Reinforce crisp opaque outer cap
+      ctx.fillStyle = "rgba(255,255,255,0.96)";
       ctx.beginPath();
       ctx.arc(tipX - halfW, 0, halfW * 0.92, 0, Math.PI * 2);
       ctx.fill();
@@ -116,6 +121,8 @@ function drawSpokeField(
 
     ctx.restore();
   }
+
+  ctx.restore();
 }
 
 function renderHalftoneMode(
@@ -124,8 +131,8 @@ function renderHalftoneMode(
   sampleData: Uint8ClampedArray,
   sampleSize: number
 ) {
-  const cols = 38;
-  const rows = 38;
+  const cols = 40;
+  const rows = 40;
   const cellW = size / cols;
   const cellH = size / rows;
 
@@ -145,10 +152,10 @@ function renderHalftoneMode(
       );
       const alpha = sampleData[(sy * sampleSize + sx) * 4 + 3] / 255;
 
-      if (alpha > 0.085) {
+      if (alpha > 0.08) {
         const cx = (c + 0.5) * cellW;
-        const barW = cellW * 0.85;
-        const barH = Math.max(1.15, cellH * 0.85 * Math.pow(alpha, 0.88));
+        const barW = cellW * 0.84;
+        const barH = Math.max(1.1, cellH * 0.84 * Math.pow(alpha, 0.86));
         ctx.fillRect(cx - barW * 0.5, cy - barH * 0.5, barW, barH);
       }
     }
@@ -161,11 +168,11 @@ function renderAsciiMode(
   sampleData: Uint8ClampedArray,
   sampleSize: number
 ) {
-  const cols = 36;
-  const rows = 36;
+  const cols = 38;
+  const rows = 38;
   const cellW = size / cols;
   const cellH = size / rows;
-  const fontSize = Math.max(6, Math.round(cellH * 0.96));
+  const fontSize = Math.max(6, Math.round(cellH * 0.98));
 
   ctx.fillStyle = "#FFFFFF";
   ctx.font = `700 ${fontSize}px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace`;
@@ -187,15 +194,15 @@ function renderAsciiMode(
       const alpha = sampleData[(sy * sampleSize + sx) * 4 + 3] / 255;
 
       let glyph = "";
-      if (alpha > 0.76) {
+      if (alpha > 0.74) {
         glyph = "0";
-      } else if (alpha > 0.57) {
+      } else if (alpha > 0.56) {
         glyph = "1";
-      } else if (alpha > 0.4) {
+      } else if (alpha > 0.39) {
         glyph = "/";
-      } else if (alpha > 0.24) {
+      } else if (alpha > 0.23) {
         glyph = ">";
-      } else if (alpha > 0.1) {
+      } else if (alpha > 0.095) {
         glyph = ".";
       }
 
@@ -216,7 +223,8 @@ function renderModeToContext(
   sampleSize: number
 ) {
   if (mode === "smooth") {
-    drawSpokeField(ctx, size, phase, 1);
+    // Subtle luminous feathering matches the soft airbrushed smooth phase in the reference
+    drawSpokeField(ctx, size, phase, 2.4);
   } else if (mode === "halftone") {
     renderHalftoneMode(ctx, size, sampleData, sampleSize);
   } else {
@@ -230,7 +238,7 @@ interface MiniRadialMarkProps {
 }
 
 function MiniRadialMark({ className, idPrefix }: MiniRadialMarkProps) {
-  const cx = 56;
+  const cx = 60;
   const cy = 50;
   const innerR = 16;
 
@@ -245,9 +253,9 @@ function MiniRadialMark({ className, idPrefix }: MiniRadialMarkProps) {
         {Array.from({ length: SPOKE_COUNT }).map((_, i) => {
           const theta = (i * Math.PI * 2) / SPOKE_COUNT;
           const norm = (1 - Math.cos(theta)) * 0.5;
-          const outerR = 23 + 23 * Math.pow(norm, 0.85);
-          const x1 = cx + Math.cos(theta) * (innerR * 0.75);
-          const y1 = cy + Math.sin(theta) * (innerR * 0.75);
+          const outerR = 23 + 27 * Math.pow(norm, 0.84);
+          const x1 = cx + Math.cos(theta) * (innerR * 0.7);
+          const y1 = cy + Math.sin(theta) * (innerR * 0.7);
           const x2 = cx + Math.cos(theta) * outerR;
           const y2 = cy + Math.sin(theta) * outerR;
           return (
@@ -260,8 +268,8 @@ function MiniRadialMark({ className, idPrefix }: MiniRadialMarkProps) {
               y2={y2}
               gradientUnits="userSpaceOnUse"
             >
-              <stop offset="0%" stopColor="#FFFFFF" stopOpacity="0.08" />
-              <stop offset="55%" stopColor="#FFFFFF" stopOpacity="0.78" />
+              <stop offset="0%" stopColor="#FFFFFF" stopOpacity="0.06" />
+              <stop offset="56%" stopColor="#FFFFFF" stopOpacity="0.8" />
               <stop offset="100%" stopColor="#FFFFFF" stopOpacity="1" />
             </linearGradient>
           );
@@ -270,15 +278,15 @@ function MiniRadialMark({ className, idPrefix }: MiniRadialMarkProps) {
       {Array.from({ length: SPOKE_COUNT }).map((_, i) => {
         const theta = (i * Math.PI * 2) / SPOKE_COUNT;
         const norm = (1 - Math.cos(theta)) * 0.5;
-        const outerR = 23 + 23 * Math.pow(norm, 0.85);
+        const outerR = 23 + 27 * Math.pow(norm, 0.84);
 
-        if (outerR - innerR < 9) {
+        if (outerR - innerR < 8.5) {
           return (
             <circle
               key={i}
               cx={cx + Math.cos(theta) * outerR}
               cy={cy + Math.sin(theta) * outerR}
-              r={5.2}
+              r={5.4}
               fill="#FFFFFF"
             />
           );
@@ -297,7 +305,7 @@ function MiniRadialMark({ className, idPrefix }: MiniRadialMarkProps) {
             x2={x2}
             y2={y2}
             stroke={`url(#${idPrefix}-sg-${i})`}
-            strokeWidth={9.5}
+            strokeWidth={10.2}
             strokeLinecap="round"
           />
         );
@@ -344,7 +352,7 @@ function RadialDissolveCanvas({
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    const sampleSize = 144;
+    const sampleSize = 152;
     if (!offscreenRef.current) {
       const off = document.createElement("canvas");
       off.width = sampleSize;
@@ -365,12 +373,17 @@ function RadialDissolveCanvas({
     const startTime = performance.now();
     const safeDuration = Math.max(2400, cycleDuration);
 
+    // 9 spoke steps per cycle (9 * 45deg = 405deg) -> 0.644s per spoke step, seamless 8-fold loop
+    const totalCyclePhase = (9 * Math.PI * 2) / SPOKE_COUNT;
+
     const drawFrame = (now: number) => {
       const elapsed = now - startTime;
-      const phase = reducedMotion ? 0 : (elapsed / safeDuration) * Math.PI * 0.5;
+      const phase = reducedMotion
+        ? 0
+        : (elapsed / safeDuration) * totalCyclePhase;
 
-      // Render offscreen luminance field for halftone & ASCII sampling
-      drawSpokeField(offCtx, sampleSize, phase, 0.25);
+      // Render crisp offscreen luminance field for halftone & ASCII quantizers
+      drawSpokeField(offCtx, sampleSize, phase, 0.8);
       const sampleData = offCtx.getImageData(0, 0, sampleSize, sampleSize).data;
 
       ctx.save();
@@ -383,31 +396,38 @@ function RadialDissolveCanvas({
       let wipeT = 0;
 
       if (autoCycle && !reducedMotion) {
+        // Exact 3-act timing extracted from 5.8s reference:
+        // 0.00-0.21 Smooth | 0.21-0.31 Wipe->Halftone | 0.31-0.57 Halftone
+        // 0.57-0.67 Wipe->ASCII | 0.67-0.88 ASCII | 0.88-0.98 Wipe->Smooth | 0.98-1.00 Smooth
         const cyclePos = (elapsed % safeDuration) / safeDuration;
-        if (cyclePos < 0.16) {
+        if (cyclePos < 0.21) {
           baseMode = "smooth";
           nextMode = "smooth";
           wipeT = 0;
-        } else if (cyclePos < 0.36) {
+        } else if (cyclePos < 0.31) {
           baseMode = "smooth";
           nextMode = "halftone";
-          wipeT = easeInOutCubic((cyclePos - 0.16) / 0.2);
-        } else if (cyclePos < 0.52) {
+          wipeT = easeInOutQuart((cyclePos - 0.21) / 0.1);
+        } else if (cyclePos < 0.57) {
           baseMode = "halftone";
           nextMode = "halftone";
           wipeT = 0;
-        } else if (cyclePos < 0.72) {
+        } else if (cyclePos < 0.67) {
           baseMode = "halftone";
           nextMode = "ascii";
-          wipeT = easeInOutCubic((cyclePos - 0.52) / 0.2);
-        } else if (cyclePos < 0.86) {
+          wipeT = easeInOutQuart((cyclePos - 0.57) / 0.1);
+        } else if (cyclePos < 0.88) {
           baseMode = "ascii";
           nextMode = "ascii";
           wipeT = 0;
+        } else if (cyclePos < 0.98) {
+          baseMode = "ascii";
+          nextMode = "smooth";
+          wipeT = easeInOutQuart((cyclePos - 0.88) / 0.1);
         } else {
-          baseMode = "ascii";
+          baseMode = "smooth";
           nextMode = "smooth";
-          wipeT = easeInOutCubic((cyclePos - 0.86) / 0.14);
+          wipeT = 0;
         }
 
         const effectiveMode = wipeT > 0.5 ? nextMode : baseMode;
@@ -417,11 +437,11 @@ function RadialDissolveCanvas({
         }
       } else if (manualWipeTrigger > 0 && !reducedMotion) {
         const manualElapsed = now - manualStartRef.current;
-        const manualDuration = 720;
+        const manualDuration = 580;
         if (manualElapsed < manualDuration) {
           baseMode = prevManualMode;
           nextMode = activeMode;
-          wipeT = easeInOutCubic(Math.min(1, manualElapsed / manualDuration));
+          wipeT = easeInOutQuart(Math.min(1, manualElapsed / manualDuration));
         }
       }
 
@@ -435,9 +455,9 @@ function RadialDissolveCanvas({
       );
 
       if (wipeT > 0.001 && baseMode !== nextMode) {
-        const cx = logicalSize * 0.585;
+        const cx = logicalSize * 0.615;
         const cy = logicalSize * 0.5;
-        const maxRadius = logicalSize * 0.72;
+        const maxRadius = logicalSize * 0.76;
         const currentRadius = wipeT * maxRadius;
 
         ctx.save();
@@ -513,7 +533,8 @@ export const RadialDissolveBrandCard = React.forwardRef<
 
   const [manualAutoCycle, setManualAutoCycle] = useState<boolean>(autoCycle);
   const [activeMode, setActiveMode] = useState<DissolveMode>(initialMode);
-  const [prevManualMode, setPrevManualMode] = useState<DissolveMode>(initialMode);
+  const [prevManualMode, setPrevManualMode] =
+    useState<DissolveMode>(initialMode);
   const [manualWipeTrigger, setManualWipeTrigger] = useState<number>(0);
 
   useEffect(() => {
@@ -560,20 +581,18 @@ export const RadialDissolveBrandCard = React.forwardRef<
       ref={ref}
       className={cn(
         "w-full select-none",
-        showMockups ? "max-w-[720px]" : "max-w-[352px]",
+        showMockups ? "max-w-[672px]" : "max-w-[324px]",
         className
       )}
       {...rest}
     >
       <div
         className={cn(
-          "grid gap-5",
-          showMockups
-            ? "grid-cols-1 md:grid-cols-[minmax(0,0.96fr)_minmax(0,1.04fr)]"
-            : "grid-cols-1"
+          "grid gap-[23px]",
+          showMockups ? "grid-cols-1 md:grid-cols-[324fr_325fr]" : "grid-cols-1"
         )}
       >
-        {/* Left Hero Brand Card */}
+        {/* Left Hero Brand Card (exact 324 x 494 proportion) */}
         <motion.button
           type="button"
           onClick={handleCycleModeClick}
@@ -583,20 +602,20 @@ export const RadialDissolveBrandCard = React.forwardRef<
           aria-label={`${brandName} interactive radial dissolve card. Current visual mode: ${activeMode}. Activate to cycle dissolve style.`}
           style={{ backgroundColor: accentColor }}
           className={cn(
-            "group relative flex min-h-[470px] w-full flex-col justify-between overflow-hidden rounded-[28px] p-6 text-left text-white",
+            "group relative flex aspect-[324/494] w-full flex-col justify-between overflow-hidden rounded-[26px] px-6 pb-6 pt-5 text-left text-white",
             "cursor-pointer outline-none transition-shadow duration-200",
             "focus-visible:ring-2 focus-visible:ring-neutral-900 focus-visible:ring-offset-2 dark:focus-visible:ring-white dark:focus-visible:ring-offset-neutral-950"
           )}
         >
           {/* Subtle Tactile Print Grain Overlay */}
           <svg
-            className="pointer-events-none absolute inset-0 h-full w-full opacity-[0.055] mix-blend-overlay"
+            className="pointer-events-none absolute inset-0 h-full w-full opacity-[0.05] mix-blend-overlay"
             aria-hidden="true"
           >
             <filter id={`${uid}-grain`}>
               <feTurbulence
                 type="fractalNoise"
-                baseFrequency="0.82"
+                baseFrequency="0.85"
                 numOctaves="3"
                 stitchTiles="stitch"
               />
@@ -610,13 +629,13 @@ export const RadialDissolveBrandCard = React.forwardRef<
               idPrefix={`${uid}-hdr`}
               className="h-[22px] w-[22px] shrink-0"
             />
-            <span className="font-mono text-[13px] font-medium uppercase tracking-[0.06em] text-white/95">
+            <span className="font-mono text-[13px] font-medium uppercase tracking-[0.055em] text-white/95">
               {brandName}
             </span>
           </div>
 
           {/* Center Morphing Radial Emblem */}
-          <div className="relative z-10 my-auto flex aspect-square w-full items-center justify-center py-2">
+          <div className="relative z-10 -mx-2 my-auto flex aspect-square items-center justify-center">
             <RadialDissolveCanvas
               accentColor={accentColor}
               autoCycle={manualAutoCycle}
@@ -630,7 +649,7 @@ export const RadialDissolveBrandCard = React.forwardRef<
           </div>
 
           {/* Bottom-Left Poetic Copy */}
-          <div className="relative z-10 space-y-0.5 font-mono text-[9.5px] leading-[1.68] tracking-[0.01em] text-white/85">
+          <div className="relative z-10 space-y-[2px] font-mono text-[8.8px] leading-[1.68] tracking-[0.015em] text-white/85">
             {safePoem.map((line, index) => (
               <p key={index} className="m-0">
                 {line}
@@ -639,209 +658,257 @@ export const RadialDissolveBrandCard = React.forwardRef<
           </div>
         </motion.button>
 
-        {/* Right Companion Mockups */}
+        {/* Right Companion Mockups (exact 325x325 + 26px gap + 325x143 = 494px) */}
         {showMockups && (
-          <div className="flex flex-col gap-5">
-            {/* Top-Right Isometric Phone App Icon Card */}
-            <div className="relative flex-1 min-h-[296px] overflow-hidden rounded-[28px] bg-[#F2F2F2] dark:bg-neutral-900">
+          <div className="flex flex-col gap-[26px]">
+            {/* Top-Right Isometric Phone App Icon Card (1:1 square) */}
+            <div className="relative aspect-square w-full overflow-hidden rounded-[26px] bg-[#F2F2F2] dark:bg-neutral-900">
               <svg
-                viewBox="0 0 360 326"
+                viewBox="0 0 325 325"
                 fill="none"
                 xmlns="http://www.w3.org/2000/svg"
                 className="h-full w-full"
                 role="img"
                 aria-label={`${brandName} mobile app icon preview`}
               >
-                {/* Isometric Smartphone Body & Side Depth */}
+                {/* White phone top & side fill */}
                 <path
-                  d="M274 -18 L48 112 C24 126 24 152 48 166 L262 290 L372 226 L372 -18 Z"
+                  d="M244 -10 L44 106 C20 120 20 156 44 170 L306 322 L335 322 L335 -10 Z"
                   className="fill-white dark:fill-neutral-950"
                 />
-                {/* Bottom chamfered rim extrusion */}
+
+                {/* Side chassis depth extrusion (bottom-left edge) */}
                 <path
-                  d="M30 140 L30 164 C30 175 37 185 50 193 L252 310 L252 284 L50 167 C37 159 30 150 30 140 Z"
-                  className="fill-[#FAFAFA] stroke-[#8B8B8B] dark:fill-neutral-900 dark:stroke-neutral-600"
+                  d="M25 142 L25 170 C25 184 35 196 52 206 L256 324 L306 324 L52 178 C35 168 25 156 25 142 Z"
+                  className="fill-[#FCFCFC] stroke-[#808080] dark:fill-neutral-900 dark:stroke-neutral-600"
+                  strokeWidth="1.2"
+                  strokeLinejoin="round"
+                />
+
+                {/* Outer chassis top rim */}
+                <path
+                  d="M246 -8 L44 109 C20 123 20 154 44 168 L314 324"
+                  className="stroke-[#767676] dark:stroke-neutral-500"
                   strokeWidth="1.25"
-                  strokeLinejoin="round"
-                />
-                {/* Outer top bezel contour */}
-                <path
-                  d="M286 -20 L52 115 C26 130 26 154 52 169 L258 288"
-                  className="stroke-[#7D7D7D] dark:stroke-neutral-500"
-                  strokeWidth="1.3"
                   strokeLinecap="round"
                 />
-                {/* Inner bezel frame */}
+
+                {/* Inner chassis chamfer ring */}
                 <path
-                  d="M298 -10 L62 126 C40 139 40 156 62 169 L272 290"
-                  className="stroke-[#A1A1A1] dark:stroke-neutral-700"
-                  strokeWidth="1.15"
+                  d="M258 -4 L54 114 C31 127 31 153 54 166 L326 323"
+                  className="stroke-[#9E9E9E] dark:stroke-neutral-700"
+                  strokeWidth="1.05"
                   strokeLinecap="round"
                 />
-                {/* Screen inner boundary with top notch indentation */}
+
+                {/* Screen bezel border with top speaker notch */}
                 <path
-                  d="M324 -12 L286 10 L226 45 C216 51 202 52 192 46 L178 38 L76 97 C54 110 54 134 76 147 L286 268"
-                  className="stroke-[#969696] dark:stroke-neutral-600"
+                  d="M302 -6 L160 76 C144 85 130 85 117 77 L110 73 L64 100 C37 116 37 146 64 162 L328 314"
+                  className="stroke-[#8A8A8A] dark:stroke-neutral-600"
                   strokeWidth="1.15"
                   strokeLinecap="round"
                   strokeLinejoin="round"
                 />
-                {/* Earpiece pill & front sensor */}
+
+                {/* Top earpiece pill & front camera */}
                 <path
-                  d="M214 29 L268 -2 C271 -4 274 -1 271 2 L217 33 C214 35 211 31 214 29 Z"
-                  className="stroke-[#969696] dark:stroke-neutral-600"
+                  d="M186 48 L238 18 C241 16 244 19 241 22 L189 52 C186 54 183 50 186 48 Z"
+                  className="stroke-[#8A8A8A] dark:stroke-neutral-600"
                   strokeWidth="1.15"
                 />
                 <ellipse
-                  cx="288"
-                  cy="-6"
-                  rx="7.5"
-                  ry="4.5"
-                  className="stroke-[#969696] dark:stroke-neutral-600"
+                  cx="258"
+                  cy="9"
+                  rx="8"
+                  ry="4.8"
+                  className="stroke-[#8A8A8A] dark:stroke-neutral-600"
                   strokeWidth="1.15"
                 />
 
-                {/* Side Hardware Buttons (Mute + Volume Up + Volume Down) */}
-                <path
-                  d="M72 197 L96 211 C100 213 101 218 98 221 C95 224 91 223 87 221 L63 207 C59 205 58 200 61 197 C64 194 68 195 72 197 Z"
-                  className="fill-white stroke-[#8B8B8B] dark:fill-neutral-900 dark:stroke-neutral-500"
-                  strokeWidth="1.2"
-                />
-                <path
-                  d="M124 227 L174 256 C178 258 179 264 176 268 C173 271 168 271 164 268 L114 239 C110 237 109 231 112 227 C115 224 120 224 124 227 Z"
-                  className="fill-white stroke-[#8B8B8B] dark:fill-neutral-900 dark:stroke-neutral-500"
-                  strokeWidth="1.2"
-                />
-                <path
-                  d="M196 269 L246 298 C250 300 251 306 248 310 C245 313 240 313 236 310 L186 281 C182 279 181 273 184 269 C187 266 192 266 196 269 Z"
-                  className="fill-white stroke-[#8B8B8B] dark:fill-neutral-900 dark:stroke-neutral-500"
-                  strokeWidth="1.2"
-                />
+                {/* 3D Beveled Side Hardware Buttons */}
+                {/* Action / Mute switch */}
+                <g className="stroke-[#7D7D7D] dark:stroke-neutral-500" strokeWidth="1.15">
+                  <path
+                    d="M74 201 L102 217 C106 219 107 226 104 230 C101 233 96 232 92 230 L64 214 C60 212 59 205 62 201 C65 198 70 199 74 201 Z"
+                    className="fill-white dark:fill-neutral-900"
+                  />
+                  <path
+                    d="M68 205 L96 221 C99 223 100 226 98 228"
+                    strokeLinecap="round"
+                  />
+                </g>
 
-                {/* Isometric App Grid Plane */}
-                <g transform="translate(174, 164) matrix(0.866, 0.5, -0.866, 0.5, 0, 0)">
-                  {/* Active Brand App Icon */}
-                  <g transform="translate(-44, -44)">
+                {/* Volume Up */}
+                <g className="stroke-[#7D7D7D] dark:stroke-neutral-500" strokeWidth="1.15">
+                  <path
+                    d="M138 238 L196 271 C201 274 202 281 198 286 C195 290 189 290 184 287 L126 254 C121 251 120 244 124 239 C127 235 133 235 138 238 Z"
+                    className="fill-white dark:fill-neutral-900"
+                  />
+                  <path
+                    d="M132 243 L190 276 C193 278 195 282 193 285"
+                    strokeLinecap="round"
+                  />
+                </g>
+
+                {/* Volume Down */}
+                <g className="stroke-[#7D7D7D] dark:stroke-neutral-500" strokeWidth="1.15">
+                  <path
+                    d="M222 286 L280 319 C285 322 286 329 282 334 C279 338 273 338 268 335 L210 302 C205 299 204 292 208 287 C211 283 217 283 222 286 Z"
+                    className="fill-white dark:fill-neutral-900"
+                  />
+                  <path
+                    d="M216 291 L274 324"
+                    strokeLinecap="round"
+                  />
+                </g>
+
+                {/* Isometric 30-deg App Icon Grid */}
+                <g transform="translate(168, 156) matrix(0.866, 0.5, -0.866, 0.5, 0, 0)">
+                  {/* Highlighted Brand Squircle App Icon */}
+                  <g transform="translate(-39, -39)">
                     <rect
                       x="0"
                       y="0"
-                      width="68"
-                      height="68"
-                      rx="16"
+                      width="78"
+                      height="78"
+                      rx="20"
                       fill={accentColor}
                     />
-                    <g transform="translate(8, 8)">
+                    <g transform="translate(39, 39) rotate(-42) translate(-29, -29)">
                       <MiniRadialMark
                         idPrefix={`${uid}-iso`}
-                        className="h-[52px] w-[52px]"
+                        className="h-[58px] w-[58px]"
                       />
                     </g>
                   </g>
 
-                  {/* Neighboring Wireframe App Icons */}
+                  {/* Neighboring Wireframe App Squircles */}
                   <rect
-                    x="-44"
-                    y="-132"
-                    width="68"
-                    height="68"
-                    rx="16"
-                    className="stroke-[#AEAEAE] dark:stroke-neutral-700"
+                    x="-39"
+                    y="-143"
+                    width="78"
+                    height="78"
+                    rx="20"
+                    className="stroke-[#929292] dark:stroke-neutral-700"
                     strokeWidth="1.35"
                   />
                   <rect
-                    x="44"
-                    y="-44"
-                    width="68"
-                    height="68"
-                    rx="16"
-                    className="stroke-[#AEAEAE] dark:stroke-neutral-700"
+                    x="65"
+                    y="-39"
+                    width="78"
+                    height="78"
+                    rx="20"
+                    className="stroke-[#929292] dark:stroke-neutral-700"
                     strokeWidth="1.35"
                   />
                   <rect
-                    x="44"
-                    y="-132"
-                    width="68"
-                    height="68"
-                    rx="16"
-                    className="stroke-[#AEAEAE] dark:stroke-neutral-700"
+                    x="65"
+                    y="-143"
+                    width="78"
+                    height="78"
+                    rx="20"
+                    className="stroke-[#929292] dark:stroke-neutral-700"
                     strokeWidth="1.35"
                   />
                   <rect
-                    x="132"
-                    y="-44"
-                    width="68"
-                    height="68"
-                    rx="16"
-                    className="stroke-[#AEAEAE] dark:stroke-neutral-700"
+                    x="169"
+                    y="-39"
+                    width="78"
+                    height="78"
+                    rx="20"
+                    className="stroke-[#929292] dark:stroke-neutral-700"
                     strokeWidth="1.35"
                   />
                   <rect
-                    x="-44"
-                    y="44"
-                    width="68"
-                    height="68"
-                    rx="16"
-                    className="stroke-[#AEAEAE] dark:stroke-neutral-700"
-                    strokeWidth="1.35"
-                  />
-                  <rect
-                    x="44"
-                    y="44"
-                    width="68"
-                    height="68"
-                    rx="16"
-                    className="stroke-[#AEAEAE] dark:stroke-neutral-700"
+                    x="-39"
+                    y="-247"
+                    width="78"
+                    height="78"
+                    rx="20"
+                    className="stroke-[#929292] dark:stroke-neutral-700"
                     strokeWidth="1.35"
                   />
                 </g>
               </svg>
             </div>
 
-            {/* Bottom-Right Browser Tab & Favicon Card */}
-            <div className="relative h-[154px] overflow-hidden rounded-[28px] bg-[#F2F2F2] pl-6 pt-6 dark:bg-neutral-900">
-              <div className="flex h-full w-full flex-col overflow-hidden rounded-tl-[16px] border-l border-t border-[#9B9B9B] bg-white dark:border-neutral-700 dark:bg-neutral-950">
-                {/* Browser Top Tab Strip */}
-                <div className="flex h-[52px] items-end border-b border-[#B5B5B5] bg-[#FAFAFA] dark:border-neutral-800 dark:bg-neutral-900/70">
-                  {/* Window Traffic Dots */}
-                  <div className="flex h-full items-center gap-2.5 px-5">
-                    <span className="h-3 w-3 rounded-full bg-[#CFCFCF] dark:bg-neutral-700" />
-                    <span className="h-3 w-3 rounded-full bg-[#CFCFCF] dark:bg-neutral-700" />
-                    <span className="h-3 w-3 rounded-full bg-[#CFCFCF] dark:bg-neutral-700" />
+            {/* Bottom-Right Browser Tab & Favicon Card (exact 325x143) */}
+            <div className="relative aspect-[325/143] w-full overflow-hidden rounded-[26px] bg-[#F2F2F2] pl-6 pt-6 dark:bg-neutral-900">
+              <div className="relative flex h-full w-full flex-col overflow-hidden rounded-tl-[22px] border-l border-t border-[#919191] bg-white dark:border-neutral-700 dark:bg-neutral-950">
+                {/* Top Window & Active Tab Strip */}
+                <div className="relative flex h-[50px] items-stretch bg-white dark:bg-neutral-950">
+                  {/* Left Traffic Lights Area */}
+                  <div className="relative flex w-[132px] shrink-0 items-center gap-[11px] border-b border-[#9C9C9C] pl-[26px] dark:border-neutral-700">
+                    <span className="h-[13px] w-[13px] rounded-full bg-[#CCCCCC] dark:bg-neutral-700" />
+                    <span className="h-[13px] w-[13px] rounded-full bg-[#CCCCCC] dark:bg-neutral-700" />
+                    <span className="h-[13px] w-[13px] rounded-full bg-[#CCCCCC] dark:bg-neutral-700" />
+
+                    {/* Smooth Concave Safari/Chrome Tab Curve */}
+                    <svg
+                      viewBox="0 0 22 50"
+                      fill="none"
+                      aria-hidden="true"
+                      className="pointer-events-none absolute -right-px top-0 h-[50px] w-[22px]"
+                    >
+                      <path
+                        d="M22 0 C15 0 11 5 11 12 L11 38 C11 45 7 49.5 0 49.5"
+                        className="stroke-[#9C9C9C] dark:stroke-neutral-700"
+                        strokeWidth="1.15"
+                      />
+                    </svg>
                   </div>
 
-                  {/* Active Browser Tab */}
-                  <div className="relative -mb-px flex h-[44px] flex-1 items-center gap-2.5 rounded-tl-[12px] border-l border-t border-[#B5B5B5] bg-white pl-3.5 pr-2 dark:border-neutral-700 dark:bg-neutral-950">
+                  {/* Active Browser Tab Content */}
+                  <div className="flex flex-1 items-center gap-2.5 border-b border-[#9C9C9C] pl-2 pr-2 dark:border-neutral-700">
                     <span
                       style={{ backgroundColor: accentColor }}
-                      className="flex h-[28px] w-[28px] shrink-0 items-center justify-center rounded-[7px]"
+                      className="flex h-[31px] w-[31px] shrink-0 items-center justify-center rounded-[7px]"
                     >
                       <MiniRadialMark
                         idPrefix={`${uid}-fav`}
-                        className="h-[21px] w-[21px]"
+                        className="h-[23px] w-[23px]"
                       />
                     </span>
-                    <span className="truncate font-sans text-[17px] font-medium tracking-[-0.02em] text-neutral-900 dark:text-neutral-100">
+                    <span className="truncate font-sans text-[19px] font-normal tracking-[-0.025em] text-[#171717] dark:text-neutral-100">
                       {domainSlug}
                     </span>
                   </div>
                 </div>
 
-                {/* Browser Navigation & Address Bar */}
-                <div className="flex flex-1 items-center gap-5 bg-white pl-5 pr-0 dark:bg-neutral-950">
-                  <div className="flex items-center gap-4 text-[#9E9E9E] dark:text-neutral-500">
-                    <ArrowLeft className="h-[20px] w-[20px]" strokeWidth={1.8} />
-                    <ArrowRight className="h-[20px] w-[20px]" strokeWidth={1.8} />
-                    <RotateCw className="h-[19px] w-[19px]" strokeWidth={1.8} />
-                    <Home className="h-[20px] w-[20px]" strokeWidth={1.75} />
+                {/* Browser Navigation & Cropped Pill URL Bar */}
+                <div className="flex flex-1 items-center gap-5 bg-white pl-[26px] pr-0 dark:bg-neutral-950">
+                  <div className="flex items-center gap-[19px] text-[#9A9A9A] dark:text-neutral-500">
+                    <ArrowLeft className="h-[22px] w-[22px]" strokeWidth={1.85} />
+                    <ArrowRight className="h-[22px] w-[22px]" strokeWidth={1.85} />
+                    <RotateCw className="h-[20px] w-[20px]" strokeWidth={1.85} />
+                    <Home className="h-[21px] w-[21px]" strokeWidth={1.8} />
                   </div>
 
-                  {/* Cropped Address Pill */}
-                  <div className="ml-1 flex h-[44px] flex-1 items-center gap-2.5 rounded-l-full border-y border-l border-[#9B9B9B] pl-4 pr-2 dark:border-neutral-700">
-                    <Lock
-                      className="h-[15px] w-[15px] shrink-0 text-[#9E9E9E] dark:text-neutral-500"
-                      strokeWidth={2}
-                    />
-                    <span className="truncate font-sans text-[16px] text-neutral-900 dark:text-neutral-200">
+                  {/* Cropped Address Bar Pill */}
+                  <div className="ml-2 flex h-[48px] flex-1 items-center gap-2.5 rounded-l-full border-y border-l border-[#919191] pl-5 pr-2 dark:border-neutral-700">
+                    {/* Solid Padlock Icon matching reference */}
+                    <svg
+                      viewBox="0 0 16 18"
+                      fill="none"
+                      aria-hidden="true"
+                      className="h-[16px] w-[14px] shrink-0 text-[#9B9B9B] dark:text-neutral-500"
+                    >
+                      <path
+                        d="M4.5 7.5V5.2C4.5 3.1 6.05 1.5 8 1.5C9.95 1.5 11.5 3.1 11.5 5.2V7.5"
+                        stroke="currentColor"
+                        strokeWidth="1.8"
+                        strokeLinecap="round"
+                      />
+                      <rect
+                        x="2"
+                        y="7.5"
+                        width="12"
+                        height="9.5"
+                        rx="2"
+                        fill="currentColor"
+                      />
+                    </svg>
+                    <span className="truncate font-sans text-[18px] font-normal tracking-[-0.015em] text-[#171717] dark:text-neutral-200">
                       {domainSlug.slice(0, 2)}
                     </span>
                   </div>
