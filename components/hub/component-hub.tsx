@@ -35,10 +35,12 @@ import {
   ShieldCheck,
   Lock,
   FolderGit2,
+  Cpu,
 } from "lucide-react";
 import { KeyboardShortcutsDialog } from "@/components/studio/keyboard-shortcuts-dialog";
 import { SecurityShieldModal } from "@/components/studio/security-shield-modal";
 import { RepoSyncModal } from "@/components/studio/repo-sync-modal";
+import { McpConnectDialog } from "@/components/mcp/mcp-connect-dialog";
 
 export interface ComponentHubProps {
   onNavigateStudio?: (componentId: string) => void;
@@ -118,6 +120,7 @@ export function ComponentHub({
   const [selectedCategory, setSelectedCategory] = useState<CategoryType>(initialCategory);
   const [isDark, setIsDark] = useState(true);
   const [isShortcutsOpen, setIsShortcutsOpen] = useState(false);
+  const [isMcpConnectOpen, setIsMcpConnectOpen] = useState(false);
 
   // Sync theme with document element & seed/hydrate saved repo components post-render
   useEffect(() => {
@@ -530,6 +533,23 @@ export function ComponentHub({
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setIsMcpConnectOpen(true)}
+                  className="studio-icon-btn size-8 rounded-none border-border/80 bg-card/70 text-muted-foreground hover:text-foreground"
+                  aria-label="Connect AI via MCP (Gemini, Antigravity, Claude, Cursor)"
+                >
+                  <Cpu className="size-4 text-sky-400" aria-hidden="true" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="font-sans text-xs">
+                Connect AI via MCP (Gemini, Antigravity, Claude, Cursor)
+              </TooltipContent>
+            </Tooltip>
+
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
                   variant="default"
                   size="icon"
                   onClick={() => setCreateComponentDialogOpen(true)}
@@ -785,6 +805,7 @@ export function ComponentHub({
         <KeyboardShortcutsDialog open={isShortcutsOpen} onOpenChange={setIsShortcutsOpen} />
         {isSecurityModalOpen && <SecurityShieldModal />}
         {(isRepoSyncModalOpen || isPublishModalOpen) && <RepoSyncModal />}
+        <McpConnectDialog open={isMcpConnectOpen} onOpenChange={setIsMcpConnectOpen} />
       </div>
   );
 }
