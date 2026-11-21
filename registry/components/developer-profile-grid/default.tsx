@@ -7,6 +7,7 @@ const settings = {
   columns: 2,
   accentMode: "lime",
   showFilter: true,
+  showFollowers: true,
   liveClock: false,
 };
 
@@ -34,6 +35,7 @@ export default function DeveloperProfileGridDemo(
         columns={columns}
         accentMode={accentMode}
         showFilter={Boolean(config.showFilter)}
+        showFollowers={Boolean(config.showFollowers)}
         liveClock={Boolean(config.liveClock)}
       />
     </div>

@@ -2,7 +2,7 @@
 
 import React, { useCallback, useEffect, useId, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { AlarmClock, Check, Copy, PlusCircle, Zap } from "lucide-react";
+import { AlarmClock, Check, Copy, PlusCircle, Users, Zap } from "lucide-react";
 
 function cn(...classes: Array<string | false | null | undefined>): string {
   return classes.filter(Boolean).join(" ");
@@ -19,6 +19,7 @@ export interface DeveloperProfileGridItem {
   bannerText: string;
   email: string;
   timeLabel: string;
+  followers: number;
   avatarUrl?: string;
   avatarVariant?: 0 | 1 | 2 | 3;
   accent?: TrayAccent;
@@ -34,12 +35,16 @@ export interface DeveloperProfileGridProps
   accentMode?: "lime" | "multicolor";
   /** Show interactive All / Available / Booked filter bar above the grid */
   showFilter?: boolean;
+  /** Show interactive follower count badge on each card */
+  showFollowers?: boolean;
   /** Display live local clock instead of static timeLabel */
   liveClock?: boolean;
   /** Fired when Hire Me is clicked on any card */
   onHireProfile?: (profile: DeveloperProfileGridItem) => void;
   /** Fired when Copy Email is clicked on any card */
   onCopyProfileEmail?: (profile: DeveloperProfileGridItem) => void;
+  /** Fired when Follow pill is toggled on any card */
+  onToggleFollow?: (profile: DeveloperProfileGridItem, following: boolean) => void;
 }
 
 const DEFAULT_PROFILES: DeveloperProfileGridItem[] = [
@@ -52,6 +57,7 @@ const DEFAULT_PROFILES: DeveloperProfileGridItem[] = [
     bannerText: "Currently High on Creativity",
     email: "prasanjit@example.com",
     timeLabel: "8:30PM",
+    followers: 12480,
     avatarVariant: 0,
     accent: "lime",
   },
@@ -64,6 +70,7 @@ const DEFAULT_PROFILES: DeveloperProfileGridItem[] = [
     bannerText: "Crafting Micro-Interactions",
     email: "amina@example.com",
     timeLabel: "6:15PM",
+    followers: 8940,
     avatarVariant: 1,
     accent: "mint",
   },
@@ -76,6 +83,7 @@ const DEFAULT_PROFILES: DeveloperProfileGridItem[] = [
     bannerText: "Shipping 60fps Motion UI",
     email: "kenji@example.com",
     timeLabel: "10:45PM",
+    followers: 19320,
     avatarVariant: 2,
     accent: "amber",
   },
@@ -88,6 +96,7 @@ const DEFAULT_PROFILES: DeveloperProfileGridItem[] = [
     bannerText: "Building Design Systems",
     email: "maya@example.com",
     timeLabel: "9:00AM",
+    followers: 6415,
     avatarVariant: 3,
     accent: "sky",
   },
@@ -100,6 +109,7 @@ const ACCENT_STYLES: Record<
     text: string;
     dot: string;
     copiedText: string;
+    followActive: string;
   }
 > = {
   lime: {
@@ -107,24 +117,28 @@ const ACCENT_STYLES: Record<
     text: "text-[#111c06]",
     dot: "bg-[#a0ff63]",
     copiedText: "text-[#b2fc68]",
+    followActive: "bg-[#a7f75b]/15 text-[#b2fc68] ring-[#a7f75b]/40",
   },
   mint: {
     tray: "bg-gradient-to-b from-[#6df5c4] to-[#7cf8cc] border-[#4cd9a6]",
     text: "text-[#062017]",
     dot: "bg-[#6df5c4]",
     copiedText: "text-[#7cf8cc]",
+    followActive: "bg-[#6df5c4]/15 text-[#7cf8cc] ring-[#6df5c4]/40",
   },
   amber: {
     tray: "bg-gradient-to-b from-[#ffd859] to-[#ffdf6e] border-[#e4bc3b]",
     text: "text-[#261c04]",
     dot: "bg-[#ffd859]",
     copiedText: "text-[#ffdf6e]",
+    followActive: "bg-[#ffd859]/15 text-[#ffdf6e] ring-[#ffd859]/40",
   },
   sky: {
     tray: "bg-gradient-to-b from-[#8cc0ff] to-[#9bc9ff] border-[#6ba4ea]",
     text: "text-[#08192e]",
     dot: "bg-[#8cc0ff]",
     copiedText: "text-[#9bc9ff]",
+    followActive: "bg-[#8cc0ff]/15 text-[#9bc9ff] ring-[#8cc0ff]/40",
   },
 };
 
@@ -135,6 +149,10 @@ function formatCurrentTime(): string {
   const suffix = hours >= 12 ? "PM" : "AM";
   hours = hours % 12 || 12;
   return `${hours}:${minutes}${suffix}`;
+}
+
+function formatFollowers(count: number): string {
+  return count.toLocaleString("en-US");
 }
 
 function MonochromeAvatar({
@@ -207,22 +225,27 @@ function MonochromeAvatar({
 interface GridProfileCardProps {
   profile: DeveloperProfileGridItem;
   accentKey: TrayAccent;
+  showFollowers: boolean;
   liveClock: boolean;
   prefersReducedMotion: boolean;
   onHire?: (profile: DeveloperProfileGridItem) => void;
   onCopy?: (profile: DeveloperProfileGridItem) => void;
+  onToggleFollow?: (profile: DeveloperProfileGridItem, following: boolean) => void;
 }
 
 function GridProfileCard({
   profile,
   accentKey,
+  showFollowers,
   liveClock,
   prefersReducedMotion,
   onHire,
   onCopy,
+  onToggleFollow,
 }: GridProfileCardProps) {
   const [copied, setCopied] = useState(false);
   const [hireAck, setHireAck] = useState(false);
+  const [following, setFollowing] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
   const [avatarErr, setAvatarErr] = useState(false);
   const [clockText, setClockText] = useState(profile.timeLabel);
@@ -272,6 +295,14 @@ function GridProfileCard({
     hireTimerRef.current = setTimeout(() => setHireAck(false), 1800);
   }, [onHire, profile]);
 
+  const handleFollowToggle = useCallback(() => {
+    setFollowing((prev) => {
+      const next = !prev;
+      onToggleFollow?.(profile, next);
+      return next;
+    });
+  }, [onToggleFollow, profile]);
+
   const style = ACCENT_STYLES[accentKey];
   const springTransition = prefersReducedMotion
     ? { duration: 0.12 }
@@ -280,6 +311,8 @@ function GridProfileCard({
   const hasCustomAvatar = Boolean(
     profile.avatarUrl && profile.avatarUrl.trim().length > 0 && !avatarErr
   );
+
+  const displayedFollowers = profile.followers + (following ? 1 : 0);
 
   return (
     <motion.article
@@ -330,28 +363,66 @@ function GridProfileCard({
           </div>
         </div>
 
-        <div className="mt-4 flex items-center gap-3.5">
-          <div className="relative h-[50px] w-[50px] shrink-0 overflow-hidden rounded-full ring-1 ring-white/10 bg-[#f7f7f7]">
-            {hasCustomAvatar ? (
-              <img
-                src={profile.avatarUrl}
-                alt={profile.name}
-                onError={() => setAvatarErr(true)}
-                className="h-full w-full object-cover"
-              />
-            ) : (
-              <MonochromeAvatar variant={profile.avatarVariant ?? 0} className="h-full w-full" />
-            )}
+        <div className="mt-4 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3.5 min-w-0">
+            <div className="relative h-[50px] w-[50px] shrink-0 overflow-hidden rounded-full ring-1 ring-white/10 bg-[#f7f7f7]">
+              {hasCustomAvatar ? (
+                <img
+                  src={profile.avatarUrl}
+                  alt={profile.name}
+                  onError={() => setAvatarErr(true)}
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                <MonochromeAvatar variant={profile.avatarVariant ?? 0} className="h-full w-full" />
+              )}
+            </div>
+
+            <div className="min-w-0">
+              <h3 className="text-[20px] sm:text-[21px] font-medium leading-[1.2] tracking-[-0.018em] text-[#f3f3f4] truncate">
+                {profile.name}
+              </h3>
+              <p className="mt-0.5 text-[13.5px] font-normal leading-[1.3] text-[#8d8d92] truncate">
+                {profile.role}
+              </p>
+            </div>
           </div>
 
-          <div className="min-w-0 flex-1">
-            <h3 className="text-[20px] sm:text-[22px] font-medium leading-[1.2] tracking-[-0.018em] text-[#f3f3f4] truncate">
-              {profile.name}
-            </h3>
-            <p className="mt-0.5 text-[13.5px] font-normal leading-[1.3] text-[#8d8d92] truncate">
-              {profile.role}
-            </p>
-          </div>
+          {showFollowers && (
+            <motion.button
+              type="button"
+              onClick={handleFollowToggle}
+              aria-pressed={following}
+              aria-label={
+                following
+                  ? `Following ${profile.name}, ${formatFollowers(displayedFollowers)} followers`
+                  : `Follow ${profile.name}, ${formatFollowers(displayedFollowers)} followers`
+              }
+              whileTap={prefersReducedMotion ? undefined : { scale: 0.94 }}
+              transition={{ type: "spring", stiffness: 520, damping: 28 }}
+              className={cn(
+                "shrink-0 inline-flex flex-col items-end rounded-[14px] px-3 py-1.5 ring-1 transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#a7f75b]",
+                following
+                  ? style.followActive
+                  : "bg-white/[0.04] text-[#d4d4d8] ring-white/[0.08] hover:bg-white/[0.08]"
+              )}
+            >
+              <span className="inline-flex items-center gap-1.5 text-[13.5px] font-medium leading-tight tabular-nums">
+                <Users className="h-[12.5px] w-[12.5px] opacity-80" strokeWidth={2} />
+                <motion.span
+                  key={displayedFollowers}
+                  initial={prefersReducedMotion ? false : { y: following ? -4 : 4, opacity: 0.5 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  transition={{ duration: 0.16, ease: "easeOut" }}
+                >
+                  {formatFollowers(displayedFollowers)}
+                </motion.span>
+              </span>
+              <span className="text-[10.5px] font-normal tracking-wide opacity-70 leading-tight mt-0.5">
+                {following ? "Following" : "Followers"}
+              </span>
+            </motion.button>
+          )}
         </div>
 
         <div className="mt-5 grid grid-cols-2 gap-3">
@@ -478,9 +549,11 @@ export const DeveloperProfileGrid = React.forwardRef<
     columns = 2,
     accentMode = "lime",
     showFilter = true,
+    showFollowers = true,
     liveClock = false,
     onHireProfile,
     onCopyProfileEmail,
+    onToggleFollow,
     className,
     ...rest
   },
@@ -579,10 +652,12 @@ export const DeveloperProfileGrid = React.forwardRef<
               key={profile.id}
               profile={profile}
               accentKey={accentMode === "multicolor" ? profile.accent ?? "lime" : "lime"}
+              showFollowers={showFollowers}
               liveClock={liveClock}
               prefersReducedMotion={prefersReducedMotion}
               onHire={onHireProfile}
               onCopy={onCopyProfileEmail}
+              onToggleFollow={onToggleFollow}
             />
           ))}
         </AnimatePresence>
