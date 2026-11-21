@@ -10,7 +10,8 @@ Component Studio exposes a **Dual-Transport MCP Server**:
 
 | Transport | Endpoint / Command | Best Suited For |
 | :--- | :--- | :--- |
-| **HTTP / SSE** | `http://localhost:3000/api/mcp` | Google Gemini Custom Apps, Web Connectors, Remote Agents, Webhooks |
+| **HTTP / SSE (Live Production)** | `https://cp.flinkeo.online/api/mcp` | Google Gemini Custom Apps, Web Connectors, Remote Agents, Webhooks |
+| **HTTP / SSE (Local Dev)** | `http://localhost:3000/api/mcp` | Local web agents and development testing |
 | **Stdio** | `bun run mcp` | Google Antigravity, Claude Desktop, Cursor, Local CLIs |
 
 ---
@@ -18,15 +19,16 @@ Component Studio exposes a **Dual-Transport MCP Server**:
 ## 2. Connecting with Google Gemini
 
 ### Option A: Gemini Custom App / Web Connector
-Point your Gemini custom connector or agent to:
+Point your Gemini custom connector or agent to your live URL:
 ```
-http://localhost:3000/api/mcp
+https://cp.flinkeo.online/api/mcp
 ```
+*(or `http://localhost:3000/api/mcp` during local testing)*
 
 ### Option B: Gemini SDK / Function Calling (`@google/genai`)
 To retrieve tool declarations pre-formatted for Google Gemini's `functionDeclarations` API:
 ```
-http://localhost:3000/api/mcp?format=gemini
+https://cp.flinkeo.online/api/mcp?format=gemini
 ```
 
 In your Gemini code:

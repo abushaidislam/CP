@@ -32,6 +32,16 @@ export function McpConnectDialog({ open, onOpenChange }: McpConnectDialogProps) 
   const [copiedKey, setCopiedKey] = React.useState<string | null>(null);
   const [testStatus, setTestStatus] = React.useState<"idle" | "testing" | "success" | "error">("idle");
   const [testResult, setTestResult] = React.useState<string | null>(null);
+  const [origin, setOrigin] = React.useState("https://cp.flinkeo.online");
+
+  React.useEffect(() => {
+    if (typeof window !== "undefined" && window.location.origin) {
+      setOrigin(window.location.origin);
+    }
+  }, []);
+
+  const mcpUrl = `${origin}/api/mcp`;
+  const geminiFuncUrl = `${origin}/api/mcp?format=gemini`;
 
   const copyToClipboard = (text: string, key: string) => {
     navigator.clipboard.writeText(text);
@@ -159,12 +169,12 @@ export function McpConnectDialog({ open, onOpenChange }: McpConnectDialogProps) 
 
             <div className="flex items-center gap-2 bg-muted/40 border border-border p-2">
               <span className="font-mono text-xs text-foreground flex-1 truncate select-all">
-                http://localhost:3000/api/mcp
+                {mcpUrl}
               </span>
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => copyToClipboard("http://localhost:3000/api/mcp", "gemini-url")}
+                onClick={() => copyToClipboard(mcpUrl, "gemini-url")}
                 className="font-sans text-xs rounded-none h-7 px-2.5 gap-1.5 shrink-0"
               >
                 {copiedKey === "gemini-url" ? (
@@ -190,12 +200,12 @@ export function McpConnectDialog({ open, onOpenChange }: McpConnectDialogProps) 
               </p>
               <div className="flex items-center justify-between gap-2 mt-1">
                 <code className="font-mono text-xs text-primary truncate select-all">
-                  http://localhost:3000/api/mcp?format=gemini
+                  {geminiFuncUrl}
                 </code>
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => copyToClipboard("http://localhost:3000/api/mcp?format=gemini", "gemini-func-url")}
+                  onClick={() => copyToClipboard(geminiFuncUrl, "gemini-func-url")}
                   className="font-sans text-xs h-6 px-2 gap-1 text-muted-foreground hover:text-foreground"
                 >
                   {copiedKey === "gemini-func-url" ? <Check className="size-3 text-emerald-500" /> : <Copy className="size-3" />}
