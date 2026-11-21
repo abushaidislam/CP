@@ -5,6 +5,7 @@ import dynamic from "next/dynamic";
 import { useShallow } from "zustand/react/shallow";
 import {
   useStudioStore,
+  DEFAULT_TEMPLATE_PREVIEWS,
   StudioViewport,
   CanvasBackground,
   PreviewTheme,
@@ -125,6 +126,7 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
   >(null);
   const captureTimeoutRef = useRef<NodeJS.Timeout | number | null>(null);
   const toastTimeoutRef = useRef<NodeJS.Timeout | number | null>(null);
+  const autoCapturedIdsRef = useRef<Set<string>>(new Set());
 
   // Debounce files (200ms) to ensure butter-smooth 60fps typing in CodeMirror
   const [debouncedFiles, setDebouncedFiles] = useState(files);
@@ -553,14 +555,20 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
             pushDemoPropsToIframe(controlOverridesRef.current);
           }
 
-          // Auto-capture preview thumbnail once if this custom/MCP component has no previewImage yet
+          // Auto-capture preview thumbnail once if this custom/MCP component has no real previewImage yet
           const activeComp = useStudioStore.getState().userComponents?.[currentTemplateId];
+          const isPlaceholderPreview =
+            !activeComp?.previewImage ||
+            activeComp.previewImage === "./preview.png" ||
+            activeComp.previewImage === DEFAULT_TEMPLATE_PREVIEWS["blank"];
           if (
             activeComp &&
             !activeComp.isBuiltIn &&
-            !activeComp.previewImage &&
+            isPlaceholderPreview &&
+            !autoCapturedIdsRef.current.has(currentTemplateId) &&
             iframeRef.current?.contentWindow
           ) {
+            autoCapturedIdsRef.current.add(currentTemplateId);
             setTimeout(() => {
               iframeRef.current?.contentWindow?.postMessage(
                 { type: "CAPTURE_PREVIEW", componentId: currentTemplateId },
@@ -590,14 +598,26 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
 
           if (event.data.dataUrl) {
             const dataUrl = event.data.dataUrl as string;
-            updateComponentPreview(
-              event.data.componentId || currentTemplateId,
-              dataUrl
-            );
+            const targetId = event.data.componentId || currentTemplateId;
+            updateComponentPreview(targetId, dataUrl);
 
             const requestedAction =
               pendingCaptureActionRef.current || "thumbnail";
             pendingCaptureActionRef.current = null;
+
+            if (requestedAction === "thumbnail") {
+              const targetComp =
+                useStudioStore.getState().userComponents?.[targetId];
+              if (
+                targetComp &&
+                (targetComp.savedInRepo || !targetComp.isBuiltIn) &&
+                dataUrl.startsWith("data:image/png;base64,")
+              ) {
+                void useStudioStore.getState().saveComponentToProjectRepo?.({
+                  componentId: targetId,
+                });
+              }
+            }
 
             if (requestedAction === "both" || requestedAction === "download") {
               try {

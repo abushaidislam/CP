@@ -223,6 +223,15 @@ export function compileSandboxHtml(
         try { Object.defineProperty(window, "localStorage", { value: fakeStorage }); } catch (err) {}
         try { Object.defineProperty(window, "sessionStorage", { value: fakeStorage }); } catch (err) {}
       }
+      try {
+        var origGetContext = HTMLCanvasElement.prototype.getContext;
+        HTMLCanvasElement.prototype.getContext = function(type, attrs) {
+          if (type === "webgl" || type === "webgl2" || type === "experimental-webgl") {
+            attrs = Object.assign({}, attrs || {}, { preserveDrawingBuffer: true });
+          }
+          return origGetContext.call(this, type, attrs);
+        };
+      } catch (e) {}
     })();
   </script>
   
@@ -839,6 +848,157 @@ export function compileSandboxHtml(
       }
     });
 
+    function renderDomFallbackToPng(root, width, height, baseBgColor) {
+      try {
+        const canvas = document.createElement("canvas");
+        const maxOutW = 1200;
+        const scale = width > maxOutW ? maxOutW / width : 1;
+        canvas.width = Math.round(width * scale);
+        canvas.height = Math.round(height * scale);
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return null;
+
+        ctx.save();
+        ctx.scale(scale, scale);
+        ctx.fillStyle = baseBgColor || "#09090b";
+        ctx.fillRect(0, 0, width, height);
+
+        function isTransparent(c) {
+          return !c || c === "transparent" || c === "rgba(0, 0, 0, 0)" || c === "rgba(0,0,0,0)";
+        }
+
+        function roundedRect(c, x, y, w, h, tl, tr, br, bl) {
+          const maxR = Math.min(w, h) * 0.5;
+          const rTL = Math.max(0, Math.min(maxR, tl || 0));
+          const rTR = Math.max(0, Math.min(maxR, tr || 0));
+          const rBR = Math.max(0, Math.min(maxR, br || 0));
+          const rBL = Math.max(0, Math.min(maxR, bl || 0));
+          c.beginPath();
+          if (rTL === 0 && rTR === 0 && rBR === 0 && rBL === 0) {
+            c.rect(x, y, w, h);
+            return;
+          }
+          c.moveTo(x + rTL, y);
+          c.lineTo(x + w - rTR, y);
+          if (rTR > 0) c.arcTo(x + w, y, x + w, y + rTR, rTR);
+          c.lineTo(x + w, y + h - rBR);
+          if (rBR > 0) c.arcTo(x + w, y + h, x + w - rBR, y + h, rBR);
+          c.lineTo(x + rBL, y + h);
+          if (rBL > 0) c.arcTo(x, y + h, x, y + h - rBL, rBL);
+          c.lineTo(x, y + rTL);
+          if (rTL > 0) c.arcTo(x, y, x + rTL, y, rTL);
+          c.closePath();
+        }
+
+        const items = [];
+        let order = 0;
+        function collect(el, op, z) {
+          if (!el || !(el instanceof Element)) return;
+          if (el.id === "__video_studio_overlay__") return;
+          const tag = el.tagName.toUpperCase();
+          if (tag === "SCRIPT" || tag === "STYLE" || tag === "LINK" || tag === "META" || tag === "HEAD" || tag === "DEFS" || tag === "CLIPPATH") return;
+          let cs;
+          try { cs = window.getComputedStyle(el); } catch (e) { return; }
+          if (!cs || cs.display === "none" || cs.visibility === "hidden") return;
+          const curOp = parseFloat(cs.opacity || "1") * op;
+          if (curOp <= 0.01) return;
+          let curZ = z;
+          if (cs.position !== "static" && cs.zIndex && cs.zIndex !== "auto") {
+            const pz = parseInt(cs.zIndex, 10);
+            if (!Number.isNaN(pz)) curZ = pz;
+          }
+          const r = el.getBoundingClientRect();
+          if (r.width >= 0.5 && r.height >= 0.5 && r.bottom >= -4 && r.top <= height + 4 && r.right >= -4 && r.left <= width + 4) {
+            items.push({ el, tag, cs, rect: r, opacity: curOp, z: curZ, order: order++ });
+          }
+          if (tag === "SVG") return;
+          for (let i = 0; i < el.children.length; i++) {
+            collect(el.children[i], curOp, curZ);
+          }
+        }
+        collect(root, 1, 0);
+        items.sort((a, b) => (a.z !== b.z ? a.z - b.z : a.order - b.order));
+
+        const textRange = typeof document.createRange === "function" ? document.createRange() : null;
+
+        for (let i = 0; i < items.length; i++) {
+          const { el, tag, cs, rect, opacity } = items[i];
+          ctx.save();
+          ctx.globalAlpha = Math.max(0, Math.min(1, opacity));
+          const rTL = parseFloat(cs.borderTopLeftRadius) || 0;
+          const rTR = parseFloat(cs.borderTopRightRadius) || 0;
+          const rBR = parseFloat(cs.borderBottomRightRadius) || 0;
+          const rBL = parseFloat(cs.borderBottomLeftRadius) || 0;
+
+          if (cs.backgroundColor && !isTransparent(cs.backgroundColor)) {
+            roundedRect(ctx, rect.left, rect.top, rect.width, rect.height, rTL, rTR, rBR, rBL);
+            ctx.fillStyle = cs.backgroundColor;
+            ctx.fill();
+          }
+
+          const bTop = parseFloat(cs.borderTopWidth) || 0;
+          if (bTop > 0 && cs.borderTopStyle !== "none" && !isTransparent(cs.borderTopColor)) {
+            roundedRect(ctx, rect.left + bTop * 0.5, rect.top + bTop * 0.5, Math.max(0, rect.width - bTop), Math.max(0, rect.height - bTop), rTL, rTR, rBR, rBL);
+            ctx.strokeStyle = cs.borderTopColor;
+            ctx.lineWidth = bTop;
+            ctx.stroke();
+          }
+
+          if (tag === "CANVAS" && el.width > 0 && el.height > 0) {
+            try {
+              ctx.save();
+              if (rTL > 0 || rTR > 0 || rBR > 0 || rBL > 0) {
+                roundedRect(ctx, rect.left, rect.top, rect.width, rect.height, rTL, rTR, rBR, rBL);
+                ctx.clip();
+              }
+              ctx.drawImage(el, rect.left, rect.top, rect.width, rect.height);
+              ctx.restore();
+            } catch (e) {}
+          } else if (tag === "IMG" && el.complete && el.naturalWidth > 0) {
+            try {
+              ctx.save();
+              if (rTL > 0 || rTR > 0 || rBR > 0 || rBL > 0) {
+                roundedRect(ctx, rect.left, rect.top, rect.width, rect.height, rTL, rTR, rBR, rBL);
+                ctx.clip();
+              }
+              ctx.drawImage(el, rect.left, rect.top, rect.width, rect.height);
+              ctx.restore();
+            } catch (e) {}
+          }
+
+          if (textRange && el.childNodes && el.childNodes.length > 0) {
+            const fontSizePx = parseFloat(cs.fontSize) || 14;
+            ctx.font = (cs.fontStyle || "normal") + " " + (cs.fontWeight || "400") + " " + (cs.fontSize || "14px") + " " + (cs.fontFamily || "sans-serif");
+            ctx.fillStyle = cs.color || "#fafafa";
+            ctx.textBaseline = "alphabetic";
+            for (let c = 0; c < el.childNodes.length; c++) {
+              const node = el.childNodes[c];
+              if (!node || node.nodeType !== 3) continue;
+              let str = (node.nodeValue || "").replace(/\\s+/g, " ").trim();
+              if (!str) continue;
+              if (cs.textTransform === "uppercase") str = str.toUpperCase();
+              else if (cs.textTransform === "lowercase") str = str.toLowerCase();
+              try {
+                textRange.selectNodeContents(node);
+                const rects = textRange.getClientRects();
+                if (rects && rects.length > 0) {
+                  const r0 = rects[0];
+                  if (r0.width >= 1 && r0.height >= 1) {
+                    ctx.fillText(str, r0.left, r0.top + (r0.height + fontSizePx * 0.72) * 0.5);
+                  }
+                }
+              } catch (e) {}
+            }
+          }
+          ctx.restore();
+        }
+        ctx.restore();
+        return canvas.toDataURL("image/png");
+      } catch (e) {
+        return null;
+      }
+    }
+
     async function captureLivePreview(componentId) {
       try {
         const root = document.getElementById("root");
@@ -852,45 +1012,258 @@ export function compileSandboxHtml(
           return;
         }
 
-        // 1. Check if #root contains a canvas
+        // Wait for web fonts & one animation frame so 2D/WebGL canvases and Framer Motion settle
+        if (document.fonts && document.fonts.ready) {
+          try {
+            await Promise.race([
+              document.fonts.ready,
+              new Promise((r) => setTimeout(r, 120)),
+            ]);
+          } catch (e) {}
+        }
+        await new Promise((r) => requestAnimationFrame(() => r()));
+
+        // 1. Snapshot any live <canvas> inside #root (and composite into clonedRoot rather than discarding DOM layout)
         const innerCanvas = root.querySelector("canvas");
+        let fallbackSingleCanvasUrl = null;
         if (innerCanvas) {
           try {
             const dataUrl = innerCanvas.toDataURL("image/png");
             if (dataUrl && dataUrl.startsWith("data:image/png")) {
-              notifyParent({
-                type: "PREVIEW_CAPTURED",
-                dataUrl: dataUrl,
-                componentId: componentId,
-              });
-              return;
+              fallbackSingleCanvasUrl = dataUrl;
             }
           } catch (canvasErr) {
             // Canvas export failed or tainted, continue to SVG fallback
           }
         }
 
-        // 2. Capture the #root DOM using SVG <foreignObject>
+        // 2. Capture the full #root DOM + embedded <canvas> + <svg> layout using SVG <foreignObject>
         const rect = root.getBoundingClientRect();
-        const width = Math.max(Math.ceil(rect.width) || 800, 320);
-        const height = Math.max(Math.ceil(rect.height) || 600, 240);
+        const vw = window.innerWidth || Math.ceil(rect.width) || 800;
+        const vh = window.innerHeight || Math.ceil(rect.height) || 600;
+        const width = Math.max(Math.ceil(rect.width) || vw || 800, 320);
+        const rawHeight = Math.max(Math.ceil(rect.height) || 0, vh || 0) || 600;
+        const height = Math.max(Math.min(rawHeight, Math.round(width * 1.15)), 240);
 
         let stylesText = "";
         const styleElements = document.querySelectorAll("style");
         for (const el of styleElements) {
-          stylesText += el.innerHTML + "\\n";
+          if (el.id === "__video_studio_styles__" || el.id === "__video_studio_hover_mirror__") continue;
+          if (el.innerHTML) {
+            stylesText += el.innerHTML + "\\n";
+          } else if (el.sheet && el.sheet.cssRules) {
+            try {
+              for (let r = 0; r < el.sheet.cssRules.length; r++) {
+                stylesText += el.sheet.cssRules[r].cssText + "\\n";
+              }
+            } catch (e) {}
+          }
         }
+        // Sanitize styles so external @import / url(http...) never block or taint <foreignObject> rasterization
+        stylesText = stylesText
+          .replace(/\\]\\]>/g, "")
+          .replace(/@import\\s+[^;]+;/gi, "")
+          .replace(/@charset\\s+[^;]+;/gi, "")
+          .replace(/url\\(\\s*['"]?(?!data:|#)[^'")]+['"]?\\s*\\)/gi, "none");
+        stylesText += "\\n*, *::before, *::after { animation-play-state: paused !important; transition: none !important; }\\n";
 
         const clonedRoot = root.cloneNode(true);
-        const serializedHtml = new XMLSerializer().serializeToString(clonedRoot);
 
-        const wrapperClasses = (document.documentElement.className + " " + document.body.className).trim();
+        // Remove elements that are invalid or slow inside static SVG <foreignObject>
+        const removable = clonedRoot.querySelectorAll(
+          "script, style, link, iframe, object, embed, video, audio, source, track, feTurbulence"
+        );
+        for (let i = 0; i < removable.length; i++) {
+          removable[i].remove();
+        }
+
+        // Composite all live <canvas> bitmaps directly into clonedRoot as <img> elements
+        const liveCanvases = root.querySelectorAll("canvas");
+        const clonedCanvases = clonedRoot.querySelectorAll("canvas");
+        for (let i = 0; i < liveCanvases.length && i < clonedCanvases.length; i++) {
+          const liveC = liveCanvases[i];
+          const cloneC = clonedCanvases[i];
+          if (liveC && liveC.width > 0 && liveC.height > 0) {
+            try {
+              const cDataUrl = liveC.toDataURL("image/png");
+              if (cDataUrl && cDataUrl.startsWith("data:image/png")) {
+                const imgRep = document.createElement("img");
+                imgRep.setAttribute("src", cDataUrl);
+                if (liveC.className) {
+                  imgRep.setAttribute("class", liveC.className);
+                }
+                const cRect = liveC.getBoundingClientRect();
+                const prevStyle = liveC.getAttribute("style") || "";
+                imgRep.setAttribute(
+                  "style",
+                  prevStyle +
+                    (prevStyle && !prevStyle.endsWith(";") ? ";" : "") +
+                    (cRect.width > 0 ? "width:" + Math.round(cRect.width) + "px;" : "") +
+                    (cRect.height > 0 ? "height:" + Math.round(cRect.height) + "px;" : "")
+                );
+                cloneC.replaceWith(imgRep);
+              }
+            } catch (e) {}
+          }
+        }
+
+        // Inline any non-data: <img> elements so <foreignObject> never taints or shows broken images
+        const liveImgs = root.querySelectorAll("img");
+        const clonedImgs = clonedRoot.querySelectorAll("img");
+        let scratchCanvas = null;
+        let scratchCtx = null;
+        for (let i = 0; i < clonedImgs.length; i++) {
+          const cloneImg = clonedImgs[i];
+          const src = cloneImg.getAttribute("src") || "";
+          cloneImg.removeAttribute("crossorigin");
+          cloneImg.removeAttribute("loading");
+          cloneImg.removeAttribute("decoding");
+          cloneImg.removeAttribute("srcset");
+          if (src && src.startsWith("data:")) continue;
+
+          let inlinedUrl = null;
+          // Find matching live <img> by src attribute
+          for (let j = 0; j < liveImgs.length; j++) {
+            const lImg = liveImgs[j];
+            if ((lImg.getAttribute("src") || "") === src && lImg.complete && lImg.naturalWidth > 0) {
+              try {
+                if (!scratchCanvas) {
+                  scratchCanvas = document.createElement("canvas");
+                  scratchCtx = scratchCanvas.getContext("2d");
+                }
+                if (scratchCtx) {
+                  const iw = Math.min(640, Math.max(16, lImg.naturalWidth));
+                  const ih = Math.min(640, Math.max(16, lImg.naturalHeight));
+                  scratchCanvas.width = iw;
+                  scratchCanvas.height = ih;
+                  scratchCtx.clearRect(0, 0, iw, ih);
+                  scratchCtx.drawImage(lImg, 0, 0, iw, ih);
+                  inlinedUrl = scratchCanvas.toDataURL("image/png");
+                }
+              } catch (e) {
+                scratchCanvas = null;
+                scratchCtx = null;
+              }
+              break;
+            }
+          }
+          if (inlinedUrl && inlinedUrl.startsWith("data:image/")) {
+            cloneImg.setAttribute("src", inlinedUrl);
+          } else {
+            cloneImg.setAttribute(
+              "src",
+              "data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Crect width='100%25' height='100%25' fill='%2327272a' fill-opacity='0.35'/%3E%3C/svg%3E"
+            );
+          }
+        }
+
+        // Sync live computed grid/flex layout, SVG dimensions, and Framer Motion / CSS animation states
+        const validXmlAttrRe = /^[a-zA-Z_:][a-zA-Z0-9_.:-]*$/;
+        const liveQueue = [root];
+        const cloneQueue = [clonedRoot];
+        let visited = 0;
+        while (liveQueue.length > 0 && visited < 650) {
+          const liveEl = liveQueue.shift();
+          const cloneEl = cloneQueue.shift();
+          if (!liveEl || !cloneEl || !(liveEl instanceof Element) || !(cloneEl instanceof Element)) continue;
+          visited++;
+
+          if (cloneEl.attributes) {
+            for (let a = cloneEl.attributes.length - 1; a >= 0; a--) {
+              const attr = cloneEl.attributes[a];
+              if (!attr) continue;
+              const name = attr.name || "";
+              const lower = name.toLowerCase();
+              if (!validXmlAttrRe.test(name) || lower.startsWith("on")) {
+                try { cloneEl.removeAttribute(name); } catch (e) {}
+              } else if (lower === "style" && attr.value && attr.value.indexOf("url(") !== -1) {
+                try {
+                  cloneEl.setAttribute(
+                    "style",
+                    attr.value.replace(/url\\(\\s*['"]?(?!data:|#)[^'")]+['"]?\\s*\\)/gi, "none")
+                  );
+                } catch (e) {}
+              }
+            }
+          }
+
+          let cs = null;
+          try { cs = window.getComputedStyle(liveEl); } catch (e) {}
+          if (cs) {
+            if (cs.display === "none") {
+              cloneEl.style.display = "none";
+              continue;
+            }
+            const tag = liveEl.tagName.toUpperCase();
+            if (tag === "SVG") {
+              const svgRect = liveEl.getBoundingClientRect();
+              const sw = Math.round(svgRect.width || parseFloat(cs.width) || 0);
+              const sh = Math.round(svgRect.height || parseFloat(cs.height) || 0);
+              if (sw > 0 && sh > 0) {
+                if (!cloneEl.getAttribute("width")) cloneEl.setAttribute("width", String(sw));
+                if (!cloneEl.getAttribute("height")) cloneEl.setAttribute("height", String(sh));
+              }
+            }
+            if (cs.display === "grid" || cs.display === "inline-grid") {
+              cloneEl.style.display = cs.display;
+              if (cs.gridTemplateColumns && cs.gridTemplateColumns !== "none") {
+                cloneEl.style.gridTemplateColumns = cs.gridTemplateColumns;
+              }
+              if (cs.gap && cs.gap !== "normal") {
+                cloneEl.style.gap = cs.gap;
+              }
+            }
+            const hasAnim =
+              (cs.animationName && cs.animationName !== "none") ||
+              (typeof liveEl.getAnimations === "function" && liveEl.getAnimations().length > 0);
+            if (hasAnim) {
+              if (cs.transform && cs.transform !== "none") cloneEl.style.transform = cs.transform;
+              if (cs.opacity) cloneEl.style.opacity = cs.opacity;
+              if (cs.filter && cs.filter !== "none") cloneEl.style.filter = cs.filter;
+              cloneEl.style.animation = "none";
+            }
+          }
+
+          const lChildren = liveEl.children;
+          const cChildren = cloneEl.children;
+          const count = Math.min(lChildren.length, cChildren.length);
+          for (let i = 0; i < count; i++) {
+            liveQueue.push(lChildren[i]);
+            cloneQueue.push(cChildren[i]);
+          }
+        }
+
+        const rawSerialized = new XMLSerializer().serializeToString(clonedRoot);
+        const serializedHtml = String(rawSerialized || "")
+          .replace(/&nbsp;/g, "&#160;")
+          .replace(/[\\x00-\\x08\\x0B\\x0C\\x0E-\\x1F]/g, "");
+
+        const isDark = document.documentElement.classList.contains("dark");
+        const bodyCs = window.getComputedStyle(document.body);
+        const stageBgColor =
+          bodyCs.backgroundColor &&
+          bodyCs.backgroundColor !== "rgba(0, 0, 0, 0)" &&
+          bodyCs.backgroundColor !== "transparent"
+            ? bodyCs.backgroundColor
+            : isDark
+            ? "#09090b"
+            : "#ffffff";
+        const stageTextColor = bodyCs.color || (isDark ? "#fafafa" : "#09090b");
+
+        const wrapperClasses = (document.documentElement.className + " " + document.body.className)
+          .replace(/__vs_hide_native_cursor__/g, "")
+          .replace(/["<>]/g, "")
+          .trim();
         const bodyStyles = document.body.style.cssText ? document.body.style.cssText + ";" : "";
+        const centerAlignStyle =
+          rect.height > 0 && rect.height < height
+            ? "display:flex;flex-direction:column;justify-content:center;"
+            : "";
 
         const svgString =
-          '<svg xmlns="http://www.w3.org/2000/svg" width="' + width + '" height="' + height + '">' +
+          '<svg xmlns="http://www.w3.org/2000/svg" width="' + width + '" height="' + height + '" viewBox="0 0 ' + width + ' ' + height + '">' +
           '<foreignObject width="100%" height="100%">' +
-          '<div xmlns="http://www.w3.org/1999/xhtml" class="' + wrapperClasses + '" style="width:100%;height:100%;' + bodyStyles + '">' +
+          '<div xmlns="http://www.w3.org/1999/xhtml" class="' + wrapperClasses + '" style="width:100%;height:100%;overflow:hidden;background-color:' + stageBgColor + ';color:' + stageTextColor + ';' + centerAlignStyle + bodyStyles + '">' +
           '<style>/* <![CDATA[ */\\n' + stylesText + '\\n/* ]]> */</style>' +
           serializedHtml +
           '</div>' +
@@ -906,20 +1279,24 @@ export function compileSandboxHtml(
             img.onload = null;
             img.onerror = null;
             resolve(null);
-          }, 500);
+          }, 1500);
 
           img.onload = () => {
             clearTimeout(timer);
             try {
               const offCanvas = document.createElement("canvas");
-              offCanvas.width = width;
-              offCanvas.height = height;
+              const maxOutW = 1200;
+              const scale = width > maxOutW ? maxOutW / width : 1;
+              offCanvas.width = Math.round(width * scale);
+              offCanvas.height = Math.round(height * scale);
               const ctx = offCanvas.getContext("2d");
               if (!ctx) {
                 resolve(null);
                 return;
               }
-              ctx.drawImage(img, 0, 0);
+              ctx.fillStyle = stageBgColor;
+              ctx.fillRect(0, 0, offCanvas.width, offCanvas.height);
+              ctx.drawImage(img, 0, 0, offCanvas.width, offCanvas.height);
               const pngDataUrl = offCanvas.toDataURL("image/png");
               resolve(pngDataUrl);
             } catch (e) {
@@ -935,8 +1312,11 @@ export function compileSandboxHtml(
           img.src = svgDataUrl;
         });
 
-        const pngResult = await convertToPng;
-        const finalDataUrl = pngResult || svgDataUrl;
+        let pngResult = await convertToPng;
+        if (!pngResult) {
+          pngResult = renderDomFallbackToPng(root, width, height, stageBgColor);
+        }
+        const finalDataUrl = pngResult || fallbackSingleCanvasUrl || svgDataUrl;
 
         notifyParent({
           type: "PREVIEW_CAPTURED",

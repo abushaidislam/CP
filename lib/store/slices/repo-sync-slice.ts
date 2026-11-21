@@ -520,7 +520,27 @@ export const createRepoSyncSlice: StudioSliceCreator<RepoSyncSlice> = (
 
       let data = await parseSafeJson(res);
 
-      // Automatic fallback if reverse proxy rejected large base64 previewImage / checkpoint history (HTTP 413)
+      // Automatic fallback if reverse proxy rejected large checkpoint history / payload (HTTP 413)
+      if (!res.ok && (res.status === 413 || data.isPayloadTooLarge)) {
+        // First retry: drop heavy checkpoint history while preserving previewImage
+        res = await fetch("/api/repo-sync", {
+          method: "POST",
+          credentials: "same-origin",
+          headers: authHeaders,
+          body: JSON.stringify({
+            action: "save_component",
+            component: compToSave,
+            variants: [],
+            activeVariantId: state.activeVariantByTemplate?.[targetId],
+            commitMessage: options.commitMessage,
+            commitToGit: true,
+            pushToGithub: Boolean(options.pushToGithub),
+            githubConfig: state.githubRepoConfig,
+          }),
+        });
+        data = await parseSafeJson(res);
+      }
+
       if (!res.ok && (res.status === 413 || data.isPayloadTooLarge)) {
         const slimComp: UserComponent = {
           ...compToSave,

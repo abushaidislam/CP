@@ -1,10 +1,10 @@
 import type { UserComponent } from "@/lib/store/studio-store";
 
-const IDB_NAME = "component-studio-browser-cache-v1";
+const IDB_NAME = "component-studio-browser-cache-v2";
 const IDB_VERSION = 1;
 const PREVIEW_STORE = "previews";
 const REGISTRY_STORE = "components";
-const CACHE_STORAGE_NAME = "component-studio-previews-cache-v1";
+const CACHE_STORAGE_NAME = "component-studio-previews-cache-v2";
 
 // L1 Instant synchronous in-memory cache so ComponentCard can read previews in 0ms
 const memoryPreviewCache = new Map<string, string>();
