@@ -5,6 +5,10 @@ import type {
   StudioFiles,
   UserComponent,
 } from "@/lib/store/studio-store";
+import {
+  getRedisComponent,
+  listRedisSummaries,
+} from "@/lib/storage/redis-client";
 
 export const REGISTRY_ROOT_REL = "registry";
 export const COMPONENTS_DIR_REL = "registry/components";
@@ -116,45 +120,100 @@ export async function readRegistrySummaries(
   indexEntries: RepoIndexEntry[];
 }> {
   const indexPath = path.join(cwd, INDEX_FILE_REL);
+  let sortedDiskEntries: RepoIndexEntry[] = [];
   try {
     const raw = await fs.readFile(indexPath, "utf-8");
     const parsed = JSON.parse(raw) as {
       components?: RepoIndexEntry[];
     };
     const entries = Array.isArray(parsed.components) ? parsed.components : [];
-    const sorted = [...entries].sort(
+    sortedDiskEntries = [...entries].sort(
       (a, b) => (b.updatedAt || 0) - (a.updatedAt || 0)
     );
-
-    const summaries: RepoSummaryComponent[] = sorted.map((entry) => {
-      const hasPng =
-        Array.isArray(entry.files) && entry.files.includes("preview.png");
-      const versionStamp = entry.lastRepoSyncAt || entry.updatedAt || 1;
-      return {
-        id: entry.id,
-        repoSlug: entry.slug,
-        repoPath: entry.path || `${COMPONENTS_DIR_REL}/${entry.slug}`,
-        name: entry.name,
-        description: entry.description || "",
-        category: entry.category || "Custom",
-        isBuiltIn: entry.isBuiltIn,
-        createdAt: entry.updatedAt || Date.now(),
-        updatedAt: entry.updatedAt || Date.now(),
-        lastRepoSyncAt: entry.lastRepoSyncAt || entry.updatedAt || Date.now(),
-        dependencies: Array.isArray(entry.dependencies)
-          ? entry.dependencies
-          : [],
-        previewImage: hasPng
-          ? buildPreviewImageUrl(entry.slug, versionStamp)
-          : undefined,
-        filesLoaded: false,
-      };
-    });
-
-    return { summaries, indexEntries: sorted };
   } catch {
-    return { summaries: [], indexEntries: [] };
+    sortedDiskEntries = [];
   }
+
+  const diskSummaries: RepoSummaryComponent[] = sortedDiskEntries.map((entry) => {
+    const hasPng =
+      Array.isArray(entry.files) && entry.files.includes("preview.png");
+    const versionStamp = entry.lastRepoSyncAt || entry.updatedAt || 1;
+    return {
+      id: entry.id,
+      repoSlug: entry.slug,
+      repoPath: entry.path || `${COMPONENTS_DIR_REL}/${entry.slug}`,
+      name: entry.name,
+      description: entry.description || "",
+      category: entry.category || "Custom",
+      isBuiltIn: entry.isBuiltIn,
+      createdAt: entry.updatedAt || Date.now(),
+      updatedAt: entry.updatedAt || Date.now(),
+      lastRepoSyncAt: entry.lastRepoSyncAt || entry.updatedAt || Date.now(),
+      dependencies: Array.isArray(entry.dependencies)
+        ? entry.dependencies
+        : [],
+      previewImage: hasPng
+        ? buildPreviewImageUrl(entry.slug, versionStamp)
+        : undefined,
+      filesLoaded: false,
+    };
+  });
+
+  // Query Upstash Redis summaries
+  let redisSummaries: RepoSummaryComponent[] = [];
+  try {
+    redisSummaries = await listRedisSummaries();
+  } catch {
+    redisSummaries = [];
+  }
+
+  // Merge: if present in both, newest wins. If in Redis only, include it.
+  const summaryMap = new Map<string, RepoSummaryComponent>();
+  for (const s of diskSummaries) {
+    summaryMap.set(s.repoSlug, s);
+  }
+  for (const r of redisSummaries) {
+    const existing = summaryMap.get(r.repoSlug);
+    if (!existing || (r.updatedAt || 0) >= (existing.updatedAt || 0)) {
+      summaryMap.set(r.repoSlug, {
+        ...r,
+        previewImage: r.previewImage || existing?.previewImage,
+      });
+    }
+  }
+
+  const mergedSummaries = Array.from(summaryMap.values()).sort(
+    (a, b) => (b.updatedAt || 0) - (a.updatedAt || 0)
+  );
+
+  // Build merged index entries
+  const indexEntryMap = new Map<string, RepoIndexEntry>();
+  for (const entry of sortedDiskEntries) {
+    indexEntryMap.set(entry.slug, entry);
+  }
+  for (const s of mergedSummaries) {
+    if (!indexEntryMap.has(s.repoSlug)) {
+      indexEntryMap.set(s.repoSlug, {
+        id: s.id,
+        slug: s.repoSlug,
+        name: s.name,
+        description: s.description,
+        category: s.category,
+        isBuiltIn: s.isBuiltIn,
+        updatedAt: s.updatedAt,
+        lastRepoSyncAt: s.lastRepoSyncAt,
+        path: s.repoPath,
+        files: ["component.tsx", "default.tsx", "manifest.json"],
+        dependencies: s.dependencies,
+      });
+    }
+  }
+
+  const mergedIndexEntries = Array.from(indexEntryMap.values()).sort(
+    (a, b) => (b.updatedAt || 0) - (a.updatedAt || 0)
+  );
+
+  return { summaries: mergedSummaries, indexEntries: mergedIndexEntries };
 }
 
 /**
@@ -171,7 +230,17 @@ export async function readSingleRepoComponent(
 } | null> {
   if (!idOrSlug || typeof idOrSlug !== "string") return null;
 
-  // 1. Resolve slug via registry/index.json first (fast O(N) lookup over 30KB JSON)
+  // 1. Fast Redis lookup first (for cloud drafts & AI generated components)
+  try {
+    const redisComp = await getRedisComponent(idOrSlug);
+    if (redisComp) {
+      return redisComp;
+    }
+  } catch {
+    // Fall back to local filesystem if Redis read fails
+  }
+
+  // 2. Resolve slug via registry/index.json first (fast O(N) lookup over 30KB JSON)
   const { indexEntries } = await readRegistrySummaries(cwd);
   const matchedEntry = indexEntries.find(
     (entry) => entry.id === idOrSlug || entry.slug === idOrSlug

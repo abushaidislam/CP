@@ -24,6 +24,7 @@ import {
   type RepoComponentManifest,
   type RepoIndexEntry,
 } from "@/lib/registry/server-registry";
+import { saveRedisComponent } from "@/lib/storage/redis-client";
 
 export { toComponentSlug, type RepoComponentManifest, type RepoIndexEntry };
 
@@ -1043,6 +1044,9 @@ export async function POST(req: NextRequest) {
         localFsWriteError =
           fsErr instanceof Error ? fsErr.message : String(fsErr);
       }
+
+      // Save to Upstash Redis for instant global cloud sync
+      await saveRedisComponent(slug, manifest, comp.files).catch(() => false);
 
       writtenFilesForGithub.push(
         { path: `${compRelDir}/component.tsx`, content: componentTsx },
