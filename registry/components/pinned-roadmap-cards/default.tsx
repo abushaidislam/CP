@@ -5,38 +5,52 @@ import { PinnedRoadmapCards } from "@/components/ui/component";
 
 const settings = {
   theme: "auto",
+  textureIntensity: "medium",
   brandName: "skale",
   heading: "How to Build Trust on Your Website",
+  cardCount: 7,
   showRuledLines: true,
   showConnectors: true,
   interactiveChecklist: true,
+  allowAddNote: true,
 };
 
-const VALID_THEMES = ["auto", "light", "dark"] as const;
+type DemoProps = Partial<typeof settings>;
 
-export default function PinnedRoadmapCardsDemo(
-  props: Partial<typeof settings>
-) {
+export function Demo(props: DemoProps) {
   const config = { ...settings, ...props };
 
-  const theme = VALID_THEMES.includes(
-    config.theme as (typeof VALID_THEMES)[number]
-  )
-    ? (config.theme as "auto" | "light" | "dark")
-    : "auto";
+  const theme =
+    config.theme === "light" || config.theme === "dark"
+      ? config.theme
+      : "auto";
+
+  const textureIntensity =
+    config.textureIntensity === "subtle" || config.textureIntensity === "rich"
+      ? config.textureIntensity
+      : "medium";
+
+  const cardCount =
+    typeof config.cardCount === "number" && Number.isFinite(config.cardCount)
+      ? Math.max(1, Math.min(7, Math.round(config.cardCount)))
+      : 7;
 
   return (
-    <div className="w-full flex items-center justify-center p-4 sm:p-8">
+    <div className="flex w-full items-center justify-center p-4 sm:p-8">
       <PinnedRoadmapCards
         theme={theme}
-        brandName={config.brandName}
-        heading={config.heading}
+        textureIntensity={textureIntensity}
+        brandName={String(config.brandName)}
+        heading={String(config.heading)}
+        cardCount={cardCount}
         showRuledLines={Boolean(config.showRuledLines)}
         showConnectors={Boolean(config.showConnectors)}
         interactiveChecklist={Boolean(config.interactiveChecklist)}
+        allowAddNote={Boolean(config.allowAddNote)}
       />
     </div>
   );
 }
 
-export { PinnedRoadmapCardsDemo as Demo, PinnedRoadmapCardsDemo as demo };
+export { Demo as demo };
+export default Demo;

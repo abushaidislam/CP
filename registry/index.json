@@ -1,39 +1,17 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-21T18:57:44.771Z",
-  "totalComponents": 73,
+  "updatedAt": "2026-11-21T19:00:36.540Z",
+  "totalComponents": 72,
   "components": [
-    {
-      "id": "retainer-solution-showcase",
-      "slug": "retainer-solution-showcase",
-      "name": "RetainerSolutionShowcase",
-      "description": "An agency retainer solution showcase with an interactive PM-tool integration hub, animated SVG connector beams, and three pastel bento feature cards for usage transparency, task collaboration, and a client-facing portal.",
-      "category": "Cards",
-      "isBuiltIn": false,
-      "updatedAt": 1795287460114,
-      "lastRepoSyncAt": 1795287464535,
-      "path": "registry/components/retainer-solution-showcase",
-      "files": [
-        "component.tsx",
-        "default.tsx",
-        "index.css",
-        "manifest.json",
-        "preview.png"
-      ],
-      "dependencies": [
-        "framer-motion",
-        "lucide-react"
-      ]
-    },
     {
       "id": "pinned-roadmap-cards",
       "slug": "pinned-roadmap-cards",
       "name": "PinnedRoadmapCards",
-      "description": "An editorial zig-zag pinned roadmap of pastel polaroid-style step cards with 3D glossy pushpins, curved dashed SVG connectors, notebook ruled lines, and interactive hover-straighten & checklist toggles.",
+      "description": "An editorial vertical roadmap of zig-zag rotated polaroid-framed pastel cards with tactile paper grain, etched notebook ruled lines, 3D glossy pushpins with wobble physics, curved dashed SVG connectors, and an interactive checklist with live note pinning.",
       "category": "Cards",
       "isBuiltIn": false,
-      "updatedAt": 1795286883341,
-      "lastRepoSyncAt": 1795286887416,
+      "updatedAt": 1795287631216,
+      "lastRepoSyncAt": 1795287636316,
       "path": "registry/components/pinned-roadmap-cards",
       "files": [
         "component.tsx",
