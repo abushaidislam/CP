@@ -489,14 +489,37 @@ export function parseDemoControls(
     };
   }
 
-  // Optional union inference from component.tsx Props interface (e.g. status?: "healthy" | "degraded")
+  // Optional union inference from component.tsx Props interface and type aliases (e.g. export type CardShuffleTheme = "auto" | "light" | "dark")
   const componentUnionMap = new Map<string, string[]>();
   const componentDescMap = new Map<string, string>();
   if (componentCode && componentCode.trim()) {
     try {
+      const compSource = ts.createSourceFile(
+        "component.tsx",
+        componentCode,
+        ts.ScriptTarget.Latest,
+        true,
+        ts.ScriptKind.TSX
+      );
+      const typeAliasUnionMap = new Map<string, string[]>();
+      for (const stmt of compSource.statements) {
+        if (ts.isTypeAliasDeclaration(stmt)) {
+          const aliasUnion = extractStringUnionFromTypeNode(stmt.type);
+          if (aliasUnion) {
+            typeAliasUnionMap.set(stmt.name.text, aliasUnion);
+          }
+        }
+      }
+
       const compAst = parseComponentAST(componentCode);
       for (const prop of compAst.props) {
-        const union = extractStringUnionFromTypeString(prop.type);
+        const cleanType = prop.type
+          .replace(/\|\s*undefined/g, "")
+          .replace(/\|\s*null/g, "")
+          .trim();
+        const union =
+          extractStringUnionFromTypeString(prop.type) ||
+          typeAliasUnionMap.get(cleanType);
         if (union) {
           componentUnionMap.set(prop.name, union);
         }
@@ -597,7 +620,15 @@ export function parseDemoControls(
         description,
       };
     } else if (typeof value === "string") {
-      const unionOptions = evalRes.unionOptions || componentUnionMap.get(keyName);
+      const fallbackThemeUnion =
+        keyName.toLowerCase() === "theme" &&
+        ["auto", "light", "dark"].includes(value.toLowerCase())
+          ? ["auto", "light", "dark"]
+          : undefined;
+      const unionOptions =
+        evalRes.unionOptions ||
+        componentUnionMap.get(keyName) ||
+        fallbackThemeUnion;
       if (unionOptions && unionOptions.includes(value)) {
         def = {
           key: keyName,

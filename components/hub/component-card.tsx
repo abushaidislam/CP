@@ -306,38 +306,40 @@ function ComponentCardInner({
       </div>
 
       {/* Delete Confirmation Dialog */}
-      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <DialogContent className="sm:max-w-md rounded-none font-sans">
-          <DialogHeader>
-            <div className="flex items-center gap-2 text-destructive mb-1">
-              <AlertTriangle className="size-5" />
-              <DialogTitle className="font-sans text-base">Delete Component</DialogTitle>
-            </div>
-            <DialogDescription className="font-sans text-xs text-muted-foreground">
-              Are you sure you want to delete <strong className="text-foreground">{component.name}</strong>? This action cannot be undone and will permanently remove all versions and snapshots.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="gap-2 sm:gap-0 font-sans">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setIsDeleteDialogOpen(false)}
-              className="rounded-none font-sans text-xs"
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              size="sm"
-              onClick={handleConfirmDelete}
-              className="rounded-none font-sans text-xs gap-1.5"
-            >
-              <Trash2 className="size-3.5" />
-              <span>Delete</span>
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {isDeleteDialogOpen && (
+        <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+          <DialogContent className="sm:max-w-md rounded-none font-sans">
+            <DialogHeader>
+              <div className="flex items-center gap-2 text-destructive mb-1">
+                <AlertTriangle className="size-5" />
+                <DialogTitle className="font-sans text-base">Delete Component</DialogTitle>
+              </div>
+              <DialogDescription className="font-sans text-xs text-muted-foreground">
+                Are you sure you want to delete <strong className="text-foreground">{component.name}</strong>? This action cannot be undone and will permanently remove all versions and snapshots.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter className="gap-2 sm:gap-0 font-sans">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setIsDeleteDialogOpen(false)}
+                className="rounded-none font-sans text-xs"
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={handleConfirmDelete}
+                className="rounded-none font-sans text-xs gap-1.5"
+              >
+                <Trash2 className="size-3.5" />
+                <span>Delete</span>
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
     </>
   );
 }
