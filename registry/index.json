@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-21T18:56:32.685Z",
+  "updatedAt": "2026-11-21T18:57:44.771Z",
   "totalComponents": 73,
   "components": [
     {
@@ -10,13 +10,15 @@
       "description": "An agency retainer solution showcase with an interactive PM-tool integration hub, animated SVG connector beams, and three pastel bento feature cards for usage transparency, task collaboration, and a client-facing portal.",
       "category": "Cards",
       "isBuiltIn": false,
-      "updatedAt": 1795287392475,
-      "lastRepoSyncAt": 1795287392475,
+      "updatedAt": 1795287460114,
+      "lastRepoSyncAt": 1795287464535,
       "path": "registry/components/retainer-solution-showcase",
       "files": [
         "component.tsx",
         "default.tsx",
-        "manifest.json"
+        "index.css",
+        "manifest.json",
+        "preview.png"
       ],
       "dependencies": [
         "framer-motion",
@@ -58,7 +60,9 @@
       "files": [
         "component.tsx",
         "default.tsx",
-        "manifest.json"
+        "index.css",
+        "manifest.json",
+        "preview.png"
       ],
       "dependencies": [
         "framer-motion",
@@ -69,16 +73,40 @@
       "id": "developer-profile-card",
       "slug": "developer-profile-card",
       "name": "DeveloperProfileCard",
-      "description": "A layered dark developer availability profile card cradled in a neon-lime bottom status tray, featuring live availability pulse, clipboard copy feedback, and tactile Framer Motion hover lift.",
+      "description": "A layered dark developer availability profile card cradled in a neon-lime status tray, featuring live availability pulse, clipboard copy feedback, and tactile Framer Motion hover lift.",
       "category": "Cards",
       "isBuiltIn": false,
-      "updatedAt": 1795283347128,
-      "lastRepoSyncAt": 1795283347128,
+      "updatedAt": 1795283159737,
+      "lastRepoSyncAt": 1795283164167,
       "path": "registry/components/developer-profile-card",
       "files": [
         "component.tsx",
         "default.tsx",
-        "manifest.json"
+        "index.css",
+        "manifest.json",
+        "preview.png"
+      ],
+      "dependencies": [
+        "framer-motion",
+        "lucide-react"
+      ]
+    },
+    {
+      "id": "task-notification-stack",
+      "slug": "task-notification-stack",
+      "name": "TaskNotificationStack",
+      "description": "A tactile double-bezel stacked task notification widget with swipe-to-act gestures, hover stack fan-out, icon micro-animations, optional undo toast, and subtle Web Audio chimes.",
+      "category": "Widgets",
+      "isBuiltIn": false,
+      "updatedAt": 1795282818071,
+      "lastRepoSyncAt": 1795282823545,
+      "path": "registry/components/task-notification-stack",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "index.css",
+        "manifest.json",
+        "preview.png"
       ],
       "dependencies": [
         "framer-motion",
@@ -105,28 +133,6 @@
       "dependencies": [
         "clsx",
         "tailwind-merge",
-        "framer-motion",
-        "lucide-react"
-      ]
-    },
-    {
-      "id": "task-notification-stack",
-      "slug": "task-notification-stack",
-      "name": "TaskNotificationStack",
-      "description": "A tactile double-bezel stacked task notification widget with spring-animated completion, snooze cycling, and contextual overflow actions.",
-      "category": "Widgets",
-      "isBuiltIn": false,
-      "updatedAt": 1795280922977,
-      "lastRepoSyncAt": 1795280925880,
-      "path": "registry/components/task-notification-stack",
-      "files": [
-        "component.tsx",
-        "default.tsx",
-        "index.css",
-        "manifest.json",
-        "preview.png"
-      ],
-      "dependencies": [
         "framer-motion",
         "lucide-react"
       ]
