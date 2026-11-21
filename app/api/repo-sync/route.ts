@@ -156,7 +156,7 @@ function normalizeGithubRepoInput(raw: string): string {
   return cleaned;
 }
 
-async function pushFilesToGithubRestApi(params: {
+export async function pushFilesToGithubRestApi(params: {
   repo: string;
   branch: string;
   token: string;

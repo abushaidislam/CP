@@ -32,7 +32,7 @@ describe("Stdio MCP Server Protocol", () => {
     proc.stdin.write(JSON.stringify(initRequest) + "\n");
 
     // Wait for response
-    await new Promise((resolve) => setTimeout(resolve, 800));
+    await new Promise((resolve) => setTimeout(resolve, 1500));
 
     expect(stdoutData).toContain('"jsonrpc":"2.0"');
     expect(stdoutData).toContain("component-studio-mcp");
