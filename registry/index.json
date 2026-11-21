@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-21T14:35:05.740Z",
+  "updatedAt": "2026-11-21T14:35:11.445Z",
   "totalComponents": 65,
   "components": [
     {
@@ -10,8 +10,8 @@
       "description": "Test",
       "category": "Buttons",
       "isBuiltIn": false,
-      "updatedAt": 1795271703219,
-      "lastRepoSyncAt": 1795271705700,
+      "updatedAt": 1795271708877,
+      "lastRepoSyncAt": 1795271711399,
       "path": "registry/components/probe-button",
       "files": [
         "component.tsx",
