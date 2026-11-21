@@ -1,7 +1,7 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-21T17:06:33.893Z",
-  "totalComponents": 68,
+  "updatedAt": "2026-11-21T17:07:48.011Z",
+  "totalComponents": 67,
   "components": [
     {
       "id": "followers-trend-card",
@@ -10,36 +10,19 @@
       "description": "Interactive pastel analytics card visualizing follower growth with 31 scrubbable vertical bars, a decaying hover wake trail, spring-tracked floating tooltip pill, and staggered rolling KPI digits.",
       "category": "Cards",
       "isBuiltIn": false,
-      "updatedAt": 1795280793733,
-      "lastRepoSyncAt": 1795280793733,
+      "updatedAt": 1795280863981,
+      "lastRepoSyncAt": 1795280867796,
       "path": "registry/components/followers-trend-card",
       "files": [
         "component.tsx",
         "default.tsx",
-        "manifest.json"
+        "index.css",
+        "manifest.json",
+        "preview.png"
       ],
       "dependencies": [
         "framer-motion",
         "lucide-react"
-      ]
-    },
-    {
-      "id": "workflow-integration-card",
-      "slug": "workflow-integration-card",
-      "name": "WorkflowIntegrationCard",
-      "description": "Tailored operations bento card featuring an interactive dot-grid workflow integration diagram with animated dashed connector pulses, crisp SVG app clusters, and a diagonal-hatched footer.",
-      "category": "Cards",
-      "isBuiltIn": false,
-      "updatedAt": 1795280168471,
-      "lastRepoSyncAt": 1795280168471,
-      "path": "registry/components/workflow-integration-card",
-      "files": [
-        "component.tsx",
-        "default.tsx",
-        "manifest.json"
-      ],
-      "dependencies": [
-        "framer-motion"
       ]
     },
     {
@@ -65,15 +48,53 @@
       ]
     },
     {
-      "id": "radial-dissolve-brand-card",
-      "slug": "radial-dissolve-brand-card",
-      "name": "Radial Dissolve Brand Card",
-      "description": "A Swiss-editorial brand identity bento card featuring a real-time 60fps radial dissolve shader that morphs an 8-spoke emblem across smooth, scanline halftone, and ASCII matrix states, paired with isometric mobile app icon and browser favicon mockups.",
+      "id": "comp-1795247514740-7ss4h",
+      "slug": "agency-bento-showcase",
+      "name": "Agency Bento Showcase",
+      "description": "A monochrome agency bento grid featuring a morphing brand logo, kinetic vertical typography marquee, layered social profile card, rotating procedural stardust orb, and an interactive Figma-style colla",
+      "category": "Custom",
+      "isBuiltIn": false,
+      "updatedAt": 1795273460508,
+      "lastRepoSyncAt": 1795278351733,
+      "path": "registry/components/agency-bento-showcase",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "index.css",
+        "manifest.json",
+        "preview.png"
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "probe-button",
+      "slug": "probe-button",
+      "name": "Probe Button",
+      "description": "Test",
+      "category": "Buttons",
+      "isBuiltIn": false,
+      "updatedAt": 1795271708877,
+      "lastRepoSyncAt": 1795271711399,
+      "path": "registry/components/probe-button",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "index.css",
+        "manifest.json",
+        "preview.png"
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "perspective-stack-gallery",
+      "slug": "perspective-stack-gallery",
+      "name": "Perspective Stack Gallery",
+      "description": "An interactive 3D perspective card stack gallery with receding depth geometry, tactile hover-peek previews, forward-tilting exit transitions, wheel and swipe navigation, and a vertical dot indicator rail.",
       "category": "Cards",
       "isBuiltIn": false,
-      "updatedAt": 1795270651052,
-      "lastRepoSyncAt": 1795270651052,
-      "path": "registry/components/radial-dissolve-brand-card",
+      "updatedAt": 1795271695112,
+      "lastRepoSyncAt": 1795271699737,
+      "path": "registry/components/perspective-stack-gallery",
       "files": [
         "component.tsx",
         "default.tsx",
@@ -82,8 +103,7 @@
         "preview.png"
       ],
       "dependencies": [
-        "framer-motion",
-        "lucide-react"
+        "framer-motion"
       ]
     },
     {
@@ -93,8 +113,8 @@
       "description": "",
       "category": "Custom",
       "isBuiltIn": false,
-      "updatedAt": 1795270116439,
-      "lastRepoSyncAt": 1795270121638,
+      "updatedAt": 1795271682919,
+      "lastRepoSyncAt": 1795271686670,
       "path": "registry/components/built-to-scale",
       "files": [
         "component.tsx",
@@ -109,15 +129,15 @@
       ]
     },
     {
-      "id": "perspective-stack-gallery",
-      "slug": "perspective-stack-gallery",
-      "name": "Perspective Stack Gallery",
-      "description": "An interactive 3D perspective card stack gallery with receding depth geometry, tactile hover-peek previews, forward-tilting exit transitions, wheel and swipe navigation, and a vertical dot indicator rail.",
+      "id": "radial-dissolve-brand-card",
+      "slug": "radial-dissolve-brand-card",
+      "name": "Radial Dissolve Brand Card",
+      "description": "A Swiss-editorial brand identity bento card featuring a real-time 60fps radial dissolve shader that morphs an 8-spoke emblem across smooth, scanline halftone, and ASCII matrix states, paired with isometric mobile app icon and browser favicon mockups.",
       "category": "Cards",
       "isBuiltIn": false,
-      "updatedAt": 1795264104072,
-      "lastRepoSyncAt": 1795264108631,
-      "path": "registry/components/perspective-stack-gallery",
+      "updatedAt": 1795271669130,
+      "lastRepoSyncAt": 1795271672262,
+      "path": "registry/components/radial-dissolve-brand-card",
       "files": [
         "component.tsx",
         "default.tsx",
@@ -126,45 +146,9 @@
         "preview.png"
       ],
       "dependencies": [
-        "framer-motion"
+        "framer-motion",
+        "lucide-react"
       ]
-    },
-    {
-      "id": "probe-button",
-      "slug": "probe-button",
-      "name": "Probe Button",
-      "description": "Test",
-      "category": "Buttons",
-      "isBuiltIn": false,
-      "updatedAt": 1795261819433,
-      "lastRepoSyncAt": 1795261819433,
-      "path": "registry/components/probe-button",
-      "files": [
-        "component.tsx",
-        "default.tsx",
-        "index.css",
-        "manifest.json"
-      ],
-      "dependencies": []
-    },
-    {
-      "id": "comp-1795247514740-7ss4h",
-      "slug": "agency-bento-showcase",
-      "name": "Agency Bento Showcase",
-      "description": "A monochrome agency bento grid featuring a morphing brand logo, kinetic vertical typography marquee, layered social profile card, rotating procedural stardust orb, and an interactive Figma-style colla",
-      "category": "Custom",
-      "isBuiltIn": false,
-      "updatedAt": 1795247958595,
-      "lastRepoSyncAt": 1795247963662,
-      "path": "registry/components/agency-bento-showcase",
-      "files": [
-        "component.tsx",
-        "default.tsx",
-        "index.css",
-        "manifest.json",
-        "preview.png"
-      ],
-      "dependencies": []
     },
     {
       "id": "comp-1795198052646-cc84b",
