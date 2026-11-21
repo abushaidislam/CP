@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-21T19:28:59.990Z",
+  "updatedAt": "2026-11-21T19:29:42.047Z",
   "totalComponents": 73,
   "components": [
     {
@@ -10,8 +10,8 @@
       "description": "A telehealth and SaaS closing CTA section paired with a floating frosted-glass footer over a soft pastel periwinkle-to-cyan aurora backdrop, featuring dual pill CTAs, an inline-validated newsletter form, a 12-spoke SVG starburst brand mark, and a 5-column responsive navigation grid.",
       "category": "Navigation",
       "isBuiltIn": false,
-      "updatedAt": 1795289334865,
-      "lastRepoSyncAt": 1795289339683,
+      "updatedAt": 1795289376946,
+      "lastRepoSyncAt": 1795289381909,
       "path": "registry/components/aurora-cta-footer",
       "files": [
         "component.tsx",
