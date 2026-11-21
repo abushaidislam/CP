@@ -1,0 +1,12 @@
+{
+  "id": "probe-button",
+  "slug": "probe-button",
+  "name": "Probe Button",
+  "description": "Test",
+  "category": "Buttons",
+  "isBuiltIn": false,
+  "createdAt": 1795261819433,
+  "updatedAt": 1795261819433,
+  "lastRepoSyncAt": 1795261819433,
+  "dependencies": []
+}

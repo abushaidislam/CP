@@ -1,8 +1,25 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-21T07:59:23.738Z",
-  "totalComponents": 62,
+  "updatedAt": "2026-11-21T11:50:19.436Z",
+  "totalComponents": 63,
   "components": [
+    {
+      "id": "probe-button",
+      "slug": "probe-button",
+      "name": "Probe Button",
+      "description": "Test",
+      "category": "Buttons",
+      "isBuiltIn": false,
+      "updatedAt": 1795261819433,
+      "lastRepoSyncAt": 1795261819433,
+      "path": "registry/components/probe-button",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "manifest.json"
+      ],
+      "dependencies": []
+    },
     {
       "id": "comp-1795247514740-7ss4h",
       "slug": "agency-bento-showcase",
