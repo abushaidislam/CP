@@ -49,9 +49,11 @@ import {
   Lock,
   FolderGit2,
   Video,
+  Cpu,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { McpConnectDialog } from "@/components/mcp/mcp-connect-dialog";
 
 export function StudioHeader() {
   const router = useRouter();
@@ -120,6 +122,7 @@ export function StudioHeader() {
   const [isDark, setIsDark] = useState(true);
   const [isCapturing, setIsCapturing] = useState(false);
   const [capturedSuccess, setCapturedSuccess] = useState(false);
+  const [isMcpConnectOpen, setIsMcpConnectOpen] = useState(false);
   const captureTimeoutRef = React.useRef<NodeJS.Timeout | number | null>(null);
 
   React.useEffect(() => {
@@ -769,6 +772,25 @@ export function StudioHeader() {
           </TooltipContent>
         </Tooltip>
 
+        {/* Model Context Protocol (MCP) Connector Button */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => setIsMcpConnectOpen(true)}
+              aria-label="Connect AI via MCP (Gemini, Antigravity, Claude, Cursor)"
+              className="studio-icon-btn size-8 rounded-none border-border/80 bg-card/60 text-muted-foreground hover:text-foreground shrink-0"
+            >
+              <Cpu className="size-3.5 text-sky-400" />
+              <span className="sr-only">Connect AI via MCP</span>
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" className="font-sans text-xs">
+            Connect AI via MCP (Gemini, Antigravity, Claude, Cursor)
+          </TooltipContent>
+        </Tooltip>
+
         {/* 21st.dev Marketplace External Link (Icon-Only) */}
         <div className="hidden xl:flex items-center">
           <Tooltip>
@@ -843,6 +865,21 @@ export function StudioHeader() {
                   repoSyncStatus !== "dirty"
                     ? "In Repo"
                     : "Sync"}
+                </Badge>
+              </DropdownMenuItem>
+
+              {/* Connect MCP */}
+              <DropdownMenuItem
+                onClick={() => setIsMcpConnectOpen(true)}
+                className="gap-2.5 cursor-pointer rounded-none font-sans text-xs"
+              >
+                <Cpu className="size-3.5 text-sky-400" />
+                <span className="flex-1">Connect AI via MCP</span>
+                <Badge
+                  variant="secondary"
+                  className="h-4 rounded-none px-1 text-[9px] font-sans bg-sky-500/15 text-sky-400"
+                >
+                  Active
                 </Badge>
               </DropdownMenuItem>
 
@@ -1020,6 +1057,8 @@ export function StudioHeader() {
           </DropdownMenu>
         </div>
       </div>
+
+      <McpConnectDialog open={isMcpConnectOpen} onOpenChange={setIsMcpConnectOpen} />
     </header>
   );
 }
