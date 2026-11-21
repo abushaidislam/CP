@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-21T16:35:21.559Z",
+  "updatedAt": "2026-11-21T16:37:24.254Z",
   "totalComponents": 66,
   "components": [
     {
@@ -10,14 +10,15 @@
       "description": "A modern SaaS bento-grid footer featuring a textured royal-blue gradient brand card, an interactive 3D glossy floating badge, dual navigation columns, an email newsletter capture form, and an oversized background wordmark.",
       "category": "Navigation",
       "isBuiltIn": false,
-      "updatedAt": 1795278921208,
-      "lastRepoSyncAt": 1795278921208,
+      "updatedAt": 1795279024770,
+      "lastRepoSyncAt": 1795279044049,
       "path": "registry/components/bento-brand-footer",
       "files": [
         "component.tsx",
         "default.tsx",
+        "index.css",
         "manifest.json",
-        "index.css"
+        "preview.png"
       ],
       "dependencies": [
         "framer-motion",
@@ -31,14 +32,15 @@
       "description": "A Swiss-editorial brand identity bento card featuring a real-time 60fps radial dissolve shader that morphs an 8-spoke emblem across smooth, scanline halftone, and ASCII matrix states, paired with isometric mobile app icon and browser favicon mockups.",
       "category": "Cards",
       "isBuiltIn": false,
-      "updatedAt": 1795270128497,
-      "lastRepoSyncAt": 1795270133135,
+      "updatedAt": 1795270651052,
+      "lastRepoSyncAt": 1795270651052,
       "path": "registry/components/radial-dissolve-brand-card",
       "files": [
         "component.tsx",
         "default.tsx",
         "index.css",
-        "manifest.json"
+        "manifest.json",
+        "preview.png"
       ],
       "dependencies": [
         "framer-motion",
@@ -52,8 +54,8 @@
       "description": "",
       "category": "Custom",
       "isBuiltIn": false,
-      "updatedAt": 1795269490499,
-      "lastRepoSyncAt": 1795269496810,
+      "updatedAt": 1795270116439,
+      "lastRepoSyncAt": 1795270121638,
       "path": "registry/components/built-to-scale",
       "files": [
         "component.tsx",
