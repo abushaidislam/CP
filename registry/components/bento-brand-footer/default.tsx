@@ -4,8 +4,8 @@ import React from "react";
 import { BentoBrandFooter } from "@/components/ui/component";
 
 const settings = {
-  brandName: "Kresna",
-  taglinePrimary: "Smarter sales automation,",
+  brandName: "Nuvora",
+  taglinePrimary: "Smarter workflow automation,",
   taglineSecondary: "powered by AI.",
   showFloatingBadge: true,
   showWatermark: true,
@@ -25,11 +25,11 @@ export default function Demo(props: DemoProps) {
   const brandName =
     typeof config.brandName === "string" && config.brandName.trim().length > 0
       ? config.brandName
-      : "Kresna";
+      : "Nuvora";
   const taglinePrimary =
     typeof config.taglinePrimary === "string"
       ? config.taglinePrimary
-      : "Smarter sales automation,";
+      : "Smarter workflow automation,";
   const taglineSecondary =
     typeof config.taglineSecondary === "string"
       ? config.taglineSecondary

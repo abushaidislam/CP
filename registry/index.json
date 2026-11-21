@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-21T16:40:03.963Z",
+  "updatedAt": "2026-11-21T16:46:56.415Z",
   "totalComponents": 66,
   "components": [
     {
@@ -10,8 +10,8 @@
       "description": "A modern SaaS bento-grid footer featuring a textured royal-blue gradient brand card, an interactive 3D glossy floating badge, dual navigation columns, an email newsletter capture form, and an oversized background wordmark.",
       "category": "Navigation",
       "isBuiltIn": false,
-      "updatedAt": 1795279198612,
-      "lastRepoSyncAt": 1795279203753,
+      "updatedAt": 1795279606304,
+      "lastRepoSyncAt": 1795279616118,
       "path": "registry/components/bento-brand-footer",
       "files": [
         "component.tsx",

@@ -76,7 +76,7 @@ const DEFAULT_COLUMNS: FooterColumn[] = [
     links: [
       { label: "Blog", href: "#blog" },
       { label: "About", href: "#about" },
-      { label: "Terms and Condition", href: "#terms" },
+      { label: "Terms of Service", href: "#terms" },
       { label: "Privacy Policy", href: "#privacy" },
     ],
   },
@@ -90,13 +90,13 @@ const DEFAULT_SOCIALS: SocialLinkItem[] = [
 ];
 
 const LUCKY_FORTUNES = [
-  "AI tip: Follow up within 5 min for 9x reply rates.",
-  "Pipeline luck: Your next cold email is a warm reply.",
-  "Automation win: 4.2 hours saved this week.",
-  "Focus mode: Automate the busywork, close the deal.",
+  "Workflow tip: Automate follow-ups to save 5+ hours weekly.",
+  "Product boost: Ship smaller iterations for faster feedback.",
+  "Automation win: Zero manual handoffs this sprint.",
+  "Focus mode: Let smart triggers handle the busywork.",
 ];
 
-function KresnaMark({
+function BrandMark({
   className,
   fill = "currentColor",
 }: {
@@ -111,7 +111,7 @@ function KresnaMark({
       className={className}
     >
       <path
-        d="M8.6 5.2C10.9 3.6 14 4.1 15.8 6.3L20 11.4L24.2 6.3C26 4.1 29.1 3.6 31.4 5.2L34.2 7.2C36.4 8.8 36.8 11.9 35.1 14L30.2 20L35.1 26C36.8 28.1 36.4 31.2 34.2 32.8L31.4 34.8C29.1 36.4 26 35.9 24.2 33.7L20 28.6L15.8 33.7C14 35.9 10.9 36.4 8.6 34.8L5.8 32.8C3.6 31.2 3.2 28.1 4.9 26L9.8 20L4.9 14C3.2 11.9 3.6 8.8 5.8 7.2L8.6 5.2Z"
+        d="M20 3.5C22.4 3.5 24.4 5.2 24.8 7.5L25.6 11.8C25.9 13.1 26.9 14.1 28.2 14.4L32.5 15.2C34.8 15.6 36.5 17.6 36.5 20C36.5 22.4 34.8 24.4 32.5 24.8L28.2 25.6C26.9 25.9 25.9 26.9 25.6 28.2L24.8 32.5C24.4 34.8 22.4 36.5 20 36.5C17.6 36.5 15.6 34.8 15.2 32.5L14.4 28.2C14.1 26.9 13.1 25.9 11.8 25.6L7.5 24.8C5.2 24.4 3.5 22.4 3.5 20C3.5 17.6 5.2 15.6 7.5 15.2L11.8 14.4C13.1 14.1 14.1 13.1 14.4 11.8L15.2 7.5C15.6 5.2 17.6 3.5 20 3.5Z"
         fill={fill}
       />
     </svg>
@@ -152,14 +152,14 @@ export const BentoBrandFooter = React.forwardRef<
   BentoBrandFooterProps
 >(function BentoBrandFooter(
   {
-    brandName = "Kresna",
-    taglinePrimary = "Smarter sales automation,",
+    brandName = "Nuvora",
+    taglinePrimary = "Smarter workflow automation,",
     taglineSecondary = "powered by AI.",
     socialPrompt = "Stay in touch!",
     socialLinks = DEFAULT_SOCIALS,
     columns = DEFAULT_COLUMNS,
-    copyrightYear = 2025,
-    newsletterEyebrow = "AI moves fast.",
+    copyrightYear = 2026,
+    newsletterEyebrow = "Workflows evolve fast.",
     newsletterHeading,
     emailPlaceholder = "Enter email address",
     subscribeLabel = "Subscribe",
@@ -252,7 +252,7 @@ export const BentoBrandFooter = React.forwardRef<
               "radial-gradient(125% 115% at 88% 96%, #6cb8ff 0%, #3d8ef5 32%, #1352c9 64%, #022a92 100%)",
           }}
         >
-          {/* Subtle tactile grain overlay matching reference */}
+          {/* Subtle tactile grain overlay */}
           <svg
             aria-hidden="true"
             className="pointer-events-none absolute inset-0 h-full w-full opacity-[0.11] mix-blend-overlay"
@@ -280,7 +280,7 @@ export const BentoBrandFooter = React.forwardRef<
 
           {/* Brand Lockup */}
           <div className="relative z-10 flex items-center gap-2.5">
-            <KresnaMark className="h-[26px] w-[26px] text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.16)]" />
+            <BrandMark className="h-[26px] w-[26px] text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.16)]" />
             <span className="text-[24px] font-bold tracking-[-0.03em] text-white leading-none">
               {brandName}
             </span>
@@ -347,7 +347,7 @@ export const BentoBrandFooter = React.forwardRef<
               <motion.button
                 type="button"
                 onClick={handleLuckyTrigger}
-                aria-label={`${badgeCaption} — click for a lucky sales tip`}
+                aria-label={`${badgeCaption} — click for a lucky workflow tip`}
                 initial={{ rotate: -12 }}
                 animate={{
                   rotate: prefersReducedMotion ? -12 : -12 + badgeSpin * 360,
@@ -384,12 +384,12 @@ export const BentoBrandFooter = React.forwardRef<
                       "linear-gradient(155deg, rgba(255,255,255,0.42) 0%, rgba(255,255,255,0.08) 38%, rgba(255,255,255,0) 60%)",
                   }}
                 />
-                {/* Large embossed white Kresna X */}
+                {/* Large embossed white geometric brand mark */}
                 <svg
                   viewBox="0 0 40 40"
                   fill="none"
                   aria-hidden="true"
-                  className="relative z-10 h-[46px] w-[46px] sm:h-[66px] sm:w-[66px] drop-shadow-[0_3px_6px_rgba(12,48,150,0.34)]"
+                  className="relative z-10 h-[48px] w-[48px] sm:h-[68px] sm:w-[68px] drop-shadow-[0_3px_6px_rgba(12,48,150,0.34)]"
                 >
                   <defs>
                     <linearGradient
@@ -405,7 +405,7 @@ export const BentoBrandFooter = React.forwardRef<
                     </linearGradient>
                   </defs>
                   <path
-                    d="M8.6 5.2C10.9 3.6 14 4.1 15.8 6.3L20 11.4L24.2 6.3C26 4.1 29.1 3.6 31.4 5.2L34.2 7.2C36.4 8.8 36.8 11.9 35.1 14L30.2 20L35.1 26C36.8 28.1 36.4 31.2 34.2 32.8L31.4 34.8C29.1 36.4 26 35.9 24.2 33.7L20 28.6L15.8 33.7C14 35.9 10.9 36.4 8.6 34.8L5.8 32.8C3.6 31.2 3.2 28.1 4.9 26L9.8 20L4.9 14C3.2 11.9 3.6 8.8 5.8 7.2L8.6 5.2Z"
+                    d="M20 3.5C22.4 3.5 24.4 5.2 24.8 7.5L25.6 11.8C25.9 13.1 26.9 14.1 28.2 14.4L32.5 15.2C34.8 15.6 36.5 17.6 36.5 20C36.5 22.4 34.8 24.4 32.5 24.8L28.2 25.6C26.9 25.9 25.9 26.9 25.6 28.2L24.8 32.5C24.4 34.8 22.4 36.5 20 36.5C17.6 36.5 15.6 34.8 15.2 32.5L14.4 28.2C14.1 26.9 13.1 25.9 11.8 25.6L7.5 24.8C5.2 24.4 3.5 22.4 3.5 20C3.5 17.6 5.2 15.6 7.5 15.2L11.8 14.4C13.1 14.1 14.1 13.1 14.4 11.8L15.2 7.5C15.6 5.2 17.6 3.5 20 3.5Z"
                     fill={`url(#badge-mark-${uid})`}
                   />
                 </svg>
