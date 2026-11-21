@@ -1,24 +1,26 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-21T11:50:45.280Z",
+  "updatedAt": "2026-11-21T11:54:34.262Z",
   "totalComponents": 63,
   "components": [
     {
       "id": "perspective-stack-gallery",
       "slug": "perspective-stack-gallery",
       "name": "Perspective Stack Gallery",
-      "description": "Interactive perspective gallery",
+      "description": "An interactive 3D perspective card stack gallery with receding depth geometry, tactile hover-peek previews, forward-tilting exit transitions, wheel and swipe navigation, and a vertical dot indicator rail.",
       "category": "Cards",
       "isBuiltIn": false,
-      "updatedAt": 1795261845243,
-      "lastRepoSyncAt": 1795261845243,
+      "updatedAt": 1795262074261,
+      "lastRepoSyncAt": 1795262074261,
       "path": "registry/components/perspective-stack-gallery",
       "files": [
         "component.tsx",
         "default.tsx",
         "manifest.json"
       ],
-      "dependencies": []
+      "dependencies": [
+        "framer-motion"
+      ]
     },
     {
       "id": "comp-1795247514740-7ss4h",
