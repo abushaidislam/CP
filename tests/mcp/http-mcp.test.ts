@@ -24,8 +24,9 @@ describe("HTTP / SSE MCP & Gemini Connector Endpoint (/api/mcp)", () => {
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.server.name).toBe("component-studio-mcp");
-    expect(body.tools.length).toBe(5);
+    expect(body.tools.length).toBe(6);
     expect(body.tools.some((t: { name: string }) => t.name === "create_component")).toBe(true);
+    expect(body.tools.some((t: { name: string }) => t.name === "manage_versions")).toBe(true);
   });
 
   it("should return Gemini-compatible function declarations on GET /api/mcp?format=gemini", async () => {
@@ -35,7 +36,7 @@ describe("HTTP / SSE MCP & Gemini Connector Endpoint (/api/mcp)", () => {
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(Array.isArray(body.functionDeclarations)).toBe(true);
-    expect(body.functionDeclarations.length).toBe(5);
+    expect(body.functionDeclarations.length).toBe(6);
     expect(body.functionDeclarations[0].parameters).toBeDefined();
   });
 
@@ -71,7 +72,8 @@ describe("HTTP / SSE MCP & Gemini Connector Endpoint (/api/mcp)", () => {
     const toolsRes = await POST(toolsReq);
     expect(toolsRes.status).toBe(200);
     const toolsBody = await toolsRes.json();
-    expect(toolsBody.result.tools.length).toBe(5);
+    expect(toolsBody.result.tools.length).toBe(6);
+    expect(toolsBody.result.tools.some((t: { name: string }) => t.name === "manage_versions")).toBe(true);
   });
 
   it("should handle direct Gemini functionCall format on POST /api/mcp", async () => {

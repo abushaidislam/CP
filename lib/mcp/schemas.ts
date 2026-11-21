@@ -35,11 +35,24 @@ export const updateComponentSchema = z.object({
   componentCode: z.string().optional().describe("Updated component.tsx code"),
   defaultCode: z.string().optional().describe("Updated default.tsx code"),
   css: z.string().optional().describe("Updated index.css code"),
-  dependencies: z.array(z.string()).optional().describe("Updated dependencies list"),
+  dependencies: z.preprocess(normalizeDependencies, z.array(z.string()).optional()).describe("Updated dependencies list"),
+  changeMessage: z.string().optional().describe("Description of what was changed in this version (e.g. 'Added spring animation')"),
+  baseVersion: z.string().optional().describe("Optional past version identifier (e.g. 'v1' or 'v2') to base this update on"),
+  createCheckpoint: z.boolean().default(true).describe("Whether to snapshot current state into version history before applying new changes"),
 });
 
 export type UpdateComponentInput = z.input<typeof updateComponentSchema>;
 export type UpdateComponentOutput = z.infer<typeof updateComponentSchema>;
+
+export const manageVersionsSchema = z.object({
+  slug: z.string().min(1, "Component slug is required").describe("The slug of the component"),
+  action: z.enum(["list", "restore", "delete"]).describe("Version action to perform: 'list', 'restore', or 'delete'"),
+  targetVersion: z.string().optional().describe("Version identifier to restore (e.g. 'v2' or 'v1') - required when action is 'restore'"),
+  versionIds: z.array(z.string()).optional().describe("Array of version identifiers to delete (e.g. ['v1', 'v2']) - required when action is 'delete'"),
+});
+
+export type ManageVersionsInput = z.input<typeof manageVersionsSchema>;
+export type ManageVersionsOutput = z.infer<typeof manageVersionsSchema>;
 
 export const getComponentSchema = z.object({
   slug: z.string().min(1, "Component slug or ID is required").describe("Slug or ID of the component to fetch"),

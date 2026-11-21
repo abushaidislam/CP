@@ -6,6 +6,7 @@ import {
   getComponentSchema,
   listComponentsSchema,
   deleteComponentSchema,
+  manageVersionsSchema,
 } from "@/lib/mcp/schemas";
 
 const MCP_SERVER_INFO = {
@@ -64,7 +65,8 @@ const MCP_TOOLS_METADATA = [
   },
   {
     name: "update_component",
-    description: "Updates files or metadata of an existing component in the registry.",
+    description:
+      "Updates files or metadata of an existing component in the registry, automatically preserving the previous version as a checkpoint in history.",
     inputSchema: {
       type: "object",
       properties: {
@@ -76,6 +78,8 @@ const MCP_TOOLS_METADATA = [
         defaultCode: { type: "string", description: "Updated default.tsx code" },
         css: { type: "string", description: "Updated index.css code" },
         dependencies: { type: "array", items: { type: "string" }, description: "Updated dependencies list" },
+        changeMessage: { type: "string", description: "Description of what was changed in this version (e.g. 'Added spring animation')" },
+        baseVersion: { type: "string", description: "Optional past version identifier (e.g. 'v1' or 'v2') to base this update on" },
       },
       required: ["slug"],
     },
@@ -90,6 +94,32 @@ const MCP_TOOLS_METADATA = [
         confirm: { type: "boolean", description: "Explicit confirmation flag to prevent accidental deletion" },
       },
       required: ["slug"],
+    },
+  },
+  {
+    name: "manage_versions",
+    description:
+      "Manages version history, checkpoints, and revisions of a component. Supports 'list' (view all version snapshots), 'restore' (rollback/switch to a past version), and 'delete' (prune/delete specific versions).",
+    inputSchema: {
+      type: "object",
+      properties: {
+        slug: { type: "string", description: "The component slug" },
+        action: {
+          type: "string",
+          enum: ["list", "restore", "delete"],
+          description: "Version action to perform: 'list', 'restore', or 'delete'",
+        },
+        targetVersion: {
+          type: "string",
+          description: "Version identifier to restore (e.g. 'v2' or 'v1') - required when action is 'restore'",
+        },
+        versionIds: {
+          type: "array",
+          items: { type: "string" },
+          description: "Array of version identifiers to delete (e.g. ['v1', 'v2']) - required when action is 'delete'",
+        },
+      },
+      required: ["slug", "action"],
     },
   },
 ];
@@ -572,6 +602,22 @@ function normalizeArgs(toolName: string, raw: Record<string, unknown>): Record<s
       name: raw.name || raw.title || undefined,
       componentCode: raw.componentCode || raw.component_code || raw.code || undefined,
       defaultCode: raw.defaultCode || raw.default_code || raw.demoCode || raw.previewCode || undefined,
+      changeMessage: raw.changeMessage || raw.change_message || raw.message || raw.versionMessage || undefined,
+      baseVersion: raw.baseVersion || raw.base_version || raw.targetVersion || raw.target_version || undefined,
+    };
+  }
+
+  if (toolName === "manage_versions") {
+    let vIds = raw.versionIds || raw.version_ids || raw.versions || [];
+    if (typeof vIds === "string") {
+      vIds = vIds.split(/[,\n]/).map((s) => s.trim()).filter(Boolean);
+    }
+    return {
+      ...raw,
+      slug: raw.slug || raw.id || "",
+      action: raw.action || "list",
+      targetVersion: raw.targetVersion || raw.target_version || raw.version || undefined,
+      versionIds: Array.isArray(vIds) ? vIds : [],
     };
   }
 
@@ -600,6 +646,10 @@ async function executeTool(name: string, rawArgs: Record<string, unknown>): Prom
     case "delete_component": {
       const parsed = deleteComponentSchema.parse(normalized);
       return await componentRegistryService.deleteComponent(parsed);
+    }
+    case "manage_versions": {
+      const parsed = manageVersionsSchema.parse(normalized);
+      return await componentRegistryService.manageVersions(parsed);
     }
     default:
       throw new Error(`Unknown tool "${name}". Available tools: ${MCP_TOOLS_METADATA.map((t) => t.name).join(", ")}`);

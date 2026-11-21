@@ -21,6 +21,7 @@ export interface RepoComponentManifest {
   description: string;
   category: string;
   isBuiltIn?: boolean;
+  version?: string;
   createdAt: number;
   updatedAt: number;
   lastRepoSyncAt: number;
