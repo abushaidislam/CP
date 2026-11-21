@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-21T17:45:26.999Z",
+  "updatedAt": "2026-11-21T17:46:04.235Z",
   "totalComponents": 70,
   "components": [
     {
@@ -10,13 +10,15 @@
       "description": "A layered dark developer availability profile card cradled in a neon-lime status tray, featuring live availability pulse, clipboard copy feedback, and tactile Framer Motion hover lift.",
       "category": "Cards",
       "isBuiltIn": false,
-      "updatedAt": 1795283126829,
-      "lastRepoSyncAt": 1795283126829,
+      "updatedAt": 1795283159737,
+      "lastRepoSyncAt": 1795283164167,
       "path": "registry/components/developer-profile-card",
       "files": [
         "component.tsx",
         "default.tsx",
-        "manifest.json"
+        "index.css",
+        "manifest.json",
+        "preview.png"
       ],
       "dependencies": [
         "framer-motion",
@@ -37,7 +39,8 @@
         "component.tsx",
         "default.tsx",
         "index.css",
-        "manifest.json"
+        "manifest.json",
+        "preview.png"
       ],
       "dependencies": [
         "clsx",

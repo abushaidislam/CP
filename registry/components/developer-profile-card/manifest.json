@@ -6,13 +6,13 @@
   "category": "Cards",
   "isBuiltIn": false,
   "createdAt": 1795283126829,
-  "updatedAt": 1795283126829,
-  "lastRepoSyncAt": 1795283126829,
+  "updatedAt": 1795283159737,
+  "lastRepoSyncAt": 1795283164167,
   "dependencies": [
     "framer-motion",
     "lucide-react"
   ],
-  "version": "v1",
+  "previewImage": "./preview.png",
   "variants": [
     {
       "id": "var-default",
