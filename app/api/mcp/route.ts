@@ -23,20 +23,20 @@ const MCP_TOOLS_METADATA = [
   {
     name: "create_component",
     description:
-      "Creates a new component in the Component Studio registry. Writes component.tsx, default.tsx, manifest.json, and index.css, and updates registry/index.json for instant live preview.",
+      "Creates a new component in the Component Studio registry and saves it instantly to Cloud Storage (Upstash Redis) for live preview at /studio/[slug].",
     inputSchema: {
       type: "object",
       properties: {
-        name: { type: "string", description: "Human-readable component display name" },
+        name: { type: "string", description: "Human-readable component display name (e.g. 'Aurora Glow Card')" },
         slug: { type: "string", description: "URL-safe kebab-case slug (e.g. 'aurora-glow-card'). If omitted, derived from name" },
         category: { type: "string", description: "Category (e.g. 'Buttons', 'Cards', 'Navigation', 'Hero', 'Effects')" },
         description: { type: "string", description: "Short description of what the component does and its design style" },
-        componentCode: { type: "string", description: "Complete React TSX code for component.tsx" },
-        defaultCode: { type: "string", description: "Complete React TSX code for default.tsx importing and rendering the component in a preview container" },
+        componentCode: { type: "string", description: "Complete React TSX code for component.tsx. Export the component (named or default export)." },
+        defaultCode: { type: "string", description: "Optional React TSX code for default.tsx importing and rendering the component in a preview container. If omitted, generated automatically." },
         dependencies: { type: "array", items: { type: "string" }, description: "Required npm packages, e.g. ['framer-motion', 'lucide-react']" },
         css: { type: "string", description: "Optional custom CSS rules for index.css" },
       },
-      required: ["name", "componentCode", "defaultCode"],
+      required: ["name", "componentCode"],
     },
   },
   {
@@ -278,10 +278,10 @@ export async function POST(req: NextRequest) {
         {
           functionResponse: {
             name: fc.name,
-            response: { error: msg },
+            response: { success: false, error: msg },
           },
         },
-        { status: 400, headers: corsHeaders() }
+        { headers: corsHeaders() }
       );
     }
   }
@@ -330,24 +330,45 @@ export async function POST(req: NextRequest) {
 
       case "tools/call": {
         const toolName = String(params.name || "");
-        const toolArgs = (params.arguments as Record<string, unknown>) || {};
+        const toolArgs = ((params.arguments || params.args || params.input || {}) as Record<string, unknown>);
 
-        const toolResult = await executeTool(toolName, toolArgs);
-        return NextResponse.json(
-          {
-            jsonrpc: "2.0",
-            id,
-            result: {
-              content: [
-                {
-                  type: "text",
-                  text: JSON.stringify(toolResult, null, 2),
-                },
-              ],
+        try {
+          const toolResult = await executeTool(toolName, toolArgs);
+          return NextResponse.json(
+            {
+              jsonrpc: "2.0",
+              id,
+              result: {
+                content: [
+                  {
+                    type: "text",
+                    text: typeof toolResult === "string" ? toolResult : JSON.stringify(toolResult, null, 2),
+                  },
+                ],
+                isError: false,
+              },
             },
-          },
-          { headers: corsHeaders() }
-        );
+            { headers: corsHeaders() }
+          );
+        } catch (toolErr: unknown) {
+          const msg = toolErr instanceof Error ? toolErr.message : String(toolErr);
+          return NextResponse.json(
+            {
+              jsonrpc: "2.0",
+              id,
+              result: {
+                content: [
+                  {
+                    type: "text",
+                    text: `Error executing tool "${toolName}": ${msg}`,
+                  },
+                ],
+                isError: true,
+              },
+            },
+            { headers: corsHeaders() }
+          );
+        }
       }
 
       case "resources/list": {
@@ -497,26 +518,87 @@ export async function POST(req: NextRequest) {
   }
 }
 
+function normalizeArgs(toolName: string, raw: Record<string, unknown>): Record<string, unknown> {
+  if (toolName === "create_component") {
+    const compCode =
+      raw.componentCode ||
+      raw.component_code ||
+      raw.code ||
+      raw.component ||
+      "";
+
+    const defCode =
+      raw.defaultCode ||
+      raw.default_code ||
+      raw.demoCode ||
+      raw.demo_code ||
+      raw.previewCode ||
+      raw.preview_code ||
+      raw.demo ||
+      "";
+
+    return {
+      ...raw,
+      name: String(raw.name || raw.title || "Custom Component").trim(),
+      componentCode: String(compCode).trim(),
+      defaultCode: String(defCode).trim(),
+      slug: raw.slug || raw.id || undefined,
+      category: raw.category || "Custom",
+      description: raw.description || "",
+      dependencies: raw.dependencies || [],
+      css: raw.css || "",
+    };
+  }
+
+  if (toolName === "get_component") {
+    return {
+      ...raw,
+      slug: raw.slug || raw.id || "",
+    };
+  }
+
+  if (toolName === "delete_component") {
+    return {
+      ...raw,
+      slug: raw.slug || raw.id || "",
+      confirm: raw.confirm !== undefined ? Boolean(raw.confirm) : true,
+    };
+  }
+
+  if (toolName === "update_component") {
+    return {
+      ...raw,
+      slug: raw.slug || raw.id || "",
+      name: raw.name || raw.title || undefined,
+      componentCode: raw.componentCode || raw.component_code || raw.code || undefined,
+      defaultCode: raw.defaultCode || raw.default_code || raw.demoCode || raw.previewCode || undefined,
+    };
+  }
+
+  return raw;
+}
+
 async function executeTool(name: string, rawArgs: Record<string, unknown>): Promise<unknown> {
+  const normalized = normalizeArgs(name, rawArgs);
   switch (name) {
     case "create_component": {
-      const parsed = createComponentSchema.parse(rawArgs);
+      const parsed = createComponentSchema.parse(normalized);
       return await componentRegistryService.createComponent(parsed);
     }
     case "get_component": {
-      const parsed = getComponentSchema.parse(rawArgs);
+      const parsed = getComponentSchema.parse(normalized);
       return await componentRegistryService.getComponent(parsed);
     }
     case "list_components": {
-      const parsed = listComponentsSchema.parse(rawArgs);
+      const parsed = listComponentsSchema.parse(normalized);
       return await componentRegistryService.listComponents(parsed);
     }
     case "update_component": {
-      const parsed = updateComponentSchema.parse(rawArgs);
+      const parsed = updateComponentSchema.parse(normalized);
       return await componentRegistryService.updateComponent(parsed);
     }
     case "delete_component": {
-      const parsed = deleteComponentSchema.parse(rawArgs);
+      const parsed = deleteComponentSchema.parse(normalized);
       return await componentRegistryService.deleteComponent(parsed);
     }
     default:
