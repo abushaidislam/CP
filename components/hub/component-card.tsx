@@ -38,6 +38,7 @@ import {
   AlertTriangle,
   FolderGit2,
   Check,
+  Pencil,
 } from "lucide-react";
 
 export interface ComponentCardProps {
@@ -228,6 +229,17 @@ function ComponentCardInner({
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-48 rounded-none font-sans">
+                <DropdownMenuItem
+                  onClick={() => {
+                    useStudioStore
+                      .getState()
+                      .setEditComponentDialogOpen(true, component.id);
+                  }}
+                  className="gap-2 cursor-pointer rounded-none font-sans text-xs"
+                >
+                  <Pencil className="size-3.5 text-primary" />
+                  <span>Edit Details...</span>
+                </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={() => {
                     useStudioStore

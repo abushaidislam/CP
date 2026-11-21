@@ -319,6 +319,32 @@ describe("StudioHeader Navigation & Route Integration", () => {
       expect(html).toContain("Neon Glow Button");
     });
 
+    it("should render edit details button in header and open edit component dialog", () => {
+      const html = renderToString(
+        <TooltipProvider>
+          <StudioHeader />
+        </TooltipProvider>
+      );
+
+      expect(html).toContain("Edit details");
+      expect(html).toContain('aria-label="Edit active component title and description"');
+    });
+
+    it("should update header component title immediately when updateComponentMetadata is called", () => {
+      useStudioStore.getState().updateComponentMetadata("custom-neon-button", {
+        name: "Cyber Neon Super Button",
+        description: "Renamed cyber button",
+      });
+
+      const html = renderToString(
+        <TooltipProvider>
+          <StudioHeader />
+        </TooltipProvider>
+      );
+
+      expect(html).toContain("Cyber Neon Super Button");
+    });
+
     it("should fallback gracefully if component name is not found in userComponents", () => {
       useStudioStore.setState({
         currentTemplateId: "non-existent-id",

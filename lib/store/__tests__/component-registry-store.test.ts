@@ -287,6 +287,54 @@ describe("Component Registry & Work History Store Slice", () => {
     expect(merged.userComponents["live-ping-status-pill"]).toBeDefined();
     expect(merged.userComponents["ink-orbit-hero"]).toBeDefined();
   });
+
+  it("should update component name, description, and category via updateComponentMetadata", () => {
+    const store = useStudioStore.getState();
+    const id = store.createComponent({
+      name: "Original Name",
+      description: "Original Description",
+      category: "Custom",
+    });
+
+    store.updateComponentMetadata(id, {
+      name: "Updated Name",
+      description: "Updated Description",
+      category: "Heroes",
+    });
+
+    const updated = useStudioStore.getState().userComponents[id];
+    expect(updated).toBeDefined();
+    expect(updated.name).toBe("Updated Name");
+    expect(updated.description).toBe("Updated Description");
+    expect(updated.category).toBe("Heroes");
+    expect(useStudioStore.getState().repoSyncStatus).toBe("dirty");
+  });
+
+  it("should update built-in template metadata and create an editable userComponent entry", () => {
+    const store = useStudioStore.getState();
+    store.updateComponentMetadata("ink-orbit-hero", {
+      name: "Customized Ink Orbit Hero",
+      description: "A customized 3D sculpture description",
+      category: "Custom",
+    });
+
+    const customized = useStudioStore.getState().userComponents["ink-orbit-hero"];
+    expect(customized).toBeDefined();
+    expect(customized.name).toBe("Customized Ink Orbit Hero");
+    expect(customized.description).toBe("A customized 3D sculpture description");
+    expect(customized.category).toBe("Custom");
+  });
+
+  it("should toggle edit component dialog state and track editingComponentId", () => {
+    const store = useStudioStore.getState();
+    store.setEditComponentDialogOpen(true, "comp-123");
+    expect(useStudioStore.getState().isEditComponentDialogOpen).toBe(true);
+    expect(useStudioStore.getState().editingComponentId).toBe("comp-123");
+
+    store.setEditComponentDialogOpen(false);
+    expect(useStudioStore.getState().isEditComponentDialogOpen).toBe(false);
+    expect(useStudioStore.getState().editingComponentId).toBeNull();
+  });
 });
 
 

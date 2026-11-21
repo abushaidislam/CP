@@ -6,6 +6,7 @@ import { useStudioStore } from "@/lib/store/studio-store";
 import { DEFAULT_TEMPLATES } from "@/lib/sandbox/default-templates";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { AppLogo } from "@/components/ui/app-logo";
 import {
@@ -50,12 +51,17 @@ import {
   FolderGit2,
   Video,
   Cpu,
+  Pencil,
+  Search,
+  X,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { McpConnectDialog } from "@/components/mcp/mcp-connect-dialog";
 import { CommandPaletteDialog } from "@/components/hub/command-palette-dialog";
 import { useMcpLiveSync } from "@/lib/hooks/use-mcp-live-sync";
+import { EditComponentDialog } from "@/components/hub/edit-component-dialog";
+import { CreateComponentDialog } from "@/components/hub/create-component-dialog";
 
 export function StudioHeader() {
   const router = useRouter();
@@ -88,6 +94,8 @@ export function StudioHeader() {
     setRecordingModalOpen,
     previewTheme,
     setPreviewTheme,
+    setCreateComponentDialogOpen,
+    setEditComponentDialogOpen,
   } = useStudioStore(
     useShallow((state) => ({
       currentTemplateId: state.currentTemplateId,
@@ -118,6 +126,8 @@ export function StudioHeader() {
       setRecordingModalOpen: state.setRecordingModalOpen,
       previewTheme: state.previewTheme,
       setPreviewTheme: state.setPreviewTheme,
+      setCreateComponentDialogOpen: state.setCreateComponentDialogOpen,
+      setEditComponentDialogOpen: state.setEditComponentDialogOpen,
     }))
   );
 
@@ -126,6 +136,8 @@ export function StudioHeader() {
   const [capturedSuccess, setCapturedSuccess] = useState(false);
   const [isMcpConnectOpen, setIsMcpConnectOpen] = useState(false);
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
+  const [templateSearchQuery, setTemplateSearchQuery] = useState("");
+  const [selectedCategoryFilter, setSelectedCategoryFilter] = useState("All");
   const captureTimeoutRef = React.useRef<NodeJS.Timeout | number | null>(null);
 
   const activeComp = userComponents?.[currentTemplateId];
@@ -244,6 +256,39 @@ export function StudioHeader() {
     currentTemplate?.name ||
     "Component Studio";
 
+  const allTemplatesList = React.useMemo(() => {
+    const userComps = Object.values(userComponents || {});
+    if (userComps.length > 0) {
+      return userComps;
+    }
+    return DEFAULT_TEMPLATES;
+  }, [userComponents]);
+
+  const templateCategories = React.useMemo(() => {
+    const cats = new Set<string>();
+    allTemplatesList.forEach((c) => {
+      if (c.category) cats.add(c.category);
+    });
+    return ["All", ...Array.from(cats)];
+  }, [allTemplatesList]);
+
+  const filteredTemplates = React.useMemo(() => {
+    const q = templateSearchQuery.trim().toLowerCase();
+    return allTemplatesList.filter((comp) => {
+      const matchesCategory =
+        selectedCategoryFilter === "All" ||
+        comp.category?.toLowerCase() === selectedCategoryFilter.toLowerCase();
+      if (!matchesCategory) return false;
+
+      if (!q) return true;
+      return (
+        comp.name?.toLowerCase().includes(q) ||
+        comp.description?.toLowerCase().includes(q) ||
+        comp.category?.toLowerCase().includes(q)
+      );
+    });
+  }, [allTemplatesList, templateSearchQuery, selectedCategoryFilter]);
+
   return (
     <header className="studio-glass-header flex h-12 shrink-0 items-center justify-between border-b border-border px-3 sm:px-4 select-none z-30">
       {/* Left: Icon-Only Back Button, Brand Mark & Breadcrumb Selectors */}
@@ -278,78 +323,207 @@ export function StudioHeader() {
           <span className="text-muted-foreground/40 font-sans text-xs hidden md:inline">/</span>
 
           {/* Active Template Selector as Breadcrumb Leaf */}
-          <DropdownMenu>
+          <div className="flex items-center gap-0.5 min-w-0">
+            <DropdownMenu>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 gap-1.5 px-2 text-xs font-medium text-foreground hover:bg-muted/70 rounded-none border border-transparent hover:border-border/80 font-sans max-w-[110px] xs:max-w-[140px] sm:max-w-[180px] md:max-w-[210px] truncate"
+                    >
+                      <Layers className="size-3 text-muted-foreground shrink-0" />
+                      <span className="font-medium text-xs truncate">{componentName}</span>
+                      <ChevronDown className="size-3 text-muted-foreground opacity-60 shrink-0" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="font-sans text-xs">Switch component template</TooltipContent>
+              </Tooltip>
+
+              <DropdownMenuContent
+                align="start"
+                className="w-[calc(100vw-2rem)] xs:w-80 sm:w-96 max-w-sm max-h-[75vh] sm:max-h-[80vh] flex flex-col p-0 overflow-hidden rounded-none font-sans border-border bg-popover shadow-xl z-50"
+              >
+                {/* Search & Header Section */}
+                <div className="p-2.5 pb-2 border-b border-border/80 shrink-0 space-y-2 bg-muted/20">
+                  <div className="flex items-center justify-between">
+                    <DropdownMenuLabel className="text-[10px] uppercase font-semibold text-muted-foreground tracking-wider p-0 font-sans">
+                      Component Templates ({filteredTemplates.length})
+                    </DropdownMenuLabel>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setEditComponentDialogOpen(true, currentTemplateId)}
+                      className="h-6 text-[11px] gap-1 px-1.5 font-sans text-muted-foreground hover:text-foreground rounded-none border border-transparent hover:border-border"
+                      title="Edit current component details"
+                    >
+                      <Pencil className="size-2.5 text-primary" />
+                      <span>Edit Current</span>
+                    </Button>
+                  </div>
+
+                  {/* Filter Search Input */}
+                  <div className="relative">
+                    <Search className="size-3.5 absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+                    <Input
+                      value={templateSearchQuery}
+                      onChange={(e) => setTemplateSearchQuery(e.target.value)}
+                      onKeyDown={(e) => e.stopPropagation()}
+                      placeholder="Search templates or components..."
+                      className="h-7 pl-7 pr-6 text-xs font-sans rounded-none bg-background border-border"
+                    />
+                    {templateSearchQuery && (
+                      <button
+                        type="button"
+                        onClick={() => setTemplateSearchQuery("")}
+                        className="absolute right-1.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-0.5"
+                      >
+                        <X className="size-3" />
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Category Filter Pills */}
+                  {templateCategories.length > 2 && (
+                    <div className="flex items-center gap-1 overflow-x-auto pb-0.5 scrollbar-none text-[10px]">
+                      {templateCategories.map((cat) => {
+                        const isCatActive = selectedCategoryFilter.toLowerCase() === cat.toLowerCase();
+                        return (
+                          <button
+                            key={cat}
+                            type="button"
+                            onClick={() => setSelectedCategoryFilter(cat)}
+                            className={cn(
+                              "px-2 py-0.5 rounded-none font-sans transition-colors whitespace-nowrap select-none border",
+                              isCatActive
+                                ? "bg-primary text-primary-foreground border-primary font-medium"
+                                : "bg-card text-muted-foreground border-border hover:bg-muted hover:text-foreground"
+                            )}
+                          >
+                            {cat}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                {/* Scrollable Templates List */}
+                <div className="overflow-y-auto overflow-x-hidden flex-1 p-1 max-h-[50vh] divide-y divide-border/20">
+                  {filteredTemplates.length === 0 ? (
+                    <div className="py-6 text-center text-xs text-muted-foreground font-sans">
+                      No components found matching &ldquo;{templateSearchQuery}&rdquo;
+                    </div>
+                  ) : (
+                    filteredTemplates.map((comp) => {
+                      const isActive = comp.id === currentTemplateId;
+                      return (
+                        <div
+                          key={comp.id}
+                          className={cn(
+                            "group relative flex items-start justify-between gap-2 p-2 hover:bg-muted/70 transition-colors cursor-pointer select-none font-sans",
+                            isActive && "bg-muted/50 border-l-2 border-primary"
+                          )}
+                          onClick={() => {
+                            loadComponent(comp.id);
+                            router?.push?.(`/studio/${comp.id}`);
+                          }}
+                        >
+                          <div className="flex flex-col min-w-0 flex-1 gap-0.5">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span
+                                className={cn(
+                                  "font-medium text-xs truncate max-w-[190px]",
+                                  isActive ? "text-primary font-semibold" : "text-foreground"
+                                )}
+                              >
+                                {comp.name}
+                              </span>
+                              <Badge
+                                variant="secondary"
+                                className="rounded-none text-[9px] py-0 px-1 font-normal font-sans shrink-0"
+                              >
+                                {comp.category || "Custom"}
+                              </Badge>
+                              {isActive && (
+                                <Badge
+                                  variant="outline"
+                                  className="rounded-none text-[9px] py-0 px-1 font-normal font-sans border-primary/40 text-primary shrink-0"
+                                >
+                                  active
+                                </Badge>
+                              )}
+                            </div>
+                            {comp.description ? (
+                              <span className="line-clamp-2 text-[11px] text-muted-foreground leading-snug">
+                                {comp.description}
+                              </span>
+                            ) : (
+                              <span className="text-[11px] text-muted-foreground/50 italic">
+                                No description provided
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Quick Edit Action Button for each component */}
+                          <div className="flex items-center shrink-0 opacity-80 sm:opacity-0 group-hover:opacity-100 transition-opacity">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                e.preventDefault();
+                                setEditComponentDialogOpen(true, comp.id);
+                              }}
+                              title={`Edit ${comp.name} title, description & category`}
+                              aria-label={`Edit ${comp.name}`}
+                              className="size-6 rounded-none text-muted-foreground hover:text-foreground hover:bg-background border border-transparent hover:border-border"
+                            >
+                              <Pencil className="size-3" />
+                            </Button>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+
+                {/* Footer Action */}
+                <div className="p-2 border-t border-border/80 shrink-0 bg-muted/20">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCreateComponentDialogOpen(true)}
+                    className="h-7 text-xs gap-1.5 rounded-none font-sans font-medium w-full"
+                  >
+                    <Plus className="size-3 text-primary" />
+                    <span>Create New Component...</span>
+                  </Button>
+                </div>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            {/* Breadcrumb Direct Edit Button */}
             <Tooltip>
               <TooltipTrigger asChild>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 gap-1.5 px-2 text-xs font-medium text-foreground hover:bg-muted/70 rounded-none border border-transparent hover:border-border/80 font-sans max-w-[130px] sm:max-w-[180px] truncate"
-                  >
-                    <Layers className="size-3 text-muted-foreground shrink-0" />
-                    <span className="font-medium text-xs truncate">{componentName}</span>
-                    <ChevronDown className="size-3 text-muted-foreground opacity-60 shrink-0" />
-                  </Button>
-                </DropdownMenuTrigger>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setEditComponentDialogOpen(true, currentTemplateId)}
+                  aria-label="Edit active component title and description"
+                  className="studio-icon-btn size-7 rounded-none border border-transparent hover:border-border/80 bg-transparent hover:bg-muted/70 text-muted-foreground hover:text-foreground shrink-0"
+                >
+                  <Pencil className="size-3" />
+                  <span className="sr-only">Edit details</span>
+                </Button>
               </TooltipTrigger>
-              <TooltipContent side="bottom">Switch component template</TooltipContent>
+              <TooltipContent side="bottom" className="font-sans text-xs">
+                Edit component name &amp; description
+              </TooltipContent>
             </Tooltip>
-
-            <DropdownMenuContent align="start" className="w-68 rounded-none font-sans">
-              <DropdownMenuLabel className="text-[10px] uppercase font-semibold text-muted-foreground tracking-wider">
-                Component Templates
-              </DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              {Object.values(userComponents || {}).length > 0
-                ? Object.values(userComponents).map((comp) => (
-                    <DropdownMenuItem
-                      key={comp.id}
-                      onClick={() => {
-                        loadComponent(comp.id);
-                        router?.push?.(`/studio/${comp.id}`);
-                      }}
-                      className="flex flex-col items-start gap-0.5 py-2 cursor-pointer rounded-none font-sans"
-                    >
-                      <div className="flex items-center justify-between w-full">
-                        <span className="font-medium text-xs text-foreground">
-                          {comp.name}
-                        </span>
-                        <Badge variant="secondary" className="rounded-none text-[9px] py-0 px-1 font-normal font-sans">
-                          {comp.category}
-                        </Badge>
-                      </div>
-                      {comp.description && (
-                        <span className="line-clamp-1 text-[11px] text-muted-foreground">
-                          {comp.description}
-                        </span>
-                      )}
-                    </DropdownMenuItem>
-                  ))
-                : DEFAULT_TEMPLATES.map((tmpl) => (
-                    <DropdownMenuItem
-                      key={tmpl.id}
-                      onClick={() => {
-                        loadTemplate(tmpl.id);
-                        router?.push?.(`/studio/${tmpl.id}`);
-                      }}
-                      className="flex flex-col items-start gap-0.5 py-2 cursor-pointer rounded-none font-sans"
-                    >
-                      <div className="flex items-center justify-between w-full">
-                        <span className="font-medium text-xs text-foreground">
-                          {tmpl.name}
-                        </span>
-                        <Badge variant="secondary" className="rounded-none text-[9px] py-0 px-1 font-normal font-sans">
-                          {tmpl.category}
-                        </Badge>
-                      </div>
-                      <span className="line-clamp-1 text-[11px] text-muted-foreground">
-                        {tmpl.description}
-                      </span>
-                    </DropdownMenuItem>
-                  ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
+          </div>
 
           <span className="text-muted-foreground/40 font-sans text-xs hidden xs:inline">/</span>
 
@@ -1084,6 +1258,13 @@ export function StudioHeader() {
         open={isCommandPaletteOpen}
         onOpenChange={setIsCommandPaletteOpen}
         onOpenMcpConnect={() => setIsMcpConnectOpen(true)}
+      />
+      <EditComponentDialog />
+      <CreateComponentDialog
+        onCreated={(newId) => {
+          loadComponent(newId);
+          router?.push?.(`/studio/${newId}`);
+        }}
       />
     </header>
   );

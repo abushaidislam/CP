@@ -13,6 +13,7 @@ import { DEFAULT_TEMPLATES } from "@/lib/sandbox/default-templates";
 import { useSyncSecuritySession } from "@/lib/hooks/use-sync-security-session";
 import { ComponentCard } from "./component-card";
 import { CreateComponentDialog } from "./create-component-dialog";
+import { EditComponentDialog } from "./edit-component-dialog";
 import { QuickPreviewModal } from "./quick-preview-modal";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -80,6 +81,7 @@ export function ComponentHub({
     variantsByTemplate,
     quickPreviewComponentId,
     isCreateComponentDialogOpen,
+    isEditComponentDialogOpen,
     isSecurityModalOpen,
     isRepoSyncModalOpen,
     isPublishModalOpen,
@@ -100,6 +102,7 @@ export function ComponentHub({
       variantsByTemplate: state.variantsByTemplate,
       quickPreviewComponentId: state.quickPreviewComponentId,
       isCreateComponentDialogOpen: state.isCreateComponentDialogOpen,
+      isEditComponentDialogOpen: state.isEditComponentDialogOpen,
       isSecurityModalOpen: state.isSecurityModalOpen,
       isRepoSyncModalOpen: state.isRepoSyncModalOpen,
       isPublishModalOpen: state.isPublishModalOpen,
@@ -865,6 +868,7 @@ export function ComponentHub({
 
         {/* Modal Integration (Conditionally mounted when active to avoid idle hook/render overhead) */}
         {isCreateComponentDialogOpen && <CreateComponentDialog onCreated={handleCreated} />}
+        {isEditComponentDialogOpen && <EditComponentDialog />}
         {Boolean(quickPreviewComponentId) && <QuickPreviewModal onOpenStudio={handleOpenStudio} />}
         <KeyboardShortcutsDialog open={isShortcutsOpen} onOpenChange={setIsShortcutsOpen} />
         {isSecurityModalOpen && <SecurityShieldModal />}

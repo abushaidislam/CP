@@ -19,15 +19,19 @@ export type ComponentRegistrySlice = Pick<
   | "recentComponentIds"
   | "quickPreviewComponentId"
   | "isCreateComponentDialogOpen"
+  | "isEditComponentDialogOpen"
+  | "editingComponentId"
   | "loadTemplate"
   | "loadComponent"
   | "createComponent"
+  | "updateComponentMetadata"
   | "deleteUserComponent"
   | "duplicateUserComponent"
   | "updateComponentPreview"
   | "recordComponentVisit"
   | "setQuickPreviewComponentId"
   | "setCreateComponentDialogOpen"
+  | "setEditComponentDialogOpen"
   | "resetCurrentTemplate"
 >;
 
@@ -41,6 +45,8 @@ export const createComponentRegistrySlice: StudioSliceCreator<ComponentRegistryS
   recentComponentIds: [initialTemplate.id],
   quickPreviewComponentId: null,
   isCreateComponentDialogOpen: false,
+  isEditComponentDialogOpen: false,
+  editingComponentId: null,
 
   loadTemplate: (templateId) => {
     get().loadComponent(templateId);
@@ -368,6 +374,67 @@ export const createComponentRegistrySlice: StudioSliceCreator<ComponentRegistryS
       };
     });
   },
+
+  updateComponentMetadata: (id, data) => {
+    set((state) => {
+      const existing =
+        state.userComponents?.[id] ||
+        DEFAULT_TEMPLATES.find((t) => t.id === id);
+
+      if (!existing) return state;
+
+      const trimmedName = data.name !== undefined ? data.name.trim() : existing.name;
+      const finalName = trimmedName || existing.name;
+      const finalDescription =
+        data.description !== undefined ? data.description.trim() : (existing.description || "");
+      const finalCategory =
+        data.category !== undefined && data.category.trim()
+          ? data.category.trim()
+          : (existing.category || "Custom");
+
+      const isBuiltIn = DEFAULT_TEMPLATES.some((t) => t.id === id);
+
+      const baseComp: UserComponent = state.userComponents?.[id] || {
+        id: existing.id,
+        name: existing.name,
+        description: existing.description || "",
+        category: existing.category || "Custom",
+        isBuiltIn,
+        createdAt: 1700000000000,
+        updatedAt: Date.now(),
+        files: normalizeStudioFiles(existing.files),
+        dependencies: [...existing.dependencies],
+        previewImage:
+          existing.previewImage ||
+          DEFAULT_TEMPLATE_PREVIEWS[id] ||
+          DEFAULT_TEMPLATE_PREVIEWS["blank"],
+      };
+
+      const updatedComp: UserComponent = {
+        ...baseComp,
+        name: finalName,
+        description: finalDescription,
+        category: finalCategory,
+        updatedAt: Date.now(),
+      };
+
+      return {
+        repoSyncStatus: "dirty",
+        userComponents: {
+          ...state.userComponents,
+          [id]: updatedComp,
+        },
+      };
+    });
+  },
+
+  setEditComponentDialogOpen: (open, componentId) =>
+    set((state) => ({
+      isEditComponentDialogOpen: open,
+      editingComponentId: open
+        ? (componentId !== undefined ? componentId : state.editingComponentId || state.currentTemplateId)
+        : null,
+    })),
 
   recordComponentVisit: (id) =>
     set((state) => ({

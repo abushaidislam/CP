@@ -194,6 +194,8 @@ export interface StudioState {
   recentComponentIds: string[];
   quickPreviewComponentId: string | null;
   isCreateComponentDialogOpen: boolean;
+  isEditComponentDialogOpen: boolean;
+  editingComponentId: string | null;
 
   // Canvas & Preview Controls
   layoutMode: "split" | "editor" | "preview";
@@ -319,6 +321,14 @@ export interface StudioState {
     category?: string;
     starterTemplateId?: string;
   }) => string;
+  updateComponentMetadata: (
+    id: string,
+    data: {
+      name?: string;
+      description?: string;
+      category?: string;
+    }
+  ) => void;
   deleteUserComponent: (id: string) => void;
   duplicateUserComponent: (id: string, newName?: string) => string;
   updateComponentPreview: (id: string, previewImage: string) => void;
@@ -326,6 +336,7 @@ export interface StudioState {
   recordComponentVisit: (id: string) => void;
   setQuickPreviewComponentId: (id: string | null) => void;
   setCreateComponentDialogOpen: (open: boolean) => void;
+  setEditComponentDialogOpen: (open: boolean, componentId?: string | null) => void;
 
   setCompilerState: (isCompiling: boolean, error?: string | null) => void;
   setRecordingModalOpen: (open: boolean) => void;

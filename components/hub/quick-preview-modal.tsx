@@ -60,6 +60,7 @@ import {
   Plus,
   Trash2,
   X,
+  Pencil,
 } from "lucide-react";
 
 export interface QuickPreviewModalProps {
@@ -857,6 +858,20 @@ export function QuickPreviewModal({
               <Badge variant="secondary" className="rounded-none font-sans text-[11px]">
                 {component.category || "Custom"}
               </Badge>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                className="size-6 rounded-none text-muted-foreground hover:text-foreground hover:bg-muted"
+                onClick={() => {
+                  useStudioStore
+                    .getState()
+                    .setEditComponentDialogOpen(true, component.id);
+                }}
+                title="Edit component title, description & category"
+                aria-label="Edit component details"
+              >
+                <Pencil className="size-3" />
+              </Button>
             </div>
 
             {/* Top-Right Corner of Screen (next to Dialog Close X at top-4 right-4): Utility Action Icons */}
