@@ -24,7 +24,7 @@ export default function ProjectWorkflowTreeDemo(
     : "auto";
 
   return (
-    <div className="flex min-h-[620px] w-full items-center justify-center p-4 sm:p-8">
+    <div className="h-screen min-h-[660px] w-full">
       <ProjectWorkflowTree
         clientName={config.clientName}
         taskTitle={config.taskTitle}

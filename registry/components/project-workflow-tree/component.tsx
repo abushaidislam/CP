@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useId, useState } from "react";
+import React, { useCallback, useEffect, useId, useRef, useState } from "react";
 import { motion, useReducedMotion, AnimatePresence } from "framer-motion";
-import { Check, Sparkles } from "lucide-react";
+import { Check, RotateCcw, Sparkles } from "lucide-react";
 
 function cn(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");
@@ -22,7 +22,8 @@ export type WorkflowNodeId =
   | "task"
   | "notes"
   | "subtasks"
-  | "subtask-1"
+  | "subtask1"
+  | "rolesPill"
   | "pm"
   | "ux";
 
@@ -41,6 +42,52 @@ export interface ProjectWorkflowTreeProps {
   className?: string;
 }
 
+interface Point {
+  x: number;
+  y: number;
+}
+
+interface NodeSize {
+  w: number;
+  h: number;
+}
+
+const DESIGN_W = 780;
+const DESIGN_H = 600;
+
+const NODE_SIZES: Record<WorkflowNodeId, NodeSize> = {
+  client: { w: 296, h: 56 },
+  task: { w: 254, h: 122 },
+  notes: { w: 258, h: 56 },
+  subtasks: { w: 256, h: 86 },
+  subtask1: { w: 250, h: 114 },
+  rolesPill: { w: 124, h: 32 },
+  pm: { w: 252, h: 112 },
+  ux: { w: 252, h: 112 },
+};
+
+const INITIAL_OFFSETS: Record<WorkflowNodeId, Point> = {
+  client: { x: 212, y: 18 },
+  task: { x: 233, y: 108 },
+  notes: { x: 518, y: 141 },
+  subtasks: { x: 32, y: 306 },
+  subtask1: { x: 46, y: 374 },
+  rolesPill: { x: 506, y: 292 },
+  pm: { x: 442, y: 344 },
+  ux: { x: 442, y: 476 },
+};
+
+const INITIAL_Z: Record<WorkflowNodeId, number> = {
+  client: 12,
+  task: 14,
+  notes: 13,
+  subtasks: 16,
+  subtask1: 18,
+  rolesPill: 11,
+  pm: 15,
+  ux: 14,
+};
+
 const TOOL_META: Record<TechToolId, { label: string; bg: string }> = {
   "pulse-chat": { label: "Pulse Chat", bg: "#3F0E40" },
   "relay-mail": { label: "Relay Mail", bg: "#FFFFFF" },
@@ -49,6 +96,61 @@ const TOOL_META: Record<TechToolId, { label: string; bg: string }> = {
   "sprint-up": { label: "Sprint Board", bg: "#FFFFFF" },
   "orbit-tasks": { label: "Orbit Tasks", bg: "#F46B6B" },
 };
+
+function clamp(val: number, min: number, max: number) {
+  return Math.max(min, Math.min(max, val));
+}
+
+function buildVerticalCurve(x1: number, y1: number, x2: number, y2: number) {
+  const dy = Math.max(24, Math.abs(y2 - y1) * 0.55);
+  return `M ${x1} ${y1} C ${x1} ${y1 + dy}, ${x2} ${y2 - dy}, ${x2} ${y2}`;
+}
+
+function buildHorizontalCurve(x1: number, y1: number, x2: number, y2: number) {
+  const dx = Math.max(24, Math.abs(x2 - x1) * 0.5);
+  return `M ${x1} ${y1} C ${x1 + dx} ${y1}, ${x2 - dx} ${y2}, ${x2} ${y2}`;
+}
+
+function buildElbowPath(x1: number, y1: number, x2: number, y2: number) {
+  const midY = y1 + clamp((y2 - y1) * 0.48, 18, 56);
+  const dx = x2 - x1;
+  if (Math.abs(dx) < 6) {
+    return `M ${x1} ${y1} L ${x2} ${y2}`;
+  }
+  const r = clamp(
+    Math.min(Math.abs(dx) / 2, Math.abs(midY - y1), Math.abs(y2 - midY)),
+    4,
+    14
+  );
+  const dir = dx > 0 ? 1 : -1;
+  const down1 = midY >= y1 ? 1 : -1;
+  const down2 = y2 >= midY ? 1 : -1;
+  return [
+    `M ${x1} ${y1}`,
+    `L ${x1} ${midY - r * down1}`,
+    `Q ${x1} ${midY} ${x1 + r * dir} ${midY}`,
+    `L ${x2 - r * dir} ${midY}`,
+    `Q ${x2} ${midY} ${x2} ${midY + r * down2}`,
+    `L ${x2} ${y2}`,
+  ].join(" ");
+}
+
+function buildDashedBranch(x1: number, y1: number, x2: number, y2: number) {
+  const c1x = x1 - (x1 - x2) * 0.14;
+  const c1y = y1 + Math.max(36, (y2 - y1) * 0.55);
+  const c2x = x2 + (x1 - x2) * 0.08;
+  const c2y = y2 - Math.max(46, (y2 - y1) * 0.62);
+  const angle = Math.atan2(y2 - c2y, x2 - c2x);
+  const arrowLen = 6.5;
+  const leftX = x2 - arrowLen * Math.cos(angle - Math.PI / 5.5);
+  const leftY = y2 - arrowLen * Math.sin(angle - Math.PI / 5.5);
+  const rightX = x2 - arrowLen * Math.cos(angle + Math.PI / 5.5);
+  const rightY = y2 - arrowLen * Math.sin(angle + Math.PI / 5.5);
+  return {
+    path: `M ${x1} ${y1} C ${c1x} ${c1y}, ${c2x} ${c2y}, ${x2} ${y2}`,
+    arrow: `M ${leftX.toFixed(1)} ${leftY.toFixed(1)} L ${x2.toFixed(1)} ${y2.toFixed(1)} L ${rightX.toFixed(1)} ${rightY.toFixed(1)}`,
+  };
+}
 
 function TechIcon({
   tool,
@@ -77,16 +179,16 @@ function TechIcon({
         onFocus={() => interactive && setHovered(true)}
         onBlur={() => setHovered(false)}
         className={cn(
-          "relative flex h-[25px] w-[25px] shrink-0 items-center justify-center rounded-[6.5px] transition-transform duration-150",
+          "relative flex h-[25px] w-[25px] shrink-0 items-center justify-center rounded-[7px] transition-transform duration-150",
           interactive &&
             "cursor-pointer hover:-translate-y-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-400",
           tool === "relay-mail" || tool === "sprint-up"
             ? isDark
               ? "bg-zinc-800 ring-1 ring-white/10 shadow-sm"
               : isLight
-                ? "bg-white ring-1 ring-slate-200/90 shadow-[0_1px_3px_rgba(15,23,42,0.08)]"
-                : "bg-white dark:bg-zinc-800 ring-1 ring-slate-200/90 dark:ring-white/10 shadow-[0_1px_3px_rgba(15,23,42,0.08)]"
-            : "shadow-[0_1px_3px_rgba(15,23,42,0.14)]"
+                ? "bg-white ring-1 ring-slate-200/90 shadow-[0_1px_2px_rgba(15,23,42,0.06)]"
+                : "bg-white dark:bg-zinc-800 ring-1 ring-slate-200/90 dark:ring-white/10 shadow-[0_1px_2px_rgba(15,23,42,0.06)]"
+            : "shadow-[0_1px_3px_rgba(15,23,42,0.16)]"
         )}
         style={
           tool !== "relay-mail" && tool !== "sprint-up"
@@ -179,7 +281,7 @@ function TechIcon({
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 3, scale: 0.94 }}
               transition={{ duration: 0.14 }}
-              className="block whitespace-nowrap rounded-md bg-slate-900 px-2 py-0.5 text-[10px] font-medium text-white shadow-md dark:bg-zinc-100 dark:text-zinc-900"
+              className="block whitespace-nowrap rounded-md bg-zinc-900 px-2 py-0.5 text-[10px] font-medium tracking-[-0.01em] text-white shadow-md dark:bg-zinc-100 dark:text-zinc-900"
             >
               {meta.label}
             </motion.span>
@@ -204,7 +306,7 @@ function IllustratedAvatar({
       <div
         className={cn(
           dim,
-          "relative flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#FBF0DA] ring-1 ring-amber-200/60 dark:bg-amber-950/60 dark:ring-amber-700/40"
+          "relative flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#FBF0DA] ring-1 ring-amber-200/70 dark:bg-amber-950/60 dark:ring-amber-700/40"
         )}
         aria-hidden="true"
       >
@@ -296,12 +398,12 @@ function TechStackBadge({
   return (
     <span
       className={cn(
-        "inline-flex h-[25px] shrink-0 items-center rounded-[7px] px-2.5 text-[10.5px] font-medium tracking-[-0.01em]",
+        "inline-flex h-[25px] shrink-0 items-center rounded-[7px] px-2.5 text-[10.5px] font-semibold tracking-[-0.01em]",
         isDark
-          ? "bg-amber-500/15 text-amber-300 ring-1 ring-amber-400/20"
+          ? "bg-amber-500/12 text-amber-300 ring-1 ring-amber-400/20"
           : isLight
-            ? "bg-[#FEF8E2] text-[#D1A22A]"
-            : "bg-[#FEF8E2] text-[#D1A22A] dark:bg-amber-500/15 dark:text-amber-300 dark:ring-1 dark:ring-amber-400/20"
+            ? "bg-[#FEF7DF] text-[#C4921E] ring-1 ring-amber-200/50"
+            : "bg-[#FEF7DF] text-[#C4921E] ring-1 ring-amber-200/50 dark:bg-amber-500/12 dark:text-amber-300 dark:ring-amber-400/20"
       )}
     >
       Tech-Stack
@@ -332,31 +434,269 @@ const ProjectWorkflowTree = React.forwardRef<HTMLDivElement, ProjectWorkflowTree
     const shouldReduceMotion = useReducedMotion();
     const motionEnabled = animateFlow && !shouldReduceMotion;
 
+    const canvasRef = useRef<HTMLDivElement | null>(null);
+    const [canvasSize, setCanvasSize] = useState<{ w: number; h: number }>({
+      w: DESIGN_W,
+      h: DESIGN_H,
+    });
+
+    const [nodeDeltas, setNodeDeltas] = useState<Record<WorkflowNodeId, Point>>({
+      client: { x: 0, y: 0 },
+      task: { x: 0, y: 0 },
+      notes: { x: 0, y: 0 },
+      subtasks: { x: 0, y: 0 },
+      subtask1: { x: 0, y: 0 },
+      rolesPill: { x: 0, y: 0 },
+      pm: { x: 0, y: 0 },
+      ux: { x: 0, y: 0 },
+    });
+    const [panOffset, setPanOffset] = useState<Point>({ x: 0, y: 0 });
+    const [zOrders, setZOrders] = useState<Record<WorkflowNodeId, number>>(INITIAL_Z);
+    const [draggingId, setDraggingId] = useState<WorkflowNodeId | null>(null);
+    const [isPanning, setIsPanning] = useState(false);
     const [activeNode, setActiveNode] = useState<WorkflowNodeId | null>(null);
-    const [frontSubtask, setFrontSubtask] = useState<"list" | "wireframe">("wireframe");
     const [wireframeDone, setWireframeDone] = useState(false);
+    const [hasMoved, setHasMoved] = useState(false);
+
+    const topZRef = useRef(24);
+    const dragMetaRef = useRef<{
+      id: WorkflowNodeId;
+      startX: number;
+      startY: number;
+      originDx: number;
+      originDy: number;
+      moved: boolean;
+    } | null>(null);
+    const panMetaRef = useRef<{
+      startX: number;
+      startY: number;
+      originPanX: number;
+      originPanY: number;
+      moved: boolean;
+    } | null>(null);
+
+    useEffect(() => {
+      const el = canvasRef.current;
+      if (!el) return;
+      const updateSize = () => {
+        const rect = el.getBoundingClientRect();
+        if (rect.width > 0 && rect.height > 0) {
+          setCanvasSize({ w: rect.width, h: rect.height });
+        }
+      };
+      updateSize();
+      if (typeof ResizeObserver !== "undefined") {
+        const ro = new ResizeObserver(updateSize);
+        ro.observe(el);
+        return () => ro.disconnect();
+      }
+      window.addEventListener("resize", updateSize);
+      return () => window.removeEventListener("resize", updateSize);
+    }, []);
 
     const isDark = theme === "dark";
     const isLight = theme === "light";
 
-    const handleSelect = (nodeId: WorkflowNodeId) => {
-      if (!interactive) return;
-      const next = activeNode === nodeId ? null : nodeId;
-      setActiveNode(next);
-      onNodeSelect?.(next);
+    const originX = Math.max(12, Math.round((canvasSize.w - DESIGN_W) / 2)) + panOffset.x;
+    const originY = Math.max(16, Math.round((canvasSize.h - DESIGN_H) / 2)) + panOffset.y;
+
+    const getPos = (id: WorkflowNodeId): Point => ({
+      x: originX + INITIAL_OFFSETS[id].x + nodeDeltas[id].x,
+      y: originY + INITIAL_OFFSETS[id].y + nodeDeltas[id].y,
+    });
+
+    const positions: Record<WorkflowNodeId, Point> = {
+      client: getPos("client"),
+      task: getPos("task"),
+      notes: getPos("notes"),
+      subtasks: getPos("subtasks"),
+      subtask1: getPos("subtask1"),
+      rolesPill: getPos("rolesPill"),
+      pm: getPos("pm"),
+      ux: getPos("ux"),
     };
 
+    const bringToFront = useCallback((nodeId: WorkflowNodeId) => {
+      topZRef.current += 1;
+      const nextZ = topZRef.current;
+      setZOrders((prev) => ({ ...prev, [nodeId]: nextZ }));
+    }, []);
+
+    const toggleSelect = useCallback(
+      (nodeId: WorkflowNodeId) => {
+        if (!interactive) return;
+        bringToFront(nodeId);
+        setActiveNode((prev) => {
+          const next = prev === nodeId ? null : nodeId;
+          onNodeSelect?.(next);
+          return next;
+        });
+      },
+      [interactive, bringToFront, onNodeSelect]
+    );
+
+    const handleNodePointerDown = useCallback(
+      (nodeId: WorkflowNodeId, e: React.PointerEvent<HTMLDivElement>) => {
+        if (!interactive) return;
+        if ((e.target as HTMLElement).closest("button[data-no-drag='true']")) {
+          return;
+        }
+        e.stopPropagation();
+        e.currentTarget.setPointerCapture(e.pointerId);
+        bringToFront(nodeId);
+        setDraggingId(nodeId);
+        dragMetaRef.current = {
+          id: nodeId,
+          startX: e.clientX,
+          startY: e.clientY,
+          originDx: nodeDeltas[nodeId].x,
+          originDy: nodeDeltas[nodeId].y,
+          moved: false,
+        };
+      },
+      [interactive, bringToFront, nodeDeltas]
+    );
+
+    const handleNodePointerMove = useCallback(
+      (nodeId: WorkflowNodeId, e: React.PointerEvent<HTMLDivElement>) => {
+        const meta = dragMetaRef.current;
+        if (!meta || meta.id !== nodeId) return;
+        const dx = e.clientX - meta.startX;
+        const dy = e.clientY - meta.startY;
+        if (!meta.moved && Math.hypot(dx, dy) > 4) {
+          meta.moved = true;
+          setHasMoved(true);
+        }
+        if (meta.moved) {
+          const size = NODE_SIZES[nodeId];
+          const baseX = originX + INITIAL_OFFSETS[nodeId].x;
+          const baseY = originY + INITIAL_OFFSETS[nodeId].y;
+          const nextAbsX = clamp(
+            baseX + meta.originDx + dx,
+            8,
+            Math.max(8, canvasSize.w - size.w - 8)
+          );
+          const nextAbsY = clamp(
+            baseY + meta.originDy + dy,
+            8,
+            Math.max(8, canvasSize.h - size.h - 8)
+          );
+          setNodeDeltas((prev) => ({
+            ...prev,
+            [nodeId]: {
+              x: nextAbsX - baseX,
+              y: nextAbsY - baseY,
+            },
+          }));
+        }
+      },
+      [originX, originY, canvasSize.w, canvasSize.h]
+    );
+
+    const handleNodePointerUp = useCallback(
+      (nodeId: WorkflowNodeId, e: React.PointerEvent<HTMLDivElement>) => {
+        const meta = dragMetaRef.current;
+        if (!meta || meta.id !== nodeId) return;
+        if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+          e.currentTarget.releasePointerCapture(e.pointerId);
+        }
+        const wasDragged = meta.moved;
+        dragMetaRef.current = null;
+        setDraggingId(null);
+        if (!wasDragged) {
+          toggleSelect(nodeId);
+        }
+      },
+      [toggleSelect]
+    );
+
+    const handleCanvasPointerDown = useCallback(
+      (e: React.PointerEvent<HTMLDivElement>) => {
+        if (!interactive) return;
+        if (e.target !== e.currentTarget) return;
+        e.currentTarget.setPointerCapture(e.pointerId);
+        setIsPanning(true);
+        panMetaRef.current = {
+          startX: e.clientX,
+          startY: e.clientY,
+          originPanX: panOffset.x,
+          originPanY: panOffset.y,
+          moved: false,
+        };
+      },
+      [interactive, panOffset]
+    );
+
+    const handleCanvasPointerMove = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+      const meta = panMetaRef.current;
+      if (!meta) return;
+      const dx = e.clientX - meta.startX;
+      const dy = e.clientY - meta.startY;
+      if (!meta.moved && Math.hypot(dx, dy) > 4) {
+        meta.moved = true;
+        setHasMoved(true);
+      }
+      if (meta.moved) {
+        setPanOffset({
+          x: clamp(meta.originPanX + dx, -360, 360),
+          y: clamp(meta.originPanY + dy, -220, 220),
+        });
+      }
+    }, []);
+
+    const handleCanvasPointerUp = useCallback(
+      (e: React.PointerEvent<HTMLDivElement>) => {
+        const meta = panMetaRef.current;
+        if (!meta) return;
+        if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+          e.currentTarget.releasePointerCapture(e.pointerId);
+        }
+        const wasPanned = meta.moved;
+        panMetaRef.current = null;
+        setIsPanning(false);
+        if (!wasPanned && activeNode !== null) {
+          setActiveNode(null);
+          onNodeSelect?.(null);
+        }
+      },
+      [activeNode, onNodeSelect]
+    );
+
+    const handleResetLayout = useCallback(() => {
+      setNodeDeltas({
+        client: { x: 0, y: 0 },
+        task: { x: 0, y: 0 },
+        notes: { x: 0, y: 0 },
+        subtasks: { x: 0, y: 0 },
+        subtask1: { x: 0, y: 0 },
+        rolesPill: { x: 0, y: 0 },
+        pm: { x: 0, y: 0 },
+        ux: { x: 0, y: 0 },
+      });
+      setPanOffset({ x: 0, y: 0 });
+      setZOrders(INITIAL_Z);
+      setHasMoved(false);
+      setActiveNode(null);
+      onNodeSelect?.(null);
+    }, [onNodeSelect]);
+
     const surfaceClass = isDark
-      ? "bg-zinc-900/95 border-zinc-800/90 shadow-[0_12px_32px_-8px_rgba(0,0,0,0.55),0_2px_6px_rgba(0,0,0,0.35)]"
+      ? "bg-zinc-900/95 border-white/[0.08] shadow-[0_1px_2px_rgba(0,0,0,0.4),0_12px_28px_-6px_rgba(0,0,0,0.55)]"
       : isLight
-        ? "bg-white border-slate-200/75 shadow-[0_12px_30px_-8px_rgba(15,23,42,0.08),0_2px_6px_rgba(15,23,42,0.04)]"
-        : "bg-white dark:bg-zinc-900/95 border-slate-200/75 dark:border-zinc-800/90 shadow-[0_12px_30px_-8px_rgba(15,23,42,0.08),0_2px_6px_rgba(15,23,42,0.04)] dark:shadow-[0_12px_32px_-8px_rgba(0,0,0,0.55)]";
+        ? "bg-white border-slate-200/80 shadow-[0_1px_2px_rgba(15,23,42,0.03),0_12px_28px_-6px_rgba(15,23,42,0.08)]"
+        : "bg-white dark:bg-zinc-900/95 border-slate-200/80 dark:border-white/[0.08] shadow-[0_1px_2px_rgba(15,23,42,0.03),0_12px_28px_-6px_rgba(15,23,42,0.08)] dark:shadow-[0_12px_28px_-6px_rgba(0,0,0,0.55)]";
+
+    const draggingClass = isDark
+      ? "shadow-[0_20px_44px_-8px_rgba(0,0,0,0.75)] ring-2 ring-sky-400/70"
+      : isLight
+        ? "shadow-[0_20px_44px_-8px_rgba(15,23,42,0.16)] ring-2 ring-sky-400/60"
+        : "shadow-[0_20px_44px_-8px_rgba(15,23,42,0.16)] dark:shadow-[0_20px_44px_-8px_rgba(0,0,0,0.75)] ring-2 ring-sky-400/60";
 
     const titleClass = isDark
-      ? "text-zinc-100"
+      ? "text-zinc-50"
       : isLight
-        ? "text-slate-900"
-        : "text-slate-900 dark:text-zinc-100";
+        ? "text-zinc-900"
+        : "text-zinc-900 dark:text-zinc-50";
 
     const mutedClass = isDark
       ? "text-zinc-400"
@@ -364,11 +704,17 @@ const ProjectWorkflowTree = React.forwardRef<HTMLDivElement, ProjectWorkflowTree
         ? "text-slate-400"
         : "text-slate-400 dark:text-zinc-400";
 
-    const activeRingClass = isDark
-      ? "ring-2 ring-sky-400/70 border-sky-400/60"
+    const subtleMutedClass = isDark
+      ? "text-zinc-500"
       : isLight
-        ? "ring-2 ring-sky-400/60 border-sky-300"
-        : "ring-2 ring-sky-400/60 border-sky-300 dark:border-sky-400/60";
+        ? "text-slate-400/85"
+        : "text-slate-400/85 dark:text-zinc-500";
+
+    const activeRingClass = isDark
+      ? "ring-2 ring-sky-400/75 border-sky-400/50"
+      : isLight
+        ? "ring-2 ring-sky-400/65 border-sky-300"
+        : "ring-2 ring-sky-400/65 border-sky-300 dark:border-sky-400/50";
 
     const portFillClass = isDark
       ? "fill-zinc-900"
@@ -378,26 +724,105 @@ const ProjectWorkflowTree = React.forwardRef<HTMLDivElement, ProjectWorkflowTree
 
     const springTransition = shouldReduceMotion
       ? { duration: 0.01 }
-      : { type: "spring" as const, stiffness: 360, damping: 28, mass: 0.9 };
+      : { type: "spring" as const, stiffness: 380, damping: 30, mass: 0.85 };
 
     const isPathActive = (targets: WorkflowNodeId[]) =>
-      activeNode !== null && targets.includes(activeNode);
+      (activeNode !== null && targets.includes(activeNode)) ||
+      (draggingId !== null && targets.includes(draggingId));
+
+    const clientPort = {
+      x: positions.client.x + NODE_SIZES.client.w / 2,
+      y: positions.client.y + NODE_SIZES.client.h,
+    };
+    const taskTop = {
+      x: positions.task.x + NODE_SIZES.task.w / 2,
+      y: positions.task.y,
+    };
+    const taskRight = {
+      x: positions.task.x + NODE_SIZES.task.w,
+      y: positions.task.y + NODE_SIZES.task.h / 2,
+    };
+    const notesLeft = {
+      x: positions.notes.x,
+      y: positions.notes.y + NODE_SIZES.notes.h / 2,
+    };
+    const taskBottom = {
+      x: positions.task.x + NODE_SIZES.task.w / 2,
+      y: positions.task.y + NODE_SIZES.task.h,
+    };
+    const subtasksTop = {
+      x: positions.subtasks.x + NODE_SIZES.subtasks.w * 0.54,
+      y: positions.subtasks.y + 4,
+    };
+    const subtasksBottom = {
+      x: positions.subtasks.x + NODE_SIZES.subtasks.w / 2,
+      y: positions.subtasks.y + NODE_SIZES.subtasks.h,
+    };
+    const subtask1Top = {
+      x: positions.subtask1.x + NODE_SIZES.subtask1.w / 2,
+      y: positions.subtask1.y,
+    };
+    const rolesPillTop = {
+      x: positions.rolesPill.x + NODE_SIZES.rolesPill.w / 2,
+      y: positions.rolesPill.y,
+    };
+    const rolesPillBottom = {
+      x: positions.rolesPill.x + NODE_SIZES.rolesPill.w / 2,
+      y: positions.rolesPill.y + NODE_SIZES.rolesPill.h,
+    };
+    const pmTop = {
+      x: positions.pm.x + NODE_SIZES.pm.w / 2,
+      y: positions.pm.y,
+    };
+    const pmBottom = {
+      x: positions.pm.x + NODE_SIZES.pm.w / 2,
+      y: positions.pm.y + NODE_SIZES.pm.h,
+    };
+    const uxTop = {
+      x: positions.ux.x + NODE_SIZES.ux.w / 2,
+      y: positions.ux.y,
+    };
+
+    const clientToTaskPath = buildVerticalCurve(clientPort.x, clientPort.y, taskTop.x, taskTop.y);
+    const taskToNotesPath = buildHorizontalCurve(taskRight.x, taskRight.y, notesLeft.x, notesLeft.y);
+    const dashedBranch = buildDashedBranch(taskBottom.x, taskBottom.y + 3, subtasksTop.x, subtasksTop.y - 6);
+    const subtasksToSubtask1Path = buildVerticalCurve(
+      subtasksBottom.x,
+      subtasksBottom.y,
+      subtask1Top.x,
+      subtask1Top.y
+    );
+    const taskToRolesPath = buildElbowPath(taskBottom.x, taskBottom.y + 3, rolesPillTop.x, rolesPillTop.y);
+    const rolesToPmPath = buildVerticalCurve(rolesPillBottom.x, rolesPillBottom.y, pmTop.x, pmTop.y);
+    const pmToUxPath = buildVerticalCurve(pmBottom.x, pmBottom.y, uxTop.x, uxTop.y);
+
+    const subtaskMoved = Math.hypot(nodeDeltas.subtasks.x, nodeDeltas.subtasks.y) > 10;
+    const subtask1Moved = Math.hypot(nodeDeltas.subtask1.x, nodeDeltas.subtask1.y) > 10;
+    const subtasksSeparated =
+      subtask1Top.y > subtasksBottom.y - 6 ||
+      Math.abs(subtask1Top.x - subtasksBottom.x) > 36 ||
+      subtaskMoved ||
+      subtask1Moved;
 
     return (
       <div
         ref={ref}
         role="region"
-        aria-label={`Project workflow tree for ${clientName} ${taskTitle}`}
+        aria-label={`Interactive project workflow canvas for ${clientName} ${taskTitle}`}
         className={cn(
-          "relative mx-auto w-full max-w-[780px] select-none font-sans antialiased",
+          "relative h-full min-h-[640px] w-full select-none overflow-hidden antialiased",
           className
         )}
+        style={{
+          fontFamily:
+            "'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+        }}
       >
         {showGrid && (
           <div
             aria-hidden="true"
             className={cn(
-              "pointer-events-none absolute inset-0 rounded-3xl",
+              "pointer-events-none absolute inset-0",
               isDark
                 ? "opacity-35"
                 : isLight
@@ -406,58 +831,65 @@ const ProjectWorkflowTree = React.forwardRef<HTMLDivElement, ProjectWorkflowTree
             )}
             style={{
               backgroundImage:
-                "radial-gradient(circle, rgba(148, 163, 184, 0.28) 1.25px, transparent 1.25px)",
+                "radial-gradient(circle, rgba(148, 163, 184, 0.30) 1.25px, transparent 1.25px)",
               backgroundSize: "20px 20px",
-              maskImage:
-                "radial-gradient(ellipse 72% 70% at 50% 50%, black 42%, transparent 98%)",
-              WebkitMaskImage:
-                "radial-gradient(ellipse 72% 70% at 50% 50%, black 42%, transparent 98%)",
+              backgroundPosition: `${panOffset.x % 20}px ${panOffset.y % 20}px`,
             }}
           />
         )}
 
-        {/* DESKTOP SPATIAL TREE (760 x 590) */}
-        <div className="relative mx-auto hidden h-[590px] w-[760px] md:block">
+        {/* FULL-VIEWPORT INTERACTIVE DRAG & PAN CANVAS */}
+        <div
+          ref={canvasRef}
+          onPointerDown={handleCanvasPointerDown}
+          onPointerMove={handleCanvasPointerMove}
+          onPointerUp={handleCanvasPointerUp}
+          onPointerCancel={handleCanvasPointerUp}
+          className={cn(
+            "relative hidden h-full min-h-[640px] w-full overflow-hidden md:block",
+            interactive && (isPanning ? "cursor-grabbing" : "cursor-grab")
+          )}
+          style={{ touchAction: "none" }}
+        >
           <svg
-            viewBox="0 0 760 590"
             className="pointer-events-none absolute inset-0 h-full w-full overflow-visible"
             fill="none"
             aria-hidden="true"
           >
             <defs>
-              <linearGradient id={`${uid}-beam`} x1="0%" y1="0%" x2="100%" y2="0%">
+              <linearGradient id={`${uid}-flow`} x1="0%" y1="0%" x2="100%" y2="0%">
                 <stop offset="0%" stopColor="#38BDF8" stopOpacity="0" />
                 <stop offset="50%" stopColor="#38BDF8" stopOpacity="0.95" />
                 <stop offset="100%" stopColor="#38BDF8" stopOpacity="0" />
               </linearGradient>
             </defs>
 
-            {/* 1. Client -> Task vertical connector */}
+            {/* 1. Client -> Task */}
             <path
-              d="M 360 72 L 360 106"
+              d={clientToTaskPath}
               stroke={isPathActive(["client", "task"]) ? "#38BDF8" : "#8CC2F8"}
               strokeWidth={isPathActive(["client", "task"]) ? "2" : "1.6"}
               strokeLinecap="round"
             />
             <circle
-              cx="360"
-              cy="72"
+              cx={clientPort.x}
+              cy={clientPort.y}
               r="3.8"
               className={portFillClass}
               stroke={isPathActive(["client", "task"]) ? "#38BDF8" : "#8CC2F8"}
               strokeWidth="1.75"
             />
 
-            {/* 2. Task -> Client Notes horizontal connector */}
+            {/* 2. Task -> Client Notes */}
             <path
-              d="M 484 166 L 516 166"
+              d={taskToNotesPath}
               stroke={isPathActive(["notes", "task"]) ? "#38BDF8" : "#8CC2F8"}
               strokeWidth={isPathActive(["notes", "task"]) ? "2" : "1.6"}
               strokeLinecap="round"
             />
             <circle
-              cx="484"
-              cy="166"
+              cx={taskRight.x}
+              cy={taskRight.y}
               r="3.8"
               className={portFillClass}
               stroke={isPathActive(["notes", "task"]) ? "#38BDF8" : "#8CC2F8"}
@@ -466,9 +898,9 @@ const ProjectWorkflowTree = React.forwardRef<HTMLDivElement, ProjectWorkflowTree
 
             {/* 3. Task -> Subtasks dashed curved S-arrow */}
             <motion.path
-              d="M 360 227 C 358 260, 326 278, 294 268 C 254 256, 198 242, 188 296"
-              stroke={isPathActive(["subtasks", "subtask-1"]) ? "#38BDF8" : "#8CC2F8"}
-              strokeWidth={isPathActive(["subtasks", "subtask-1"]) ? "2" : "1.6"}
+              d={dashedBranch.path}
+              stroke={isPathActive(["subtasks", "subtask1", "task"]) ? "#38BDF8" : "#8CC2F8"}
+              strokeWidth={isPathActive(["subtasks", "subtask1", "task"]) ? "2" : "1.6"}
               strokeDasharray="4.5 4.5"
               strokeLinecap="round"
               animate={motionEnabled ? { strokeDashoffset: [0, -18] } : undefined}
@@ -479,220 +911,283 @@ const ProjectWorkflowTree = React.forwardRef<HTMLDivElement, ProjectWorkflowTree
               }
             />
             <path
-              d="M 183.5 290.5 L 188 297.5 L 193.5 291.5"
-              stroke={isPathActive(["subtasks", "subtask-1"]) ? "#38BDF8" : "#8CC2F8"}
-              strokeWidth={isPathActive(["subtasks", "subtask-1"]) ? "2" : "1.6"}
+              d={dashedBranch.arrow}
+              stroke={isPathActive(["subtasks", "subtask1", "task"]) ? "#38BDF8" : "#8CC2F8"}
+              strokeWidth={isPathActive(["subtasks", "subtask1", "task"]) ? "2" : "1.6"}
               strokeLinecap="round"
               strokeLinejoin="round"
             />
 
-            {/* 4. Task -> Assigned Roles orthogonal rounded branch */}
+            {/* 3B. Subtasks -> Subtask 1 live connector */}
+            {subtasksSeparated && (
+              <>
+                <path
+                  d={subtasksToSubtask1Path}
+                  stroke={isPathActive(["subtasks", "subtask1"]) ? "#38BDF8" : "#8CC2F8"}
+                  strokeWidth={isPathActive(["subtasks", "subtask1"]) ? "2" : "1.6"}
+                  strokeLinecap="round"
+                />
+                <circle
+                  cx={subtasksBottom.x}
+                  cy={subtasksBottom.y}
+                  r="3.8"
+                  className={portFillClass}
+                  stroke={isPathActive(["subtasks", "subtask1"]) ? "#38BDF8" : "#8CC2F8"}
+                  strokeWidth="1.75"
+                />
+              </>
+            )}
+
+            {/* 4. Task -> Assigned Roles orthogonal branch */}
             <path
-              d="M 360 227 L 360 248 Q 360 262 374 262 L 552 262 Q 566 262 566 276 L 566 290"
-              stroke={isPathActive(["pm", "ux"]) ? "#38BDF8" : "#8CC2F8"}
-              strokeWidth={isPathActive(["pm", "ux"]) ? "2" : "1.6"}
+              d={taskToRolesPath}
+              stroke={isPathActive(["rolesPill", "pm", "ux", "task"]) ? "#38BDF8" : "#8CC2F8"}
+              strokeWidth={isPathActive(["rolesPill", "pm", "ux", "task"]) ? "2" : "1.6"}
               strokeLinecap="round"
               strokeLinejoin="round"
             />
             {motionEnabled && (
               <motion.path
-                d="M 360 227 L 360 248 Q 360 262 374 262 L 552 262 Q 566 262 566 276 L 566 290"
+                d={taskToRolesPath}
                 stroke="#38BDF8"
                 strokeWidth="2.2"
                 strokeLinecap="round"
                 strokeDasharray="24 260"
                 animate={{ strokeDashoffset: [284, 0] }}
                 transition={{ duration: 3.2, repeat: Infinity, ease: "easeInOut" }}
-                opacity={0.7}
+                opacity={0.72}
               />
             )}
 
-            {/* Shared bottom port circle on Task Card */}
             <circle
-              cx="360"
-              cy="227"
+              cx={taskBottom.x}
+              cy={taskBottom.y}
               r="3.8"
               className={portFillClass}
               stroke={
-                isPathActive(["subtasks", "subtask-1", "pm", "ux"])
+                isPathActive(["subtasks", "subtask1", "rolesPill", "pm", "ux", "task"])
                   ? "#38BDF8"
                   : "#8CC2F8"
               }
               strokeWidth="1.75"
             />
 
-            {/* 5. Assigned Roles pill -> Project Manager */}
+            {/* 5. Assigned Roles -> Project Manager */}
             <path
-              d="M 566 322 L 566 340"
-              stroke={isPathActive(["pm", "ux"]) ? "#38BDF8" : "#8CC2F8"}
-              strokeWidth={isPathActive(["pm", "ux"]) ? "2" : "1.6"}
+              d={rolesToPmPath}
+              stroke={isPathActive(["rolesPill", "pm", "ux"]) ? "#38BDF8" : "#8CC2F8"}
+              strokeWidth={isPathActive(["rolesPill", "pm", "ux"]) ? "2" : "1.6"}
               strokeLinecap="round"
             />
 
             {/* 6. Project Manager -> UX Designer */}
             <path
-              d="M 566 450 L 566 472"
-              stroke={isPathActive(["ux"]) ? "#38BDF8" : "#8CC2F8"}
-              strokeWidth={isPathActive(["ux"]) ? "2" : "1.6"}
+              d={pmToUxPath}
+              stroke={isPathActive(["pm", "ux"]) ? "#38BDF8" : "#8CC2F8"}
+              strokeWidth={isPathActive(["pm", "ux"]) ? "2" : "1.6"}
               strokeLinecap="round"
             />
             <circle
-              cx="566"
-              cy="450"
+              cx={pmBottom.x}
+              cy={pmBottom.y}
               r="3.8"
               className={portFillClass}
-              stroke={isPathActive(["ux"]) ? "#38BDF8" : "#8CC2F8"}
+              stroke={isPathActive(["pm", "ux"]) ? "#38BDF8" : "#8CC2F8"}
               strokeWidth="1.75"
             />
           </svg>
 
           {/* NODE 1: CLIENT PILL */}
-          <div className="absolute left-[216px] top-[16px] w-[288px]">
-            <motion.button
-              type="button"
-              onClick={() => handleSelect("client")}
-              whileHover={interactive && !shouldReduceMotion ? { y: -2 } : undefined}
-              transition={springTransition}
-              aria-pressed={activeNode === "client"}
-              className={cn(
-                "flex h-[56px] w-full items-center justify-between rounded-[16px] border px-4 text-left transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-400",
-                surfaceClass,
-                activeNode === "client" && activeRingClass,
-                interactive ? "cursor-pointer" : "cursor-default"
-              )}
-            >
-              <div className="flex items-center gap-2">
-                <span className={cn("text-[13px] font-medium", mutedClass)}>
-                  Client:
-                </span>
-                <span
-                  className="flex h-[24px] w-[24px] shrink-0 items-center justify-center rounded-[7px] bg-gradient-to-br from-[#6D73F5] to-[#4F46E5] shadow-[0_2px_8px_rgba(79,70,229,0.35)]"
-                  aria-hidden="true"
-                >
-                  <svg viewBox="0 0 24 24" className="h-[13px] w-[13px]" fill="none">
-                    <path
-                      d="M13.2 3.5 6.8 13h4.5l-.6 7.5 6.5-9.5h-4.5l.5-7.5Z"
-                      fill="#FFFFFF"
-                    />
-                  </svg>
-                </span>
-                <span className={cn("text-[14.5px] font-semibold tracking-[-0.015em]", titleClass)}>
-                  {clientName}
-                </span>
-              </div>
-              <span className={cn("tabular-nums text-[11px] font-normal opacity-80", mutedClass)}>
-                Onboarded: {onboardedDate}
+          <div
+            role={interactive ? "button" : undefined}
+            tabIndex={interactive ? 0 : undefined}
+            aria-label={`Client ${clientName}, onboarded ${onboardedDate}`}
+            aria-pressed={interactive ? activeNode === "client" : undefined}
+            onPointerDown={(e) => handleNodePointerDown("client", e)}
+            onPointerMove={(e) => handleNodePointerMove("client", e)}
+            onPointerUp={(e) => handleNodePointerUp("client", e)}
+            onPointerCancel={(e) => handleNodePointerUp("client", e)}
+            onClick={(e) => e.stopPropagation()}
+            onKeyDown={(e) => {
+              if (interactive && (e.key === "Enter" || e.key === " ")) {
+                e.preventDefault();
+                toggleSelect("client");
+              }
+            }}
+            style={{
+              left: positions.client.x,
+              top: positions.client.y,
+              width: NODE_SIZES.client.w,
+              height: NODE_SIZES.client.h,
+              zIndex: zOrders.client,
+              touchAction: "none",
+            }}
+            className={cn(
+              "absolute flex items-center justify-between rounded-[16px] border px-4 text-left transition-shadow duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-400",
+              surfaceClass,
+              activeNode === "client" && activeRingClass,
+              draggingId === "client" && draggingClass,
+              interactive ? "cursor-grab active:cursor-grabbing" : "cursor-default"
+            )}
+          >
+            <div className="flex items-center gap-2">
+              <span className={cn("text-[13px] font-medium tracking-[-0.01em]", mutedClass)}>
+                Client:
               </span>
-            </motion.button>
+              <span
+                className="flex h-[24px] w-[24px] shrink-0 items-center justify-center rounded-[7px] bg-gradient-to-br from-[#6D73F5] to-[#4F46E5] shadow-[0_2px_8px_rgba(79,70,229,0.34)]"
+                aria-hidden="true"
+              >
+                <svg viewBox="0 0 24 24" className="h-[13px] w-[13px]" fill="none">
+                  <path
+                    d="M13.2 3.5 6.8 13h4.5l-.6 7.5 6.5-9.5h-4.5l.5-7.5Z"
+                    fill="#FFFFFF"
+                  />
+                </svg>
+              </span>
+              <span className={cn("text-[14.5px] font-semibold tracking-[-0.025em]", titleClass)}>
+                {clientName}
+              </span>
+            </div>
+            <span className={cn("tabular-nums whitespace-nowrap text-[11px] font-medium tracking-[-0.01em]", subtleMutedClass)}>
+              Onboarded: {onboardedDate}
+            </span>
           </div>
 
           {/* NODE 2: MAIN TASK CARD */}
-          <div className="absolute left-[236px] top-[106px] w-[248px]">
-            <motion.div
-              role={interactive ? "button" : undefined}
-              tabIndex={interactive ? 0 : undefined}
-              aria-pressed={interactive ? activeNode === "task" : undefined}
-              onClick={() => handleSelect("task")}
-              onKeyDown={(e) => {
-                if (interactive && (e.key === "Enter" || e.key === " ")) {
-                  e.preventDefault();
-                  handleSelect("task");
-                }
-              }}
-              whileHover={interactive && !shouldReduceMotion ? { y: -2 } : undefined}
-              transition={springTransition}
-              className={cn(
-                "flex h-[121px] w-full flex-col justify-between rounded-[18px] border px-[18px] py-[15px] text-left transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-400",
-                surfaceClass,
-                activeNode === "task" && activeRingClass,
-                interactive ? "cursor-pointer" : "cursor-default"
-              )}
-            >
-              <div>
-                <h3 className={cn("text-[15px] font-semibold leading-snug tracking-[-0.015em]", titleClass)}>
-                  Task: {taskTitle}
-                </h3>
-                <div className="mt-1.5 flex items-center gap-2">
-                  <span className={cn("text-[11.5px] font-normal", mutedClass)}>
-                    Assigned to
-                  </span>
-                  <div className="flex items-center gap-1">
-                    <IllustratedAvatar variant="pm" size="sm" />
-                    <IllustratedAvatar variant="ux" size="sm" />
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-1.5">
-                <TechStackBadge isDark={isDark} isLight={isLight} />
+          <div
+            role={interactive ? "button" : undefined}
+            tabIndex={interactive ? 0 : undefined}
+            aria-label={`Task: ${taskTitle}`}
+            aria-pressed={interactive ? activeNode === "task" : undefined}
+            onPointerDown={(e) => handleNodePointerDown("task", e)}
+            onPointerMove={(e) => handleNodePointerMove("task", e)}
+            onPointerUp={(e) => handleNodePointerUp("task", e)}
+            onPointerCancel={(e) => handleNodePointerUp("task", e)}
+            onClick={(e) => e.stopPropagation()}
+            onKeyDown={(e) => {
+              if (interactive && (e.key === "Enter" || e.key === " ")) {
+                e.preventDefault();
+                toggleSelect("task");
+              }
+            }}
+            style={{
+              left: positions.task.x,
+              top: positions.task.y,
+              width: NODE_SIZES.task.w,
+              height: NODE_SIZES.task.h,
+              zIndex: zOrders.task,
+              touchAction: "none",
+            }}
+            className={cn(
+              "absolute flex flex-col justify-between rounded-[18px] border px-[18px] py-[15px] text-left transition-shadow duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-400",
+              surfaceClass,
+              activeNode === "task" && activeRingClass,
+              draggingId === "task" && draggingClass,
+              interactive ? "cursor-grab active:cursor-grabbing" : "cursor-default"
+            )}
+          >
+            <div>
+              <h3 className={cn("text-[15px] font-semibold leading-snug tracking-[-0.025em]", titleClass)}>
+                Task: {taskTitle}
+              </h3>
+              <div className="mt-1.5 flex items-center gap-2">
+                <span className={cn("text-[11.5px] font-medium tracking-[-0.01em]", mutedClass)}>
+                  Assigned to
+                </span>
                 <div className="flex items-center gap-1">
-                  <TechIcon tool="pulse-chat" interactive={interactive} isDark={isDark} isLight={isLight} />
-                  <TechIcon tool="relay-mail" interactive={interactive} isDark={isDark} isLight={isLight} />
-                  <TechIcon tool="vector-studio" interactive={interactive} isDark={isDark} isLight={isLight} />
-                  <TechIcon tool="motion-canvas" interactive={interactive} isDark={isDark} isLight={isLight} />
-                  <TechIcon tool="sprint-up" interactive={interactive} isDark={isDark} isLight={isLight} />
+                  <IllustratedAvatar variant="pm" size="sm" />
+                  <IllustratedAvatar variant="ux" size="sm" />
                 </div>
               </div>
-            </motion.div>
+            </div>
+
+            <div className="flex items-center gap-1.5">
+              <TechStackBadge isDark={isDark} isLight={isLight} />
+              <div className="flex items-center gap-1">
+                <TechIcon tool="pulse-chat" interactive={interactive} isDark={isDark} isLight={isLight} />
+                <TechIcon tool="relay-mail" interactive={interactive} isDark={isDark} isLight={isLight} />
+                <TechIcon tool="vector-studio" interactive={interactive} isDark={isDark} isLight={isLight} />
+                <TechIcon tool="motion-canvas" interactive={interactive} isDark={isDark} isLight={isLight} />
+                <TechIcon tool="sprint-up" interactive={interactive} isDark={isDark} isLight={isLight} />
+              </div>
+            </div>
           </div>
 
           {/* NODE 3: CLIENT NOTES PILL */}
-          <div className="absolute left-[516px] top-[138px] w-[228px]">
-            <motion.button
-              type="button"
-              onClick={() => handleSelect("notes")}
-              whileHover={interactive && !shouldReduceMotion ? { x: 2 } : undefined}
-              transition={springTransition}
-              aria-pressed={activeNode === "notes"}
+          <div
+            role={interactive ? "button" : undefined}
+            tabIndex={interactive ? 0 : undefined}
+            aria-label={`Client Notes, updated ${notesUpdated}`}
+            aria-pressed={interactive ? activeNode === "notes" : undefined}
+            onPointerDown={(e) => handleNodePointerDown("notes", e)}
+            onPointerMove={(e) => handleNodePointerMove("notes", e)}
+            onPointerUp={(e) => handleNodePointerUp("notes", e)}
+            onPointerCancel={(e) => handleNodePointerUp("notes", e)}
+            onClick={(e) => e.stopPropagation()}
+            onKeyDown={(e) => {
+              if (interactive && (e.key === "Enter" || e.key === " ")) {
+                e.preventDefault();
+                toggleSelect("notes");
+              }
+            }}
+            style={{
+              left: positions.notes.x,
+              top: positions.notes.y,
+              width: NODE_SIZES.notes.w,
+              height: NODE_SIZES.notes.h,
+              zIndex: activeNode === "notes" ? 45 : zOrders.notes,
+              touchAction: "none",
+            }}
+            className={cn(
+              "absolute flex items-center gap-2.5 rounded-[16px] border px-3.5 text-left transition-shadow duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-400",
+              surfaceClass,
+              activeNode === "notes" && activeRingClass,
+              draggingId === "notes" && draggingClass,
+              interactive ? "cursor-grab active:cursor-grabbing" : "cursor-default"
+            )}
+          >
+            <span
               className={cn(
-                "flex h-[56px] w-full items-center gap-2.5 rounded-[16px] border px-3.5 text-left transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-400",
-                surfaceClass,
-                activeNode === "notes" && activeRingClass,
-                interactive ? "cursor-pointer" : "cursor-default"
+                "flex h-[24px] w-[24px] shrink-0 items-center justify-center rounded-[6.5px]",
+                isDark
+                  ? "bg-zinc-700"
+                  : isLight
+                    ? "bg-[#C7CCD6]"
+                    : "bg-[#C7CCD6] dark:bg-zinc-700"
               )}
+              aria-hidden="true"
             >
-              <span
-                className={cn(
-                  "flex h-[24px] w-[24px] shrink-0 items-center justify-center rounded-[6.5px]",
-                  isDark
-                    ? "bg-zinc-700"
-                    : isLight
-                      ? "bg-[#C7CCD6]"
-                      : "bg-[#C7CCD6] dark:bg-zinc-700"
-                )}
-                aria-hidden="true"
-              >
-                <span className="h-[10px] w-[10px] rounded-full border-[2px] border-white" />
-              </span>
-              <span className={cn("whitespace-nowrap text-[13.5px] font-medium tracking-[-0.01em]", titleClass)}>
-                Client Notes
-              </span>
-              <span
-                className={cn(
-                  "h-4 w-px shrink-0",
-                  isDark ? "bg-zinc-800" : isLight ? "bg-slate-200/80" : "bg-slate-200/80 dark:bg-zinc-800"
-                )}
-                aria-hidden="true"
-              />
-              <span className={cn("truncate text-[11px] opacity-75", mutedClass)}>
-                Updated: {notesUpdated}
-              </span>
-            </motion.button>
+              <span className="h-[10px] w-[10px] rounded-full border-[2px] border-white" />
+            </span>
+            <span className={cn("whitespace-nowrap text-[13.5px] font-semibold tracking-[-0.02em]", titleClass)}>
+              Client Notes
+            </span>
+            <span
+              className={cn(
+                "h-4 w-px shrink-0",
+                isDark ? "bg-zinc-800" : isLight ? "bg-slate-200/80" : "bg-slate-200/80 dark:bg-zinc-800"
+              )}
+              aria-hidden="true"
+            />
+            <span className={cn("whitespace-nowrap text-[11px] font-medium tracking-[-0.01em]", subtleMutedClass)}>
+              Updated: {notesUpdated}
+            </span>
 
             <AnimatePresence>
-              {activeNode === "notes" && interactive && (
+              {activeNode === "notes" && interactive && draggingId !== "notes" && (
                 <motion.div
                   initial={{ opacity: 0, y: -4, scale: 0.97 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: -4, scale: 0.97 }}
                   transition={springTransition}
                   className={cn(
-                    "mt-2 rounded-xl border p-3 text-[11.5px] leading-relaxed",
+                    "pointer-events-none absolute left-0 top-[64px] w-[258px] rounded-xl border p-3 text-[11.5px] leading-relaxed",
                     surfaceClass,
                     mutedClass
                   )}
                 >
-                  <div className={cn("mb-1 flex items-center gap-1.5 text-[11px] font-semibold", titleClass)}>
+                  <div className={cn("mb-1 flex items-center gap-1.5 text-[11px] font-semibold tracking-[-0.01em]", titleClass)}>
                     <Sparkles className="h-3 w-3 text-sky-500" />
                     Latest Brief Note
                   </div>
@@ -702,122 +1197,114 @@ const ProjectWorkflowTree = React.forwardRef<HTMLDivElement, ProjectWorkflowTree
             </AnimatePresence>
           </div>
 
-          {/* NODE 4: LEFT BRANCH — TILTED INTERACTIVE SUBTASK STACK */}
-          <div className="absolute left-[38px] top-[304px] h-[220px] w-[285px]">
-            <motion.div
-              role={interactive ? "button" : undefined}
-              tabIndex={interactive ? 0 : undefined}
-              aria-label="Subtasks list card"
-              onClick={() => {
-                if (!interactive) return;
-                setFrontSubtask("list");
-                handleSelect("subtasks");
-              }}
-              onKeyDown={(e) => {
-                if (interactive && (e.key === "Enter" || e.key === " ")) {
-                  e.preventDefault();
-                  setFrontSubtask("list");
-                  handleSelect("subtasks");
-                }
-              }}
-              drag={interactive && !shouldReduceMotion}
-              dragSnapToOrigin
-              dragElastic={0.16}
-              animate={{
-                rotate: frontSubtask === "list" ? 3.2 : 6.2,
-                y: frontSubtask === "list" ? -6 : 0,
-                scale: frontSubtask === "list" ? 1.02 : 0.99,
-                zIndex: frontSubtask === "list" ? 30 : 10,
-              }}
-              whileHover={
-                interactive && !shouldReduceMotion
-                  ? { y: frontSubtask === "list" ? -8 : -4 }
-                  : undefined
+          {/* NODE 4A: SUBTASKS LIST CARD */}
+          <div
+            role={interactive ? "button" : undefined}
+            tabIndex={interactive ? 0 : undefined}
+            aria-label="Subtasks: List Below"
+            aria-pressed={interactive ? activeNode === "subtasks" : undefined}
+            onPointerDown={(e) => handleNodePointerDown("subtasks", e)}
+            onPointerMove={(e) => handleNodePointerMove("subtasks", e)}
+            onPointerUp={(e) => handleNodePointerUp("subtasks", e)}
+            onPointerCancel={(e) => handleNodePointerUp("subtasks", e)}
+            onClick={(e) => e.stopPropagation()}
+            onKeyDown={(e) => {
+              if (interactive && (e.key === "Enter" || e.key === " ")) {
+                e.preventDefault();
+                toggleSelect("subtasks");
               }
-              transition={springTransition}
-              className={cn(
-                "absolute left-0 top-0 w-[262px] rounded-[18px] border px-[18px] py-[15px] text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-400",
-                surfaceClass,
-                activeNode === "subtasks" && activeRingClass,
-                interactive ? "cursor-grab active:cursor-grabbing" : "cursor-default"
-              )}
-            >
-              {interactive && (
-                <span
-                  aria-hidden="true"
-                  className="pointer-events-none absolute -top-3.5 right-6 flex h-7 w-7 items-center justify-center drop-shadow-sm"
-                >
-                  <svg viewBox="0 0 28 28" className="h-[24px] w-[24px]" fill="none">
-                    <path
-                      d="M9.5 14.5v-5a1.6 1.6 0 0 1 3.2 0v3.2m0-4.4a1.6 1.6 0 0 1 3.2 0v4.4m0-3.5a1.6 1.6 0 0 1 3.2 0v4.2m0-2.4a1.6 1.6 0 0 1 3.1.5v4.3c0 4-2.8 6.8-6.8 6.8h-1.6c-2.8 0-4.6-1.4-6-3.7l-1.9-3.1a1.5 1.5 0 0 1 2.4-1.8l1.2 1.3v-3.2Z"
-                      fill="#FFFFFF"
-                      stroke="#111827"
-                      strokeWidth="1.8"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
-                </span>
-              )}
+            }}
+            style={{
+              left: positions.subtasks.x,
+              top: positions.subtasks.y,
+              width: NODE_SIZES.subtasks.w,
+              height: NODE_SIZES.subtasks.h,
+              zIndex: zOrders.subtasks,
+              touchAction: "none",
+              transform: `rotate(${draggingId === "subtasks" ? 1.5 : subtaskMoved ? 0 : 5.2}deg)`,
+            }}
+            className={cn(
+              "absolute flex flex-col justify-center rounded-[18px] border px-[18px] py-[14px] text-left transition-transform duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-400",
+              surfaceClass,
+              activeNode === "subtasks" && activeRingClass,
+              draggingId === "subtasks" && draggingClass,
+              interactive ? "cursor-grab active:cursor-grabbing" : "cursor-default"
+            )}
+          >
+            {interactive && !hasMoved && (
+              <span
+                aria-hidden="true"
+                className="pointer-events-none absolute -top-3.5 right-6 flex h-7 w-7 items-center justify-center drop-shadow-sm"
+              >
+                <svg viewBox="0 0 28 28" className="h-[23px] w-[23px]" fill="none">
+                  <path
+                    d="M9.5 14.5v-5a1.6 1.6 0 0 1 3.2 0v3.2m0-4.4a1.6 1.6 0 0 1 3.2 0v4.4m0-3.5a1.6 1.6 0 0 1 3.2 0v4.2m0-2.4a1.6 1.6 0 0 1 3.1.5v4.3c0 4-2.8 6.8-6.8 6.8h-1.6c-2.8 0-4.6-1.4-6-3.7l-1.9-3.1a1.5 1.5 0 0 1 2.4-1.8l1.2 1.3v-3.2Z"
+                    fill="#FFFFFF"
+                    stroke="#111827"
+                    strokeWidth="1.8"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </span>
+            )}
 
-              <h4 className={cn("text-[14.5px] font-semibold tracking-[-0.015em]", titleClass)}>
-                Subtasks: List Below
-              </h4>
-              <div className="mt-1.5 flex items-center gap-2">
-                <span className={cn("text-[11.5px]", mutedClass)}>Assigned to</span>
-                <div className="flex items-center gap-1">
-                  <IllustratedAvatar variant="pm" size="sm" />
-                  <IllustratedAvatar variant="ux" size="sm" />
-                  <IllustratedAvatar variant="dev" size="sm" />
-                </div>
+            <h4 className={cn("text-[14.5px] font-semibold tracking-[-0.025em]", titleClass)}>
+              Subtasks: List Below
+            </h4>
+            <div className="mt-1.5 flex items-center gap-2">
+              <span className={cn("text-[11.5px] font-medium tracking-[-0.01em]", mutedClass)}>
+                Assigned to
+              </span>
+              <div className="flex items-center gap-1">
+                <IllustratedAvatar variant="pm" size="sm" />
+                <IllustratedAvatar variant="ux" size="sm" />
+                <IllustratedAvatar variant="dev" size="sm" />
               </div>
-              <div className="mt-4 h-7" aria-hidden="true" />
-            </motion.div>
+            </div>
+          </div>
 
-            <motion.div
-              role={interactive ? "button" : undefined}
-              tabIndex={interactive ? 0 : undefined}
-              aria-label={`Subtask 1: ${subtaskTitle}`}
-              onClick={() => {
-                if (!interactive) return;
-                setFrontSubtask("wireframe");
-                handleSelect("subtask-1");
-              }}
-              onKeyDown={(e) => {
-                if (interactive && (e.key === "Enter" || e.key === " ")) {
-                  e.preventDefault();
-                  setFrontSubtask("wireframe");
-                  handleSelect("subtask-1");
-                }
-              }}
-              drag={interactive && !shouldReduceMotion}
-              dragSnapToOrigin
-              dragElastic={0.18}
-              animate={{
-                rotate: frontSubtask === "wireframe" ? 6.4 : 4.2,
-                y: frontSubtask === "wireframe" ? 0 : 12,
-                scale: frontSubtask === "wireframe" ? 1 : 0.97,
-                zIndex: frontSubtask === "wireframe" ? 25 : 15,
-              }}
-              whileHover={
-                interactive && !shouldReduceMotion
-                  ? { y: frontSubtask === "wireframe" ? -3 : 8 }
-                  : undefined
+          {/* NODE 4B: SUBTASK 1 CARD */}
+          <div
+            role={interactive ? "button" : undefined}
+            tabIndex={interactive ? 0 : undefined}
+            aria-label={`Subtask 1: ${subtaskTitle}`}
+            aria-pressed={interactive ? activeNode === "subtask1" : undefined}
+            onPointerDown={(e) => handleNodePointerDown("subtask1", e)}
+            onPointerMove={(e) => handleNodePointerMove("subtask1", e)}
+            onPointerUp={(e) => handleNodePointerUp("subtask1", e)}
+            onPointerCancel={(e) => handleNodePointerUp("subtask1", e)}
+            onClick={(e) => e.stopPropagation()}
+            onKeyDown={(e) => {
+              if (interactive && (e.key === "Enter" || e.key === " ")) {
+                e.preventDefault();
+                toggleSelect("subtask1");
               }
-              transition={springTransition}
-              className={cn(
-                "absolute left-[10px] top-[68px] w-[244px] rounded-[18px] border px-[17px] py-[14px] text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-400",
-                surfaceClass,
-                activeNode === "subtask-1" && activeRingClass,
-                interactive ? "cursor-grab active:cursor-grabbing" : "cursor-default"
-              )}
-            >
+            }}
+            style={{
+              left: positions.subtask1.x,
+              top: positions.subtask1.y,
+              width: NODE_SIZES.subtask1.w,
+              height: NODE_SIZES.subtask1.h,
+              zIndex: zOrders.subtask1,
+              touchAction: "none",
+              transform: `rotate(${draggingId === "subtask1" ? 1.5 : subtask1Moved ? 0 : 6.0}deg)`,
+            }}
+            className={cn(
+              "absolute flex flex-col justify-between rounded-[18px] border px-[17px] py-[14px] text-left transition-transform duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-400",
+              surfaceClass,
+              activeNode === "subtask1" && activeRingClass,
+              draggingId === "subtask1" && draggingClass,
+              interactive ? "cursor-grab active:cursor-grabbing" : "cursor-default"
+            )}
+          >
+            <div>
               <div className="flex items-start justify-between gap-2">
                 <h4
                   className={cn(
-                    "tabular-nums text-[14px] font-semibold leading-snug tracking-[-0.015em]",
+                    "tabular-nums text-[14px] font-semibold leading-snug tracking-[-0.025em]",
                     titleClass,
-                    wireframeDone && "line-through opacity-60"
+                    wireframeDone && "line-through opacity-55"
                   )}
                 >
                   Subtask 1: {subtaskTitle}
@@ -825,13 +1312,14 @@ const ProjectWorkflowTree = React.forwardRef<HTMLDivElement, ProjectWorkflowTree
                 {interactive && (
                   <button
                     type="button"
+                    data-no-drag="true"
                     aria-label={wireframeDone ? "Mark subtask incomplete" : "Mark subtask complete"}
                     onClick={(e) => {
                       e.stopPropagation();
                       setWireframeDone((prev) => !prev);
                     }}
                     className={cn(
-                      "mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border transition-colors",
+                      "mt-0.5 flex h-[17px] w-[17px] shrink-0 items-center justify-center rounded-full border transition-colors",
                       wireframeDone
                         ? "border-emerald-500 bg-emerald-500 text-white"
                         : isDark
@@ -847,128 +1335,206 @@ const ProjectWorkflowTree = React.forwardRef<HTMLDivElement, ProjectWorkflowTree
               </div>
 
               <div className="mt-1.5 flex items-center gap-2">
-                <span className={cn("text-[11px]", mutedClass)}>Assigned to</span>
+                <span className={cn("text-[11px] font-medium tracking-[-0.01em]", mutedClass)}>
+                  Assigned to
+                </span>
                 <IllustratedAvatar variant="ux" size="sm" />
               </div>
+            </div>
 
-              <div className="mt-3.5 flex items-center gap-1.5">
-                <TechStackBadge isDark={isDark} isLight={isLight} />
-                <div className="flex items-center gap-1">
-                  <TechIcon tool="pulse-chat" interactive={interactive} isDark={isDark} isLight={isLight} />
-                  <TechIcon tool="relay-mail" interactive={interactive} isDark={isDark} isLight={isLight} />
-                  <TechIcon tool="vector-studio" interactive={interactive} isDark={isDark} isLight={isLight} />
-                  <TechIcon tool="motion-canvas" interactive={interactive} isDark={isDark} isLight={isLight} />
-                </div>
+            <div className="flex items-center gap-1.5">
+              <TechStackBadge isDark={isDark} isLight={isLight} />
+              <div className="flex items-center gap-1">
+                <TechIcon tool="pulse-chat" interactive={interactive} isDark={isDark} isLight={isLight} />
+                <TechIcon tool="relay-mail" interactive={interactive} isDark={isDark} isLight={isLight} />
+                <TechIcon tool="vector-studio" interactive={interactive} isDark={isDark} isLight={isLight} />
+                <TechIcon tool="motion-canvas" interactive={interactive} isDark={isDark} isLight={isLight} />
               </div>
-            </motion.div>
-          </div>
-
-          {/* NODE 5: ASSIGNED ROLES PILL */}
-          <div className="absolute left-[506px] top-[290px] w-[120px] text-center">
-            <div
-              className={cn(
-                "inline-flex h-[32px] items-center justify-center rounded-[10px] border px-3.5 text-[11px] font-medium tracking-[-0.01em]",
-                surfaceClass,
-                mutedClass
-              )}
-            >
-              Assigned Roles
             </div>
           </div>
 
-          {/* NODE 6: PROJECT MANAGER ROLE CARD */}
-          <div className="absolute left-[442px] top-[340px] w-[248px]">
-            <motion.div
-              role={interactive ? "button" : undefined}
-              tabIndex={interactive ? 0 : undefined}
-              aria-pressed={interactive ? activeNode === "pm" : undefined}
-              onClick={() => handleSelect("pm")}
-              onKeyDown={(e) => {
-                if (interactive && (e.key === "Enter" || e.key === " ")) {
-                  e.preventDefault();
-                  handleSelect("pm");
-                }
-              }}
-              whileHover={interactive && !shouldReduceMotion ? { y: -2 } : undefined}
-              transition={springTransition}
-              className={cn(
-                "flex h-[110px] w-full flex-col justify-between rounded-[18px] border px-[17px] py-[14px] text-left transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-400",
-                surfaceClass,
-                activeNode === "pm" && activeRingClass,
-                interactive ? "cursor-pointer" : "cursor-default"
-              )}
-            >
-              <div className="flex items-center gap-3">
-                <IllustratedAvatar variant="pm" size="lg" />
-                <div className="min-w-0">
-                  <h4 className={cn("truncate text-[14.5px] font-semibold leading-tight tracking-[-0.015em]", titleClass)}>
-                    Project Manager
-                  </h4>
-                  <p className={cn("mt-0.5 truncate text-[11.5px]", mutedClass)}>
-                    Managing Project Progress
-                  </p>
-                </div>
-              </div>
+          {/* NODE 5: ASSIGNED ROLES PILL */}
+          <div
+            role={interactive ? "button" : undefined}
+            tabIndex={interactive ? 0 : undefined}
+            aria-label="Assigned Roles"
+            onPointerDown={(e) => handleNodePointerDown("rolesPill", e)}
+            onPointerMove={(e) => handleNodePointerMove("rolesPill", e)}
+            onPointerUp={(e) => handleNodePointerUp("rolesPill", e)}
+            onPointerCancel={(e) => handleNodePointerUp("rolesPill", e)}
+            onClick={(e) => e.stopPropagation()}
+            onKeyDown={(e) => {
+              if (interactive && (e.key === "Enter" || e.key === " ")) {
+                e.preventDefault();
+                toggleSelect("rolesPill");
+              }
+            }}
+            style={{
+              left: positions.rolesPill.x,
+              top: positions.rolesPill.y,
+              width: NODE_SIZES.rolesPill.w,
+              height: NODE_SIZES.rolesPill.h,
+              zIndex: zOrders.rolesPill,
+              touchAction: "none",
+            }}
+            className={cn(
+              "absolute flex items-center justify-center rounded-[10px] border px-3 text-[11px] font-medium tracking-[-0.01em] transition-shadow duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-400",
+              surfaceClass,
+              mutedClass,
+              activeNode === "rolesPill" && activeRingClass,
+              draggingId === "rolesPill" && draggingClass,
+              interactive ? "cursor-grab active:cursor-grabbing" : "cursor-default"
+            )}
+          >
+            Assigned Roles
+          </div>
 
-              <div className="flex items-center gap-1.5">
-                <TechStackBadge isDark={isDark} isLight={isLight} />
-                <div className="flex items-center gap-1">
-                  <TechIcon tool="pulse-chat" interactive={interactive} isDark={isDark} isLight={isLight} />
-                  <TechIcon tool="relay-mail" interactive={interactive} isDark={isDark} isLight={isLight} />
-                  <TechIcon tool="orbit-tasks" interactive={interactive} isDark={isDark} isLight={isLight} />
-                </div>
+          {/* NODE 6: PROJECT MANAGER ROLE CARD */}
+          <div
+            role={interactive ? "button" : undefined}
+            tabIndex={interactive ? 0 : undefined}
+            aria-label="Project Manager role card"
+            aria-pressed={interactive ? activeNode === "pm" : undefined}
+            onPointerDown={(e) => handleNodePointerDown("pm", e)}
+            onPointerMove={(e) => handleNodePointerMove("pm", e)}
+            onPointerUp={(e) => handleNodePointerUp("pm", e)}
+            onPointerCancel={(e) => handleNodePointerUp("pm", e)}
+            onClick={(e) => e.stopPropagation()}
+            onKeyDown={(e) => {
+              if (interactive && (e.key === "Enter" || e.key === " ")) {
+                e.preventDefault();
+                toggleSelect("pm");
+              }
+            }}
+            style={{
+              left: positions.pm.x,
+              top: positions.pm.y,
+              width: NODE_SIZES.pm.w,
+              height: NODE_SIZES.pm.h,
+              zIndex: zOrders.pm,
+              touchAction: "none",
+            }}
+            className={cn(
+              "absolute flex flex-col justify-between rounded-[18px] border px-[17px] py-[14px] text-left transition-shadow duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-400",
+              surfaceClass,
+              activeNode === "pm" && activeRingClass,
+              draggingId === "pm" && draggingClass,
+              interactive ? "cursor-grab active:cursor-grabbing" : "cursor-default"
+            )}
+          >
+            <div className="flex items-center gap-3">
+              <IllustratedAvatar variant="pm" size="lg" />
+              <div className="min-w-0">
+                <h4 className={cn("truncate text-[14.5px] font-semibold leading-tight tracking-[-0.025em]", titleClass)}>
+                  Project Manager
+                </h4>
+                <p className={cn("mt-0.5 truncate text-[11.5px] font-medium tracking-[-0.01em]", mutedClass)}>
+                  Managing Project Progress
+                </p>
               </div>
-            </motion.div>
+            </div>
+
+            <div className="flex items-center gap-1.5">
+              <TechStackBadge isDark={isDark} isLight={isLight} />
+              <div className="flex items-center gap-1">
+                <TechIcon tool="pulse-chat" interactive={interactive} isDark={isDark} isLight={isLight} />
+                <TechIcon tool="relay-mail" interactive={interactive} isDark={isDark} isLight={isLight} />
+                <TechIcon tool="orbit-tasks" interactive={interactive} isDark={isDark} isLight={isLight} />
+              </div>
+            </div>
           </div>
 
           {/* NODE 7: UX DESIGNER ROLE CARD */}
-          <div className="absolute left-[442px] top-[472px] w-[248px]">
-            <motion.div
-              role={interactive ? "button" : undefined}
-              tabIndex={interactive ? 0 : undefined}
-              aria-pressed={interactive ? activeNode === "ux" : undefined}
-              onClick={() => handleSelect("ux")}
-              onKeyDown={(e) => {
-                if (interactive && (e.key === "Enter" || e.key === " ")) {
-                  e.preventDefault();
-                  handleSelect("ux");
-                }
-              }}
-              whileHover={interactive && !shouldReduceMotion ? { y: -2 } : undefined}
-              transition={springTransition}
-              className={cn(
-                "flex h-[110px] w-full flex-col justify-between rounded-[18px] border px-[17px] py-[14px] text-left transition-opacity duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-400",
-                surfaceClass,
-                activeNode === "ux" ? activeRingClass : "opacity-90 hover:opacity-100",
-                interactive ? "cursor-pointer" : "cursor-default"
-              )}
-            >
-              <div className="flex items-center gap-3">
-                <IllustratedAvatar variant="ux" size="lg" />
-                <div className="min-w-0">
-                  <h4 className={cn("truncate text-[14.5px] font-semibold leading-tight tracking-[-0.015em]", titleClass)}>
-                    UX Designer
-                  </h4>
-                  <p className={cn("mt-0.5 truncate text-[11.5px]", mutedClass)}>
-                    Designing UX Elements
-                  </p>
-                </div>
+          <div
+            role={interactive ? "button" : undefined}
+            tabIndex={interactive ? 0 : undefined}
+            aria-label="UX Designer role card"
+            aria-pressed={interactive ? activeNode === "ux" : undefined}
+            onPointerDown={(e) => handleNodePointerDown("ux", e)}
+            onPointerMove={(e) => handleNodePointerMove("ux", e)}
+            onPointerUp={(e) => handleNodePointerUp("ux", e)}
+            onPointerCancel={(e) => handleNodePointerUp("ux", e)}
+            onClick={(e) => e.stopPropagation()}
+            onKeyDown={(e) => {
+              if (interactive && (e.key === "Enter" || e.key === " ")) {
+                e.preventDefault();
+                toggleSelect("ux");
+              }
+            }}
+            style={{
+              left: positions.ux.x,
+              top: positions.ux.y,
+              width: NODE_SIZES.ux.w,
+              height: NODE_SIZES.ux.h,
+              zIndex: zOrders.ux,
+              touchAction: "none",
+            }}
+            className={cn(
+              "absolute flex flex-col justify-between rounded-[18px] border px-[17px] py-[14px] text-left transition-opacity duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-400",
+              surfaceClass,
+              activeNode === "ux" || draggingId === "ux"
+                ? activeRingClass
+                : "opacity-92 hover:opacity-100",
+              draggingId === "ux" && draggingClass,
+              interactive ? "cursor-grab active:cursor-grabbing" : "cursor-default"
+            )}
+          >
+            <div className="flex items-center gap-3">
+              <IllustratedAvatar variant="ux" size="lg" />
+              <div className="min-w-0">
+                <h4 className={cn("truncate text-[14.5px] font-semibold leading-tight tracking-[-0.025em]", titleClass)}>
+                  UX Designer
+                </h4>
+                <p className={cn("mt-0.5 truncate text-[11.5px] font-medium tracking-[-0.01em]", mutedClass)}>
+                  Designing UX Elements
+                </p>
               </div>
+            </div>
 
-              <div className="flex items-center gap-1.5">
-                <TechStackBadge isDark={isDark} isLight={isLight} />
-                <div className="flex items-center gap-1">
-                  <TechIcon tool="pulse-chat" interactive={interactive} isDark={isDark} isLight={isLight} />
-                  <TechIcon tool="vector-studio" interactive={interactive} isDark={isDark} isLight={isLight} />
-                  <TechIcon tool="motion-canvas" interactive={interactive} isDark={isDark} isLight={isLight} />
-                </div>
+            <div className="flex items-center gap-1.5">
+              <TechStackBadge isDark={isDark} isLight={isLight} />
+              <div className="flex items-center gap-1">
+                <TechIcon tool="pulse-chat" interactive={interactive} isDark={isDark} isLight={isLight} />
+                <TechIcon tool="vector-studio" interactive={interactive} isDark={isDark} isLight={isLight} />
+                <TechIcon tool="motion-canvas" interactive={interactive} isDark={isDark} isLight={isLight} />
               </div>
-            </motion.div>
+            </div>
           </div>
+
+          {/* Subtle Reset Canvas Button */}
+          <AnimatePresence>
+            {interactive && hasMoved && (
+              <motion.button
+                type="button"
+                initial={{ opacity: 0, y: 6, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 6, scale: 0.95 }}
+                transition={{ duration: 0.16 }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleResetLayout();
+                }}
+                aria-label="Reset canvas layout"
+                className={cn(
+                  "absolute bottom-4 left-4 z-50 inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[11px] font-medium tracking-[-0.01em] backdrop-blur-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-400",
+                  surfaceClass,
+                  mutedClass,
+                  isDark
+                    ? "hover:text-zinc-100"
+                    : isLight
+                      ? "hover:text-zinc-900"
+                      : "hover:text-zinc-900 dark:hover:text-zinc-100"
+                )}
+              >
+                <RotateCcw className="h-3 w-3" />
+                Reset Canvas
+              </motion.button>
+            )}
+          </AnimatePresence>
         </div>
 
         {/* MOBILE / COMPACT STACKED TREE (< 768px) */}
-        <div className="relative flex flex-col items-center gap-3 px-2 py-4 md:hidden">
+        <div className="relative flex w-full flex-col items-center gap-3 px-4 py-6 md:hidden">
           <div className={cn("flex w-full max-w-[320px] items-center justify-between rounded-2xl border px-4 py-3", surfaceClass)}>
             <div className="flex items-center gap-2">
               <span className={cn("text-xs font-medium", mutedClass)}>Client:</span>
@@ -977,9 +1543,9 @@ const ProjectWorkflowTree = React.forwardRef<HTMLDivElement, ProjectWorkflowTree
                   <path d="M13.2 3.5 6.8 13h4.5l-.6 7.5 6.5-9.5h-4.5l.5-7.5Z" fill="#FFFFFF" />
                 </svg>
               </span>
-              <span className={cn("text-sm font-semibold", titleClass)}>{clientName}</span>
+              <span className={cn("text-sm font-semibold tracking-[-0.02em]", titleClass)}>{clientName}</span>
             </div>
-            <span className={cn("tabular-nums text-[11px]", mutedClass)}>
+            <span className={cn("tabular-nums text-[11px] font-medium", mutedClass)}>
               Onboarded: {onboardedDate}
             </span>
           </div>
@@ -987,9 +1553,9 @@ const ProjectWorkflowTree = React.forwardRef<HTMLDivElement, ProjectWorkflowTree
           <div className="h-5 w-0.5 bg-sky-300/80" aria-hidden="true" />
 
           <div className={cn("w-full max-w-[320px] rounded-2xl border p-4", surfaceClass)}>
-            <h3 className={cn("text-[15px] font-semibold", titleClass)}>Task: {taskTitle}</h3>
+            <h3 className={cn("text-[15px] font-semibold tracking-[-0.02em]", titleClass)}>Task: {taskTitle}</h3>
             <div className="mt-1.5 flex items-center gap-2">
-              <span className={cn("text-xs", mutedClass)}>Assigned to</span>
+              <span className={cn("text-xs font-medium", mutedClass)}>Assigned to</span>
               <IllustratedAvatar variant="pm" size="sm" />
               <IllustratedAvatar variant="ux" size="sm" />
             </div>
@@ -1008,19 +1574,19 @@ const ProjectWorkflowTree = React.forwardRef<HTMLDivElement, ProjectWorkflowTree
               <span className="flex h-6 w-6 items-center justify-center rounded-md bg-slate-300 dark:bg-zinc-700">
                 <span className="h-2.5 w-2.5 rounded-full border-2 border-white" />
               </span>
-              <span className={cn("text-sm font-medium", titleClass)}>Client Notes</span>
+              <span className={cn("text-sm font-semibold tracking-[-0.02em]", titleClass)}>Client Notes</span>
             </div>
-            <span className={cn("text-[11px]", mutedClass)}>Updated: {notesUpdated}</span>
+            <span className={cn("text-[11px] font-medium", mutedClass)}>Updated: {notesUpdated}</span>
           </div>
 
           <div className="h-5 w-0.5 border-l-2 border-dashed border-sky-300/80" aria-hidden="true" />
 
           <div className={cn("w-full max-w-[320px] rounded-2xl border p-4", surfaceClass)}>
-            <h4 className={cn("tabular-nums text-sm font-semibold", titleClass)}>
+            <h4 className={cn("tabular-nums text-sm font-semibold tracking-[-0.02em]", titleClass)}>
               Subtask 1: {subtaskTitle}
             </h4>
             <div className="mt-1.5 flex items-center gap-2">
-              <span className={cn("text-xs", mutedClass)}>Assigned to</span>
+              <span className={cn("text-xs font-medium", mutedClass)}>Assigned to</span>
               <IllustratedAvatar variant="ux" size="sm" />
             </div>
             <div className="mt-3 flex flex-wrap items-center gap-1.5">
@@ -1041,8 +1607,8 @@ const ProjectWorkflowTree = React.forwardRef<HTMLDivElement, ProjectWorkflowTree
               <div className="flex items-center gap-3">
                 <IllustratedAvatar variant="pm" size="lg" />
                 <div>
-                  <h4 className={cn("text-sm font-semibold", titleClass)}>Project Manager</h4>
-                  <p className={cn("text-xs", mutedClass)}>Managing Project Progress</p>
+                  <h4 className={cn("text-sm font-semibold tracking-[-0.02em]", titleClass)}>Project Manager</h4>
+                  <p className={cn("text-xs font-medium", mutedClass)}>Managing Project Progress</p>
                 </div>
               </div>
               <div className="mt-3 flex items-center gap-1.5">
@@ -1057,8 +1623,8 @@ const ProjectWorkflowTree = React.forwardRef<HTMLDivElement, ProjectWorkflowTree
               <div className="flex items-center gap-3">
                 <IllustratedAvatar variant="ux" size="lg" />
                 <div>
-                  <h4 className={cn("text-sm font-semibold", titleClass)}>UX Designer</h4>
-                  <p className={cn("text-xs", mutedClass)}>Designing UX Elements</p>
+                  <h4 className={cn("text-sm font-semibold tracking-[-0.02em]", titleClass)}>UX Designer</h4>
+                  <p className={cn("text-xs font-medium", mutedClass)}>Designing UX Elements</p>
                 </div>
               </div>
               <div className="mt-3 flex items-center gap-1.5">
