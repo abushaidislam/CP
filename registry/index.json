@@ -1,8 +1,28 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-21T19:29:42.047Z",
-  "totalComponents": 73,
+  "updatedAt": "2026-11-22T06:26:31.913Z",
+  "totalComponents": 75,
   "components": [
+    {
+      "id": "project-workflow-tree",
+      "slug": "project-workflow-tree",
+      "name": "ProjectWorkflowTree",
+      "description": "Interactive client project workflow tree connecting onboarding, tasks, notes, draggable stacked subtasks, and assigned role cards with animated SVG flow connectors.",
+      "category": "Widgets",
+      "isBuiltIn": false,
+      "updatedAt": 1795328791728,
+      "lastRepoSyncAt": 1795328791728,
+      "path": "registry/components/project-workflow-tree",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "manifest.json"
+      ],
+      "dependencies": [
+        "framer-motion",
+        "lucide-react"
+      ]
+    },
     {
       "id": "aurora-cta-footer",
       "slug": "aurora-cta-footer",
@@ -10,15 +30,33 @@
       "description": "A telehealth and SaaS closing CTA section paired with a floating frosted-glass footer over a soft pastel periwinkle-to-cyan aurora backdrop, featuring dual pill CTAs, an inline-validated newsletter form, a 12-spoke SVG starburst brand mark, and a 5-column responsive navigation grid.",
       "category": "Navigation",
       "isBuiltIn": false,
-      "updatedAt": 1795289376946,
-      "lastRepoSyncAt": 1795289381909,
+      "updatedAt": 1795328552872,
+      "lastRepoSyncAt": 1795328556991,
       "path": "registry/components/aurora-cta-footer",
       "files": [
         "component.tsx",
         "default.tsx",
-        "index.css",
-        "manifest.json",
-        "preview.png"
+        "manifest.json"
+      ],
+      "dependencies": [
+        "framer-motion",
+        "lucide-react"
+      ]
+    },
+    {
+      "id": "retainer-solution-showcase",
+      "slug": "retainer-solution-showcase",
+      "name": "RetainerSolutionShowcase",
+      "description": "An agency retainer solution showcase with an interactive PM-tool integration hub, animated SVG connector beams, and three pastel bento feature cards for usage transparency, task collaboration, and a client-facing portal.",
+      "category": "Cards",
+      "isBuiltIn": false,
+      "updatedAt": 1795288487748,
+      "lastRepoSyncAt": 1795288495756,
+      "path": "registry/components/retainer-solution-showcase",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "manifest.json"
       ],
       "dependencies": [
         "framer-motion",
@@ -60,9 +98,7 @@
       "files": [
         "component.tsx",
         "default.tsx",
-        "index.css",
-        "manifest.json",
-        "preview.png"
+        "manifest.json"
       ],
       "dependencies": [
         "framer-motion",
@@ -73,40 +109,16 @@
       "id": "developer-profile-card",
       "slug": "developer-profile-card",
       "name": "DeveloperProfileCard",
-      "description": "A layered dark developer availability profile card cradled in a neon-lime status tray, featuring live availability pulse, clipboard copy feedback, and tactile Framer Motion hover lift.",
+      "description": "A layered dark developer availability profile card cradled in a neon-lime bottom status tray, featuring live availability pulse, clipboard copy feedback, and tactile Framer Motion hover lift.",
       "category": "Cards",
       "isBuiltIn": false,
-      "updatedAt": 1795283159737,
-      "lastRepoSyncAt": 1795283164167,
+      "updatedAt": 1795283347128,
+      "lastRepoSyncAt": 1795283347128,
       "path": "registry/components/developer-profile-card",
       "files": [
         "component.tsx",
         "default.tsx",
-        "index.css",
-        "manifest.json",
-        "preview.png"
-      ],
-      "dependencies": [
-        "framer-motion",
-        "lucide-react"
-      ]
-    },
-    {
-      "id": "task-notification-stack",
-      "slug": "task-notification-stack",
-      "name": "TaskNotificationStack",
-      "description": "A tactile double-bezel stacked task notification widget with swipe-to-act gestures, hover stack fan-out, icon micro-animations, optional undo toast, and subtle Web Audio chimes.",
-      "category": "Widgets",
-      "isBuiltIn": false,
-      "updatedAt": 1795282818071,
-      "lastRepoSyncAt": 1795282823545,
-      "path": "registry/components/task-notification-stack",
-      "files": [
-        "component.tsx",
-        "default.tsx",
-        "index.css",
-        "manifest.json",
-        "preview.png"
+        "manifest.json"
       ],
       "dependencies": [
         "framer-motion",
@@ -133,6 +145,28 @@
       "dependencies": [
         "clsx",
         "tailwind-merge",
+        "framer-motion",
+        "lucide-react"
+      ]
+    },
+    {
+      "id": "task-notification-stack",
+      "slug": "task-notification-stack",
+      "name": "TaskNotificationStack",
+      "description": "A tactile double-bezel stacked task notification widget with spring-animated completion, snooze cycling, and contextual overflow actions.",
+      "category": "Widgets",
+      "isBuiltIn": false,
+      "updatedAt": 1795280922977,
+      "lastRepoSyncAt": 1795280925880,
+      "path": "registry/components/task-notification-stack",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "index.css",
+        "manifest.json",
+        "preview.png"
+      ],
+      "dependencies": [
         "framer-motion",
         "lucide-react"
       ]
