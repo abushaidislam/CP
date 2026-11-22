@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-22T06:44:20.796Z",
+  "updatedAt": "2026-11-22T08:11:49.856Z",
   "totalComponents": 73,
   "components": [
     {
@@ -10,8 +10,8 @@
       "description": "Interactive client project workflow tree connecting onboarding, tasks, notes, draggable stacked subtasks, and assigned role cards with animated SVG flow connectors.",
       "category": "Widgets",
       "isBuiltIn": false,
-      "updatedAt": 1795329855893,
-      "lastRepoSyncAt": 1795329860515,
+      "updatedAt": 1795335103144,
+      "lastRepoSyncAt": 1795335109638,
       "path": "registry/components/project-workflow-tree",
       "files": [
         "component.tsx",
