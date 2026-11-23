@@ -8,7 +8,13 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { motion, useReducedMotion } from "framer-motion";
+import {
+  motion,
+  useMotionTemplate,
+  useMotionValue,
+  useReducedMotion,
+  useSpring,
+} from "framer-motion";
 
 function cn(...classes: Array<string | false | null | undefined>): string {
   return classes.filter(Boolean).join(" ");
@@ -22,12 +28,14 @@ export interface ChromeKeycapButtonProps
     React.ButtonHTMLAttributes<HTMLButtonElement>,
     "children" | "onClick"
   > {
-  /** Text rendered in the 5x7 dot-matrix legend (e.g. "SPACE", "ENTER", "PLAY") */
+  /** Text rendered in the 5x7 dot-matrix legend (e.g. "SPACE", "SEND", "ENTER") */
   label?: string;
   /** Proportional hardware size preset preserving the 1.59:1 keycap geometry */
   size?: ChromeKeycapSize;
-  /** Anodized metal & chrome surface finish */
+  /** Glassmorphic anodized metal & chrome finish */
   finish?: ChromeKeycapFinish;
+  /** Full 360-degree orbital glow rotation duration in seconds (0 pauses orbit) */
+  orbitSpeed?: number;
   /** Enables synthesized Web Audio tactile mechanical switch feedback on press/release */
   soundEnabled?: boolean;
   /** When true, pressing the physical Spacebar actuates the keycap live */
@@ -103,6 +111,7 @@ const SIZE_TOKENS: Record<
     legendMaxWidth: number;
     legendHeight: number;
     pressDepth: number;
+    orbitDiameter: number;
   }
 > = {
   sm: {
@@ -115,6 +124,7 @@ const SIZE_TOKENS: Record<
     legendMaxWidth: 132,
     legendHeight: 26,
     pressDepth: 2,
+    orbitDiameter: 320,
   },
   md: {
     width: 252,
@@ -126,6 +136,7 @@ const SIZE_TOKENS: Record<
     legendMaxWidth: 168,
     legendHeight: 33,
     pressDepth: 2.5,
+    orbitDiameter: 420,
   },
   lg: {
     width: 312,
@@ -137,66 +148,86 @@ const SIZE_TOKENS: Record<
     legendMaxWidth: 210,
     legendHeight: 40,
     pressDepth: 3,
+    orbitDiameter: 520,
   },
 };
 
 const FINISH_TOKENS: Record<
   ChromeKeycapFinish,
   {
-    bezelConic: string;
-    outerRimColor: string;
+    haloConic: string;
+    rimOrbitConic: string;
+    bezelOrbitConic: string;
+    bezelGlassTint: string;
     seamBorder: string;
-    capGradient: string;
+    capGlassGradient: string;
     capHighlight: string;
+    spotlightColor: string;
     dotColor: string;
     dotPressedColor: string;
     dotSpecular: string;
+    dotGlow: string;
   }
 > = {
   silver: {
-    bezelConic:
-      "conic-gradient(from 0deg at 50% 50%, #101116 0deg, #1b1d24 28deg, #686c77 54deg, #ececef 76deg, #ffffff 94deg, #f3f3f5 112deg, #ffffff 134deg, #c6c7cb 152deg, #3c3d42 168deg, #2e2f34 182deg, #43444a 196deg, #b8bac0 214deg, #f5f5f7 228deg, #8b909c 244deg, #595f6d 270deg, #4f5462 296deg, #252832 328deg, #101116 360deg)",
-    outerRimColor:
-      "linear-gradient(135deg, rgba(255,255,255,0.96) 0%, rgba(232,233,238,0.82) 48%, rgba(250,250,252,0.92) 100%)",
+    haloConic:
+      "conic-gradient(from 0deg at 50% 50%, rgba(255,255,255,0) 0deg, rgba(226,236,255,0.68) 46deg, rgba(255,255,255,0.92) 72deg, rgba(186,214,255,0.22) 115deg, rgba(255,255,255,0) 175deg, rgba(210,224,250,0.52) 225deg, rgba(255,255,255,0.78) 252deg, rgba(255,255,255,0) 310deg, rgba(255,255,255,0) 360deg)",
+    rimOrbitConic:
+      "conic-gradient(from 0deg at 50% 50%, rgba(160,168,184,0.38) 0deg, rgba(255,255,255,0.98) 58deg, rgba(224,238,255,0.92) 86deg, rgba(95,102,118,0.42) 142deg, rgba(24,26,32,0.75) 182deg, rgba(220,232,250,0.88) 236deg, rgba(255,255,255,0.98) 264deg, rgba(120,126,140,0.4) 320deg, rgba(160,168,184,0.38) 360deg)",
+    bezelOrbitConic:
+      "conic-gradient(from 0deg at 50% 50%, rgba(18,20,26,0.86) 0deg, rgba(46,50,62,0.72) 28deg, rgba(165,174,190,0.74) 52deg, rgba(242,247,255,0.95) 74deg, rgba(255,255,255,1) 92deg, rgba(218,228,242,0.84) 118deg, rgba(120,126,140,0.68) 148deg, rgba(22,24,30,0.9) 180deg, rgba(58,62,74,0.74) 208deg, rgba(214,224,240,0.86) 236deg, rgba(255,255,255,0.96) 258deg, rgba(132,140,156,0.7) 290deg, rgba(36,40,50,0.8) 328deg, rgba(18,20,26,0.86) 360deg)",
+    bezelGlassTint: "rgba(235, 240, 248, 0.14)",
     seamBorder:
-      "linear-gradient(180deg, #c5c6cc 0%, #31333e 14%, #1c1d24 55%, #050507 100%)",
-    capGradient:
-      "linear-gradient(96deg, #797c84 0%, #878a92 34%, #9b9da4 68%, #b0b1b5 100%)",
+      "linear-gradient(180deg, rgba(255,255,255,0.72) 0%, rgba(56,60,72,0.78) 16%, rgba(16,18,24,0.92) 56%, rgba(4,5,8,0.96) 100%)",
+    capGlassGradient:
+      "linear-gradient(108deg, rgba(138,142,152,0.78) 0%, rgba(162,166,176,0.72) 38%, rgba(188,192,200,0.74) 72%, rgba(214,218,224,0.82) 100%)",
     capHighlight:
-      "inset 0 2px 2.5px rgba(255,255,255,0.48), inset 1px 0 1.5px rgba(255,255,255,0.22), inset -1.5px 0 2px rgba(255,255,255,0.44), inset 0 -2px 3.5px rgba(15,16,22,0.34)",
-    dotColor: "#2d2e33",
-    dotPressedColor: "#17181c",
-    dotSpecular: "rgba(255,255,255,0.32)",
+      "inset 0 1.5px 2px rgba(255,255,255,0.68), inset 1px 0 1.5px rgba(255,255,255,0.28), inset -1.5px 0 2px rgba(255,255,255,0.48), inset 0 -2.5px 4px rgba(12,14,20,0.34)",
+    spotlightColor: "rgba(255, 255, 255, 0.34)",
+    dotColor: "#22242a",
+    dotPressedColor: "#0e1014",
+    dotSpecular: "rgba(255,255,255,0.42)",
+    dotGlow: "rgba(255,255,255,0.28)",
   },
   graphite: {
-    bezelConic:
-      "conic-gradient(from 0deg at 50% 50%, #090a0d 0deg, #13151b 32deg, #3b3f4a 58deg, #a7acb7 82deg, #d7dbe2 96deg, #8f94a0 118deg, #cfd3dc 136deg, #585c67 156deg, #1e2026 176deg, #15161b 192deg, #6b707c 218deg, #b5bac4 232deg, #494e5a 250deg, #2f333d 276deg, #252831 304deg, #12141a 332deg, #090a0d 360deg)",
-    outerRimColor:
-      "linear-gradient(135deg, rgba(215,220,230,0.65) 0%, rgba(92,96,108,0.55) 50%, rgba(190,196,208,0.7) 100%)",
+    haloConic:
+      "conic-gradient(from 0deg at 50% 50%, rgba(120,165,255,0) 0deg, rgba(148,190,255,0.58) 52deg, rgba(235,244,255,0.88) 78deg, rgba(120,165,255,0.18) 124deg, rgba(120,165,255,0) 180deg, rgba(165,198,255,0.44) 232deg, rgba(240,247,255,0.72) 258deg, rgba(120,165,255,0) 316deg, rgba(120,165,255,0) 360deg)",
+    rimOrbitConic:
+      "conic-gradient(from 0deg at 50% 50%, rgba(62,68,82,0.45) 0deg, rgba(210,226,255,0.92) 60deg, rgba(255,255,255,0.98) 84deg, rgba(54,60,72,0.42) 144deg, rgba(10,12,16,0.85) 184deg, rgba(178,200,238,0.82) 238deg, rgba(242,248,255,0.95) 264deg, rgba(48,52,64,0.42) 322deg, rgba(62,68,82,0.45) 360deg)",
+    bezelOrbitConic:
+      "conic-gradient(from 0deg at 50% 50%, rgba(9,10,14,0.92) 0deg, rgba(24,27,36,0.82) 32deg, rgba(84,94,114,0.78) 56deg, rgba(202,216,240,0.94) 78deg, rgba(248,251,255,0.98) 94deg, rgba(114,124,144,0.76) 124deg, rgba(26,29,38,0.86) 158deg, rgba(8,9,13,0.94) 186deg, rgba(64,72,88,0.76) 218deg, rgba(186,202,228,0.88) 244deg, rgba(235,243,255,0.94) 262deg, rgba(68,74,88,0.76) 296deg, rgba(18,20,26,0.88) 332deg, rgba(9,10,14,0.92) 360deg)",
+    bezelGlassTint: "rgba(22, 26, 36, 0.34)",
     seamBorder:
-      "linear-gradient(180deg, #5e626e 0%, #1b1d24 18%, #0e0f14 60%, #020203 100%)",
-    capGradient:
-      "linear-gradient(96deg, #2e3138 0%, #393d46 38%, #474c56 72%, #555b66 100%)",
+      "linear-gradient(180deg, rgba(190,206,232,0.42) 0%, rgba(30,34,44,0.86) 18%, rgba(10,12,16,0.95) 60%, rgba(2,3,5,0.98) 100%)",
+    capGlassGradient:
+      "linear-gradient(108deg, rgba(36,40,50,0.74) 0%, rgba(48,53,66,0.68) 42%, rgba(62,68,82,0.68) 76%, rgba(80,88,104,0.74) 100%)",
     capHighlight:
-      "inset 0 2px 2.5px rgba(255,255,255,0.24), inset 1px 0 1.5px rgba(255,255,255,0.12), inset -1.5px 0 2px rgba(255,255,255,0.2), inset 0 -2px 4px rgba(0,0,0,0.62)",
-    dotColor: "#d8dce4",
+      "inset 0 1.5px 2px rgba(255,255,255,0.34), inset 1px 0 1.5px rgba(255,255,255,0.14), inset -1.5px 0 2px rgba(255,255,255,0.22), inset 0 -2.5px 5px rgba(0,0,0,0.68)",
+    spotlightColor: "rgba(195, 220, 255, 0.22)",
+    dotColor: "#e4eaf6",
     dotPressedColor: "#ffffff",
-    dotSpecular: "rgba(0,0,0,0.45)",
+    dotSpecular: "rgba(0,0,0,0.52)",
+    dotGlow: "rgba(180,214,255,0.55)",
   },
   champagne: {
-    bezelConic:
-      "conic-gradient(from 0deg at 50% 50%, #1d1a16 0deg, #2b2620 28deg, #7e7365 56deg, #efe7da 78deg, #fffcf6 95deg, #f2eadc 114deg, #fffdf8 134deg, #cabda9 152deg, #4b4339 170deg, #39322a 186deg, #574e43 200deg, #cfc2ae 216deg, #f7f0e4 230deg, #988b7b 246deg, #695f52 272deg, #5c5347 298deg, #2d2822 328deg, #1d1a16 360deg)",
-    outerRimColor:
-      "linear-gradient(135deg, rgba(255,251,242,0.94) 0%, rgba(226,216,200,0.82) 50%, rgba(255,250,240,0.9) 100%)",
+    haloConic:
+      "conic-gradient(from 0deg at 50% 50%, rgba(255,235,200,0) 0deg, rgba(255,228,184,0.62) 48deg, rgba(255,250,240,0.92) 74deg, rgba(240,210,165,0.22) 118deg, rgba(255,235,200,0) 176deg, rgba(246,222,184,0.5) 228deg, rgba(255,248,236,0.78) 254deg, rgba(255,235,200,0) 312deg, rgba(255,235,200,0) 360deg)",
+    rimOrbitConic:
+      "conic-gradient(from 0deg at 50% 50%, rgba(168,154,134,0.4) 0deg, rgba(255,250,238,0.98) 58deg, rgba(255,236,205,0.9) 86deg, rgba(96,86,74,0.44) 144deg, rgba(28,24,20,0.78) 182deg, rgba(244,228,202,0.88) 238deg, rgba(255,252,244,0.98) 264deg, rgba(128,116,100,0.42) 320deg, rgba(168,154,134,0.4) 360deg)",
+    bezelOrbitConic:
+      "conic-gradient(from 0deg at 50% 50%, rgba(26,22,18,0.86) 0deg, rgba(58,50,42,0.74) 28deg, rgba(178,162,140,0.76) 54deg, rgba(250,240,224,0.95) 76deg, rgba(255,252,245,1) 94deg, rgba(226,210,186,0.84) 120deg, rgba(126,114,98,0.7) 150deg, rgba(30,25,20,0.9) 182deg, rgba(72,62,52,0.74) 210deg, rgba(224,208,184,0.86) 238deg, rgba(255,250,240,0.96) 260deg, rgba(140,126,108,0.72) 292deg, rgba(44,38,32,0.82) 328deg, rgba(26,22,18,0.86) 360deg)",
+    bezelGlassTint: "rgba(248, 236, 218, 0.14)",
     seamBorder:
-      "linear-gradient(180deg, #d0c6b8 0%, #3e372f 16%, #24201b 58%, #0a0806 100%)",
-    capGradient:
-      "linear-gradient(96deg, #8e8579 0%, #9d9487 36%, #b0a799 70%, #c1b8aa 100%)",
+      "linear-gradient(180deg, rgba(255,248,236,0.72) 0%, rgba(68,58,48,0.8) 16%, rgba(24,20,16,0.92) 56%, rgba(8,6,4,0.96) 100%)",
+    capGlassGradient:
+      "linear-gradient(108deg, rgba(154,144,130,0.78) 0%, rgba(176,166,152,0.72) 38%, rgba(202,192,178,0.74) 72%, rgba(226,216,202,0.82) 100%)",
     capHighlight:
-      "inset 0 2px 2.5px rgba(255,251,242,0.52), inset 1px 0 1.5px rgba(255,250,240,0.24), inset -1.5px 0 2px rgba(255,250,240,0.45), inset 0 -2px 3.5px rgba(32,26,18,0.34)",
-    dotColor: "#332e28",
-    dotPressedColor: "#1b1713",
-    dotSpecular: "rgba(255,250,240,0.35)",
+      "inset 0 1.5px 2px rgba(255,250,240,0.68), inset 1px 0 1.5px rgba(255,248,236,0.28), inset -1.5px 0 2px rgba(255,248,236,0.48), inset 0 -2.5px 4px rgba(28,22,16,0.34)",
+    spotlightColor: "rgba(255, 246, 230, 0.34)",
+    dotColor: "#2c2620",
+    dotPressedColor: "#14110e",
+    dotSpecular: "rgba(255,248,236,0.42)",
+    dotGlow: "rgba(255,236,204,0.32)",
   },
 };
 
@@ -271,6 +302,8 @@ interface DotMatrixLegendProps {
   height: number;
   dotColor: string;
   dotSpecular: string;
+  dotGlow: string;
+  isHighlighted: boolean;
 }
 
 const DotMatrixLegend: React.FC<DotMatrixLegendProps> = ({
@@ -279,6 +312,8 @@ const DotMatrixLegend: React.FC<DotMatrixLegendProps> = ({
   height,
   dotColor,
   dotSpecular,
+  dotGlow,
+  isHighlighted,
 }) => {
   const { dots, viewWidth, viewHeight, dotRadius } = useMemo(() => {
     const normalized = (text || "SPACE").toUpperCase().slice(0, 14);
@@ -326,7 +361,10 @@ const DotMatrixLegend: React.FC<DotMatrixLegendProps> = ({
       viewBox={`0 0 ${viewWidth} ${viewHeight}`}
       fill="none"
       aria-hidden="true"
-      className="select-none pointer-events-none transition-colors duration-100"
+      style={{
+        filter: isHighlighted ? `drop-shadow(0 0 6px ${dotGlow})` : "none",
+      }}
+      className="select-none pointer-events-none transition-[filter] duration-200"
     >
       {dots.map((dot, index) => (
         <g key={index}>
@@ -336,12 +374,7 @@ const DotMatrixLegend: React.FC<DotMatrixLegendProps> = ({
             r={dotRadius}
             fill={dotSpecular}
           />
-          <circle
-            cx={dot.cx}
-            cy={dot.cy}
-            r={dotRadius}
-            fill={dotColor}
-          />
+          <circle cx={dot.cx} cy={dot.cy} r={dotRadius} fill={dotColor} />
         </g>
       ))}
     </svg>
@@ -356,6 +389,7 @@ export const ChromeKeycapButton = React.forwardRef<
     label = "SPACE",
     size = "md",
     finish = "silver",
+    orbitSpeed = 6,
     soundEnabled = true,
     bindSpacebar = true,
     disabled = false,
@@ -373,9 +407,22 @@ export const ChromeKeycapButton = React.forwardRef<
   const safeId = rawId.replace(/:/g, "");
   const audioCtxRef = useRef<AudioContext | null>(null);
   const [isPressed, setIsPressed] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
 
   const metrics = SIZE_TOKENS[size] ?? SIZE_TOKENS.md;
   const palette = FINISH_TOKENS[finish] ?? FINISH_TOKENS.silver;
+  const clampedOrbitSpeed =
+    typeof orbitSpeed === "number" && Number.isFinite(orbitSpeed)
+      ? Math.max(0, Math.min(30, orbitSpeed))
+      : 6;
+  const shouldOrbit = !prefersReducedMotion && clampedOrbitSpeed > 0;
+
+  // Zero-rerender pointer-tracking glass spotlight
+  const pointerX = useMotionValue(metrics.width * 0.72);
+  const pointerY = useMotionValue(metrics.height * 0.32);
+  const smoothX = useSpring(pointerX, { stiffness: 260, damping: 28, mass: 0.4 });
+  const smoothY = useSpring(pointerY, { stiffness: 260, damping: 28, mass: 0.4 });
+  const glassSpotlight = useMotionTemplate`radial-gradient(140px circle at ${smoothX}px ${smoothY}px, ${palette.spotlightColor}, transparent 72%)`;
 
   const setPressedState = useCallback(
     (next: boolean, triggerSound: boolean) => {
@@ -440,6 +487,19 @@ export const ChromeKeycapButton = React.forwardRef<
     };
   }, []);
 
+  const handlePointerMove = (e: React.PointerEvent<HTMLButtonElement>) => {
+    if (disabled) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    pointerX.set(e.clientX - rect.left);
+    pointerY.set(e.clientY - rect.top);
+    rest.onPointerMove?.(e);
+  };
+
+  const handlePointerEnter = (e: React.PointerEvent<HTMLButtonElement>) => {
+    if (!disabled) setIsHovered(true);
+    rest.onPointerEnter?.(e);
+  };
+
   const handlePointerDown = (e: React.PointerEvent<HTMLButtonElement>) => {
     if (disabled || e.button !== 0) return;
     setPressedState(true, true);
@@ -453,6 +513,7 @@ export const ChromeKeycapButton = React.forwardRef<
   };
 
   const handlePointerLeave = (e: React.PointerEvent<HTMLButtonElement>) => {
+    setIsHovered(false);
     if (isPressed) {
       setPressedState(false, false);
     }
@@ -486,6 +547,13 @@ export const ChromeKeycapButton = React.forwardRef<
     ? { duration: 0.05 }
     : { type: "spring" as const, stiffness: 620, damping: 34, mass: 0.55 };
 
+  const orbitAnimation = shouldOrbit ? { rotate: 360 } : { rotate: 0 };
+  const orbitTransition = shouldOrbit
+    ? { repeat: Infinity, ease: "linear" as const, duration: clampedOrbitSpeed }
+    : { duration: 0 };
+
+  const halfOrbit = metrics.orbitDiameter / 2;
+
   return (
     <button
       ref={ref}
@@ -493,6 +561,8 @@ export const ChromeKeycapButton = React.forwardRef<
       disabled={disabled}
       aria-label={ariaLabel || label}
       aria-pressed={isPressed}
+      onPointerMove={handlePointerMove}
+      onPointerEnter={handlePointerEnter}
       onPointerDown={handlePointerDown}
       onPointerUp={handlePointerUp}
       onPointerLeave={handlePointerLeave}
@@ -507,13 +577,41 @@ export const ChromeKeycapButton = React.forwardRef<
       }}
       className={cn(
         "group relative inline-flex items-center justify-center p-0 border-0 bg-transparent outline-none select-none cursor-pointer touch-manipulation",
-        "focus-visible:ring-2 focus-visible:ring-zinc-900/60 dark:focus-visible:ring-white/70 focus-visible:ring-offset-4 focus-visible:ring-offset-transparent",
+        "focus-visible:ring-2 focus-visible:ring-zinc-900/60 dark:focus-visible:ring-white/75 focus-visible:ring-offset-4 focus-visible:ring-offset-transparent",
         "disabled:opacity-50 disabled:cursor-not-allowed",
         className
       )}
       {...rest}
     >
-      {/* Ground ambient bounce + directional cast shadow */}
+      {/* Synchronized orbiting ambient luminous glow around the rounded perimeter */}
+      <motion.span
+        aria-hidden="true"
+        animate={{
+          opacity: isPressed ? 0.32 : isHovered ? 0.68 : 0.44,
+          scale: isPressed ? 0.96 : isHovered ? 1.035 : 1,
+        }}
+        transition={springTransition}
+        style={{ borderRadius: metrics.outerRadius + 4 }}
+        className="pointer-events-none absolute -inset-1.5 overflow-hidden blur-xl"
+      >
+        <motion.span
+          aria-hidden="true"
+          animate={orbitAnimation}
+          transition={orbitTransition}
+          style={{
+            width: metrics.orbitDiameter,
+            height: metrics.orbitDiameter,
+            left: "50%",
+            top: "50%",
+            marginLeft: -halfOrbit,
+            marginTop: -halfOrbit,
+            backgroundImage: palette.haloConic,
+          }}
+          className="absolute block will-change-transform"
+        />
+      </motion.span>
+
+      {/* Ground ambient shadow + tactile compression */}
       <motion.span
         aria-hidden="true"
         animate={{
@@ -525,43 +623,75 @@ export const ChromeKeycapButton = React.forwardRef<
         className={cn(
           "pointer-events-none absolute inset-0 transition-shadow duration-150",
           isPressed
-            ? "shadow-[-4px_-4px_14px_rgba(255,255,255,0.45),0_7px_16px_-3px_rgba(0,0,0,0.28),0_2px_6px_rgba(0,0,0,0.22)] dark:shadow-[0_6px_14px_-2px_rgba(0,0,0,0.75)]"
-            : "shadow-[-10px_-10px_26px_rgba(255,255,255,0.68),0_18px_36px_-6px_rgba(0,0,0,0.28),0_7px_14px_-2px_rgba(0,0,0,0.22)] dark:shadow-[0_20px_42px_-8px_rgba(0,0,0,0.85),0_8px_18px_-3px_rgba(0,0,0,0.65)]"
+            ? "shadow-[-4px_-4px_14px_rgba(255,255,255,0.35),0_7px_16px_-3px_rgba(0,0,0,0.3),0_2px_6px_rgba(0,0,0,0.22)] dark:shadow-[0_8px_18px_-3px_rgba(0,0,0,0.82)]"
+            : "shadow-[-8px_-8px_24px_rgba(255,255,255,0.52),0_18px_38px_-6px_rgba(0,0,0,0.28),0_7px_14px_-2px_rgba(0,0,0,0.22)] dark:shadow-[0_22px_46px_-8px_rgba(0,0,0,0.9),0_8px_20px_-3px_rgba(0,0,0,0.7)]"
         )}
       />
 
-      {/* Crisp 1.5px outer bright chrome chamfer lip */}
+      {/* Crisp 1.5px rotating specular glass outer rim */}
       <span
         aria-hidden="true"
         style={{
           borderRadius: metrics.outerRadius,
-          background: palette.outerRimColor,
           padding: 1.5,
         }}
-        className="relative flex h-full w-full items-center justify-center"
+        className="relative flex h-full w-full items-center justify-center overflow-hidden"
       >
-        {/* Polished chrome bezel housing */}
+        <motion.span
+          aria-hidden="true"
+          animate={orbitAnimation}
+          transition={orbitTransition}
+          style={{
+            width: metrics.orbitDiameter,
+            height: metrics.orbitDiameter,
+            left: "50%",
+            top: "50%",
+            marginLeft: -halfOrbit,
+            marginTop: -halfOrbit,
+            backgroundImage: palette.rimOrbitConic,
+          }}
+          className="pointer-events-none absolute block will-change-transform"
+        />
+
+        {/* Rotating liquid-chrome & frosted glass bezel housing */}
         <span
           aria-hidden="true"
           style={{
             borderRadius: metrics.outerRadius - 1.5,
-            backgroundImage: palette.bezelConic,
             padding: metrics.bezelPadding,
+            backgroundColor: palette.bezelGlassTint,
           }}
-          className="relative flex h-full w-full items-center justify-center overflow-hidden shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),inset_0_-1px_1.5px_rgba(0,0,0,0.35)]"
+          className="relative flex h-full w-full items-center justify-center overflow-hidden backdrop-blur-xl shadow-[inset_0_1px_1.5px_rgba(255,255,255,0.52),inset_0_-1px_2px_rgba(0,0,0,0.38)]"
         >
-          {/* Subtle diagonal chrome reflection polish overlay */}
+          {/* Orbiting dark-chrome + luminous glass reflection band inside bezel */}
+          <motion.span
+            aria-hidden="true"
+            animate={orbitAnimation}
+            transition={orbitTransition}
+            style={{
+              width: metrics.orbitDiameter,
+              height: metrics.orbitDiameter,
+              left: "50%",
+              top: "50%",
+              marginLeft: -halfOrbit,
+              marginTop: -halfOrbit,
+              backgroundImage: palette.bezelOrbitConic,
+            }}
+            className="pointer-events-none absolute block will-change-transform"
+          />
+
+          {/* Soft frosted glass diffusion veil over the orbiting chrome ring */}
           <span
             aria-hidden="true"
             style={{
               borderRadius: metrics.outerRadius - 1.5,
               background:
-                "linear-gradient(128deg, rgba(255,255,255,0.16) 0%, rgba(255,255,255,0) 36%, rgba(255,255,255,0) 62%, rgba(255,255,255,0.22) 100%)",
+                "linear-gradient(140deg, rgba(255,255,255,0.24) 0%, rgba(255,255,255,0.03) 42%, rgba(0,0,0,0.08) 72%, rgba(255,255,255,0.2) 100%)",
             }}
             className="pointer-events-none absolute inset-0"
           />
 
-          {/* Recessed machined precision groove / seam */}
+          {/* Recessed machined precision groove / glass seam */}
           <span
             aria-hidden="true"
             style={{
@@ -569,9 +699,9 @@ export const ChromeKeycapButton = React.forwardRef<
               background: palette.seamBorder,
               padding: 2,
             }}
-            className="relative flex h-full w-full items-center justify-center shadow-[0_1px_1.5px_rgba(255,255,255,0.38)]"
+            className="relative z-10 flex h-full w-full items-center justify-center shadow-[0_1px_2px_rgba(255,255,255,0.36)]"
           >
-            {/* Floating bead-blasted anodized aluminum keycap face */}
+            {/* Floating frosted-glass anodized keycap face */}
             <motion.span
               animate={{
                 y: isPressed ? metrics.pressDepth : 0,
@@ -580,17 +710,17 @@ export const ChromeKeycapButton = React.forwardRef<
               transition={springTransition}
               style={{
                 borderRadius: metrics.capRadius,
-                backgroundImage: palette.capGradient,
+                backgroundImage: palette.capGlassGradient,
                 boxShadow: isPressed
-                  ? "inset 0 2px 6px rgba(0,0,0,0.42), inset 0 -1px 1.5px rgba(255,255,255,0.22)"
+                  ? "inset 0 2px 7px rgba(0,0,0,0.46), inset 0 -1px 1.5px rgba(255,255,255,0.24)"
                   : palette.capHighlight,
               }}
-              className="relative flex h-full w-full items-center justify-center overflow-hidden"
+              className="relative flex h-full w-full items-center justify-center overflow-hidden backdrop-blur-xl"
             >
-              {/* Fine bead-blasted anodized aluminum micro-grain texture */}
+              {/* Fine bead-blasted frosted glass micro-grain texture */}
               <svg
                 aria-hidden="true"
-                className="pointer-events-none absolute inset-0 h-full w-full opacity-[0.09] mix-blend-overlay"
+                className="pointer-events-none absolute inset-0 h-full w-full opacity-[0.08] mix-blend-overlay"
               >
                 <filter id={`grain-${safeId}`}>
                   <feTurbulence
@@ -608,13 +738,25 @@ export const ChromeKeycapButton = React.forwardRef<
                 />
               </svg>
 
-              {/* Subtle top-left to bottom-right matte sheen */}
+              {/* Interactive pointer-tracking glass refraction sheen */}
+              <motion.span
+                aria-hidden="true"
+                animate={{ opacity: isHovered ? 1 : 0.45 }}
+                transition={{ duration: 0.25 }}
+                style={{
+                  borderRadius: metrics.capRadius,
+                  backgroundImage: glassSpotlight,
+                }}
+                className="pointer-events-none absolute inset-0"
+              />
+
+              {/* Crisp upper glass refraction specular arc */}
               <span
                 aria-hidden="true"
                 style={{
                   borderRadius: metrics.capRadius,
                   background:
-                    "radial-gradient(120% 90% at 88% 45%, rgba(255,255,255,0.16) 0%, rgba(255,255,255,0) 62%)",
+                    "linear-gradient(180deg, rgba(255,255,255,0.26) 0%, rgba(255,255,255,0.04) 24%, rgba(255,255,255,0) 54%, rgba(0,0,0,0.08) 100%)",
                 }}
                 className="pointer-events-none absolute inset-0"
               />
@@ -627,6 +769,8 @@ export const ChromeKeycapButton = React.forwardRef<
                   height={metrics.legendHeight}
                   dotColor={isPressed ? palette.dotPressedColor : palette.dotColor}
                   dotSpecular={palette.dotSpecular}
+                  dotGlow={palette.dotGlow}
+                  isHighlighted={isHovered || isPressed}
                 />
               </span>
             </motion.span>

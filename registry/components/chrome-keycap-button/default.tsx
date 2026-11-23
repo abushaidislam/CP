@@ -8,9 +8,10 @@ import {
 } from "@/components/ui/component";
 
 const settings = {
-  label: "Send",
-  size: "sm",
-  finish: "champagne",
+  label: "SPACE",
+  size: "md",
+  finish: "silver",
+  orbitSpeed: 6,
   soundEnabled: true,
   bindSpacebar: true,
 };
@@ -44,12 +45,18 @@ export default function ChromeKeycapButtonDemo(
       ? config.label
       : "SPACE";
 
+  const orbitSpeed =
+    typeof config.orbitSpeed === "number" && Number.isFinite(config.orbitSpeed)
+      ? Math.max(0, Math.min(30, config.orbitSpeed))
+      : 6;
+
   return (
     <div className="w-full min-h-[360px] flex items-center justify-center p-8">
       <ChromeKeycapButton
         label={label}
         size={size}
         finish={finish}
+        orbitSpeed={orbitSpeed}
         soundEnabled={Boolean(config.soundEnabled)}
         bindSpacebar={Boolean(config.bindSpacebar)}
       />
