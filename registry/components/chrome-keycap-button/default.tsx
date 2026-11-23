@@ -8,9 +8,9 @@ import {
 } from "@/components/ui/component";
 
 const settings = {
-  label: "SPACE",
-  size: "md",
-  finish: "silver",
+  label: "Send",
+  size: "sm",
+  finish: "champagne",
   soundEnabled: true,
   bindSpacebar: true,
 };
