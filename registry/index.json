@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-23T13:24:54.053Z",
+  "updatedAt": "2026-11-23T13:26:53.365Z",
   "totalComponents": 76,
   "components": [
     {
@@ -10,13 +10,15 @@
       "description": "Tactile industrial chrome keycap button featuring a multi-layered polished bezel, bead-blasted anodized aluminum cap, dynamic 5x7 SVG dot-matrix legend, live Spacebar actuation, and synthesized mechanical switch audio.",
       "category": "Buttons",
       "isBuiltIn": false,
-      "updatedAt": 1795440293871,
-      "lastRepoSyncAt": 1795440293871,
+      "updatedAt": 1795440409650,
+      "lastRepoSyncAt": 1795440413087,
       "path": "registry/components/chrome-keycap-button",
       "files": [
         "component.tsx",
         "default.tsx",
-        "manifest.json"
+        "index.css",
+        "manifest.json",
+        "preview.png"
       ],
       "dependencies": [
         "framer-motion"
@@ -51,13 +53,15 @@
       "description": "A telehealth and SaaS closing CTA section paired with a floating frosted-glass footer over a soft pastel periwinkle-to-cyan aurora backdrop, featuring dual pill CTAs, an inline-validated newsletter form, a 12-spoke SVG starburst brand mark, and a 5-column responsive navigation grid.",
       "category": "Navigation",
       "isBuiltIn": false,
-      "updatedAt": 1795328552872,
-      "lastRepoSyncAt": 1795328556991,
+      "updatedAt": 1795289376946,
+      "lastRepoSyncAt": 1795289381909,
       "path": "registry/components/aurora-cta-footer",
       "files": [
         "component.tsx",
         "default.tsx",
-        "manifest.json"
+        "index.css",
+        "manifest.json",
+        "preview.png"
       ],
       "dependencies": [
         "framer-motion",
@@ -77,7 +81,9 @@
       "files": [
         "component.tsx",
         "default.tsx",
-        "manifest.json"
+        "index.css",
+        "manifest.json",
+        "preview.png"
       ],
       "dependencies": [
         "framer-motion",
@@ -88,11 +94,11 @@
       "id": "pinned-roadmap-cards",
       "slug": "pinned-roadmap-cards",
       "name": "PinnedRoadmapCards",
-      "description": "An editorial zig-zag pinned roadmap of pastel polaroid-style step cards with 3D glossy pushpins, curved dashed SVG connectors, notebook ruled lines, and interactive hover-straighten & checklist toggles.",
+      "description": "An editorial vertical roadmap of zig-zag rotated polaroid-framed pastel cards with tactile paper grain, etched notebook ruled lines, 3D glossy pushpins with wobble physics, curved dashed SVG connectors, and an interactive checklist with live note pinning.",
       "category": "Cards",
       "isBuiltIn": false,
-      "updatedAt": 1795286883341,
-      "lastRepoSyncAt": 1795286887416,
+      "updatedAt": 1795287631216,
+      "lastRepoSyncAt": 1795287636316,
       "path": "registry/components/pinned-roadmap-cards",
       "files": [
         "component.tsx",
