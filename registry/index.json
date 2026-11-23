@@ -1,7 +1,7 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-23T18:40:07.802Z",
-  "totalComponents": 76,
+  "updatedAt": "2026-11-23T18:47:21.452Z",
+  "totalComponents": 77,
   "components": [
     {
       "id": "comp-1795458623385-hiqbe",
@@ -10,16 +10,38 @@
       "description": "",
       "category": "Custom",
       "isBuiltIn": false,
-      "updatedAt": 1795459202231,
-      "lastRepoSyncAt": 1795459207737,
+      "updatedAt": 1795459637716,
+      "lastRepoSyncAt": 1795459641159,
       "path": "registry/components/signature-image",
       "files": [
         "component.tsx",
         "default.tsx",
         "index.css",
-        "manifest.json"
+        "manifest.json",
+        "preview.png"
       ],
       "dependencies": []
+    },
+    {
+      "id": "chrome-keycap-button",
+      "slug": "chrome-keycap-button",
+      "name": "ChromeKeycapButton",
+      "description": "Glassmorphic industrial chrome keycap button featuring an event-driven 360-degree bezel glow sweep on hover or click, translucent frosted glass depth, pointer-tracking refraction sheen, dynamic 5x7 SVG dot-matrix legend, live Spacebar actuation, and mechanical switch audio.",
+      "category": "Buttons",
+      "isBuiltIn": false,
+      "updatedAt": 1795441670631,
+      "lastRepoSyncAt": 1795441676740,
+      "path": "registry/components/chrome-keycap-button",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "index.css",
+        "manifest.json",
+        "preview.png"
+      ],
+      "dependencies": [
+        "framer-motion"
+      ]
     },
     {
       "id": "project-workflow-tree",
