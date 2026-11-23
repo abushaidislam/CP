@@ -6,8 +6,8 @@
   "category": "Effects",
   "isBuiltIn": false,
   "createdAt": 1795474279131,
-  "updatedAt": 1795474323456,
-  "lastRepoSyncAt": 1795474327088,
+  "updatedAt": 1795474408478,
+  "lastRepoSyncAt": 1795474413253,
   "dependencies": [
     "framer-motion"
   ],
