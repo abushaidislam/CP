@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-23T13:40:11.003Z",
+  "updatedAt": "2026-11-23T13:47:57.160Z",
   "totalComponents": 76,
   "components": [
     {
@@ -10,8 +10,8 @@
       "description": "Glassmorphic industrial chrome keycap button featuring an event-driven 360-degree bezel glow sweep on hover or click, translucent frosted glass depth, pointer-tracking refraction sheen, dynamic 5x7 SVG dot-matrix legend, live Spacebar actuation, and mechanical switch audio.",
       "category": "Buttons",
       "isBuiltIn": false,
-      "updatedAt": 1795441206922,
-      "lastRepoSyncAt": 1795441210735,
+      "updatedAt": 1795441670631,
+      "lastRepoSyncAt": 1795441676740,
       "path": "registry/components/chrome-keycap-button",
       "files": [
         "component.tsx",
