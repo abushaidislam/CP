@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-23T18:47:38.783Z",
+  "updatedAt": "2026-11-23T18:47:42.942Z",
   "totalComponents": 77,
   "components": [
     {
@@ -10,8 +10,8 @@
       "description": "",
       "category": "Custom",
       "isBuiltIn": false,
-      "updatedAt": 1795459653107,
-      "lastRepoSyncAt": 1795459658656,
+      "updatedAt": 1795459657674,
+      "lastRepoSyncAt": 1795459662878,
       "path": "registry/components/signature-image",
       "files": [
         "component.tsx",
