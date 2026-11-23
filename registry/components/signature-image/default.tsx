@@ -7,6 +7,8 @@ import {
 } from "@/components/ui/component";
 
 const settings = {
+  name: "",
+  imageUrl: "",
   duration: 2,
   strokeWidth: 3.6,
   showPen: true,
@@ -20,6 +22,10 @@ export default function AnimatedSignatureDemo(
   props: Partial<typeof settings>
 ) {
   const config = { ...settings, ...props };
+
+  const name = typeof config.name === "string" ? config.name : settings.name;
+  const imageUrl =
+    typeof config.imageUrl === "string" ? config.imageUrl : settings.imageUrl;
 
   const duration =
     typeof config.duration === "number" &&
@@ -49,6 +55,8 @@ export default function AnimatedSignatureDemo(
   return (
     <div className="flex min-h-[320px] w-full items-center justify-center p-8">
       <AnimatedSignature
+        name={name}
+        imageUrl={imageUrl}
         duration={duration}
         strokeWidth={strokeWidth}
         showPen={showPen}
