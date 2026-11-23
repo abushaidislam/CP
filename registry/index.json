@@ -1,8 +1,27 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-22T08:11:49.856Z",
-  "totalComponents": 73,
+  "updatedAt": "2026-11-23T13:24:54.053Z",
+  "totalComponents": 76,
   "components": [
+    {
+      "id": "chrome-keycap-button",
+      "slug": "chrome-keycap-button",
+      "name": "ChromeKeycapButton",
+      "description": "Tactile industrial chrome keycap button featuring a multi-layered polished bezel, bead-blasted anodized aluminum cap, dynamic 5x7 SVG dot-matrix legend, live Spacebar actuation, and synthesized mechanical switch audio.",
+      "category": "Buttons",
+      "isBuiltIn": false,
+      "updatedAt": 1795440293871,
+      "lastRepoSyncAt": 1795440293871,
+      "path": "registry/components/chrome-keycap-button",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "manifest.json"
+      ],
+      "dependencies": [
+        "framer-motion"
+      ]
+    },
     {
       "id": "project-workflow-tree",
       "slug": "project-workflow-tree",
@@ -19,6 +38,46 @@
         "index.css",
         "manifest.json",
         "preview.png"
+      ],
+      "dependencies": [
+        "framer-motion",
+        "lucide-react"
+      ]
+    },
+    {
+      "id": "aurora-cta-footer",
+      "slug": "aurora-cta-footer",
+      "name": "AuroraCtaFooter",
+      "description": "A telehealth and SaaS closing CTA section paired with a floating frosted-glass footer over a soft pastel periwinkle-to-cyan aurora backdrop, featuring dual pill CTAs, an inline-validated newsletter form, a 12-spoke SVG starburst brand mark, and a 5-column responsive navigation grid.",
+      "category": "Navigation",
+      "isBuiltIn": false,
+      "updatedAt": 1795328552872,
+      "lastRepoSyncAt": 1795328556991,
+      "path": "registry/components/aurora-cta-footer",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "manifest.json"
+      ],
+      "dependencies": [
+        "framer-motion",
+        "lucide-react"
+      ]
+    },
+    {
+      "id": "retainer-solution-showcase",
+      "slug": "retainer-solution-showcase",
+      "name": "RetainerSolutionShowcase",
+      "description": "An agency retainer solution showcase with an interactive PM-tool integration hub, animated SVG connector beams, and three pastel bento feature cards for usage transparency, task collaboration, and a client-facing portal.",
+      "category": "Cards",
+      "isBuiltIn": false,
+      "updatedAt": 1795288487748,
+      "lastRepoSyncAt": 1795288495756,
+      "path": "registry/components/retainer-solution-showcase",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "manifest.json"
       ],
       "dependencies": [
         "framer-motion",
