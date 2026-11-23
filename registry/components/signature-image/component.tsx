@@ -9,16 +9,22 @@ import React, {
   useRef,
   useState,
 } from "react";
-import {
-  animate,
-  motion,
-  useMotionValue,
-  useReducedMotion,
-  type AnimationPlaybackControls,
-} from "framer-motion";
+import { useReducedMotion } from "framer-motion";
 
 function cn(...classes: Array<string | false | null | undefined>): string {
   return classes.filter(Boolean).join(" ");
+}
+
+function easeOutCubic(t: number): number {
+  return 1 - Math.pow(1 - t, 3);
+}
+
+function easeInCubic(t: number): number {
+  return t * t * t;
+}
+
+function easeInOutSine(t: number): number {
+  return -(Math.cos(Math.PI * t) - 1) / 2;
 }
 
 export type AnimatedSignatureTheme = "auto" | "dark" | "light";
@@ -106,7 +112,6 @@ const THEME_TEXT_CLASSES: Record<AnimatedSignatureTheme, string> = {
 type Point2D = [number, number];
 type GlyphSpec = [number, Point2D[]];
 
-/** Single-stroke calligraphic cursive glyph table (baseline = 0, x-height = -26, ascender = -64, descender = +36). */
 const CURSIVE_GLYPHS: Record<string, GlyphSpec> = {
   a: [28, [[0, -6], [10, -26], [20, -24], [14, -4], [4, 0], [10, -16], [21, -22], [22, -4], [28, -6]]],
   b: [28, [[0, -6], [14, -42], [20, -64], [10, -54], [6, -18], [8, 0], [20, -4], [23, -20], [14, -24], [22, -10], [28, -6]]],
@@ -209,7 +214,6 @@ function buildSignaturePathFromName(rawName: string): string {
       cursorX += advance;
     }
 
-    // Add signature exit flourish tail on the final word
     if (wordIdx === words.length - 1 && pts.length > 0) {
       const [lx, ly] = pts[pts.length - 1];
       pts.push([lx + 34, ly + 4], [lx + 92, ly + 1], [lx + 150, ly - 8]);
@@ -255,7 +259,6 @@ function buildSignaturePathFromName(rawName: string): string {
     .join(" ");
 }
 
-/** Extracts a smooth pen-tracking guide path from the opaque ink pixels of a transparent signature image. */
 function extractContourFromImage(img: HTMLImageElement): string | null {
   try {
     const sampleW = 180;
@@ -298,14 +301,15 @@ function extractContourFromImage(img: HTMLImageElement): string | null {
         }
       }
       if (count > 0) {
-        const avgY = sumY / count;
-        rawPts.push([(x / sampleW) * VB_WIDTH, (avgY / sampleH) * VB_HEIGHT]);
+        rawPts.push([
+          (x / sampleW) * VB_WIDTH,
+          (sumY / count / sampleH) * VB_HEIGHT,
+        ]);
       }
     }
 
     if (rawPts.length < 3) return null;
 
-    // Gentle 3-point smoothing so the tracking pen glides fluidly
     const smoothed: Point2D[] = rawPts.map((pt, idx) => {
       if (idx === 0 || idx === rawPts.length - 1) return pt;
       const prev = rawPts[idx - 1];
@@ -397,8 +401,11 @@ export const AnimatedSignature = forwardRef<
     const clipId = `signature-clip-${safeId}`;
 
     const prefersReducedMotion = useReducedMotion();
+
     const pathRef = useRef<SVGPathElement | null>(null);
-    const activeAnimationsRef = useRef<AnimationPlaybackControls[]>([]);
+    const penGroupRef = useRef<SVGGElement | null>(null);
+    const clipRectRef = useRef<SVGRectElement | null>(null);
+    const rafRef = useRef<number | null>(null);
     const loopTimerRef = useRef<number | null>(null);
     const runIdRef = useRef<number>(0);
 
@@ -409,18 +416,8 @@ export const AnimatedSignature = forwardRef<
       FALLBACK_IMAGE_GUIDE_PATH
     );
     const [imageLoadFailed, setImageLoadFailed] = useState<boolean>(false);
-    const [pathLength, setPathLength] = useState<number>(0);
     const [isDrawing, setIsDrawing] = useState<boolean>(false);
 
-    const dashOffset = useMotionValue<number>(9999);
-    const clipWidth = useMotionValue<number>(0);
-    const penX = useMotionValue<number>(0);
-    const penY = useMotionValue<number>(0);
-    const penLiftX = useMotionValue<number>(0);
-    const penLiftY = useMotionValue<number>(0);
-    const penOpacity = useMotionValue<number>(0);
-
-    // Load transparent signature image and extract its ink contour for accurate pen tracking
     useEffect(() => {
       if (!isImageMode) {
         setImageLoadFailed(false);
@@ -442,7 +439,6 @@ export const AnimatedSignature = forwardRef<
       };
       probe.onerror = () => {
         if (cancelled) return;
-        // Fallback: image may still render without CORS pixel access
         const fallbackProbe = new window.Image();
         fallbackProbe.onerror = () => {
           if (!cancelled) setImageLoadFailed(true);
@@ -488,177 +484,197 @@ export const AnimatedSignature = forwardRef<
         ? Math.min(loopDelay, 15)
         : 1.8;
 
-    const clearPendingPlayback = useCallback(() => {
-      activeAnimationsRef.current.forEach((ctrl) => ctrl.stop());
-      activeAnimationsRef.current = [];
+    const stopPlayback = useCallback(() => {
+      if (rafRef.current !== null) {
+        window.cancelAnimationFrame(rafRef.current);
+        rafRef.current = null;
+      }
       if (loopTimerRef.current !== null) {
         window.clearTimeout(loopTimerRef.current);
         loopTimerRef.current = null;
       }
     }, []);
 
-    const startDrawSequence = useCallback(async () => {
+    const startDrawSequence = useCallback(() => {
       const pathEl = pathRef.current;
       if (!pathEl) return;
 
-      clearPendingPlayback();
+      stopPlayback();
       const currentRunId = ++runIdRef.current;
-      const total = pathEl.getTotalLength();
 
+      const total = pathEl.getTotalLength();
       if (!Number.isFinite(total) || total <= 0) return;
-      setPathLength(total);
+
+      pathEl.style.strokeDasharray = `${total}`;
 
       if (prefersReducedMotion) {
-        dashOffset.set(0);
-        clipWidth.set(VB_WIDTH);
-        penOpacity.set(0);
+        pathEl.style.strokeDashoffset = "0";
+        if (clipRectRef.current) {
+          clipRectRef.current.setAttribute("width", String(VB_WIDTH));
+        }
+        if (penGroupRef.current) {
+          penGroupRef.current.setAttribute("opacity", "0");
+        }
         setIsDrawing(false);
         return;
       }
 
       setIsDrawing(true);
-      dashOffset.set(total);
-      clipWidth.set(0);
+      pathEl.style.strokeDashoffset = `${total}`;
+      if (clipRectRef.current) {
+        clipRectRef.current.setAttribute("width", "0");
+      }
 
       const startPt = pathEl.getPointAtLength(0);
-      penX.set(startPt.x);
-      penY.set(startPt.y);
-
-      if (showPen) {
-        penLiftX.set(8);
-        penLiftY.set(-8);
-        penOpacity.set(0);
-
-        const enterOpacity = animate(penOpacity, 1, {
-          duration: 0.14,
-          ease: [0.22, 1, 0.36, 1],
-        });
-        const enterLiftX = animate(penLiftX, 0, {
-          duration: 0.14,
-          ease: [0.22, 1, 0.36, 1],
-        });
-        const enterLiftY = animate(penLiftY, 0, {
-          duration: 0.14,
-          ease: [0.22, 1, 0.36, 1],
-        });
-        activeAnimationsRef.current.push(enterOpacity, enterLiftX, enterLiftY);
-        await enterOpacity.finished;
-
-        if (runIdRef.current !== currentRunId) return;
-      } else {
-        penOpacity.set(0);
-      }
-
-      const drawAnim = animate(0, 1, {
-        duration: safeDuration,
-        ease: [0.37, 0, 0.63, 1],
-        onUpdate: (progress) => {
-          if (runIdRef.current !== currentRunId) return;
-          const clamped = Math.min(Math.max(progress, 0), 1);
-          const currentDist = clamped * total;
-          dashOffset.set(total - currentDist);
-          const pt = pathEl.getPointAtLength(currentDist);
-          penX.set(pt.x);
-          penY.set(pt.y);
-          clipWidth.set(Math.min(VB_WIDTH, Math.max(pt.x + 6, clamped * VB_WIDTH)));
-        },
-      });
-      activeAnimationsRef.current.push(drawAnim);
-      await drawAnim.finished;
-
-      if (runIdRef.current !== currentRunId) return;
-
-      dashOffset.set(0);
-      clipWidth.set(VB_WIDTH);
       const endPt = pathEl.getPointAtLength(total);
-      penX.set(endPt.x);
-      penY.set(endPt.y);
 
-      if (showPen) {
-        const exitOpacity = animate(penOpacity, 0, {
-          duration: 0.2,
-          ease: [0.4, 0, 1, 1],
-        });
-        const exitLiftX = animate(penLiftX, 14, {
-          duration: 0.2,
-          ease: [0.4, 0, 1, 1],
-        });
-        const exitLiftY = animate(penLiftY, -14, {
-          duration: 0.2,
-          ease: [0.4, 0, 1, 1],
-        });
-        activeAnimationsRef.current.push(exitOpacity, exitLiftX, exitLiftY);
-        await exitOpacity.finished;
+      const enterDur = showPen ? 0.14 : 0;
+      const drawDur = safeDuration;
+      const exitDur = showPen ? 0.22 : 0;
+      const totalDur = enterDur + drawDur + exitDur;
 
+      if (penGroupRef.current) {
+        penGroupRef.current.setAttribute(
+          "transform",
+          `translate(${startPt.x + 10}, ${startPt.y - 10})`
+        );
+        penGroupRef.current.setAttribute("opacity", "0");
+      }
+
+      const startTime = performance.now();
+
+      const step = (now: number) => {
         if (runIdRef.current !== currentRunId) return;
-      }
 
-      setIsDrawing(false);
-      onDrawComplete?.();
+        const elapsed = (now - startTime) / 1000;
+        const penEl = penGroupRef.current;
+        const clipEl = clipRectRef.current;
 
-      if (loop) {
-        loopTimerRef.current = window.setTimeout(() => {
-          if (runIdRef.current === currentRunId) {
-            void startDrawSequence();
+        if (elapsed < enterDur && enterDur > 0) {
+          const e = easeOutCubic(Math.min(Math.max(elapsed / enterDur, 0), 1));
+          const liftX = 10 * (1 - e);
+          const liftY = -10 * (1 - e);
+          if (penEl && showPen) {
+            penEl.setAttribute(
+              "transform",
+              `translate(${(startPt.x + liftX).toFixed(2)}, ${(startPt.y + liftY).toFixed(2)})`
+            );
+            penEl.setAttribute("opacity", e.toFixed(3));
           }
-        }, safeLoopDelay * 1000);
-      }
+          rafRef.current = window.requestAnimationFrame(step);
+          return;
+        }
+
+        if (elapsed < enterDur + drawDur) {
+          const rawP = Math.min(Math.max((elapsed - enterDur) / drawDur, 0), 1);
+          const p = easeInOutSine(rawP);
+          const dist = p * total;
+
+          pathEl.style.strokeDashoffset = `${total - dist}`;
+          const pt = pathEl.getPointAtLength(dist);
+
+          if (clipEl) {
+            const w = Math.min(VB_WIDTH, Math.max(pt.x + 6, p * VB_WIDTH));
+            clipEl.setAttribute("width", w.toFixed(2));
+          }
+          if (penEl && showPen) {
+            penEl.setAttribute(
+              "transform",
+              `translate(${pt.x.toFixed(2)}, ${pt.y.toFixed(2)})`
+            );
+            penEl.setAttribute("opacity", "1");
+          }
+
+          rafRef.current = window.requestAnimationFrame(step);
+          return;
+        }
+
+        pathEl.style.strokeDashoffset = "0";
+        if (clipEl) {
+          clipEl.setAttribute("width", String(VB_WIDTH));
+        }
+
+        if (elapsed < totalDur && exitDur > 0) {
+          const e = easeInCubic(
+            Math.min(Math.max((elapsed - enterDur - drawDur) / exitDur, 0), 1)
+          );
+          const liftX = 14 * e;
+          const liftY = -14 * e;
+          if (penEl && showPen) {
+            penEl.setAttribute(
+              "transform",
+              `translate(${(endPt.x + liftX).toFixed(2)}, ${(endPt.y + liftY).toFixed(2)})`
+            );
+            penEl.setAttribute("opacity", (1 - e).toFixed(3));
+          }
+          rafRef.current = window.requestAnimationFrame(step);
+          return;
+        }
+
+        if (penEl) {
+          penEl.setAttribute("opacity", "0");
+        }
+        rafRef.current = null;
+        setIsDrawing(false);
+        onDrawComplete?.();
+
+        if (loop) {
+          loopTimerRef.current = window.setTimeout(() => {
+            if (runIdRef.current === currentRunId) {
+              startDrawSequence();
+            }
+          }, safeLoopDelay * 1000);
+        }
+      };
+
+      rafRef.current = window.requestAnimationFrame(step);
     }, [
-      clearPendingPlayback,
-      clipWidth,
-      dashOffset,
       loop,
       onDrawComplete,
-      penLiftX,
-      penLiftY,
-      penOpacity,
-      penX,
-      penY,
       prefersReducedMotion,
       safeDuration,
       safeLoopDelay,
       showPen,
+      stopPlayback,
     ]);
 
     useEffect(() => {
       const pathEl = pathRef.current;
       if (!pathEl) return;
 
-      const total = pathEl.getTotalLength();
-      if (Number.isFinite(total) && total > 0) {
-        setPathLength(total);
-      }
-
       if (prefersReducedMotion || !autoPlay) {
-        clearPendingPlayback();
+        stopPlayback();
         runIdRef.current += 1;
-        dashOffset.set(0);
-        clipWidth.set(VB_WIDTH);
-        penOpacity.set(0);
+        const total = pathEl.getTotalLength();
+        pathEl.style.strokeDasharray = `${total}`;
+        pathEl.style.strokeDashoffset = "0";
+        if (clipRectRef.current) {
+          clipRectRef.current.setAttribute("width", String(VB_WIDTH));
+        }
+        if (penGroupRef.current) {
+          penGroupRef.current.setAttribute("opacity", "0");
+        }
         setIsDrawing(false);
         return;
       }
 
-      void startDrawSequence();
+      startDrawSequence();
 
       return () => {
         runIdRef.current += 1;
-        clearPendingPlayback();
+        stopPlayback();
       };
     }, [
       autoPlay,
-      clearPendingPlayback,
-      clipWidth,
-      dashOffset,
-      penOpacity,
       prefersReducedMotion,
       resolvedPath,
       startDrawSequence,
+      stopPlayback,
     ]);
 
     const handleTriggerReplay = useCallback(() => {
       if (!replayOnClick || prefersReducedMotion) return;
-      void startDrawSequence();
+      startDrawSequence();
     }, [prefersReducedMotion, replayOnClick, startDrawSequence]);
 
     const handleClick = useCallback(
@@ -726,11 +742,12 @@ export const AnimatedSignature = forwardRef<
           {renderImage && (
             <defs>
               <clipPath id={clipId}>
-                <motion.rect
+                <rect
+                  ref={clipRectRef}
                   x={0}
                   y={0}
+                  width={0}
                   height={VB_HEIGHT}
-                  style={{ width: clipWidth }}
                 />
               </clipPath>
             </defs>
@@ -748,36 +765,24 @@ export const AnimatedSignature = forwardRef<
             />
           )}
 
-          <motion.path
+          <path
             ref={pathRef}
             d={resolvedPath}
             stroke={renderImage ? "transparent" : "currentColor"}
             strokeWidth={safeStrokeWidth}
             strokeLinecap="round"
             strokeLinejoin="round"
-            strokeDasharray={pathLength > 0 ? pathLength : 9999}
-            style={{ strokeDashoffset: dashOffset }}
           />
 
           {showPen && !prefersReducedMotion && (
-            <motion.g
+            <g
+              ref={penGroupRef}
               aria-hidden="true"
               className="pointer-events-none"
-              style={{
-                x: penX,
-                y: penY,
-                opacity: penOpacity,
-              }}
+              opacity={0}
             >
-              <motion.g
-                style={{
-                  x: penLiftX,
-                  y: penLiftY,
-                }}
-              >
-                <PenIconGraphic strokeWidth={safeStrokeWidth} />
-              </motion.g>
-            </motion.g>
+              <PenIconGraphic strokeWidth={safeStrokeWidth} />
+            </g>
           )}
         </svg>
       </div>
