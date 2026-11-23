@@ -1,8 +1,27 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-23T22:53:33.335Z",
-  "totalComponents": 78,
+  "updatedAt": "2026-11-23T23:11:05.655Z",
+  "totalComponents": 79,
   "components": [
+    {
+      "id": "abushaid-signature",
+      "slug": "abushaid-signature",
+      "name": "Abushaid Signature",
+      "description": "Physics-driven cursive fountain-pen signature animation with curvature-weighted 2/3 power law pacing, layered clip-path masking, spring-damped wrist tilt, dynamic 3D pen shadow, wet-ink sheen, and optional Web Audio API pen-on-paper sound.",
+      "category": "Effects",
+      "isBuiltIn": false,
+      "updatedAt": 1795475465219,
+      "lastRepoSyncAt": 1795475465219,
+      "path": "registry/components/abushaid-signature",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "manifest.json"
+      ],
+      "dependencies": [
+        "lucide-react"
+      ]
+    },
     {
       "id": "spotlight-qk-logo",
       "slug": "spotlight-qk-logo",
@@ -10,15 +29,13 @@
       "description": "An isometric 3D \"QK\" SVG logo with a cursor-tracking radial gradient spotlight, diagonal hatch top faces, springy press animation, and synthesized tactile click sound.",
       "category": "Effects",
       "isBuiltIn": false,
-      "updatedAt": 1795474408478,
-      "lastRepoSyncAt": 1795474413253,
+      "updatedAt": 1795474910676,
+      "lastRepoSyncAt": 1795474910676,
       "path": "registry/components/spotlight-qk-logo",
       "files": [
         "component.tsx",
         "default.tsx",
-        "index.css",
-        "manifest.json",
-        "preview.png"
+        "manifest.json"
       ],
       "dependencies": [
         "framer-motion"
@@ -55,9 +72,7 @@
       "files": [
         "component.tsx",
         "default.tsx",
-        "index.css",
-        "manifest.json",
-        "preview.png"
+        "manifest.json"
       ],
       "dependencies": [
         "framer-motion"
