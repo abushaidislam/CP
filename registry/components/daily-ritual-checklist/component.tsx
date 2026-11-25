@@ -1,7 +1,13 @@
 "use client";
 
 import React, { useEffect, useId, useRef, useState } from "react";
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import {
+  AnimatePresence,
+  motion,
+  useAnimation,
+  useReducedMotion,
+  type Variants,
+} from "framer-motion";
 import { Plus, X } from "lucide-react";
 
 function cn(...classes: Array<string | false | null | undefined>): string {
@@ -112,110 +118,220 @@ function DashedCheckSquare({ className }: { className?: string }) {
   );
 }
 
-function CompletedRitualGlyph({
+const CIRCLE_CHECK_SVG_VARIANTS: Variants = {
+  normal: { scale: 1 },
+  animate: {
+    scale: [1, 1.12, 0.96, 1],
+    transition: { duration: 0.45, ease: "easeOut" },
+  },
+};
+
+const CIRCLE_CHECK_ARC_VARIANTS: Variants = {
+  normal: { pathLength: 1, opacity: 1 },
+  animate: {
+    pathLength: [0.7, 1],
+    opacity: [0.7, 1],
+    transition: { duration: 0.35, ease: "easeOut" },
+  },
+};
+
+const CIRCLE_CHECK_TICK_VARIANTS: Variants = {
+  normal: { pathLength: 1, opacity: 1 },
+  animate: {
+    pathLength: [0, 1],
+    opacity: 1,
+    transition: { duration: 0.3, delay: 0.12, ease: "easeOut" },
+  },
+};
+
+const MOON_VARIANTS: Variants = {
+  normal: { scale: 1, rotate: 0 },
+  animate: {
+    scale: [1, 1.14, 0.96, 1],
+    rotate: [0, -14, 8, -3, 0],
+    transition: { duration: 0.55, ease: "easeOut" },
+  },
+};
+
+const WATER_SVG_VARIANTS: Variants = {
+  normal: { scale: 1, y: 0 },
+  animate: {
+    scale: [1, 1.12, 0.95, 1],
+    y: [0, -2, 0.5, 0],
+    transition: { duration: 0.48, ease: "easeOut" },
+  },
+};
+
+const WATER_PATH_VARIANTS: Variants = {
+  normal: { pathLength: 1, opacity: 1 },
+  animate: {
+    pathLength: [0.4, 1],
+    opacity: [0.6, 1],
+    transition: { duration: 0.38, ease: "easeOut" },
+  },
+};
+
+const SUN_SVG_VARIANTS: Variants = {
+  normal: { scale: 1, rotate: 0 },
+  animate: {
+    scale: [1, 1.12, 0.96, 1],
+    rotate: [0, 45],
+    transition: { duration: 0.52, ease: "easeOut" },
+  },
+};
+
+const SUN_RAYS_VARIANTS: Variants = {
+  normal: { pathLength: 1, opacity: 1 },
+  animate: {
+    pathLength: [0, 1],
+    opacity: [0.4, 1],
+    transition: { duration: 0.36, delay: 0.08, ease: "easeOut" },
+  },
+};
+
+function AnimatedRitualGlyph({
   kind,
   color,
+  triggerCount,
+  reduced,
 }: {
   kind: RitualIconKind;
   color: string;
+  triggerCount: number;
+  reduced: boolean;
 }) {
+  const controls = useAnimation();
+  const isFirstMount = useRef(true);
+
+  useEffect(() => {
+    if (reduced) {
+      controls.set("normal");
+      return;
+    }
+
+    if (isFirstMount.current) {
+      isFirstMount.current = false;
+      if (triggerCount === 0) {
+        controls.set("normal");
+        return;
+      }
+    }
+
+    controls.stop();
+    controls.set("normal");
+    const frameId = requestAnimationFrame(() => {
+      controls.start("animate");
+    });
+
+    return () => cancelAnimationFrame(frameId);
+  }, [triggerCount, reduced, controls]);
+
   if (kind === "moon") {
     return (
-      <svg
+      <motion.svg
         width="24"
         height="24"
         viewBox="0 0 24 24"
         fill="none"
         aria-hidden="true"
         className="h-6 w-6 shrink-0"
+        variants={MOON_VARIANTS}
+        initial="normal"
+        animate={controls}
       >
         <path
           d="M20.354 15.354A9 9 0 0 1 8.646 3.646 9.003 9.003 0 0 0 12 21a9.003 9.003 0 0 0 8.354-5.646Z"
           fill={color}
         />
-      </svg>
+      </motion.svg>
     );
   }
 
   if (kind === "water") {
     return (
-      <svg
+      <motion.svg
         width="24"
         height="24"
         viewBox="0 0 24 24"
         fill="none"
         aria-hidden="true"
         className="h-6 w-6 shrink-0"
+        variants={WATER_SVG_VARIANTS}
+        initial="normal"
+        animate={controls}
       >
-        <path
+        <motion.path
           d="M12 2.5C12 2.5 5.25 10.1 5.25 14.5C5.25 18.2279 8.27208 21.25 12 21.25C15.7279 21.25 18.75 18.2279 18.75 14.5C18.75 10.1 12 2.5 12 2.5Z"
           fill={color}
+          stroke={color}
+          strokeWidth="1.25"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          variants={WATER_PATH_VARIANTS}
+          initial="normal"
+          animate={controls}
         />
-      </svg>
+      </motion.svg>
     );
   }
 
   if (kind === "sun") {
     return (
-      <svg
+      <motion.svg
         width="24"
         height="24"
         viewBox="0 0 24 24"
         fill="none"
         aria-hidden="true"
         className="h-6 w-6 shrink-0"
+        variants={SUN_SVG_VARIANTS}
+        initial="normal"
+        animate={controls}
       >
         <circle cx="12" cy="12" r="5" fill={color} />
-        <path
+        <motion.path
           d="M12 2.25V4.5M12 19.5V21.75M4.5 12H2.25M21.75 12H19.5M6.697 6.697L5.106 5.106M18.894 18.894L17.303 17.303M17.303 6.697L18.894 5.106M5.106 18.894L6.697 17.303"
           stroke={color}
           strokeWidth="2.2"
           strokeLinecap="round"
+          variants={SUN_RAYS_VARIANTS}
+          initial="normal"
+          animate={controls}
         />
-      </svg>
+      </motion.svg>
     );
   }
 
-  if (kind === "plan") {
-    return (
-      <svg
-        width="24"
-        height="24"
-        viewBox="0 0 24 24"
-        fill="none"
-        aria-hidden="true"
-        className="h-6 w-6 shrink-0"
-      >
-        <rect x="2.5" y="2.5" width="19" height="19" rx="5.5" fill={color} />
-        <path
-          d="M8.25 12.4L10.8 14.95L15.9 9.45"
-          stroke="#ffffff"
-          strokeWidth="2.25"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-      </svg>
-    );
-  }
-
+  // Interactive CircleCheckBig icon for "plan" and "check" rituals
   return (
-    <svg
+    <motion.svg
       width="24"
       height="24"
       viewBox="0 0 24 24"
       fill="none"
+      stroke={color}
+      strokeWidth="2.2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
       aria-hidden="true"
       className="h-6 w-6 shrink-0"
+      variants={CIRCLE_CHECK_SVG_VARIANTS}
+      initial="normal"
+      animate={controls}
     >
-      <circle cx="12" cy="12" r="9.5" fill={color} />
-      <path
-        d="M8.3 12.35L10.85 14.9L15.85 9.5"
-        stroke="#ffffff"
-        strokeWidth="2.2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
+      <motion.path
+        d="M21.801 10A10 10 0 1 1 17 3.335"
+        variants={CIRCLE_CHECK_ARC_VARIANTS}
+        initial="normal"
+        animate={controls}
       />
-    </svg>
+      <motion.path
+        d="m9 11 3 3L22 4"
+        variants={CIRCLE_CHECK_TICK_VARIANTS}
+        initial="normal"
+        animate={controls}
+      />
+    </motion.svg>
   );
 }
 
@@ -257,12 +373,13 @@ export const DailyRitualChecklist = React.forwardRef<
 ) {
   const rawId = useId();
   const uid = rawId.replace(/:/g, "");
-  const prefersReducedMotion = useReducedMotion();
+  const prefersReducedMotion = Boolean(useReducedMotion());
 
   const [internalItems, setInternalItems] =
     useState<DailyRitualItem[]>(defaultItems);
   const [isAdding, setIsAdding] = useState(false);
   const [draftLabel, setDraftLabel] = useState("");
+  const [iconTriggers, setIconTriggers] = useState<Record<string, number>>({});
   const inputRef = useRef<HTMLInputElement | null>(null);
 
   const items = controlledItems ?? internalItems;
@@ -272,6 +389,10 @@ export const DailyRitualChecklist = React.forwardRef<
       inputRef.current?.focus();
     }
   }, [isAdding]);
+
+  const bumpIconTrigger = (id: string) => {
+    setIconTriggers((prev) => ({ ...prev, [id]: (prev[id] ?? 0) + 1 }));
+  };
 
   const commitItems = (next: DailyRitualItem[]) => {
     if (controlledItems === undefined) {
@@ -289,6 +410,9 @@ export const DailyRitualChecklist = React.forwardRef<
     });
     commitItems(next);
     if (toggled) {
+      if (toggled.completed) {
+        bumpIconTrigger(id);
+      }
       onToggle?.(toggled);
     }
   };
@@ -431,6 +555,11 @@ export const DailyRitualChecklist = React.forwardRef<
                     aria-checked={item.completed}
                     aria-labelledby={`${uid}-label-${item.id}`}
                     onClick={() => handleToggle(item.id)}
+                    onMouseEnter={() => {
+                      if (item.completed) {
+                        bumpIconTrigger(item.id);
+                      }
+                    }}
                     className={cn(
                       "flex min-w-0 flex-1 cursor-pointer items-center gap-6 rounded-lg py-1.5 text-left outline-none transition-opacity",
                       focusRing
@@ -444,20 +573,22 @@ export const DailyRitualChecklist = React.forwardRef<
                             initial={
                               prefersReducedMotion
                                 ? { opacity: 1 }
-                                : { scale: 0.45, rotate: -24, opacity: 0 }
+                                : { scale: 0.72, opacity: 0 }
                             }
-                            animate={{ scale: 1, rotate: 0, opacity: 1 }}
+                            animate={{ scale: 1, opacity: 1 }}
                             exit={
                               prefersReducedMotion
                                 ? { opacity: 0 }
-                                : { scale: 0.55, rotate: 16, opacity: 0 }
+                                : { scale: 0.65, opacity: 0 }
                             }
                             transition={SPRING_ICON}
                             className="flex items-center justify-center"
                           >
-                            <CompletedRitualGlyph
+                            <AnimatedRitualGlyph
                               kind={iconKind}
                               color={resolvedColor}
+                              triggerCount={iconTriggers[item.id] ?? 0}
+                              reduced={prefersReducedMotion}
                             />
                           </motion.span>
                         ) : (
