@@ -8,7 +8,7 @@ const settings = {
   endMonogram: "A",
   subtitle: "design | systems | academy",
   baseColor: "#acefff",
-  floating: true,
+  orbitSpeed: 12,
   interactive: true,
 };
 
@@ -27,8 +27,10 @@ export default function IsometricBrandPlinthDemo(
     typeof config.subtitle === "string" ? config.subtitle : settings.subtitle;
   const baseColor =
     typeof config.baseColor === "string" ? config.baseColor : settings.baseColor;
-  const floating =
-    typeof config.floating === "boolean" ? config.floating : settings.floating;
+  const orbitSpeed =
+    typeof config.orbitSpeed === "number" && Number.isFinite(config.orbitSpeed)
+      ? Math.max(0, config.orbitSpeed)
+      : settings.orbitSpeed;
   const interactive =
     typeof config.interactive === "boolean"
       ? config.interactive
@@ -41,7 +43,7 @@ export default function IsometricBrandPlinthDemo(
         endMonogram={endMonogram}
         subtitle={subtitle}
         baseColor={baseColor}
-        floating={floating}
+        orbitSpeed={orbitSpeed}
         interactive={interactive}
       />
     </div>
