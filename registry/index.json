@@ -1,8 +1,29 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-25T06:25:36.028Z",
-  "totalComponents": 78,
+  "updatedAt": "2026-11-25T06:28:11.017Z",
+  "totalComponents": 80,
   "components": [
+    {
+      "id": "abushaid-signature",
+      "slug": "abushaid-signature",
+      "name": "Abushaid Signature",
+      "description": "Physics-driven cursive fountain-pen signature animation with curvature-weighted 2/3 power law pacing, layered clip-path masking, spring-damped wrist tilt, dynamic 3D pen shadow, wet-ink sheen, and optional Web Audio API pen-on-paper sound.",
+      "category": "Effects",
+      "isBuiltIn": false,
+      "updatedAt": 1795588085927,
+      "lastRepoSyncAt": 1795588090738,
+      "path": "registry/components/abushaid-signature",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "index.css",
+        "manifest.json",
+        "preview.png"
+      ],
+      "dependencies": [
+        "lucide-react"
+      ]
+    },
     {
       "id": "liquid-home-button",
       "slug": "liquid-home-button",
@@ -25,20 +46,42 @@
       ]
     },
     {
+      "id": "spotlight-qk-logo",
+      "slug": "spotlight-qk-logo",
+      "name": "Spotlight QK Logo",
+      "description": "An isometric 3D \"QK\" SVG logo with a cursor-tracking radial gradient spotlight, diagonal hatch top faces, springy press animation, and synthesized tactile click sound.",
+      "category": "Effects",
+      "isBuiltIn": false,
+      "updatedAt": 1795474408478,
+      "lastRepoSyncAt": 1795474413253,
+      "path": "registry/components/spotlight-qk-logo",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "index.css",
+        "manifest.json",
+        "preview.png"
+      ],
+      "dependencies": [
+        "framer-motion"
+      ]
+    },
+    {
       "id": "comp-1795458623385-hiqbe",
       "slug": "signature-image",
       "name": "Signature image ..",
       "description": "",
       "category": "Custom",
       "isBuiltIn": false,
-      "updatedAt": 1795459202231,
-      "lastRepoSyncAt": 1795459207737,
+      "updatedAt": 1795459657674,
+      "lastRepoSyncAt": 1795459662878,
       "path": "registry/components/signature-image",
       "files": [
         "component.tsx",
         "default.tsx",
         "index.css",
-        "manifest.json"
+        "manifest.json",
+        "preview.png"
       ],
       "dependencies": []
     },

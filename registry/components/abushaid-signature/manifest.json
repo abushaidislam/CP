@@ -6,12 +6,12 @@
   "category": "Effects",
   "isBuiltIn": false,
   "createdAt": 1795475465219,
-  "updatedAt": 1795475465219,
-  "lastRepoSyncAt": 1795475465219,
+  "updatedAt": 1795588085927,
+  "lastRepoSyncAt": 1795588090738,
   "dependencies": [
     "lucide-react"
   ],
-  "version": "v1",
+  "previewImage": "./preview.png",
   "variants": [
     {
       "id": "var-default",
