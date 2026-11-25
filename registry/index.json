@@ -1,18 +1,18 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-25T09:58:54.890Z",
-  "totalComponents": 87,
+  "updatedAt": "2026-11-25T15:48:12.123Z",
+  "totalComponents": 86,
   "components": [
     {
-      "id": "ascii-spotlight-error",
-      "slug": "ascii-spotlight-error",
-      "name": "AsciiSpotlightError",
-      "description": "Minimal monochrome error state featuring a 60fps cursor-tracking ASCII spotlight beam radiating from a central prism beacon with smooth angular damping and light/dark theme support.",
+      "id": "isometric-brand-plinth",
+      "slug": "isometric-brand-plinth",
+      "name": "IsometricBrandPlinth",
+      "description": "Dual-theme 2:1 isometric floating brand plinth with real-time 4-tier vector ASCII fire burning on a machined obsidian cap, native light/dark ceramic-slate materials, and 60fps 360-degree rounded-square orbiting typography underneath.",
       "category": "Effects",
       "isBuiltIn": false,
-      "updatedAt": 1795600729575,
-      "lastRepoSyncAt": 1795600734604,
-      "path": "registry/components/ascii-spotlight-error",
+      "updatedAt": 1795621684380,
+      "lastRepoSyncAt": 1795621691818,
+      "path": "registry/components/isometric-brand-plinth",
       "files": [
         "component.tsx",
         "default.tsx",
@@ -20,7 +20,9 @@
         "manifest.json",
         "preview.png"
       ],
-      "dependencies": []
+      "dependencies": [
+        "framer-motion"
+      ]
     },
     {
       "id": "obsidian-calligraphic-icon",
@@ -63,27 +65,6 @@
       "dependencies": [
         "framer-motion",
         "lucide-react"
-      ]
-    },
-    {
-      "id": "isometric-brand-plinth",
-      "slug": "isometric-brand-plinth",
-      "name": "IsometricBrandPlinth",
-      "description": "Interactive 2:1 isometric floating brand plinth with 60fps 360-degree 4-sided rounded-square orbiting typography, front/back 3D depth separation, pointer parallax, and exploded-view inspection.",
-      "category": "Effects",
-      "isBuiltIn": false,
-      "updatedAt": 1795592285353,
-      "lastRepoSyncAt": 1795592290191,
-      "path": "registry/components/isometric-brand-plinth",
-      "files": [
-        "component.tsx",
-        "default.tsx",
-        "index.css",
-        "manifest.json",
-        "preview.png"
-      ],
-      "dependencies": [
-        "framer-motion"
       ]
     },
     {

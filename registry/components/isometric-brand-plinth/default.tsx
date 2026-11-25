@@ -7,7 +7,8 @@ const settings = {
   brandCode: "NU-VOR",
   endMonogram: "A",
   subtitle: "design | systems | academy",
-  baseColor: "#acefff",
+  showAsciiFire: true,
+  fireIntensity: 0.85,
   orbitSpeed: 12,
   interactive: true,
 };
@@ -25,8 +26,15 @@ export default function IsometricBrandPlinthDemo(
       : settings.endMonogram;
   const subtitle =
     typeof config.subtitle === "string" ? config.subtitle : settings.subtitle;
-  const baseColor =
-    typeof config.baseColor === "string" ? config.baseColor : settings.baseColor;
+  const showAsciiFire =
+    typeof config.showAsciiFire === "boolean"
+      ? config.showAsciiFire
+      : settings.showAsciiFire;
+  const fireIntensity =
+    typeof config.fireIntensity === "number" &&
+    Number.isFinite(config.fireIntensity)
+      ? Math.max(0.3, Math.min(1, config.fireIntensity))
+      : settings.fireIntensity;
   const orbitSpeed =
     typeof config.orbitSpeed === "number" && Number.isFinite(config.orbitSpeed)
       ? Math.max(0, config.orbitSpeed)
@@ -37,12 +45,13 @@ export default function IsometricBrandPlinthDemo(
       : settings.interactive;
 
   return (
-    <div className="flex min-h-[420px] w-full items-center justify-center p-8">
+    <div className="flex min-h-[460px] w-full items-center justify-center p-8">
       <IsometricBrandPlinth
         brandCode={brandCode}
         endMonogram={endMonogram}
         subtitle={subtitle}
-        baseColor={baseColor}
+        showAsciiFire={showAsciiFire}
+        fireIntensity={fireIntensity}
         orbitSpeed={orbitSpeed}
         interactive={interactive}
       />

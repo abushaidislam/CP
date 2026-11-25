@@ -25,17 +25,17 @@ export type IsometricOrbitDirection = "left" | "right";
 
 export interface IsometricBrandPlinthProps
   extends Omit<React.HTMLAttributes<HTMLDivElement>, "children"> {
-  /** Primary bold brand code that wraps across the rounded isometric perimeter. */
+  /** Primary bold brand code that orbits around all four rounded sides. */
   brandCode?: string;
   /** Bold trailing monogram letter anchored after the stacked descriptor. */
   endMonogram?: string;
   /** Stacked descriptor lines (pipe-separated string, e.g. "design | systems | academy", or string array). */
   subtitle?: string | string[];
-  /** Custom color for the bottom isometric base plate. Defaults to "#acefff". */
-  baseColor?: string;
-  /** Optional override for the top isometric cap and typography fill color. */
-  inkColor?: string;
-  /** Color theme handling: "auto" adapts to Tailwind dark mode, or lock to "light" / "dark". */
+  /** Toggles the live animated ASCII fire burning on top of the isometric cap. */
+  showAsciiFire?: boolean;
+  /** Controls flame height and ember density (0.3 to 1.0). */
+  fireIntensity?: number;
+  /** Color theme handling: "auto" adapts materials and fire palette to Tailwind dark mode, or lock to "light" / "dark". */
   theme?: IsometricBrandPlinthTheme;
   /** Seconds per full 360-degree 4-sided orbit around the rounded plinth. Set to 0 to pause at the hero pose. */
   orbitSpeed?: number;
@@ -54,14 +54,16 @@ export interface IsometricBrandPlinthProps
 }
 
 const VIEWBOX_W = 600;
-const VIEWBOX_H = 460;
+const VIEWBOX_H = 540;
 const CX = 300;
-const CY_TOP = 160;
-const PLATE_OFFSET_Y = 122;
-const RIBBON_OFFSET_Y = 82;
+const CY_TOP = 228;
+const PLATE_OFFSET_Y = 124;
+const RIBBON_OFFSET_Y = 84;
+const CAP_THICKNESS = 11;
+const BASE_THICKNESS = 9;
 const HALF_W = 262;
 const HALF_H = 131; // Exact 2:1 isometric projection
-const CORNER_R = 0.28; // 14% of side length (matches reference squircle radius)
+const CORNER_R = 0.28; // 14% of side length
 const KAPPA = 0.55228475;
 
 const STRAIGHT_LEN = 2 - 2 * CORNER_R;
@@ -69,16 +71,31 @@ const ARC_LEN = (Math.PI / 2) * CORNER_R;
 const QUARTER_LEN = STRAIGHT_LEN + ARC_LEN;
 const LOOP_LEN = QUARTER_LEN * 4;
 
-function isoPoint(x: number, y: number, cy: number): [number, number] {
-  return [CX + ((x - y) / 2) * HALF_W, cy + ((x + y) / 2) * HALF_H];
+// ASCII Fire Simulation Grid
+const FIRE_COLS = 30;
+const FIRE_ROWS = 13;
+const NBSP = "\u00A0";
+const FIRE_CHARS = [NBSP, ".", ":", "-", "=", "+", "*", "#", "%", "@"];
+const FIRE_ROW_INDICES = Array.from({ length: FIRE_ROWS }, (_, i) => i);
+
+function isoPoint(
+  x: number,
+  y: number,
+  cy: number,
+  scale = 1
+): [number, number] {
+  return [
+    CX + ((x - y) / 2) * HALF_W * scale,
+    cy + ((x + y) / 2) * HALF_H * scale,
+  ];
 }
 
-function buildIsoRoundedSquarePath(cy: number): string {
+function buildIsoRoundedSquarePath(cy: number, scale = 1): string {
   const r = CORNER_R;
   const k = KAPPA * r;
 
   const p = (x: number, y: number) => {
-    const [px, py] = isoPoint(x, y, cy);
+    const [px, py] = isoPoint(x, y, cy, scale);
     return `${px.toFixed(2)} ${py.toFixed(2)}`;
   };
 
@@ -118,13 +135,11 @@ function sampleClosedPerimeter(sInput: number, cy: number): LoopSample {
   let ty: number;
 
   if (s < STRAIGHT_LEN) {
-    // 0: Front-left straight edge
     x = -1 + r + s;
     y = 1;
     tx = 1;
     ty = 0;
   } else if (s < QUARTER_LEN) {
-    // 1: Front rounded corner
     const t = (s - STRAIGHT_LEN) / ARC_LEN;
     const theta = (Math.PI / 2) * (1 - t);
     x = 1 - r + r * Math.cos(theta);
@@ -132,14 +147,12 @@ function sampleClosedPerimeter(sInput: number, cy: number): LoopSample {
     tx = Math.sin(theta);
     ty = -Math.cos(theta);
   } else if (s < QUARTER_LEN + STRAIGHT_LEN) {
-    // 2: Front-right straight edge
     const u = s - QUARTER_LEN;
     x = 1;
     y = 1 - r - u;
     tx = 0;
     ty = -1;
   } else if (s < QUARTER_LEN * 2) {
-    // 3: Right rounded corner (front -> back)
     const t = (s - QUARTER_LEN - STRAIGHT_LEN) / ARC_LEN;
     const theta = -(Math.PI / 2) * t;
     x = 1 - r + r * Math.cos(theta);
@@ -147,14 +160,12 @@ function sampleClosedPerimeter(sInput: number, cy: number): LoopSample {
     tx = Math.sin(theta);
     ty = -Math.cos(theta);
   } else if (s < QUARTER_LEN * 2 + STRAIGHT_LEN) {
-    // 4: Back-right straight edge
     const u = s - QUARTER_LEN * 2;
     x = 1 - r - u;
     y = -1;
     tx = -1;
     ty = 0;
   } else if (s < QUARTER_LEN * 3) {
-    // 5: Back rounded corner
     const t = (s - QUARTER_LEN * 2 - STRAIGHT_LEN) / ARC_LEN;
     const theta = -Math.PI / 2 - (Math.PI / 2) * t;
     x = -1 + r + r * Math.cos(theta);
@@ -162,14 +173,12 @@ function sampleClosedPerimeter(sInput: number, cy: number): LoopSample {
     tx = Math.sin(theta);
     ty = -Math.cos(theta);
   } else if (s < QUARTER_LEN * 3 + STRAIGHT_LEN) {
-    // 6: Back-left straight edge
     const u = s - QUARTER_LEN * 3;
     x = -1;
     y = -1 + r + u;
     tx = 0;
     ty = 1;
   } else {
-    // 7: Left rounded corner (back -> front)
     const t = (s - QUARTER_LEN * 3 - STRAIGHT_LEN) / ARC_LEN;
     const theta = Math.PI - (Math.PI / 2) * t;
     x = -1 + r + r * Math.cos(theta);
@@ -216,17 +225,22 @@ interface OrbitGlyphSpec {
   letterSpacing: string;
 }
 
-function sanitizeColor(value: string | undefined, fallback: string): string {
-  if (!value || typeof value !== "string") return fallback;
-  const trimmed = value.trim();
-  if (
-    /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/.test(trimmed) ||
-    /^(rgb|rgba|hsl|hsla)\([^)]+\)$/.test(trimmed) ||
-    /^var\(--[a-zA-Z0-9-_]+\)$/.test(trimmed)
-  ) {
-    return trimmed;
+function createInitialFireBuffer(intensity: number): Float32Array {
+  const buf = new Float32Array(FIRE_ROWS * FIRE_COLS);
+  const center = (FIRE_COLS - 1) / 2;
+  for (let r = 0; r < FIRE_ROWS; r++) {
+    const verticalFalloff = (r + 1) / FIRE_ROWS;
+    for (let c = 0; c < FIRE_COLS; c++) {
+      const dist = Math.abs(c - center) / center;
+      const cone = Math.max(0, 1 - dist * (1.28 - verticalFalloff * 0.48));
+      const wave =
+        0.5 + 0.5 * Math.sin(c * 0.72 + r * 0.45) * Math.cos(c * 0.31 - r * 0.3);
+      const heat =
+        cone * Math.pow(verticalFalloff, 1.15) * (0.7 + 0.3 * wave) * intensity;
+      buf[r * FIRE_COLS + c] = Math.max(0, Math.min(1, heat));
+    }
   }
-  return fallback;
+  return buf;
 }
 
 export const IsometricBrandPlinth = React.forwardRef<
@@ -237,8 +251,8 @@ export const IsometricBrandPlinth = React.forwardRef<
     brandCode = "NU-VOR",
     endMonogram = "A",
     subtitle = "design | systems | academy",
-    baseColor = "#acefff",
-    inkColor,
+    showAsciiFire = true,
+    fireIntensity = 0.85,
     theme = "auto",
     orbitSpeed = 12,
     orbitDirection = "left",
@@ -258,11 +272,20 @@ export const IsometricBrandPlinth = React.forwardRef<
   const safeId = rawId.replace(/:/g, "");
   const titleId = `iso-plinth-title-${safeId}`;
   const descId = `iso-plinth-desc-${safeId}`;
+  const capGradId = `iso-cap-grad-${safeId}`;
+  const capRimGradId = `iso-cap-rim-${safeId}`;
+  const baseGradId = `iso-base-grad-${safeId}`;
+  const baseRimGradId = `iso-base-rim-${safeId}`;
+  const emberGlowGradId = `iso-ember-glow-${safeId}`;
+  const baseClipId = `iso-base-clip-${safeId}`;
+  const capClipId = `iso-cap-clip-${safeId}`;
+  const shadowFilterId = `iso-soft-shadow-${safeId}`;
 
   const prefersReducedMotion = useReducedMotion();
   const containerRef = useRef<HTMLDivElement | null>(null);
   const frontNodesRef = useRef(new Map<string, SVGTextElement>());
   const backNodesRef = useRef(new Map<string, SVGTextElement>());
+  const fireNodesRef = useRef(new Map<string, SVGTextElement>());
   const isHoveredRef = useRef(false);
   const phaseRef = useRef(0);
 
@@ -271,6 +294,13 @@ export const IsometricBrandPlinth = React.forwardRef<
 
   const isControlled = typeof exploded === "boolean";
   const isExploded = isControlled ? exploded : internalExploded;
+
+  const clampedIntensity = useMemo(() => {
+    if (typeof fireIntensity !== "number" || !Number.isFinite(fireIntensity)) {
+      return 0.85;
+    }
+    return Math.max(0.3, Math.min(1, fireIntensity));
+  }, [fireIntensity]);
 
   // Pointer parallax motion values (zero React re-renders on pointer move)
   const pointerX = useMotionValue(0);
@@ -354,18 +384,29 @@ export const IsometricBrandPlinth = React.forwardRef<
     [interactive, toggleExploded, onKeyDown]
   );
 
-  const safeBaseColor = useMemo(
-    () => sanitizeColor(baseColor, "#acefff"),
-    [baseColor]
+  // Machined 3D isometric slab paths
+  const topCapSurfacePath = useMemo(
+    () => buildIsoRoundedSquarePath(CY_TOP),
+    []
   );
-  const safeInkColor = useMemo(
-    () => (inkColor ? sanitizeColor(inkColor, "") : undefined),
-    [inkColor]
+  const topCapBevelPath = useMemo(
+    () => buildIsoRoundedSquarePath(CY_TOP + CAP_THICKNESS),
+    []
   );
-
-  const topPlatePath = useMemo(() => buildIsoRoundedSquarePath(CY_TOP), []);
-  const bottomPlatePath = useMemo(
+  const baseSurfacePath = useMemo(
     () => buildIsoRoundedSquarePath(CY_TOP + PLATE_OFFSET_Y),
+    []
+  );
+  const baseBevelPath = useMemo(
+    () => buildIsoRoundedSquarePath(CY_TOP + PLATE_OFFSET_Y + BASE_THICKNESS),
+    []
+  );
+  const castShadowPath = useMemo(
+    () => buildIsoRoundedSquarePath(CY_TOP + PLATE_OFFSET_Y + 4, 0.78),
+    []
+  );
+  const groundShadowPath = useMemo(
+    () => buildIsoRoundedSquarePath(CY_TOP + PLATE_OFFSET_Y + 24, 0.96),
     []
   );
 
@@ -423,7 +464,6 @@ export const IsometricBrandPlinth = React.forwardRef<
     for (let copy = 0; copy < 2; copy++) {
       const copyOffset = copy * halfLoop;
 
-      // 1. Primary wrap-around brand code characters
       let cursor = 0;
       chars.forEach((ch, idx) => {
         const w = weights[idx];
@@ -440,7 +480,6 @@ export const IsometricBrandPlinth = React.forwardRef<
         });
       });
 
-      // 2. Per-character 3-line stacked subtitle so every line bends smoothly around corners
       subtitleLines.forEach((line, lineIdx) => {
         const lineChars = Array.from(line.slice(0, 14));
         let subCursor = 2.24;
@@ -462,7 +501,6 @@ export const IsometricBrandPlinth = React.forwardRef<
         });
       });
 
-      // 3. Trailing bold monogram letter
       if (normalizedEndMonogram) {
         specs.push({
           id: `c${copy}-e`,
@@ -479,7 +517,7 @@ export const IsometricBrandPlinth = React.forwardRef<
     return specs;
   }, [normalizedBrandCode, subtitleLines, normalizedEndMonogram]);
 
-  // Apply transforms directly to SVG DOM nodes at 60fps (zero React re-renders)
+  // Apply 360-degree orbiting glyph transforms directly to SVG DOM nodes at 60fps
   const applyGlyphFrame = useCallback(
     (phase: number) => {
       const cyRibbon = CY_TOP + RIBBON_OFFSET_Y;
@@ -491,7 +529,6 @@ export const IsometricBrandPlinth = React.forwardRef<
         const backEl = backNodesRef.current.get(spec.id);
 
         if (sample.a >= 0) {
-          // Front-facing side of the 3D rounded plinth
           const frontOpacity = Math.min(1, sample.a / 0.12);
           if (frontEl) {
             frontEl.setAttribute(
@@ -504,7 +541,6 @@ export const IsometricBrandPlinth = React.forwardRef<
             backEl.setAttribute("opacity", "0");
           }
         } else {
-          // Back-facing side of the 3D rounded plinth (subtle depth ghost passing behind)
           const backOpacity = Math.min(0.14, (Math.abs(sample.a) / 0.85) * 0.14);
           if (frontEl) {
             frontEl.setAttribute("opacity", "0");
@@ -522,7 +558,64 @@ export const IsometricBrandPlinth = React.forwardRef<
     [orbitGlyphs]
   );
 
-  // Continuous 60fps requestAnimationFrame 360-degree 4-sided orbit loop
+  // Paint 4 color-bucketed ASCII fire tiers directly to SVG textContent using NBSP for exact column lock
+  const paintFireBuffer = useCallback((buf: Float32Array) => {
+    for (let r = 0; r < FIRE_ROWS; r++) {
+      let tier0 = "";
+      let tier1 = "";
+      let tier2 = "";
+      let tier3 = "";
+      const rowOffset = r * FIRE_COLS;
+
+      for (let c = 0; c < FIRE_COLS; c++) {
+        const h = buf[rowOffset + c];
+        if (h < 0.14) {
+          tier0 += NBSP;
+          tier1 += NBSP;
+          tier2 += NBSP;
+          tier3 += NBSP;
+          continue;
+        }
+        const idx = Math.min(
+          FIRE_CHARS.length - 1,
+          Math.max(1, Math.floor(h * FIRE_CHARS.length))
+        );
+        const ch = FIRE_CHARS[idx];
+        if (h >= 0.78) {
+          tier0 += NBSP;
+          tier1 += NBSP;
+          tier2 += NBSP;
+          tier3 += ch;
+        } else if (h >= 0.54) {
+          tier0 += NBSP;
+          tier1 += NBSP;
+          tier2 += ch;
+          tier3 += NBSP;
+        } else if (h >= 0.32) {
+          tier0 += NBSP;
+          tier1 += ch;
+          tier2 += NBSP;
+          tier3 += NBSP;
+        } else {
+          tier0 += ch;
+          tier1 += NBSP;
+          tier2 += NBSP;
+          tier3 += NBSP;
+        }
+      }
+
+      const n0 = fireNodesRef.current.get(`f-${r}-0`);
+      const n1 = fireNodesRef.current.get(`f-${r}-1`);
+      const n2 = fireNodesRef.current.get(`f-${r}-2`);
+      const n3 = fireNodesRef.current.get(`f-${r}-3`);
+      if (n0) n0.textContent = tier0;
+      if (n1) n1.textContent = tier1;
+      if (n2) n2.textContent = tier2;
+      if (n3) n3.textContent = tier3;
+    }
+  }, []);
+
+  // Continuous 60fps orbit loop
   useEffect(() => {
     const safeSpeed =
       typeof orbitSpeed === "number" && Number.isFinite(orbitSpeed)
@@ -542,7 +635,6 @@ export const IsometricBrandPlinth = React.forwardRef<
     const tick = (now: number) => {
       const dt = Math.min(0.05, (now - lastTime) / 1000);
       lastTime = now;
-      // Gently decelerate on hover so users can inspect text effortlessly
       const speedFactor = interactive && isHoveredRef.current ? 0.35 : 1;
       const deltaS = (LOOP_LEN / safeSpeed) * dt * speedFactor * dirSign;
       phaseRef.current =
@@ -558,7 +650,91 @@ export const IsometricBrandPlinth = React.forwardRef<
     return () => {
       cancelAnimationFrame(rafId);
     };
-  }, [orbitSpeed, orbitDirection, prefersReducedMotion, interactive, applyGlyphFrame]);
+  }, [
+    orbitSpeed,
+    orbitDirection,
+    prefersReducedMotion,
+    interactive,
+    applyGlyphFrame,
+  ]);
+
+  // Real-time Cellular Automata ASCII Fire simulation loop (~24fps crisp flame flicker)
+  useEffect(() => {
+    if (!showAsciiFire) return;
+
+    const buf = createInitialFireBuffer(clampedIntensity);
+    const next = new Float32Array(FIRE_ROWS * FIRE_COLS);
+    paintFireBuffer(buf);
+
+    if (prefersReducedMotion) return;
+
+    let rafId = 0;
+    let lastStep = performance.now();
+    let tickCount = 0;
+    const center = (FIRE_COLS - 1) / 2;
+
+    const stepFire = (now: number) => {
+      if (now - lastStep >= 42) {
+        lastStep = now;
+        tickCount += 1;
+
+        // Stoke bottom row with sculpted ember profile matching the isometric cap width
+        const baseRow = (FIRE_ROWS - 1) * FIRE_COLS;
+        for (let c = 0; c < FIRE_COLS; c++) {
+          const dist = Math.abs(c - center) / center;
+          const footprint = Math.max(0, 1 - Math.pow(dist, 1.55) * 1.12);
+          const pulse =
+            0.74 +
+            0.26 * Math.sin(tickCount * 0.24 + c * 0.58) * Math.cos(c * 0.27);
+          const spark = 0.72 + Math.random() * 0.42;
+          buf[baseRow + c] = Math.min(
+            1,
+            footprint * pulse * spark * clampedIntensity * 1.2
+          );
+        }
+
+        // Propagate heat upward with gentle organic turbulence & cooling
+        for (let r = 0; r < FIRE_ROWS - 1; r++) {
+          const rowStart = r * FIRE_COLS;
+          const belowStart = (r + 1) * FIRE_COLS;
+          const below2Start = Math.min(FIRE_ROWS - 1, r + 2) * FIRE_COLS;
+
+          for (let c = 0; c < FIRE_COLS; c++) {
+            const cLeft = Math.max(0, c - 1);
+            const cRight = Math.min(FIRE_COLS - 1, c + 1);
+            const avg =
+              buf[belowStart + cLeft] * 0.22 +
+              buf[belowStart + c] * 0.44 +
+              buf[belowStart + cRight] * 0.22 +
+              buf[below2Start + c] * 0.12;
+
+            const edgeDist = Math.abs(c - center) / center;
+            const cooling =
+              0.068 +
+              (1 - clampedIntensity) * 0.055 +
+              edgeDist * 0.048 +
+              Math.random() * 0.075;
+
+            next[rowStart + c] = Math.max(0, Math.min(1, avg - cooling));
+          }
+        }
+
+        for (let i = 0; i < baseRow; i++) {
+          buf[i] = next[i];
+        }
+
+        paintFireBuffer(buf);
+      }
+
+      rafId = requestAnimationFrame(stepFire);
+    };
+
+    rafId = requestAnimationFrame(stepFire);
+
+    return () => {
+      cancelAnimationFrame(rafId);
+    };
+  }, [showAsciiFire, clampedIntensity, prefersReducedMotion, paintFireBuffer]);
 
   const guideVerts = useMemo(() => {
     const corners: Array<[number, number]> = [
@@ -572,22 +748,85 @@ export const IsometricBrandPlinth = React.forwardRef<
     }));
   }, []);
 
-  const inkClass = useMemo(() => {
-    if (safeInkColor) return "";
-    if (theme === "light") return "fill-black text-black";
-    if (theme === "dark") return "fill-zinc-50 text-zinc-50";
-    return "fill-black text-black dark:fill-zinc-50 dark:text-zinc-50";
-  }, [safeInkColor, theme]);
+  // Dual-theme CSS variable tokens so Day (Light) & Night (Dark) both look flagship-grade
+  const themeTokenClasses = useMemo(() => {
+    const lightTokens = [
+      "[--plinth-cap-1:#27272a]",
+      "[--plinth-cap-2:#141417]",
+      "[--plinth-cap-3:#09090b]",
+      "[--plinth-cap-bevel:#030406]",
+      "[--plinth-cap-rim:rgba(255,255,255,0.28)]",
+      "[--plinth-base-1:#ffffff]",
+      "[--plinth-base-2:#f4f4f6]",
+      "[--plinth-base-3:#e2e4ea]",
+      "[--plinth-base-bevel:#c8ccd6]",
+      "[--plinth-base-rim:rgba(255,255,255,0.92)]",
+      "[--plinth-ink:#09090b]",
+      "[--plinth-guide:rgba(9,9,11,0.18)]",
+      "[--plinth-cast-opacity:0.15]",
+      "[--plinth-ground-opacity:0.12]",
+      "[--plinth-ember-core:rgba(249,115,22,0.34)]",
+      "[--plinth-ember-edge:rgba(234,88,12,0)]",
+      "[--fire-t0:#9a3412]",
+      "[--fire-t1:#dc2626]",
+      "[--fire-t2:#ea580c]",
+      "[--fire-t3:#f59e0b]",
+    ].join(" ");
 
-  const guideStrokeClass = useMemo(() => {
-    if (theme === "light") return "stroke-black/20";
-    if (theme === "dark") return "stroke-white/25";
-    return "stroke-black/20 dark:stroke-white/25";
+    const darkTokens = [
+      "[--plinth-cap-1:#2e3445]",
+      "[--plinth-cap-2:#151923]",
+      "[--plinth-cap-3:#090b10]",
+      "[--plinth-cap-bevel:#040508]",
+      "[--plinth-cap-rim:rgba(255,255,255,0.24)]",
+      "[--plinth-base-1:#2b3142]",
+      "[--plinth-base-2:#1b1f2b]",
+      "[--plinth-base-3:#11141d]",
+      "[--plinth-base-bevel:#080a0f]",
+      "[--plinth-base-rim:rgba(255,255,255,0.18)]",
+      "[--plinth-ink:#f4f4f5]",
+      "[--plinth-guide:rgba(255,255,255,0.22)]",
+      "[--plinth-cast-opacity:0.42]",
+      "[--plinth-ground-opacity:0.35]",
+      "[--plinth-ember-core:rgba(251,146,60,0.42)]",
+      "[--plinth-ember-edge:rgba(234,88,12,0)]",
+      "[--fire-t0:#b91c1c]",
+      "[--fire-t1:#f97316]",
+      "[--fire-t2:#fbbf24]",
+      "[--fire-t3:#fffbeb]",
+    ].join(" ");
+
+    const autoDarkTokens = [
+      "dark:[--plinth-cap-1:#2e3445]",
+      "dark:[--plinth-cap-2:#151923]",
+      "dark:[--plinth-cap-3:#090b10]",
+      "dark:[--plinth-cap-bevel:#040508]",
+      "dark:[--plinth-cap-rim:rgba(255,255,255,0.24)]",
+      "dark:[--plinth-base-1:#2b3142]",
+      "dark:[--plinth-base-2:#1b1f2b]",
+      "dark:[--plinth-base-3:#11141d]",
+      "dark:[--plinth-base-bevel:#080a0f]",
+      "dark:[--plinth-base-rim:rgba(255,255,255,0.18)]",
+      "dark:[--plinth-ink:#f4f4f5]",
+      "dark:[--plinth-guide:rgba(255,255,255,0.22)]",
+      "dark:[--plinth-cast-opacity:0.42]",
+      "dark:[--plinth-ground-opacity:0.35]",
+      "dark:[--plinth-ember-core:rgba(251,146,60,0.42)]",
+      "dark:[--plinth-ember-edge:rgba(234,88,12,0)]",
+      "dark:[--fire-t0:#b91c1c]",
+      "dark:[--fire-t1:#f97316]",
+      "dark:[--fire-t2:#fbbf24]",
+      "dark:[--fire-t3:#fffbeb]",
+    ].join(" ");
+
+    if (theme === "light") return lightTokens;
+    if (theme === "dark") return darkTokens;
+    return `${lightTokens} ${autoDarkTokens}`;
   }, [theme]);
 
   const capTargetY = isExploded ? -28 : isHovered && interactive ? -10 : 0;
   const ribbonTargetY = isExploded ? 0 : isHovered && interactive ? -3 : 0;
-  const baseTargetY = isExploded ? 22 : isHovered && interactive ? 6 : 0;
+  const baseTargetY = isExploded ? 20 : isHovered && interactive ? 5 : 0;
 
   const shouldFloat = floating && !prefersReducedMotion && !isExploded;
   const springTransition = prefersReducedMotion
@@ -616,7 +855,8 @@ export const IsometricBrandPlinth = React.forwardRef<
       onClick={handleClick}
       onKeyDown={handleKeyDown}
       className={cn(
-        "relative inline-flex w-full max-w-[460px] select-none items-center justify-center rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/70 focus-visible:ring-offset-4 focus-visible:ring-offset-transparent",
+        "relative inline-flex w-full max-w-[480px] select-none items-center justify-center rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-400/70 focus-visible:ring-offset-4 focus-visible:ring-offset-transparent",
+        themeTokenClasses,
         interactive ? "cursor-pointer" : "cursor-default",
         className
       )}
@@ -629,14 +869,95 @@ export const IsometricBrandPlinth = React.forwardRef<
       >
         <title id={titleId}>{accessibleLabel}</title>
         <desc id={descId}>
-          Isometric three-layer brand plinth with 360-degree rounded-square
-          orbiting typography wrapping smoothly around all four sides.
+          Dual-theme isometric brand plinth with animated ASCII fire burning on
+          top of a machined obsidian slab and 360-degree rounded-square orbiting
+          typography underneath.
           {interactive
             ? " Hover to slow orbit and elevate cap; activate to toggle exploded architectural layer view."
             : ""}
         </desc>
 
-        {/* LAYER 1: Bottom Isometric Cyan Base Plate */}
+        <defs>
+          {/* Top Machined Obsidian Surface Gradient */}
+          <linearGradient id={capGradId} x1="12%" y1="0%" x2="88%" y2="100%">
+            <stop offset="0%" stopColor="var(--plinth-cap-1)" />
+            <stop offset="52%" stopColor="var(--plinth-cap-2)" />
+            <stop offset="100%" stopColor="var(--plinth-cap-3)" />
+          </linearGradient>
+
+          {/* Crisp 1px Specular Rim Highlight on Top Cap */}
+          <linearGradient id={capRimGradId} x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="var(--plinth-cap-rim)" />
+            <stop offset="55%" stopColor="rgba(255,255,255,0.06)" />
+            <stop offset="100%" stopColor="rgba(255,255,255,0.14)" />
+          </linearGradient>
+
+          {/* Bottom Architectural Ceramic / Slate Base Gradient */}
+          <linearGradient id={baseGradId} x1="10%" y1="0%" x2="90%" y2="100%">
+            <stop offset="0%" stopColor="var(--plinth-base-1)" />
+            <stop offset="50%" stopColor="var(--plinth-base-2)" />
+            <stop offset="100%" stopColor="var(--plinth-base-3)" />
+          </linearGradient>
+
+          {/* Crisp 1px Specular Rim Highlight on Base Plate */}
+          <linearGradient
+            id={baseRimGradId}
+            x1="0%"
+            y1="0%"
+            x2="100%"
+            y2="100%"
+          >
+            <stop offset="0%" stopColor="var(--plinth-base-rim)" />
+            <stop offset="60%" stopColor="rgba(255,255,255,0.08)" />
+            <stop offset="100%" stopColor="rgba(255,255,255,0.2)" />
+          </linearGradient>
+
+          {/* Subtle Warm Ember Reflection Seated on Top Cap Under ASCII Fire */}
+          <radialGradient id={emberGlowGradId} cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stopColor="var(--plinth-ember-core)" />
+            <stop offset="65%" stopColor="rgba(249,115,22,0.1)" />
+            <stop offset="100%" stopColor="var(--plinth-ember-edge)" />
+          </radialGradient>
+
+          <clipPath id={baseClipId}>
+            <path d={baseSurfacePath} />
+          </clipPath>
+
+          <clipPath id={capClipId}>
+            <path d={topCapSurfacePath} />
+          </clipPath>
+
+          <filter
+            id={shadowFilterId}
+            x="-25%"
+            y="-25%"
+            width="150%"
+            height="150%"
+          >
+            <feGaussianBlur stdDeviation="14" />
+          </filter>
+        </defs>
+
+        {/* LAYER 0: Soft Grounded Ambient Contact Shadow */}
+        <motion.g
+          animate={{
+            scale: isExploded ? 0.92 : isHovered && interactive ? 0.96 : 1,
+          }}
+          transition={springTransition}
+          style={{
+            transformOrigin: `${CX}px ${CY_TOP + PLATE_OFFSET_Y + 24}px`,
+            opacity: "var(--plinth-ground-opacity)",
+          }}
+          className="pointer-events-none"
+        >
+          <path
+            d={groundShadowPath}
+            fill="#020617"
+            filter={`url(#${shadowFilterId})`}
+          />
+        </motion.g>
+
+        {/* LAYER 1: Bottom Isometric Machined Base Plinth */}
         <motion.g
           style={
             interactive && !prefersReducedMotion
@@ -652,11 +973,35 @@ export const IsometricBrandPlinth = React.forwardRef<
             transition={springTransition}
             style={{ transformOrigin: `${CX}px ${CY_TOP + PLATE_OFFSET_Y}px` }}
           >
-            <path d={bottomPlatePath} fill={safeBaseColor} />
+            {/* 3D Extruded Bevel Lip */}
+            <path d={baseBevelPath} fill="var(--plinth-base-bevel)" />
+            {/* Top Satin Surface */}
+            <path
+              d={baseSurfacePath}
+              fill={`url(#${baseGradId})`}
+              stroke={`url(#${baseRimGradId})`}
+              strokeWidth="1.25"
+            />
+            {/* Projected Depth Shadow Cast by Floating Top Cap */}
+            <g clipPath={`url(#${baseClipId})`} className="pointer-events-none">
+              <motion.path
+                d={castShadowPath}
+                fill="#020617"
+                filter={`url(#${shadowFilterId})`}
+                animate={{
+                  scale: isExploded ? 0.85 : isHovered && interactive ? 0.92 : 1,
+                }}
+                transition={springTransition}
+                style={{
+                  transformOrigin: `${CX}px ${CY_TOP + PLATE_OFFSET_Y + 4}px`,
+                  opacity: "var(--plinth-cast-opacity)",
+                }}
+              />
+            </g>
           </motion.g>
         </motion.g>
 
-        {/* LAYER 2A: Back-Facing Orbiting Typography (passes behind front ribbon & beneath top cap) */}
+        {/* LAYER 2A: Back-Facing Orbiting Typography */}
         <motion.g
           style={
             interactive && !prefersReducedMotion
@@ -699,8 +1044,7 @@ export const IsometricBrandPlinth = React.forwardRef<
                   fontWeight={spec.fontWeight}
                   fontSize={spec.fontSize}
                   letterSpacing={spec.letterSpacing}
-                  fill={safeInkColor || undefined}
-                  className={inkClass}
+                  fill="var(--plinth-ink)"
                   opacity={0}
                 >
                   {spec.ch}
@@ -726,14 +1070,14 @@ export const IsometricBrandPlinth = React.forwardRef<
               y1={v.top[1] - 24}
               x2={v.bot[0]}
               y2={v.bot[1] + 18}
-              className={guideStrokeClass}
+              stroke="var(--plinth-guide)"
               strokeWidth="1.25"
               strokeDasharray="4 4"
             />
           ))}
         </motion.g>
 
-        {/* LAYER 2B: Front-Facing Orbiting Typography (crisp full opacity wrapping front corners) */}
+        {/* LAYER 2B: Front-Facing Orbiting Typography */}
         <motion.g
           style={
             interactive && !prefersReducedMotion
@@ -775,8 +1119,7 @@ export const IsometricBrandPlinth = React.forwardRef<
                   fontWeight={spec.fontWeight}
                   fontSize={spec.fontSize}
                   letterSpacing={spec.letterSpacing}
-                  fill={safeInkColor || undefined}
-                  className={inkClass}
+                  fill="var(--plinth-ink)"
                   opacity={0}
                 >
                   {spec.ch}
@@ -786,7 +1129,7 @@ export const IsometricBrandPlinth = React.forwardRef<
           </motion.g>
         </motion.g>
 
-        {/* LAYER 3: Top Isometric Rounded-Square Cap */}
+        {/* LAYER 3: Top Machined Obsidian Cap + Seated Real-Time ASCII Fire */}
         <motion.g
           style={
             interactive && !prefersReducedMotion
@@ -810,11 +1153,98 @@ export const IsometricBrandPlinth = React.forwardRef<
                   : { duration: 0.2 }
               }
             >
+              {/* 3D Machined Bottom Bevel */}
+              <path d={topCapBevelPath} fill="var(--plinth-cap-bevel)" />
+
+              {/* Top Matte Directional Surface + 1px Specular Rim */}
               <path
-                d={topPlatePath}
-                fill={safeInkColor || undefined}
-                className={inkClass}
+                d={topCapSurfacePath}
+                fill={`url(#${capGradId})`}
+                stroke={`url(#${capRimGradId})`}
+                strokeWidth="1.25"
               />
+
+              {/* Warm Ember Reflection on Cap Surface Underneath the Fire */}
+              {showAsciiFire ? (
+                <g clipPath={`url(#${capClipId})`} className="pointer-events-none">
+                  <ellipse
+                    cx={CX}
+                    cy={CY_TOP - 8}
+                    rx={145}
+                    ry={68}
+                    fill={`url(#${emberGlowGradId})`}
+                  />
+                </g>
+              ) : null}
+
+              {/* Real-Time 4-Tier Multi-Color Vector ASCII Fire */}
+              {showAsciiFire ? (
+                <g
+                  className="pointer-events-none"
+                  aria-hidden="true"
+                  fontFamily="'JetBrains Mono', 'Fira Code', ui-monospace, SFMono-Regular, Menlo, monospace"
+                  fontSize={13.5}
+                  fontWeight={700}
+                  textAnchor="middle"
+                  style={{ whiteSpace: "pre" }}
+                >
+                  {FIRE_ROW_INDICES.map((r) => {
+                    const rowY = CY_TOP - 178 + r * 14.5;
+                    return (
+                      <g key={`fire-row-${r}`}>
+                        <text
+                          ref={(el) => {
+                            const key = `f-${r}-0`;
+                            if (el) fireNodesRef.current.set(key, el);
+                            else fireNodesRef.current.delete(key);
+                          }}
+                          x={CX}
+                          y={rowY}
+                          fill="var(--fire-t0)"
+                          opacity={0.72}
+                          xmlSpace="preserve"
+                        />
+                        <text
+                          ref={(el) => {
+                            const key = `f-${r}-1`;
+                            if (el) fireNodesRef.current.set(key, el);
+                            else fireNodesRef.current.delete(key);
+                          }}
+                          x={CX}
+                          y={rowY}
+                          fill="var(--fire-t1)"
+                          opacity={0.92}
+                          xmlSpace="preserve"
+                        />
+                        <text
+                          ref={(el) => {
+                            const key = `f-${r}-2`;
+                            if (el) fireNodesRef.current.set(key, el);
+                            else fireNodesRef.current.delete(key);
+                          }}
+                          x={CX}
+                          y={rowY}
+                          fill="var(--fire-t2)"
+                          opacity={0.98}
+                          xmlSpace="preserve"
+                        />
+                        <text
+                          ref={(el) => {
+                            const key = `f-${r}-3`;
+                            if (el) fireNodesRef.current.set(key, el);
+                            else fireNodesRef.current.delete(key);
+                          }}
+                          x={CX}
+                          y={rowY}
+                          fill="var(--fire-t3)"
+                          opacity={1}
+                          xmlSpace="preserve"
+                        />
+                      </g>
+                    );
+                  })}
+                </g>
+              ) : null}
             </motion.g>
           </motion.g>
         </motion.g>
