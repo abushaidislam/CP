@@ -1,30 +1,8 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-25T06:39:08.916Z",
-  "totalComponents": 81,
+  "updatedAt": "2026-11-25T06:42:29.876Z",
+  "totalComponents": 80,
   "components": [
-    {
-      "id": "daily-routine-checklist",
-      "slug": "daily-routine-checklist",
-      "name": "DailyRoutineChecklist",
-      "description": "Minimalist daily habit and routine checklist with dashed SVG checkboxes that morph into signature filled icons on completion, dotted row dividers, and an inline add-item pill.",
-      "category": "Widgets",
-      "isBuiltIn": false,
-      "updatedAt": 1795588744149,
-      "lastRepoSyncAt": 1795588748595,
-      "path": "registry/components/daily-routine-checklist",
-      "files": [
-        "component.tsx",
-        "default.tsx",
-        "index.css",
-        "manifest.json",
-        "preview.png"
-      ],
-      "dependencies": [
-        "framer-motion",
-        "lucide-react"
-      ]
-    },
     {
       "id": "liquid-home-button",
       "slug": "liquid-home-button",
@@ -32,8 +10,8 @@
       "description": "Spatial liquid-glass pill button featuring a concentric chromatic dispersion prism ring, orbiting white-hot caustic light arcs, and brushed-silver Home iconography with tactile spring feedback.",
       "category": "Buttons",
       "isBuiltIn": false,
-      "updatedAt": 1795587930959,
-      "lastRepoSyncAt": 1795587935794,
+      "updatedAt": 1795588944672,
+      "lastRepoSyncAt": 1795588949593,
       "path": "registry/components/liquid-home-button",
       "files": [
         "component.tsx",
