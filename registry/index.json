@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-25T06:48:15.325Z",
+  "updatedAt": "2026-11-25T06:48:37.565Z",
   "totalComponents": 81,
   "components": [
     {
@@ -10,8 +10,8 @@
       "description": "Minimalist daily habit and routine checklist with dashed SVG checkboxes that morph into signature filled icons on completion, dotted row dividers, and an inline add-item pill.",
       "category": "Widgets",
       "isBuiltIn": false,
-      "updatedAt": 1795589288516,
-      "lastRepoSyncAt": 1795589295210,
+      "updatedAt": 1795589311184,
+      "lastRepoSyncAt": 1795589317448,
       "path": "registry/components/daily-routine-checklist",
       "files": [
         "component.tsx",
