@@ -6,10 +6,10 @@
   "category": "Effects",
   "isBuiltIn": false,
   "createdAt": 1795600578470,
-  "updatedAt": 1795600578470,
-  "lastRepoSyncAt": 1795600578470,
+  "updatedAt": 1795600729575,
+  "lastRepoSyncAt": 1795600734604,
   "dependencies": [],
-  "version": "v1",
+  "previewImage": "./preview.png",
   "variants": [
     {
       "id": "var-default",

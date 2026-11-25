@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-25T09:56:18.804Z",
+  "updatedAt": "2026-11-25T09:58:54.890Z",
   "totalComponents": 87,
   "components": [
     {
@@ -10,13 +10,15 @@
       "description": "Minimal monochrome error state featuring a 60fps cursor-tracking ASCII spotlight beam radiating from a central prism beacon with smooth angular damping and light/dark theme support.",
       "category": "Effects",
       "isBuiltIn": false,
-      "updatedAt": 1795600578470,
-      "lastRepoSyncAt": 1795600578470,
+      "updatedAt": 1795600729575,
+      "lastRepoSyncAt": 1795600734604,
       "path": "registry/components/ascii-spotlight-error",
       "files": [
         "component.tsx",
         "default.tsx",
-        "manifest.json"
+        "index.css",
+        "manifest.json",
+        "preview.png"
       ],
       "dependencies": []
     },
@@ -54,7 +56,9 @@
       "files": [
         "component.tsx",
         "default.tsx",
-        "manifest.json"
+        "index.css",
+        "manifest.json",
+        "preview.png"
       ],
       "dependencies": [
         "framer-motion",
@@ -74,7 +78,9 @@
       "files": [
         "component.tsx",
         "default.tsx",
-        "manifest.json"
+        "index.css",
+        "manifest.json",
+        "preview.png"
       ],
       "dependencies": [
         "framer-motion"
@@ -87,16 +93,40 @@
       "description": "Interactive liquid-ink typography that organically inflates and fuses letterforms with real-time metaball physics on cursor hover. Supports custom text, theme-aware styling, spring-damped trail inertia, and reduced-motion accessibility.",
       "category": "Effects",
       "isBuiltIn": false,
-      "updatedAt": 1795590483803,
-      "lastRepoSyncAt": 1795590483803,
+      "updatedAt": 1795590308461,
+      "lastRepoSyncAt": 1795590313192,
       "path": "registry/components/liquid-morph-text",
       "files": [
         "component.tsx",
         "default.tsx",
-        "manifest.json"
+        "index.css",
+        "manifest.json",
+        "preview.png"
       ],
       "dependencies": [
         "framer-motion"
+      ]
+    },
+    {
+      "id": "daily-ritual-checklist",
+      "slug": "daily-ritual-checklist",
+      "name": "DailyRitualChecklist",
+      "description": "Minimalist daily ritual and habit checklist with dashed rounded-square checkboxes, spring-animated ritual emblems, crisp dashed dividers, and an inline pill composer for adding new habits.",
+      "category": "Widgets",
+      "isBuiltIn": false,
+      "updatedAt": 1795589350023,
+      "lastRepoSyncAt": 1795589356666,
+      "path": "registry/components/daily-ritual-checklist",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "index.css",
+        "manifest.json",
+        "preview.png"
+      ],
+      "dependencies": [
+        "framer-motion",
+        "lucide-react"
       ]
     },
     {
@@ -140,28 +170,6 @@
       ],
       "dependencies": [
         "framer-motion"
-      ]
-    },
-    {
-      "id": "daily-ritual-checklist",
-      "slug": "daily-ritual-checklist",
-      "name": "DailyRitualChecklist",
-      "description": "Minimalist daily ritual and habit checklist with dashed rounded-square checkboxes, spring-animated ritual emblems, crisp dashed dividers, and an inline pill composer for adding new habits.",
-      "category": "Widgets",
-      "isBuiltIn": false,
-      "updatedAt": 1795588590503,
-      "lastRepoSyncAt": 1795588595107,
-      "path": "registry/components/daily-ritual-checklist",
-      "files": [
-        "component.tsx",
-        "default.tsx",
-        "index.css",
-        "manifest.json",
-        "preview.png"
-      ],
-      "dependencies": [
-        "framer-motion",
-        "lucide-react"
       ]
     },
     {
