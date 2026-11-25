@@ -1,18 +1,18 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-25T07:38:10.486Z",
+  "updatedAt": "2026-11-25T07:38:38.249Z",
   "totalComponents": 83,
   "components": [
     {
-      "id": "isometric-brand-plinth",
-      "slug": "isometric-brand-plinth",
-      "name": "IsometricBrandPlinth",
-      "description": "Interactive 2:1 isometric floating brand plinth with 60fps 360-degree 4-sided rounded-square orbiting typography, front/back 3D depth separation, pointer parallax, and exploded-view inspection.",
-      "category": "Effects",
+      "id": "liquid-morph-footer",
+      "slug": "liquid-morph-footer",
+      "name": "Liquid Morph Footer",
+      "description": "Minimalist editorial footer block anchored by an interactive monumental LiquidMorphText brand wordmark with real-time Gaussian metaball hover physics, an inline-validated newsletter capsule, structured navigation columns, and theme-aware styling.",
+      "category": "Navigation",
       "isBuiltIn": false,
-      "updatedAt": 1795592285353,
-      "lastRepoSyncAt": 1795592290191,
-      "path": "registry/components/isometric-brand-plinth",
+      "updatedAt": 1795592313097,
+      "lastRepoSyncAt": 1795592318116,
+      "path": "registry/components/liquid-morph-footer",
       "files": [
         "component.tsx",
         "default.tsx",
@@ -21,7 +21,8 @@
         "preview.png"
       ],
       "dependencies": [
-        "framer-motion"
+        "framer-motion",
+        "lucide-react"
       ]
     },
     {

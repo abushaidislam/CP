@@ -6,13 +6,13 @@
   "category": "Navigation",
   "isBuiltIn": false,
   "createdAt": 1795591267186,
-  "updatedAt": 1795591267186,
-  "lastRepoSyncAt": 1795591267186,
+  "updatedAt": 1795592313097,
+  "lastRepoSyncAt": 1795592318116,
   "dependencies": [
     "framer-motion",
     "lucide-react"
   ],
-  "version": "v1",
+  "previewImage": "./preview.png",
   "variants": [
     {
       "id": "var-default",
