@@ -6,12 +6,12 @@
   "category": "Buttons",
   "isBuiltIn": false,
   "createdAt": 1795587867447,
-  "updatedAt": 1795587867447,
-  "lastRepoSyncAt": 1795587867447,
+  "updatedAt": 1795587930959,
+  "lastRepoSyncAt": 1795587935794,
   "dependencies": [
     "framer-motion"
   ],
-  "version": "v1",
+  "previewImage": "./preview.png",
   "variants": [
     {
       "id": "var-default",
