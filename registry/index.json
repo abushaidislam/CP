@@ -1,7 +1,7 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-25T09:02:13.388Z",
-  "totalComponents": 86,
+  "updatedAt": "2026-11-25T09:11:59.172Z",
+  "totalComponents": 83,
   "components": [
     {
       "id": "obsidian-calligraphic-icon",
@@ -10,94 +10,18 @@
       "description": "An anodized grainy obsidian squircle app icon featuring a sculpted brushed-platinum calligraphic mark, metallic bezel specular rim, and critically damped 3D pointer tilt with cursor-tracked sheen.",
       "category": "Effects",
       "isBuiltIn": false,
-      "updatedAt": 1795597333143,
-      "lastRepoSyncAt": 1795597333143,
+      "updatedAt": 1795597913556,
+      "lastRepoSyncAt": 1795597918882,
       "path": "registry/components/obsidian-calligraphic-icon",
       "files": [
         "component.tsx",
         "default.tsx",
-        "manifest.json"
+        "index.css",
+        "manifest.json",
+        "preview.png"
       ],
       "dependencies": [
         "framer-motion"
-      ]
-    },
-    {
-      "id": "liquid-morph-footer",
-      "slug": "liquid-morph-footer",
-      "name": "Liquid Morph Footer",
-      "description": "Minimalist editorial footer block anchored by an interactive monumental LiquidMorphText brand wordmark with real-time Gaussian metaball hover physics, an inline-validated newsletter capsule, structured navigation columns, and theme-aware styling.",
-      "category": "Navigation",
-      "isBuiltIn": false,
-      "updatedAt": 1795592313097,
-      "lastRepoSyncAt": 1795592318116,
-      "path": "registry/components/liquid-morph-footer",
-      "files": [
-        "component.tsx",
-        "default.tsx",
-        "manifest.json"
-      ],
-      "dependencies": [
-        "framer-motion",
-        "lucide-react"
-      ]
-    },
-    {
-      "id": "isometric-brand-plinth",
-      "slug": "isometric-brand-plinth",
-      "name": "IsometricBrandPlinth",
-      "description": "Interactive 2:1 isometric floating brand plinth with 60fps 360-degree 4-sided rounded-square orbiting typography, front/back 3D depth separation, pointer parallax, and exploded-view inspection.",
-      "category": "Effects",
-      "isBuiltIn": false,
-      "updatedAt": 1795592285353,
-      "lastRepoSyncAt": 1795592290191,
-      "path": "registry/components/isometric-brand-plinth",
-      "files": [
-        "component.tsx",
-        "default.tsx",
-        "manifest.json"
-      ],
-      "dependencies": [
-        "framer-motion"
-      ]
-    },
-    {
-      "id": "liquid-morph-text",
-      "slug": "liquid-morph-text",
-      "name": "LiquidMorphText",
-      "description": "Interactive liquid-ink typography that organically inflates and fuses letterforms with real-time metaball physics on cursor hover. Supports custom text, theme-aware styling, spring-damped trail inertia, and reduced-motion accessibility.",
-      "category": "Effects",
-      "isBuiltIn": false,
-      "updatedAt": 1795590483803,
-      "lastRepoSyncAt": 1795590483803,
-      "path": "registry/components/liquid-morph-text",
-      "files": [
-        "component.tsx",
-        "default.tsx",
-        "manifest.json"
-      ],
-      "dependencies": [
-        "framer-motion"
-      ]
-    },
-    {
-      "id": "daily-ritual-checklist",
-      "slug": "daily-ritual-checklist",
-      "name": "DailyRitualChecklist",
-      "description": "Minimalist daily ritual and habit checklist with dashed rounded-square checkboxes, spring-animated ritual emblems, crisp dashed dividers, and an inline pill composer for adding new habits.",
-      "category": "Widgets",
-      "isBuiltIn": false,
-      "updatedAt": 1795589350023,
-      "lastRepoSyncAt": 1795589356666,
-      "path": "registry/components/daily-ritual-checklist",
-      "files": [
-        "component.tsx",
-        "default.tsx",
-        "manifest.json"
-      ],
-      "dependencies": [
-        "framer-motion",
-        "lucide-react"
       ]
     },
     {
@@ -129,8 +53,8 @@
       "description": "Spatial liquid-glass pill button featuring a concentric chromatic dispersion prism ring, orbiting white-hot caustic light arcs, and brushed-silver Home iconography with tactile spring feedback.",
       "category": "Buttons",
       "isBuiltIn": false,
-      "updatedAt": 1795587930959,
-      "lastRepoSyncAt": 1795587935794,
+      "updatedAt": 1795588944672,
+      "lastRepoSyncAt": 1795588949593,
       "path": "registry/components/liquid-home-button",
       "files": [
         "component.tsx",
@@ -144,20 +68,43 @@
       ]
     },
     {
+      "id": "daily-ritual-checklist",
+      "slug": "daily-ritual-checklist",
+      "name": "DailyRitualChecklist",
+      "description": "Minimalist daily ritual and habit checklist with dashed rounded-square checkboxes, spring-animated ritual emblems, crisp dashed dividers, and an inline pill composer for adding new habits.",
+      "category": "Widgets",
+      "isBuiltIn": false,
+      "updatedAt": 1795588590503,
+      "lastRepoSyncAt": 1795588595107,
+      "path": "registry/components/daily-ritual-checklist",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "index.css",
+        "manifest.json",
+        "preview.png"
+      ],
+      "dependencies": [
+        "framer-motion",
+        "lucide-react"
+      ]
+    },
+    {
       "id": "abushaid-signature",
       "slug": "abushaid-signature",
       "name": "Abushaid Signature",
       "description": "Physics-driven cursive fountain-pen signature animation with curvature-weighted 2/3 power law pacing, layered clip-path masking, spring-damped wrist tilt, dynamic 3D pen shadow, wet-ink sheen, and optional Web Audio API pen-on-paper sound.",
       "category": "Effects",
       "isBuiltIn": false,
-      "updatedAt": 1795475465219,
-      "lastRepoSyncAt": 1795475465219,
+      "updatedAt": 1795588095769,
+      "lastRepoSyncAt": 1795588100695,
       "path": "registry/components/abushaid-signature",
       "files": [
         "component.tsx",
         "default.tsx",
         "index.css",
-        "manifest.json"
+        "manifest.json",
+        "preview.png"
       ],
       "dependencies": [
         "lucide-react"
