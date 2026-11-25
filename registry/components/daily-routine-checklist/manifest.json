@@ -6,13 +6,13 @@
   "category": "Widgets",
   "isBuiltIn": false,
   "createdAt": 1795588191319,
-  "updatedAt": 1795588191319,
-  "lastRepoSyncAt": 1795588191319,
+  "updatedAt": 1795588744149,
+  "lastRepoSyncAt": 1795588748595,
   "dependencies": [
     "framer-motion",
     "lucide-react"
   ],
-  "version": "v1",
+  "previewImage": "./preview.png",
   "variants": [
     {
       "id": "var-default",

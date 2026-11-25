@@ -1,18 +1,18 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-25T06:36:35.214Z",
+  "updatedAt": "2026-11-25T06:39:08.916Z",
   "totalComponents": 81,
   "components": [
     {
-      "id": "daily-ritual-checklist",
-      "slug": "daily-ritual-checklist",
-      "name": "DailyRitualChecklist",
-      "description": "Minimalist daily ritual and habit checklist with dashed rounded-square checkboxes, spring-animated ritual emblems, crisp dashed dividers, and an inline pill composer for adding new habits.",
+      "id": "daily-routine-checklist",
+      "slug": "daily-routine-checklist",
+      "name": "DailyRoutineChecklist",
+      "description": "Minimalist daily habit and routine checklist with dashed SVG checkboxes that morph into signature filled icons on completion, dotted row dividers, and an inline add-item pill.",
       "category": "Widgets",
       "isBuiltIn": false,
-      "updatedAt": 1795588590503,
-      "lastRepoSyncAt": 1795588595107,
-      "path": "registry/components/daily-ritual-checklist",
+      "updatedAt": 1795588744149,
+      "lastRepoSyncAt": 1795588748595,
+      "path": "registry/components/daily-routine-checklist",
       "files": [
         "component.tsx",
         "default.tsx",
