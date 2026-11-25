@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-25T06:28:11.017Z",
+  "updatedAt": "2026-11-25T06:28:20.775Z",
   "totalComponents": 80,
   "components": [
     {
@@ -10,8 +10,8 @@
       "description": "Physics-driven cursive fountain-pen signature animation with curvature-weighted 2/3 power law pacing, layered clip-path masking, spring-damped wrist tilt, dynamic 3D pen shadow, wet-ink sheen, and optional Web Audio API pen-on-paper sound.",
       "category": "Effects",
       "isBuiltIn": false,
-      "updatedAt": 1795588085927,
-      "lastRepoSyncAt": 1795588090738,
+      "updatedAt": 1795588095769,
+      "lastRepoSyncAt": 1795588100695,
       "path": "registry/components/abushaid-signature",
       "files": [
         "component.tsx",

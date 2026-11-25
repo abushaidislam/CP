@@ -6,8 +6,8 @@
   "category": "Effects",
   "isBuiltIn": false,
   "createdAt": 1795475465219,
-  "updatedAt": 1795588085927,
-  "lastRepoSyncAt": 1795588090738,
+  "updatedAt": 1795588095769,
+  "lastRepoSyncAt": 1795588100695,
   "dependencies": [
     "lucide-react"
   ],
