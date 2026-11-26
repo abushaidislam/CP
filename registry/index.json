@@ -1,8 +1,28 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-26T14:04:49.260Z",
-  "totalComponents": 91,
+  "updatedAt": "2026-11-26T14:06:48.257Z",
+  "totalComponents": 92,
   "components": [
+    {
+      "id": "account-switcher-menu",
+      "slug": "account-switcher-menu",
+      "name": "AccountSwitcherMenu",
+      "description": "Interactive multi-account profile popover menu with smooth spring-animated hover highlights, instant account switching with animated radio selection, keyboard accessibility, and adaptive light/dark theming.",
+      "category": "Navigation",
+      "isBuiltIn": false,
+      "updatedAt": 1795702008169,
+      "lastRepoSyncAt": 1795702008169,
+      "path": "registry/components/account-switcher-menu",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "manifest.json"
+      ],
+      "dependencies": [
+        "framer-motion",
+        "lucide-react"
+      ]
+    },
     {
       "id": "matrix-chevron-button",
       "slug": "matrix-chevron-button",
