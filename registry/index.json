@@ -1,8 +1,27 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-26T14:03:52.121Z",
-  "totalComponents": 90,
+  "updatedAt": "2026-11-26T14:04:49.260Z",
+  "totalComponents": 91,
   "components": [
+    {
+      "id": "matrix-chevron-button",
+      "slug": "matrix-chevron-button",
+      "name": "MatrixChevronButton",
+      "description": "Tactile dark-chassis CTA button with a glossy neon-lime dot-matrix chevron pill that expands smoothly across the full button on hover or keyboard focus, uncovering a cascading left-to-right LED chevron wave.",
+      "category": "Buttons",
+      "isBuiltIn": false,
+      "updatedAt": 1795701889180,
+      "lastRepoSyncAt": 1795701889180,
+      "path": "registry/components/matrix-chevron-button",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "manifest.json"
+      ],
+      "dependencies": [
+        "framer-motion"
+      ]
+    },
     {
       "id": "avatar-gender-toggle",
       "slug": "avatar-gender-toggle",
