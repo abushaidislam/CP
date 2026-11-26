@@ -1,8 +1,28 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-25T15:48:12.123Z",
-  "totalComponents": 86,
+  "updatedAt": "2026-11-26T13:50:35.276Z",
+  "totalComponents": 88,
   "components": [
+    {
+      "id": "luminous-split-button",
+      "slug": "luminous-split-button",
+      "name": "LuminousSplitButton",
+      "description": "Backlit electric-violet split action button featuring a specular gradient bezel, filled plus-squircle icon, translucent hairline divider, event-driven sheen sweep, and keyboard-accessible spring dropdown menu.",
+      "category": "Buttons",
+      "isBuiltIn": false,
+      "updatedAt": 1795701035081,
+      "lastRepoSyncAt": 1795701035081,
+      "path": "registry/components/luminous-split-button",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "manifest.json"
+      ],
+      "dependencies": [
+        "framer-motion",
+        "lucide-react"
+      ]
+    },
     {
       "id": "isometric-brand-plinth",
       "slug": "isometric-brand-plinth",
@@ -10,19 +30,34 @@
       "description": "Dual-theme 2:1 isometric floating brand plinth with real-time 4-tier vector ASCII fire burning on a machined obsidian cap, native light/dark ceramic-slate materials, and 60fps 360-degree rounded-square orbiting typography underneath.",
       "category": "Effects",
       "isBuiltIn": false,
-      "updatedAt": 1795621684380,
-      "lastRepoSyncAt": 1795621691818,
+      "updatedAt": 1795622803924,
+      "lastRepoSyncAt": 1795622803924,
       "path": "registry/components/isometric-brand-plinth",
       "files": [
         "component.tsx",
         "default.tsx",
-        "index.css",
-        "manifest.json",
-        "preview.png"
+        "manifest.json"
       ],
       "dependencies": [
         "framer-motion"
       ]
+    },
+    {
+      "id": "ascii-spotlight-error",
+      "slug": "ascii-spotlight-error",
+      "name": "AsciiSpotlightError",
+      "description": "Minimal monochrome error state featuring a 60fps cursor-tracking ASCII spotlight beam radiating from a central prism beacon with smooth angular damping and light/dark theme support.",
+      "category": "Effects",
+      "isBuiltIn": false,
+      "updatedAt": 1795600729575,
+      "lastRepoSyncAt": 1795600734604,
+      "path": "registry/components/ascii-spotlight-error",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "manifest.json"
+      ],
+      "dependencies": []
     },
     {
       "id": "obsidian-calligraphic-icon",
@@ -58,9 +93,7 @@
       "files": [
         "component.tsx",
         "default.tsx",
-        "index.css",
-        "manifest.json",
-        "preview.png"
+        "manifest.json"
       ],
       "dependencies": [
         "framer-motion",
@@ -74,40 +107,16 @@
       "description": "Interactive liquid-ink typography that organically inflates and fuses letterforms with real-time metaball physics on cursor hover. Supports custom text, theme-aware styling, spring-damped trail inertia, and reduced-motion accessibility.",
       "category": "Effects",
       "isBuiltIn": false,
-      "updatedAt": 1795590308461,
-      "lastRepoSyncAt": 1795590313192,
+      "updatedAt": 1795590483803,
+      "lastRepoSyncAt": 1795590483803,
       "path": "registry/components/liquid-morph-text",
       "files": [
         "component.tsx",
         "default.tsx",
-        "index.css",
-        "manifest.json",
-        "preview.png"
+        "manifest.json"
       ],
       "dependencies": [
         "framer-motion"
-      ]
-    },
-    {
-      "id": "daily-ritual-checklist",
-      "slug": "daily-ritual-checklist",
-      "name": "DailyRitualChecklist",
-      "description": "Minimalist daily ritual and habit checklist with dashed rounded-square checkboxes, spring-animated ritual emblems, crisp dashed dividers, and an inline pill composer for adding new habits.",
-      "category": "Widgets",
-      "isBuiltIn": false,
-      "updatedAt": 1795589350023,
-      "lastRepoSyncAt": 1795589356666,
-      "path": "registry/components/daily-ritual-checklist",
-      "files": [
-        "component.tsx",
-        "default.tsx",
-        "index.css",
-        "manifest.json",
-        "preview.png"
-      ],
-      "dependencies": [
-        "framer-motion",
-        "lucide-react"
       ]
     },
     {
@@ -151,6 +160,28 @@
       ],
       "dependencies": [
         "framer-motion"
+      ]
+    },
+    {
+      "id": "daily-ritual-checklist",
+      "slug": "daily-ritual-checklist",
+      "name": "DailyRitualChecklist",
+      "description": "Minimalist daily ritual and habit checklist with dashed rounded-square checkboxes, spring-animated ritual emblems, crisp dashed dividers, and an inline pill composer for adding new habits.",
+      "category": "Widgets",
+      "isBuiltIn": false,
+      "updatedAt": 1795588590503,
+      "lastRepoSyncAt": 1795588595107,
+      "path": "registry/components/daily-ritual-checklist",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "index.css",
+        "manifest.json",
+        "preview.png"
+      ],
+      "dependencies": [
+        "framer-motion",
+        "lucide-react"
       ]
     },
     {
