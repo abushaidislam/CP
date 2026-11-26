@@ -1,8 +1,28 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-26T13:50:35.276Z",
-  "totalComponents": 88,
+  "updatedAt": "2026-11-26T13:53:12.361Z",
+  "totalComponents": 89,
   "components": [
+    {
+      "id": "tactile-action-bar",
+      "slug": "tactile-action-bar",
+      "name": "TactileActionBar",
+      "description": "Tactile session action bar pairing an emerald glossy toggle switch with a crisp elevated white Invite button and a sculptural violet Join now CTA, featuring critically-damped Framer Motion spring physics and event-driven sheen feedback.",
+      "category": "Buttons",
+      "isBuiltIn": false,
+      "updatedAt": 1795701192079,
+      "lastRepoSyncAt": 1795701192079,
+      "path": "registry/components/tactile-action-bar",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "manifest.json"
+      ],
+      "dependencies": [
+        "framer-motion",
+        "lucide-react"
+      ]
+    },
     {
       "id": "luminous-split-button",
       "slug": "luminous-split-button",
