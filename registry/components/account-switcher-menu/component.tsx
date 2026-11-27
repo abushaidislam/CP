@@ -354,12 +354,12 @@ export const AccountSwitcherMenu = React.forwardRef<
   const isDarkForced = theme === "dark";
   const isLightForced = theme === "light";
 
-  const alignWrapperClass =
+  const alignPositionClass =
     align === "start"
-      ? "items-start"
+      ? "left-0"
       : align === "center"
-        ? "items-center"
-        : "items-end";
+        ? "left-1/2 -translate-x-1/2"
+        : "right-0";
 
   const panelOriginStyle =
     align === "start"
@@ -380,8 +380,7 @@ export const AccountSwitcherMenu = React.forwardRef<
     <div
       ref={setMergedRef}
       className={cn(
-        "relative inline-flex flex-col font-sans antialiased",
-        alignWrapperClass,
+        "relative inline-flex items-center font-sans antialiased",
         className
       )}
       {...rest}
@@ -416,7 +415,7 @@ export const AccountSwitcherMenu = React.forwardRef<
             <AvatarImage
               name={activeAccount.name}
               src={activeAccount.avatarUrl}
-              sizeClass="h-10 w-10"
+              sizeClass="h-9 w-9"
               isDarkForced={isDarkForced}
               isLightForced={isLightForced}
             />
@@ -424,334 +423,340 @@ export const AccountSwitcherMenu = React.forwardRef<
         </AnimatePresence>
       </button>
 
-      {/* Dropdown Popover Card */}
-      <AnimatePresence>
-        {isOpen && (
-          <motion.div
-            id={`account-menu-panel-${uid}`}
-            role="menu"
-            aria-label="Account navigation and switcher"
-            initial={
-              prefersReducedMotion
-                ? { opacity: 0 }
-                : { opacity: 0, scale: 0.96, y: -6 }
-            }
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={
-              prefersReducedMotion
-                ? { opacity: 0 }
-                : { opacity: 0, scale: 0.96, y: -6 }
-            }
-            transition={popoverTransition}
-            style={{ transformOrigin: panelOriginStyle }}
-            className={cn(
-              "mt-2.5 w-[316px] max-w-[calc(100vw-2rem)] rounded-[18px] border p-2",
-              isDarkForced
-                ? "border-white/[0.08] bg-[#1F1F21] text-[#F4F4F5] shadow-[0_24px_48px_-12px_rgba(0,0,0,0.6),0_0_0_1px_rgba(255,255,255,0.03)_inset]"
-                : isLightForced
-                  ? "border-zinc-200/90 bg-white text-zinc-900 shadow-[0_20px_44px_-12px_rgba(15,23,42,0.14),0_2px_6px_-1px_rgba(15,23,42,0.06)]"
-                  : "border-zinc-200/90 bg-white text-zinc-900 shadow-[0_20px_44px_-12px_rgba(15,23,42,0.14),0_2px_6px_-1px_rgba(15,23,42,0.06)] dark:border-white/[0.08] dark:bg-[#1F1F21] dark:text-[#F4F4F5] dark:shadow-[0_24px_48px_-12px_rgba(0,0,0,0.6),0_0_0_1px_rgba(255,255,255,0.03)_inset]"
-            )}
-          >
-            {/* Primary Navigation Actions */}
-            <div
-              className="flex flex-col gap-0.5"
-              onMouseLeave={() => setHoveredMenuId(null)}
-            >
-              {menuItems.map((item) => {
-                const isHighlighted = hoveredMenuId === item.id;
-                return (
-                  <button
-                    key={item.id}
-                    type="button"
-                    role="menuitem"
-                    onMouseEnter={() => setHoveredMenuId(item.id)}
-                    onFocus={() => setHoveredMenuId(item.id)}
-                    onClick={() => handleMenuClick(item)}
-                    className={cn(
-                      "group relative flex h-[42px] w-full items-center gap-3 rounded-[10px] px-3 text-left text-[14px] transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#8C7CFC]",
-                      isHighlighted
-                        ? isDarkForced
-                          ? "text-white"
-                          : isLightForced
-                            ? "text-zinc-950"
-                            : "text-zinc-950 dark:text-white"
-                        : isDarkForced
-                          ? "text-[#B4B4B8]"
-                          : isLightForced
-                            ? "text-zinc-600"
-                            : "text-zinc-600 dark:text-[#B4B4B8]"
-                    )}
-                  >
-                    {isHighlighted && (
-                      <motion.span
-                        layoutId={`menu-hover-pill-${uid}`}
-                        transition={springTransition}
-                        aria-hidden="true"
-                        className={cn(
-                          "pointer-events-none absolute inset-0 rounded-[10px]",
-                          isDarkForced
-                            ? "bg-[#363538]"
-                            : isLightForced
-                              ? "bg-zinc-100"
-                              : "bg-zinc-100 dark:bg-[#363538]"
-                        )}
-                      />
-                    )}
-
-                    <MenuIcon
-                      icon={item.icon}
-                      className={cn(
-                        "relative z-10 h-[18px] w-[18px] shrink-0 transition-colors duration-150",
-                        isHighlighted
-                          ? isDarkForced
-                            ? "text-[#B4B4B8]"
-                            : isLightForced
-                              ? "text-zinc-700"
-                              : "text-zinc-700 dark:text-[#B4B4B8]"
-                          : isDarkForced
-                            ? "text-[#8E8D91]"
-                            : isLightForced
-                              ? "text-zinc-400"
-                              : "text-zinc-400 dark:text-[#8E8D91]"
-                      )}
-                    />
-
-                    <span className="relative z-10 flex min-w-0 items-baseline gap-1.5 truncate">
-                      <span
-                        className={cn(
-                          "truncate",
-                          isHighlighted ? "font-semibold" : "font-medium"
-                        )}
-                      >
-                        {item.label}
-                      </span>
-                      {item.showHandle && showHandle && (
-                        <span
-                          className={cn(
-                            "truncate text-[14px] font-normal",
-                            isDarkForced
-                              ? "text-[#9B9A9D]"
-                              : isLightForced
-                                ? "text-zinc-400"
-                                : "text-zinc-400 dark:text-[#9B9A9D]"
-                          )}
-                        >
-                          {activeAccount.handle}
-                        </span>
-                      )}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Section Divider */}
-            <div
-              role="separator"
+      {/* Floating Popover Anchor */}
+      <div className={cn("absolute top-full z-50 pt-2.5", alignPositionClass)}>
+        <AnimatePresence>
+          {isOpen && (
+            <motion.div
+              id={`account-menu-panel-${uid}`}
+              role="menu"
+              aria-label="Account navigation and switcher"
+              initial={
+                prefersReducedMotion
+                  ? { opacity: 0 }
+                  : { opacity: 0, scale: 0.96, y: -6 }
+              }
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={
+                prefersReducedMotion
+                  ? { opacity: 0 }
+                  : { opacity: 0, scale: 0.96, y: -6 }
+              }
+              transition={popoverTransition}
+              style={{ transformOrigin: panelOriginStyle }}
               className={cn(
-                "-mx-2 my-2 h-px",
+                "w-[316px] max-w-[calc(100vw-2rem)] rounded-[18px] border p-2",
                 isDarkForced
-                  ? "bg-[#2C2B2E]"
+                  ? "border-white/[0.08] bg-[#1F1F21] text-[#F4F4F5] shadow-[0_24px_48px_-12px_rgba(0,0,0,0.6),0_0_0_1px_rgba(255,255,255,0.03)_inset]"
                   : isLightForced
-                    ? "bg-zinc-200/80"
-                    : "bg-zinc-200/80 dark:bg-[#2C2B2E]"
+                    ? "border-zinc-200/90 bg-white text-zinc-900 shadow-[0_20px_44px_-12px_rgba(15,23,42,0.14),0_2px_6px_-1px_rgba(15,23,42,0.06)]"
+                    : "border-zinc-200/90 bg-white text-zinc-900 shadow-[0_20px_44px_-12px_rgba(15,23,42,0.14),0_2px_6px_-1px_rgba(15,23,42,0.06)] dark:border-white/[0.08] dark:bg-[#1F1F21] dark:text-[#F4F4F5] dark:shadow-[0_24px_48px_-12px_rgba(0,0,0,0.6),0_0_0_1px_rgba(255,255,255,0.03)_inset]"
               )}
-            />
-
-            {/* Switch Account Section */}
-            <div className="pt-1">
+            >
+              {/* Primary Navigation Actions */}
               <div
-                id={`switch-account-heading-${uid}`}
-                className={cn(
-                  "px-3 pb-2 text-[11px] font-semibold tracking-[0.06em] uppercase select-none",
-                  isDarkForced
-                    ? "text-[#949398]"
-                    : isLightForced
-                      ? "text-zinc-400"
-                      : "text-zinc-400 dark:text-[#949398]"
-                )}
+                className="flex flex-col gap-0.5"
+                onMouseLeave={() => setHoveredMenuId(null)}
               >
-                Switch Account
-              </div>
-
-              <div
-                role="radiogroup"
-                aria-labelledby={`switch-account-heading-${uid}`}
-                className="flex flex-col gap-1"
-              >
-                {safeAccounts.map((account, index) => {
-                  const isSelected = account.id === activeAccount.id;
+                {menuItems.map((item) => {
+                  const isHighlighted = hoveredMenuId === item.id;
                   return (
                     <button
-                      key={account.id}
+                      key={item.id}
                       type="button"
-                      role="radio"
-                      aria-checked={isSelected}
-                      onClick={() => handleSelectAccount(account)}
-                      onKeyDown={(e) => handleRadioKeyDown(e, index)}
+                      role="menuitem"
+                      onMouseEnter={() => setHoveredMenuId(item.id)}
+                      onFocus={() => setHoveredMenuId(item.id)}
+                      onClick={() => handleMenuClick(item)}
                       className={cn(
-                        "relative flex w-full items-center gap-3 rounded-[12px] px-3 py-2.5 text-left transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#8C7CFC]",
-                        !isSelected &&
-                          (isDarkForced
-                            ? "hover:bg-white/[0.04]"
+                        "group relative flex h-[42px] w-full items-center gap-3 rounded-[10px] px-3 text-left text-[14px] transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#8C7CFC]",
+                        isHighlighted
+                          ? isDarkForced
+                            ? "text-white"
                             : isLightForced
-                              ? "hover:bg-zinc-100/70"
-                              : "hover:bg-zinc-100/70 dark:hover:bg-white/[0.04]")
+                              ? "text-zinc-950"
+                              : "text-zinc-950 dark:text-white"
+                          : isDarkForced
+                            ? "text-[#B4B4B8]"
+                            : isLightForced
+                              ? "text-zinc-600"
+                              : "text-zinc-600 dark:text-[#B4B4B8]"
                       )}
                     >
-                      {isSelected && (
+                      {isHighlighted && (
                         <motion.span
-                          layoutId={`active-account-bg-${uid}`}
+                          layoutId={`menu-hover-pill-${uid}`}
                           transition={springTransition}
                           aria-hidden="true"
                           className={cn(
-                            "pointer-events-none absolute inset-0 rounded-[12px]",
+                            "pointer-events-none absolute inset-0 rounded-[10px]",
                             isDarkForced
-                              ? "bg-[#373639]"
+                              ? "bg-[#363538]"
                               : isLightForced
                                 ? "bg-zinc-100"
-                                : "bg-zinc-100 dark:bg-[#373639]"
+                                : "bg-zinc-100 dark:bg-[#363538]"
                           )}
                         />
                       )}
 
-                      <span className="relative z-10">
-                        <AvatarImage
-                          name={account.name}
-                          src={account.avatarUrl}
-                          sizeClass="h-10 w-10"
-                          isDarkForced={isDarkForced}
-                          isLightForced={isLightForced}
-                        />
-                      </span>
-
-                      <span className="relative z-10 flex min-w-0 flex-1 flex-col">
-                        <span
-                          className={cn(
-                            "truncate text-[14px] leading-snug font-semibold",
-                            isDarkForced
-                              ? "text-white"
-                              : isLightForced
-                                ? "text-zinc-900"
-                                : "text-zinc-900 dark:text-white"
-                          )}
-                        >
-                          {account.name}
-                        </span>
-                        <span
-                          className={cn(
-                            "truncate text-[13px] leading-snug font-normal",
-                            isDarkForced
-                              ? "text-[#9B9A9D]"
-                              : isLightForced
-                                ? "text-zinc-500"
-                                : "text-zinc-500 dark:text-[#9B9A9D]"
-                          )}
-                        >
-                          {account.email}
-                        </span>
-                      </span>
-
-                      {/* Radio Indicator */}
-                      <span
-                        aria-hidden="true"
+                      <MenuIcon
+                        icon={item.icon}
                         className={cn(
-                          "relative z-10 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border transition-colors duration-150",
-                          isSelected
-                            ? "border-[#8C7CFC] bg-[#8C7CFC]"
-                            : isDarkForced
-                              ? "border-[#4A494D] bg-transparent"
+                          "relative z-10 h-[18px] w-[18px] shrink-0 transition-colors duration-150",
+                          isHighlighted
+                            ? isDarkForced
+                              ? "text-[#B4B4B8]"
                               : isLightForced
-                                ? "border-zinc-300 bg-transparent"
-                                : "border-zinc-300 bg-transparent dark:border-[#4A494D]"
+                                ? "text-zinc-700"
+                                : "text-zinc-700 dark:text-[#B4B4B8]"
+                            : isDarkForced
+                              ? "text-[#8E8D91]"
+                              : isLightForced
+                                ? "text-zinc-400"
+                                : "text-zinc-400 dark:text-[#8E8D91]"
                         )}
-                      >
-                        <AnimatePresence initial={false}>
-                          {isSelected && (
-                            <motion.span
-                              initial={
-                                prefersReducedMotion
-                                  ? false
-                                  : { scale: 0, opacity: 0 }
-                              }
-                              animate={{ scale: 1, opacity: 1 }}
-                              exit={
-                                prefersReducedMotion
-                                  ? undefined
-                                  : { scale: 0, opacity: 0 }
-                              }
-                              transition={springTransition}
-                              className="h-2 w-2 rounded-full bg-white"
-                            />
+                      />
+
+                      <span className="relative z-10 flex min-w-0 items-baseline gap-1.5 truncate">
+                        <span
+                          className={cn(
+                            "truncate",
+                            isHighlighted ? "font-semibold" : "font-medium"
                           )}
-                        </AnimatePresence>
+                        >
+                          {item.label}
+                        </span>
+                        {item.showHandle && showHandle && (
+                          <span
+                            className={cn(
+                              "truncate text-[14px] font-normal",
+                              isDarkForced
+                                ? "text-[#9B9A9D]"
+                                : isLightForced
+                                  ? "text-zinc-400"
+                                  : "text-zinc-400 dark:text-[#9B9A9D]"
+                            )}
+                          >
+                            {activeAccount.handle}
+                          </span>
+                        )}
                       </span>
                     </button>
                   );
                 })}
               </div>
-            </div>
 
-            {/* Bottom Sign Out of All Accounts Button */}
-            {showSignOutAll && (
-              <div className="mt-2.5">
-                <button
-                  type="button"
-                  role="menuitem"
-                  onClick={handleSignOutAllClick}
+              {/* Section Divider */}
+              <div
+                role="separator"
+                className={cn(
+                  "-mx-2 my-2 h-px",
+                  isDarkForced
+                    ? "bg-[#2C2B2E]"
+                    : isLightForced
+                      ? "bg-zinc-200/80"
+                      : "bg-zinc-200/80 dark:bg-[#2C2B2E]"
+                )}
+              />
+
+              {/* Switch Account Section */}
+              <div className="pt-1">
+                <div
+                  id={`switch-account-heading-${uid}`}
                   className={cn(
-                    "flex h-[42px] w-full items-center justify-center gap-2 rounded-[10px] border text-[14px] font-medium transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#8C7CFC]",
+                    "px-3 pb-2 text-[11px] font-semibold tracking-[0.06em] uppercase select-none",
                     isDarkForced
-                      ? "border-white/[0.08] bg-[#373639] text-[#F4F4F5] shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] hover:bg-[#414044] active:bg-[#323134]"
+                      ? "text-[#949398]"
                       : isLightForced
-                        ? "border-zinc-200 bg-zinc-100 text-zinc-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)] hover:bg-zinc-200/80 active:bg-zinc-200"
-                        : "border-zinc-200 bg-zinc-100 text-zinc-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)] hover:bg-zinc-200/80 active:bg-zinc-200 dark:border-white/[0.08] dark:bg-[#373639] dark:text-[#F4F4F5] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] dark:hover:bg-[#414044] dark:active:bg-[#323134]"
+                        ? "text-zinc-400"
+                        : "text-zinc-400 dark:text-[#949398]"
                   )}
                 >
-                  <LogOut
-                    className={cn(
-                      "h-[16px] w-[16px] shrink-0",
-                      isDarkForced
-                        ? "text-[#9B9A9D]"
-                        : isLightForced
-                          ? "text-zinc-500"
-                          : "text-zinc-500 dark:text-[#9B9A9D]"
-                    )}
-                    strokeWidth={1.75}
-                    aria-hidden="true"
-                  />
-                  <span>Sign out of all accounts</span>
-                </button>
+                  Switch Account
+                </div>
+
+                <div
+                  role="radiogroup"
+                  aria-labelledby={`switch-account-heading-${uid}`}
+                  className="flex flex-col gap-1"
+                >
+                  {safeAccounts.map((account, index) => {
+                    const isSelected = account.id === activeAccount.id;
+                    return (
+                      <button
+                        key={account.id}
+                        type="button"
+                        role="radio"
+                        aria-checked={isSelected}
+                        onClick={() => handleSelectAccount(account)}
+                        onKeyDown={(e) => handleRadioKeyDown(e, index)}
+                        className={cn(
+                          "relative flex w-full items-center gap-3 rounded-[12px] px-3 py-2.5 text-left transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#8C7CFC]",
+                          !isSelected &&
+                            (isDarkForced
+                              ? "hover:bg-white/[0.04]"
+                              : isLightForced
+                                ? "hover:bg-zinc-100/70"
+                                : "hover:bg-zinc-100/70 dark:hover:bg-white/[0.04]")
+                        )}
+                      >
+                        {isSelected && (
+                          <motion.span
+                            layoutId={`active-account-bg-${uid}`}
+                            transition={springTransition}
+                            aria-hidden="true"
+                            className={cn(
+                              "pointer-events-none absolute inset-0 rounded-[12px]",
+                              isDarkForced
+                                ? "bg-[#373639]"
+                                : isLightForced
+                                  ? "bg-zinc-100"
+                                  : "bg-zinc-100 dark:bg-[#373639]"
+                            )}
+                          />
+                        )}
+
+                        <span className="relative z-10">
+                          <AvatarImage
+                            name={account.name}
+                            src={account.avatarUrl}
+                            sizeClass="h-10 w-10"
+                            isDarkForced={isDarkForced}
+                            isLightForced={isLightForced}
+                          />
+                        </span>
+
+                        <span className="relative z-10 flex min-w-0 flex-1 flex-col">
+                          <span
+                            className={cn(
+                              "truncate text-[14px] leading-snug font-semibold",
+                              isDarkForced
+                                ? "text-white"
+                                : isLightForced
+                                  ? "text-zinc-900"
+                                  : "text-zinc-900 dark:text-white"
+                            )}
+                          >
+                            {account.name}
+                          </span>
+                          <span
+                            className={cn(
+                              "truncate text-[13px] leading-snug font-normal",
+                              isDarkForced
+                                ? "text-[#9B9A9D]"
+                                : isLightForced
+                                  ? "text-zinc-500"
+                                  : "text-zinc-500 dark:text-[#9B9A9D]"
+                            )}
+                          >
+                            {account.email}
+                          </span>
+                        </span>
+
+                        {/* Radio Indicator */}
+                        <span
+                          aria-hidden="true"
+                          className={cn(
+                            "relative z-10 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border transition-colors duration-150",
+                            isSelected
+                              ? "border-[#8C7CFC] bg-[#8C7CFC]"
+                              : isDarkForced
+                                ? "border-[#4A494D] bg-transparent"
+                                : isLightForced
+                                  ? "border-zinc-300 bg-transparent"
+                                  : "border-zinc-300 bg-transparent dark:border-[#4A494D]"
+                          )}
+                        >
+                          <AnimatePresence initial={false}>
+                            {isSelected && (
+                              <motion.span
+                                initial={
+                                  prefersReducedMotion
+                                    ? false
+                                    : { scale: 0, opacity: 0 }
+                                }
+                                animate={{ scale: 1, opacity: 1 }}
+                                exit={
+                                  prefersReducedMotion
+                                    ? undefined
+                                    : { scale: 0, opacity: 0 }
+                                }
+                                transition={springTransition}
+                                className="h-2 w-2 rounded-full bg-white"
+                              />
+                            )}
+                          </AnimatePresence>
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
-            )}
 
-            {/* Subtle Accessible Live Feedback Region */}
-            <AnimatePresence>
-              {statusNotice && (
-                <motion.div
-                  role="status"
-                  aria-live="polite"
-                  initial={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, y: 4 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, y: 4 }}
-                  transition={{ duration: 0.16 }}
-                  className={cn(
-                    "mt-2 rounded-[8px] px-3 py-1.5 text-center text-[12px] font-medium",
-                    isDarkForced
-                      ? "bg-[#2A292D] text-[#C4C3C8]"
-                      : isLightForced
-                        ? "bg-zinc-100 text-zinc-600"
-                        : "bg-zinc-100 text-zinc-600 dark:bg-[#2A292D] dark:text-[#C4C3C8]"
-                  )}
-                >
-                  {statusNotice}
-                </motion.div>
+              {/* Bottom Sign Out of All Accounts Button */}
+              {showSignOutAll && (
+                <div className="mt-2.5">
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={handleSignOutAllClick}
+                    className={cn(
+                      "flex h-[42px] w-full items-center justify-center gap-2 rounded-[10px] border text-[14px] font-medium transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#8C7CFC]",
+                      isDarkForced
+                        ? "border-white/[0.08] bg-[#373639] text-[#F4F4F5] shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] hover:bg-[#414044] active:bg-[#323134]"
+                        : isLightForced
+                          ? "border-zinc-200 bg-zinc-100 text-zinc-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)] hover:bg-zinc-200/80 active:bg-zinc-200"
+                          : "border-zinc-200 bg-zinc-100 text-zinc-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)] hover:bg-zinc-200/80 active:bg-zinc-200 dark:border-white/[0.08] dark:bg-[#373639] dark:text-[#F4F4F5] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] dark:hover:bg-[#414044] dark:active:bg-[#323134]"
+                    )}
+                  >
+                    <LogOut
+                      className={cn(
+                        "h-[16px] w-[16px] shrink-0",
+                        isDarkForced
+                          ? "text-[#9B9A9D]"
+                          : isLightForced
+                            ? "text-zinc-500"
+                            : "text-zinc-500 dark:text-[#9B9A9D]"
+                      )}
+                      strokeWidth={1.75}
+                      aria-hidden="true"
+                    />
+                    <span>Sign out of all accounts</span>
+                  </button>
+                </div>
               )}
-            </AnimatePresence>
-          </motion.div>
-        )}
-      </AnimatePresence>
+
+              {/* Subtle Accessible Live Feedback Region */}
+              <AnimatePresence>
+                {statusNotice && (
+                  <motion.div
+                    role="status"
+                    aria-live="polite"
+                    initial={
+                      prefersReducedMotion ? { opacity: 0 } : { opacity: 0, y: 4 }
+                    }
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={
+                      prefersReducedMotion ? { opacity: 0 } : { opacity: 0, y: 4 }
+                    }
+                    transition={{ duration: 0.16 }}
+                    className={cn(
+                      "mt-2 rounded-[8px] px-3 py-1.5 text-center text-[12px] font-medium",
+                      isDarkForced
+                        ? "bg-[#2A292D] text-[#C4C3C8]"
+                        : isLightForced
+                          ? "bg-zinc-100 text-zinc-600"
+                          : "bg-zinc-100 text-zinc-600 dark:bg-[#2A292D] dark:text-[#C4C3C8]"
+                    )}
+                  >
+                    {statusNotice}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
     </div>
   );
 });

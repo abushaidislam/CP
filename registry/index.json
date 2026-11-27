@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-26T14:06:48.257Z",
+  "updatedAt": "2026-11-27T04:42:13.780Z",
   "totalComponents": 92,
   "components": [
     {
@@ -10,13 +10,15 @@
       "description": "Interactive multi-account profile popover menu with smooth spring-animated hover highlights, instant account switching with animated radio selection, keyboard accessibility, and adaptive light/dark theming.",
       "category": "Navigation",
       "isBuiltIn": false,
-      "updatedAt": 1795702008169,
-      "lastRepoSyncAt": 1795702008169,
+      "updatedAt": 1795754527091,
+      "lastRepoSyncAt": 1795754533502,
       "path": "registry/components/account-switcher-menu",
       "files": [
         "component.tsx",
         "default.tsx",
-        "manifest.json"
+        "index.css",
+        "manifest.json",
+        "preview.png"
       ],
       "dependencies": [
         "framer-motion",
@@ -36,6 +38,7 @@
       "files": [
         "component.tsx",
         "default.tsx",
+        "index.css",
         "manifest.json"
       ],
       "dependencies": [
@@ -55,30 +58,11 @@
       "files": [
         "component.tsx",
         "default.tsx",
+        "index.css",
         "manifest.json"
       ],
       "dependencies": [
         "framer-motion"
-      ]
-    },
-    {
-      "id": "luminous-split-button",
-      "slug": "luminous-split-button",
-      "name": "LuminousSplitButton",
-      "description": "Backlit electric-violet split action button featuring a specular gradient bezel, filled plus-squircle icon, translucent hairline divider, event-driven sheen sweep, and keyboard-accessible spring dropdown menu.",
-      "category": "Buttons",
-      "isBuiltIn": false,
-      "updatedAt": 1795701512694,
-      "lastRepoSyncAt": 1795701512694,
-      "path": "registry/components/luminous-split-button",
-      "files": [
-        "component.tsx",
-        "default.tsx",
-        "manifest.json"
-      ],
-      "dependencies": [
-        "framer-motion",
-        "lucide-react"
       ]
     },
     {
@@ -94,6 +78,28 @@
       "files": [
         "component.tsx",
         "default.tsx",
+        "index.css",
+        "manifest.json"
+      ],
+      "dependencies": [
+        "framer-motion",
+        "lucide-react"
+      ]
+    },
+    {
+      "id": "luminous-split-button",
+      "slug": "luminous-split-button",
+      "name": "LuminousSplitButton",
+      "description": "Backlit electric-violet split action button featuring a specular gradient bezel, filled plus-squircle icon, translucent hairline divider, event-driven sheen sweep, and keyboard-accessible spring dropdown menu.",
+      "category": "Buttons",
+      "isBuiltIn": false,
+      "updatedAt": 1795701035081,
+      "lastRepoSyncAt": 1795701035081,
+      "path": "registry/components/luminous-split-button",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "index.css",
         "manifest.json"
       ],
       "dependencies": [
@@ -108,13 +114,15 @@
       "description": "Dual-theme 2:1 isometric floating brand plinth with real-time 4-tier vector ASCII fire burning on a machined obsidian cap, native light/dark ceramic-slate materials, and 60fps 360-degree rounded-square orbiting typography underneath.",
       "category": "Effects",
       "isBuiltIn": false,
-      "updatedAt": 1795622803924,
-      "lastRepoSyncAt": 1795622803924,
+      "updatedAt": 1795621684380,
+      "lastRepoSyncAt": 1795621691818,
       "path": "registry/components/isometric-brand-plinth",
       "files": [
         "component.tsx",
         "default.tsx",
-        "manifest.json"
+        "index.css",
+        "manifest.json",
+        "preview.png"
       ],
       "dependencies": [
         "framer-motion"
@@ -133,7 +141,9 @@
       "files": [
         "component.tsx",
         "default.tsx",
-        "manifest.json"
+        "index.css",
+        "manifest.json",
+        "preview.png"
       ],
       "dependencies": []
     },
@@ -171,7 +181,9 @@
       "files": [
         "component.tsx",
         "default.tsx",
-        "manifest.json"
+        "index.css",
+        "manifest.json",
+        "preview.png"
       ],
       "dependencies": [
         "framer-motion",
@@ -185,16 +197,40 @@
       "description": "Interactive liquid-ink typography that organically inflates and fuses letterforms with real-time metaball physics on cursor hover. Supports custom text, theme-aware styling, spring-damped trail inertia, and reduced-motion accessibility.",
       "category": "Effects",
       "isBuiltIn": false,
-      "updatedAt": 1795590483803,
-      "lastRepoSyncAt": 1795590483803,
+      "updatedAt": 1795590308461,
+      "lastRepoSyncAt": 1795590313192,
       "path": "registry/components/liquid-morph-text",
       "files": [
         "component.tsx",
         "default.tsx",
-        "manifest.json"
+        "index.css",
+        "manifest.json",
+        "preview.png"
       ],
       "dependencies": [
         "framer-motion"
+      ]
+    },
+    {
+      "id": "daily-ritual-checklist",
+      "slug": "daily-ritual-checklist",
+      "name": "DailyRitualChecklist",
+      "description": "Minimalist daily ritual and habit checklist with dashed rounded-square checkboxes, spring-animated ritual emblems, crisp dashed dividers, and an inline pill composer for adding new habits.",
+      "category": "Widgets",
+      "isBuiltIn": false,
+      "updatedAt": 1795589350023,
+      "lastRepoSyncAt": 1795589356666,
+      "path": "registry/components/daily-ritual-checklist",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "index.css",
+        "manifest.json",
+        "preview.png"
+      ],
+      "dependencies": [
+        "framer-motion",
+        "lucide-react"
       ]
     },
     {
@@ -238,28 +274,6 @@
       ],
       "dependencies": [
         "framer-motion"
-      ]
-    },
-    {
-      "id": "daily-ritual-checklist",
-      "slug": "daily-ritual-checklist",
-      "name": "DailyRitualChecklist",
-      "description": "Minimalist daily ritual and habit checklist with dashed rounded-square checkboxes, spring-animated ritual emblems, crisp dashed dividers, and an inline pill composer for adding new habits.",
-      "category": "Widgets",
-      "isBuiltIn": false,
-      "updatedAt": 1795588590503,
-      "lastRepoSyncAt": 1795588595107,
-      "path": "registry/components/daily-ritual-checklist",
-      "files": [
-        "component.tsx",
-        "default.tsx",
-        "index.css",
-        "manifest.json",
-        "preview.png"
-      ],
-      "dependencies": [
-        "framer-motion",
-        "lucide-react"
       ]
     },
     {
