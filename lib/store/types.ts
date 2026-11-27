@@ -193,6 +193,7 @@ export interface StudioState {
 
   // Component Registry & Work History
   userComponents: Record<string, UserComponent>;
+  deletedBuiltInIds: string[];
   recentComponentIds: string[];
   quickPreviewComponentId: string | null;
   isCreateComponentDialogOpen: boolean;
@@ -334,7 +335,14 @@ export interface StudioState {
       category?: string;
     }
   ) => void;
-  deleteUserComponent: (id: string) => void;
+  deleteUserComponent: (
+    id: string,
+    options?: { awaitServer?: boolean }
+  ) => Promise<{
+    success: boolean;
+    error?: string;
+    requiresOwnerAuth?: boolean;
+  }>;
   duplicateUserComponent: (id: string, newName?: string) => string;
   updateComponentPreview: (id: string, previewImage: string) => void;
   loadComponent: (id: string) => void;

@@ -166,6 +166,7 @@ export const createAiSlice: StudioSliceCreator<AiSlice> = (set) => ({
               ...currentComp,
               files: nextFiles,
               dependencies: nextDeps,
+              savedInRepo: false,
               updatedAt: Date.now(),
             },
           }
@@ -176,7 +177,7 @@ export const createAiSlice: StudioSliceCreator<AiSlice> = (set) => ({
           ? { files: nextFiles, dependencies: nextDeps }
           : {}),
         userComponents: updatedUserComponents,
-        repoSyncStatus: "dirty",
+        repoSyncStatus: isCurrentTemplate ? "dirty" : state.repoSyncStatus,
         ...sync,
         aiChatMessages: state.aiChatMessages.map((m) =>
           m.id === id
@@ -255,6 +256,7 @@ export const createAiSlice: StudioSliceCreator<AiSlice> = (set) => ({
             [targetTemplateId]: {
               ...currentComp,
               files: nextFiles,
+              savedInRepo: false,
               updatedAt: Date.now(),
             },
           }
@@ -263,7 +265,7 @@ export const createAiSlice: StudioSliceCreator<AiSlice> = (set) => ({
       return {
         ...(isCurrentTemplate ? { files: nextFiles } : {}),
         userComponents: updatedUserComponents,
-        repoSyncStatus: "dirty",
+        repoSyncStatus: isCurrentTemplate ? "dirty" : state.repoSyncStatus,
         ...sync,
         aiChatMessages: state.aiChatMessages.map((m) =>
           m.id === id
@@ -325,6 +327,7 @@ export const createAiSlice: StudioSliceCreator<AiSlice> = (set) => ({
               ...currentComp,
               files: nextFiles,
               dependencies: nextDeps,
+              savedInRepo: false,
               updatedAt: Date.now(),
             },
           }

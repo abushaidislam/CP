@@ -18,7 +18,9 @@ import {
   Download,
   FolderDown,
   UploadCloud,
+  Loader2,
 } from "lucide-react";
+import { cn } from "@/lib/utils";
 import type { RepoGitInfo } from "@/lib/store/studio-store";
 
 export interface RepoSyncActionResult {
@@ -27,6 +29,12 @@ export interface RepoSyncActionResult {
   savedCount?: number;
   commitSha?: string;
   commitUrl?: string;
+  pushedToGithub?: boolean;
+}
+
+export interface BundleStatus {
+  type: "success" | "error";
+  message: string;
 }
 
 interface RepoSyncTabProps {
@@ -52,7 +60,8 @@ interface RepoSyncTabProps {
   fileInputRef: React.RefObject<HTMLInputElement | null>;
   onImportWorkspaceJsonFile: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onExportWorkspaceJson: () => void;
-  bundleStatusMsg: string | null;
+  isExportingBundle: boolean;
+  bundleStatus: BundleStatus | null;
   showAdvancedGit: boolean;
   onToggleAdvancedGit: () => void;
   commitMessage: string;
@@ -96,7 +105,8 @@ export function RepoSyncTab({
   fileInputRef,
   onImportWorkspaceJsonFile,
   onExportWorkspaceJson,
-  bundleStatusMsg,
+  isExportingBundle,
+  bundleStatus,
   showAdvancedGit,
   onToggleAdvancedGit,
   commitMessage,
@@ -110,12 +120,15 @@ export function RepoSyncTab({
   lastRepoSyncError,
   actionResult,
 }: RepoSyncTabProps) {
+  const hasDemo = demoCode.trim().length > 0;
+  const hasCss = cssCode.trim().length > 0;
+
   return (
     <div className="space-y-4">
       {/* 1. Auto-Save Toggle & Library Status Strip */}
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-none border border-border bg-background px-4 py-3">
-        <div className="space-y-0.5">
-          <div className="flex items-center gap-2">
+      <div className="flex items-center justify-between gap-4 rounded-none border border-border bg-background px-4 py-3">
+        <div className="min-w-0 flex-1 space-y-1">
+          <div className="flex flex-wrap items-center gap-2">
             <span className="text-xs font-semibold text-foreground font-sans">
               Auto-Save Edits to Project Repo
             </span>
@@ -126,14 +139,16 @@ export function RepoSyncTab({
               {savedRepoCount}/{allComponentsCount} synced in repo
             </Badge>
           </div>
-          <p className="text-[11px] text-muted-foreground font-sans">
+          <p className="text-[11px] text-muted-foreground font-sans leading-relaxed">
             Automatically writes your code and preview snapshot to{" "}
-            <span className="font-mono text-foreground/90">{targetDir}/</span>{" "}
+            <span className="font-mono text-foreground/90 break-all">
+              {targetDir}/
+            </span>{" "}
             as you work.
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center shrink-0">
           <Switch
             checked={autoSaveToRepo}
             onCheckedChange={onAutoSaveChange}
@@ -144,13 +159,16 @@ export function RepoSyncTab({
 
       {/* 2. Target Project Repository File Structure + Quick Copy/Download */}
       <div className="rounded-none border border-border bg-background p-4 space-y-3">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
-            <span className="font-mono text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2 min-w-0 flex-1">
+            <span className="font-mono text-[10px] font-medium uppercase tracking-wider text-muted-foreground shrink-0">
               REPO FILES &amp; QUICK EXPORT
             </span>
-            <span className="text-border">/</span>
-            <span className="font-mono text-xs font-medium text-foreground">
+            <span className="text-border shrink-0">/</span>
+            <span
+              className="font-mono text-xs font-medium text-foreground truncate"
+              title={`${targetDir}/`}
+            >
               {targetDir}/
             </span>
           </div>
@@ -159,7 +177,7 @@ export function RepoSyncTab({
             variant="outline"
             size="sm"
             onClick={onDownloadAllFiles}
-            className="rounded-none h-7 px-2.5 gap-1.5 text-[11px] font-sans"
+            className="rounded-none h-7 px-2.5 gap-1.5 text-[11px] font-sans shrink-0"
           >
             {downloadedAll ? (
               <>
@@ -169,7 +187,7 @@ export function RepoSyncTab({
             ) : (
               <>
                 <FolderDown className="size-3 text-primary" />
-                <span>Download All (.tsx)</span>
+                <span>Download All</span>
               </>
             )}
           </Button>
@@ -228,6 +246,7 @@ export function RepoSyncTab({
               <Button
                 variant="ghost"
                 size="icon-sm"
+                disabled={!hasDemo}
                 onClick={() => onCopyFile("default.tsx", demoCode)}
                 aria-label="Copy default.tsx"
                 className="size-6 rounded-none text-muted-foreground hover:text-foreground"
@@ -241,6 +260,7 @@ export function RepoSyncTab({
               <Button
                 variant="ghost"
                 size="icon-sm"
+                disabled={!hasDemo}
                 onClick={() =>
                   onDownloadFile(`${derivedSlug}-demo.tsx`, demoCode)
                 }
@@ -267,6 +287,7 @@ export function RepoSyncTab({
               <Button
                 variant="ghost"
                 size="icon-sm"
+                disabled={!hasCss}
                 onClick={() => onCopyFile("index.css", cssCode)}
                 aria-label="Copy index.css"
                 className="size-6 rounded-none text-muted-foreground hover:text-foreground"
@@ -276,6 +297,16 @@ export function RepoSyncTab({
                 ) : (
                   <Copy className="size-3" />
                 )}
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                disabled={!hasCss}
+                onClick={() => onDownloadFile(`${derivedSlug}.css`, cssCode)}
+                aria-label="Download index.css"
+                className="size-6 rounded-none text-muted-foreground hover:text-foreground"
+              >
+                <Download className="size-3" />
               </Button>
             </div>
           </div>
@@ -294,10 +325,10 @@ export function RepoSyncTab({
           </div>
         </div>
 
-        {/* Browser LocalStorage Backup & Migration Bar */}
+        {/* Workspace Backup & Migration Bar */}
         <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-border/60">
           <div className="text-[11px] text-muted-foreground font-sans">
-            Browser LocalStorage Bundle ({allComponentsCount} components):
+            Workspace Backup Bundle ({allComponentsCount} components):
           </div>
           <div className="flex items-center gap-1.5">
             <input
@@ -311,11 +342,20 @@ export function RepoSyncTab({
               variant="outline"
               size="sm"
               type="button"
+              disabled={isExportingBundle}
               onClick={onExportWorkspaceJson}
               className="rounded-none h-6 px-2 text-[11px] font-sans gap-1"
             >
-              <Download className="size-3 text-primary" />
-              <span>Export All ({allComponentsCount}) .json</span>
+              {isExportingBundle ? (
+                <Loader2 className="size-3 animate-spin text-primary" />
+              ) : (
+                <Download className="size-3 text-primary" />
+              )}
+              <span>
+                {isExportingBundle
+                  ? "Exporting..."
+                  : `Export All (${allComponentsCount}) .json`}
+              </span>
             </Button>
             <Button
               variant="outline"
@@ -329,9 +369,21 @@ export function RepoSyncTab({
             </Button>
           </div>
         </div>
-        {bundleStatusMsg && (
-          <div className="text-[11px] text-emerald-500 font-sans pt-0.5">
-            {bundleStatusMsg}
+        {bundleStatus && (
+          <div
+            className={cn(
+              "flex items-start gap-1.5 text-[11px] font-sans pt-0.5",
+              bundleStatus.type === "error"
+                ? "text-rose-500"
+                : "text-emerald-500"
+            )}
+          >
+            {bundleStatus.type === "error" ? (
+              <AlertCircle className="size-3.5 shrink-0 mt-0.5" />
+            ) : (
+              <CheckCircle2 className="size-3.5 shrink-0 mt-0.5" />
+            )}
+            <span className="min-w-0 break-words">{bundleStatus.message}</span>
           </div>
         )}
       </div>
@@ -347,7 +399,7 @@ export function RepoSyncTab({
             size="sm"
             type="button"
             onClick={onToggleAdvancedGit}
-            className="h-6 px-2 text-[11px] font-sans text-muted-foreground hover:text-foreground rounded-none gap-1"
+            className="h-6 px-2 text-[11px] font-sans text-muted-foreground hover:text-foreground rounded-none gap-1 shrink-0"
           >
             <span>{showAdvancedGit ? "Hide Options" : "Configure"}</span>
             {showAdvancedGit ? (
@@ -377,7 +429,7 @@ export function RepoSyncTab({
               />
             </div>
 
-            <div className="flex items-center justify-between gap-2 pt-1">
+            <div className="flex items-center justify-between gap-3 pt-1">
               <span className="text-xs text-foreground font-sans">
                 Also push directly to a remote GitHub branch via REST API
               </span>
@@ -468,7 +520,9 @@ export function RepoSyncTab({
               <div className="font-semibold">
                 {actionResult.type === "single"
                   ? `Saved "${activeName}" into Project Repository!`
-                  : `Synced all ${actionResult.savedCount} components into Project Repository!`}
+                  : `Synced ${actionResult.savedCount ?? 0} component${
+                      actionResult.savedCount === 1 ? "" : "s"
+                    } into Project Repository!`}
               </div>
               <div className="text-[11px] opacity-90">
                 Written to{" "}

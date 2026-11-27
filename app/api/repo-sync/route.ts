@@ -734,6 +734,83 @@ async function writeRegistryIndexFile(
   return content;
 }
 
+async function collectAllRegistryFilesForGithub(
+  cwd: string,
+  indexContent: string
+): Promise<{
+  files: Array<{ path: string; content: string; encoding?: "utf-8" | "base64" }>;
+  componentCount: number;
+}> {
+  const componentsDir = path.join(cwd, COMPONENTS_DIR_REL);
+  const files: Array<{
+    path: string;
+    content: string;
+    encoding?: "utf-8" | "base64";
+  }> = [];
+  let componentCount = 0;
+
+  try {
+    const entries = await fs.readdir(componentsDir, { withFileTypes: true });
+    const dirEntries = entries.filter((e) => e.isDirectory());
+
+    for (const entry of dirEntries) {
+      const slug = entry.name;
+      const compRelDir = `${COMPONENTS_DIR_REL}/${slug}`;
+      const compDir = path.join(componentsDir, slug);
+
+      try {
+        const [manifestRaw, componentTsx, defaultTsx, indexCss] =
+          await Promise.all([
+            fs.readFile(path.join(compDir, "manifest.json"), "utf-8"),
+            fs.readFile(path.join(compDir, "component.tsx"), "utf-8"),
+            fs.readFile(path.join(compDir, "default.tsx"), "utf-8").catch(() => ""),
+            fs
+              .readFile(path.join(compDir, "index.css"), "utf-8")
+              .catch(
+                () =>
+                  "@tailwind base;\n@tailwind components;\n@tailwind utilities;\n"
+              ),
+          ]);
+
+        files.push(
+          { path: `${compRelDir}/component.tsx`, content: componentTsx },
+          { path: `${compRelDir}/default.tsx`, content: defaultTsx },
+          { path: `${compRelDir}/index.css`, content: indexCss },
+          { path: `${compRelDir}/manifest.json`, content: manifestRaw }
+        );
+
+        try {
+          const previewPath = path.join(compDir, "preview.png");
+          const stat = await fs.stat(previewPath);
+          if (stat.isFile() && stat.size > 0 && stat.size <= 500_000) {
+            const buf = await fs.readFile(previewPath);
+            files.push({
+              path: `${compRelDir}/preview.png`,
+              content: buf.toString("base64"),
+              encoding: "base64",
+            });
+          }
+        } catch {
+          // Preview image optional
+        }
+
+        componentCount++;
+      } catch {
+        // Skip incomplete component directories
+      }
+    }
+  } catch {
+    // Registry directory doesn't exist yet
+  }
+
+  files.push({
+    path: INDEX_FILE_REL,
+    content: indexContent,
+  });
+
+  return { files, componentCount };
+}
+
 export async function GET(req?: NextRequest) {
   try {
     const cwd = process.cwd();
@@ -894,6 +971,7 @@ export async function POST(req: NextRequest) {
     commitMessage?: string;
     commitToGit?: boolean;
     pushToGithub?: boolean;
+    pushScope?: "written" | "all_registry";
     githubConfig?: {
       repo?: string;
       branch?: string;
@@ -1173,13 +1251,27 @@ export async function POST(req: NextRequest) {
       Boolean(body.pushToGithub) ||
       Boolean(localFsWriteError && targetGithubRepo && targetGithubToken);
 
+    let pushedComponentsCount: number | undefined;
+
     if (shouldPushToGithub && targetGithubRepo && targetGithubToken) {
+      let filesToPush = writtenFilesForGithub;
+      if (body.pushScope === "all_registry" && !localFsWriteError) {
+        const collected = await collectAllRegistryFilesForGithub(
+          cwd,
+          indexContent
+        );
+        if (collected.files.length > 0) {
+          filesToPush = collected.files;
+          pushedComponentsCount = collected.componentCount;
+        }
+      }
+
       githubPushResult = await pushFilesToGithubRestApi({
         repo: targetGithubRepo,
         branch: targetGithubBranch,
         token: targetGithubToken,
         commitMessage,
-        filesToPush: writtenFilesForGithub,
+        filesToPush,
       });
     } else if (body.pushToGithub && (!targetGithubRepo || !targetGithubToken)) {
       githubPushResult = {
@@ -1193,6 +1285,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         {
           success: false,
+          readOnlyFs: true,
           error:
             githubPushResult?.error ||
             `Server filesystem is read-only (${localFsWriteError}). Expand 'Optional: Custom Git Commit & Direct Remote GitHub Push' below and enter your GitHub Repository (owner/repo) + Personal Access Token to push directly to GitHub.`,
@@ -1208,6 +1301,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       success: true,
       savedCount: savedRecords.length,
+      ...(typeof pushedComponentsCount === "number"
+        ? { pushedComponentsCount }
+        : {}),
       savedRecords,
       indexFile: INDEX_FILE_REL,
       totalRepoComponents: indexEntries.length,
@@ -1276,43 +1372,64 @@ export async function DELETE(req: NextRequest) {
       const id = searchParams.get("id") || "";
       const slugParam = searchParams.get("slug") || "";
 
-      const { components } = await readAllRepoComponents(cwd);
+      const { components } = await readAllRepoComponents(cwd, true);
       const target = components.find(
         (c) =>
           (id && c.manifest.id === id) ||
           (slugParam && c.manifest.slug === slugParam)
       );
 
-      const candidateSlug = target?.manifest.slug || toComponentSlug(slugParam || id);
-      const redisExisting = candidateSlug
-        ? await getRedisComponent(candidateSlug).catch(() => null)
-        : null;
+      const candidateSlug =
+        target?.manifest.slug ||
+        (slugParam ? toComponentSlug(slugParam) : id ? toComponentSlug(id) : "");
 
-      if (!target && !redisExisting) {
+      let hasDiskDir = Boolean(target);
+      if (!hasDiskDir && candidateSlug) {
+        try {
+          const candidateDir = resolveSafeComponentDir(cwd, candidateSlug);
+          const stat = await fs.stat(candidateDir);
+          hasDiskDir = stat.isDirectory();
+        } catch {
+          hasDiskDir = false;
+        }
+      }
+
+      const redisExisting =
+        (candidateSlug
+          ? await getRedisComponent(candidateSlug).catch(() => null)
+          : null) ||
+        (id ? await getRedisComponent(id).catch(() => null) : null);
+
+      if (!hasDiskDir && !redisExisting) {
         return NextResponse.json({
           success: true,
           removed: false,
         });
       }
 
-      const resolvedSlug = target?.manifest.slug || redisExisting?.manifest.slug || candidateSlug;
+      const resolvedSlug =
+        target?.manifest.slug || redisExisting?.manifest.slug || candidateSlug;
 
-      if (target) {
+      if (hasDiskDir && resolvedSlug) {
         const compAbsDir = resolveSafeComponentDir(cwd, resolvedSlug);
-        await fs.rm(compAbsDir, { recursive: true, force: true }).catch(() => {});
+        await fs.rm(compAbsDir, { recursive: true, force: true });
       }
 
-      if (resolvedSlug) {
-        await deleteRedisComponent(resolvedSlug).catch(() => false);
+      if (resolvedSlug || id) {
+        await deleteRedisComponent(resolvedSlug, id || undefined).catch(
+          () => false
+        );
       }
 
       invalidateRepoReadCache();
       const { indexEntries } = await readAllRepoComponents(cwd, true);
-      await writeRegistryIndexFile(cwd, indexEntries).catch(() => {});
-      if (target) {
+      await writeRegistryIndexFile(cwd, indexEntries);
+      if (hasDiskDir) {
         await tryLocalGitCommit(
           cwd,
-          `chore(registry): remove ${target.manifest.name} from project repo`
+          `chore(registry): remove ${
+            target?.manifest.name || resolvedSlug || id
+          } from project repo`
         );
       }
 

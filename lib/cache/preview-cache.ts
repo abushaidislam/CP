@@ -282,13 +282,33 @@ export async function removeCachedComponentPreview(
   componentId: string
 ): Promise<void> {
   memoryPreviewCache.delete(componentId);
+  if (memoryComponentsCache && componentId in memoryComponentsCache) {
+    const nextCache = { ...memoryComponentsCache };
+    delete nextCache[componentId];
+    memoryComponentsCache = nextCache;
+  }
   if (typeof window === "undefined") return;
 
   try {
     const db = await openPreviewDatabase();
     if (db) {
-      const tx = db.transaction(PREVIEW_STORE, "readwrite");
-      tx.objectStore(PREVIEW_STORE).delete(componentId);
+      await new Promise<void>((resolve) => {
+        const tx = db.transaction([PREVIEW_STORE, REGISTRY_STORE], "readwrite");
+        tx.objectStore(PREVIEW_STORE).delete(componentId);
+        const rStore = tx.objectStore(REGISTRY_STORE);
+        const getReq = rStore.get("all_user_components");
+        getReq.onsuccess = () => {
+          const cached = getReq.result as Record<string, UserComponent> | undefined;
+          if (cached && typeof cached === "object" && componentId in cached) {
+            const updated = { ...cached };
+            delete updated[componentId];
+            memoryComponentsCache = updated;
+            rStore.put(updated, "all_user_components");
+          }
+        };
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => resolve();
+      });
     }
   } catch {
     // Ignore

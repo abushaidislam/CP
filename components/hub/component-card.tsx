@@ -39,7 +39,19 @@ import {
   FolderGit2,
   Check,
   Pencil,
+  Download,
+  Loader2,
+  Lock,
 } from "lucide-react";
+import { downloadComponentTsxZip } from "@/lib/utils/zip-export";
+
+export type DeleteComponentResult =
+  | void
+  | {
+      success: boolean;
+      error?: string;
+      requiresOwnerAuth?: boolean;
+    };
 
 export interface ComponentCardProps {
   component: UserComponent;
@@ -50,7 +62,7 @@ export interface ComponentCardProps {
   onPreview?: (id: string) => void;
   onOpenStudio?: (id: string) => void;
   onDuplicate?: (id: string) => void;
-  onDelete?: (id: string) => void;
+  onDelete?: (id: string) => DeleteComponentResult | Promise<DeleteComponentResult>;
   isDeleteDialogOpen?: boolean;
   onDeleteDialogOpenChange?: (open: boolean) => void;
 }
@@ -84,6 +96,12 @@ function ComponentCardInner({
   const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
   const [failedPreviewSrc, setFailedPreviewSrc] = useState<string | null>(null);
   const [isHydrated, setIsHydrated] = useState(false);
+  const [isDownloadingZip, setIsDownloadingZip] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<{
+    message: string;
+    requiresOwnerAuth?: boolean;
+  } | null>(null);
 
   React.useEffect(() => {
     setIsHydrated(true);
@@ -91,7 +109,11 @@ function ComponentCardInner({
 
   const isDeleteDialogOpen = controlledOpen !== undefined ? controlledOpen : uncontrolledOpen;
   const setIsDeleteDialogOpen = (open: boolean) => {
+    if (!open && isDeleting) return;
     setUncontrolledOpen(open);
+    if (!open) {
+      setDeleteError(null);
+    }
     onDeleteDialogOpenChange?.(open);
   };
 
@@ -119,12 +141,67 @@ function ComponentCardInner({
     }
   };
 
-  const handleConfirmDelete = () => {
-    setIsDeleteDialogOpen(false);
-    if (onDelete) {
-      onDelete(component.id);
-    } else {
-      useStudioStore.getState().deleteUserComponent(component.id);
+  const handleDownloadComponentZip = async () => {
+    if (isDownloadingZip) return;
+    setIsDownloadingZip(true);
+    try {
+      const store = useStudioStore.getState();
+      let resolved: UserComponent | null =
+        store.userComponents?.[component.id] || component;
+
+      const needsHydration =
+        resolved.filesLoaded === false || !resolved.files?.["component.tsx"];
+
+      if (needsHydration && typeof store.ensureComponentFilesLoaded === "function") {
+        const loaded = await store.ensureComponentFilesLoaded(component.id);
+        if (loaded) {
+          resolved = loaded;
+        }
+      }
+
+      const componentTsx = resolved.files?.["component.tsx"] || "";
+      const defaultTsx =
+        resolved.files?.["default.tsx"] || resolved.files?.["demo.tsx"] || "";
+
+      downloadComponentTsxZip({
+        slug: resolved.repoSlug || component.repoSlug || component.name || component.id,
+        componentTsx,
+        defaultTsx,
+      });
+    } finally {
+      setIsDownloadingZip(false);
+    }
+  };
+
+  const handleConfirmDelete = async () => {
+    if (isDeleting) return;
+    setDeleteError(null);
+    setIsDeleting(true);
+    try {
+      const result = onDelete
+        ? await onDelete(component.id)
+        : await useStudioStore
+            .getState()
+            .deleteUserComponent(component.id, { awaitServer: true });
+
+      if (result && result.success === false) {
+        setDeleteError({
+          message: result.error || "Failed to delete component.",
+          requiresOwnerAuth: result.requiresOwnerAuth,
+        });
+        setIsDeleting(false);
+        return;
+      }
+
+      setIsDeleting(false);
+      setUncontrolledOpen(false);
+      onDeleteDialogOpenChange?.(false);
+    } catch (err: unknown) {
+      setDeleteError({
+        message:
+          err instanceof Error ? err.message : "Failed to delete component.",
+      });
+      setIsDeleting(false);
     }
   };
 
@@ -217,7 +294,7 @@ function ComponentCardInner({
             className="absolute top-2.5 right-2.5 z-20 flex items-center gap-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity duration-150"
             onClick={(e) => e.stopPropagation()}
           >
-            <DropdownMenu>
+            <DropdownMenu modal={false}>
               <DropdownMenuTrigger asChild>
                 <Button
                   variant="secondary"
@@ -228,7 +305,7 @@ function ComponentCardInner({
                   <MoreVertical className="size-3.5" aria-hidden="true" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48 rounded-none font-sans">
+              <DropdownMenuContent align="end" className="w-52 rounded-none font-sans">
                 <DropdownMenuItem
                   onClick={() => {
                     useStudioStore
@@ -239,6 +316,22 @@ function ComponentCardInner({
                 >
                   <Pencil className="size-3.5 text-primary" />
                   <span>Edit Details...</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  disabled={isDownloadingZip}
+                  onClick={() => {
+                    void handleDownloadComponentZip();
+                  }}
+                  className="gap-2 cursor-pointer rounded-none font-sans text-xs"
+                >
+                  {isDownloadingZip ? (
+                    <Loader2 className="size-3.5 animate-spin text-primary" />
+                  ) : (
+                    <Download className="size-3.5 text-primary" />
+                  )}
+                  <span>
+                    {isDownloadingZip ? "Preparing ZIP..." : "Download Component"}
+                  </span>
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={() => {
@@ -258,20 +351,17 @@ function ComponentCardInner({
                   <Copy className="size-3.5" />
                   <span>Duplicate Component</span>
                 </DropdownMenuItem>
-                {!component.isBuiltIn && (
-                  <>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem
-                      onClick={() => {
-                        setIsDeleteDialogOpen(true);
-                      }}
-                      className="gap-2 cursor-pointer rounded-none font-sans text-xs text-destructive focus:text-destructive focus:bg-destructive/10"
-                    >
-                      <Trash2 className="size-3.5" />
-                      <span>Delete Component</span>
-                    </DropdownMenuItem>
-                  </>
-                )}
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={() => {
+                    setDeleteError(null);
+                    setIsDeleteDialogOpen(true);
+                  }}
+                  className="gap-2 cursor-pointer rounded-none font-sans text-xs text-destructive focus:text-destructive focus:bg-destructive/10"
+                >
+                  <Trash2 className="size-3.5" />
+                  <span>Delete Component</span>
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
@@ -330,17 +420,39 @@ function ComponentCardInner({
           <DialogContent className="sm:max-w-md rounded-none font-sans">
             <DialogHeader>
               <div className="flex items-center gap-2 text-destructive mb-1">
-                <AlertTriangle className="size-5" />
+                <AlertTriangle className="size-5 shrink-0" />
                 <DialogTitle className="font-sans text-base">Delete Component</DialogTitle>
               </div>
               <DialogDescription className="font-sans text-xs text-muted-foreground">
-                Are you sure you want to delete <strong className="text-foreground">{component.name}</strong>? This action cannot be undone and will permanently remove all versions and snapshots.
+                Are you sure you want to delete <strong className="text-foreground">{component.name}</strong>? This action cannot be undone and will permanently remove it from your workspace and project repository.
               </DialogDescription>
             </DialogHeader>
+
+            {deleteError && (
+              <div className="rounded-none border border-destructive/40 bg-destructive/10 p-3 text-xs text-destructive font-sans space-y-2">
+                <p className="leading-relaxed break-words">{deleteError.message}</p>
+                {deleteError.requiresOwnerAuth && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setIsDeleteDialogOpen(false);
+                      useStudioStore.getState().setSecurityModalOpen(true);
+                    }}
+                    className="h-7 rounded-none text-[11px] font-sans gap-1.5 border-destructive/40 text-destructive hover:bg-destructive/15"
+                  >
+                    <Lock className="size-3" />
+                    <span>Unlock Security Shield</span>
+                  </Button>
+                )}
+              </div>
+            )}
+
             <DialogFooter className="gap-2 sm:gap-0 font-sans">
               <Button
                 variant="outline"
                 size="sm"
+                disabled={isDeleting}
                 onClick={() => setIsDeleteDialogOpen(false)}
                 className="rounded-none font-sans text-xs"
               >
@@ -349,11 +461,21 @@ function ComponentCardInner({
               <Button
                 variant="destructive"
                 size="sm"
+                disabled={isDeleting}
                 onClick={handleConfirmDelete}
                 className="rounded-none font-sans text-xs gap-1.5"
               >
-                <Trash2 className="size-3.5" />
-                <span>Delete</span>
+                {isDeleting ? (
+                  <>
+                    <Loader2 className="size-3.5 animate-spin" />
+                    <span>Deleting...</span>
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="size-3.5" />
+                    <span>Delete</span>
+                  </>
+                )}
               </Button>
             </DialogFooter>
           </DialogContent>

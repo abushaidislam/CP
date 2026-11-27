@@ -32,9 +32,11 @@ import {
 import { cn } from "@/lib/utils";
 import {
   RepoSyncTab,
+  type BundleStatus,
   type RepoSyncActionResult,
 } from "./repo-sync/repo-sync-tab";
 import { PublishExportTab } from "./repo-sync/publish-export-tab";
+import type { ComponentVariant, StudioFiles, UserComponent } from "@/lib/store/types";
 
 function toCleanSlug(raw: string): string {
   return (
@@ -46,6 +48,10 @@ function toCleanSlug(raw: string): string {
       .replace(/-+/g, "-")
       .replace(/^-|-$/g, "") || "custom-component"
   );
+}
+
+function countLines(code: string): number {
+  return code.length === 0 ? 0 : code.split("\n").length;
 }
 
 export function RepoSyncModal() {
@@ -99,6 +105,16 @@ export function RepoSyncModal() {
   const savedRepoCount = Object.values(userComponents || {}).filter(
     (c) => c.savedInRepo
   ).length;
+  const syncableComponentsCount = useMemo(
+    () =>
+      Object.values(userComponents || {}).filter(
+        (c) =>
+          c &&
+          (c.id === currentTemplateId ||
+            (c.filesLoaded !== false && Boolean(c.files?.["component.tsx"])))
+      ).length,
+    [userComponents, currentTemplateId]
+  );
 
   const ast = useMemo(() => {
     return parseComponentAST(
@@ -108,7 +124,7 @@ export function RepoSyncModal() {
     );
   }, [files]);
 
-  // CLI Publish Tab state
+  // CLI Publish Tab state (isolated from Project Repo target path)
   const [customTitle, setCustomTitle] = useState("");
   const [customSlug, setCustomSlug] = useState("");
   const [customDescription, setCustomDescription] = useState("");
@@ -124,21 +140,24 @@ export function RepoSyncModal() {
   const [copiedSetupCli, setCopiedSetupCli] = useState(false);
   const [downloadedAll, setDownloadedAll] = useState(false);
 
-  const activeName =
-    customTitle.trim() ||
-    activeComponent?.name ||
-    ast.title ||
-    "Interactive Component";
+  // Project Repo identity (authoritative, matches what saveComponentToProjectRepo writes)
+  const repoComponentName =
+    activeComponent?.name || ast.title || "Interactive Component";
 
-  const derivedSlug = useMemo(() => {
+  const repoSlug = useMemo(() => {
     return toCleanSlug(
-      customSlug.trim() ||
-        activeComponent?.repoSlug ||
-        (activeComponent?.isBuiltIn ? activeComponent.id : activeName)
+      activeComponent?.repoSlug ||
+        (activeComponent?.isBuiltIn ? activeComponent.id : repoComponentName)
     );
-  }, [customSlug, activeComponent, activeName]);
+  }, [activeComponent, repoComponentName]);
 
-  const defaultCommitMsg = `feat(registry): save ${activeName} (${derivedSlug}) to project repo`;
+  // CLI Publish identity (optional overrides scoped strictly to Tab 2 CLI command)
+  const publishName = customTitle.trim() || repoComponentName;
+  const publishSlug = useMemo(() => {
+    return toCleanSlug(customSlug.trim() || repoSlug);
+  }, [customSlug, repoSlug]);
+
+  const defaultCommitMsg = `feat(registry): save ${repoComponentName} (${repoSlug}) to project repo`;
   const [commitMessage, setCommitMessage] = useState("");
   const [pushToGithub, setPushToGithub] = useState(false);
   const [showAdvancedGit, setShowAdvancedGit] = useState(false);
@@ -146,7 +165,8 @@ export function RepoSyncModal() {
   const [actionResult, setActionResult] = useState<RepoSyncActionResult | null>(
     null
   );
-  const [bundleStatusMsg, setBundleStatusMsg] = useState<string | null>(null);
+  const [isExportingBundle, setIsExportingBundle] = useState(false);
+  const [bundleStatus, setBundleStatus] = useState<BundleStatus | null>(null);
   const fileInputRef = React.useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
@@ -155,6 +175,24 @@ export function RepoSyncModal() {
       setActionResult(null);
     }
   }, [isOpen, hydrateFromProjectRepo]);
+
+  // Reset per-component modal inputs whenever active component changes
+  useEffect(() => {
+    setCustomTitle("");
+    setCustomSlug("");
+    setCustomDescription("");
+    setCustomTags("");
+    setCommitMessage("");
+    setActionResult(null);
+    setBundleStatus(null);
+  }, [currentTemplateId]);
+
+  // Clear stale save banner/button state whenever the component becomes dirty again
+  useEffect(() => {
+    if (repoSyncStatus === "dirty") {
+      setActionResult(null);
+    }
+  }, [repoSyncStatus]);
 
   useEffect(() => {
     if (lastRepoSyncError && /github/i.test(lastRepoSyncError)) {
@@ -169,46 +207,56 @@ export function RepoSyncModal() {
     files["index.css"] ||
     "@tailwind base;\n@tailwind components;\n@tailwind utilities;\n";
 
-  const compLines = compCode.split("\n").length;
-  const demoLines = demoCode.split("\n").length;
-  const cssLines = cssCode.split("\n").length;
+  const compLines = countLines(compCode);
+  const demoLines = countLines(demoCode);
+  const cssLines = countLines(cssCode);
 
-  const targetDir = `registry/components/${derivedSlug}`;
-  const compFilename = `${derivedSlug}.tsx`;
-  const demoFilename = `${derivedSlug}-demo.tsx`;
+  const repoTargetDir = `registry/components/${repoSlug}`;
+  const repoCompFilename = `${repoSlug}.tsx`;
+  const repoDemoFilename = `${repoSlug}-demo.tsx`;
+  const repoCssFilename = `${repoSlug}.css`;
+
+  const publishCompFilename = `${publishSlug}.tsx`;
+  const publishDemoFilename = `${publishSlug}-demo.tsx`;
   const compPath =
     pathStyle === "folder"
-      ? `./${compFilename}`
-      : `./components/ui/${compFilename}`;
+      ? `./${publishCompFilename}`
+      : `./components/ui/${publishCompFilename}`;
   const demoPath =
     pathStyle === "folder"
-      ? `./${demoFilename}`
-      : `./components/demo/${demoFilename}`;
+      ? `./${publishDemoFilename}`
+      : `./components/demo/${publishDemoFilename}`;
   const hasDemo = demoCode.trim().length > 0;
+  const hasCss = cssCode.trim().length > 0;
 
   const escapeCliArg = (val: string) =>
     val.replace(/[\r\n]/g, " ").replace(/(["`$\\])/g, "\\$1");
 
   const publishCommand = useMemo(() => {
-    const safeName = escapeCliArg(activeName);
-    const safeSlug = escapeCliArg(derivedSlug);
-    const safeTags = customTags ? escapeCliArg(customTags) : "";
+    const safeName = escapeCliArg(publishName);
+    const safeSlug = escapeCliArg(publishSlug);
+    const safeDescription = customDescription.trim()
+      ? escapeCliArg(customDescription.trim())
+      : "";
+    const safeTags = customTags.trim() ? escapeCliArg(customTags.trim()) : "";
     const demoFlag = hasDemo ? ` --demo ${demoPath}` : "";
+    const descFlag = safeDescription ? ` --description "${safeDescription}"` : "";
     const tagsFlag = safeTags ? ` --tags "${safeTags}"` : "";
 
     if (cliFormat === "powershell") {
-      return `21st publish ${compPath}${hasDemo ? ` \`\n  --demo ${demoPath}` : ""} \`\n  --name "${safeName}" \`\n  --slug "${safeSlug}" \`\n  --visibility ${visibility}${tagsFlag ? ` \`\n  ${tagsFlag}` : ""}`;
+      return `21st publish ${compPath}${hasDemo ? ` \`\n  --demo ${demoPath}` : ""} \`\n  --name "${safeName}" \`\n  --slug "${safeSlug}" \`\n  --visibility ${visibility}${descFlag ? ` \`\n  ${descFlag.trim()}` : ""}${tagsFlag ? ` \`\n  ${tagsFlag.trim()}` : ""}`;
     }
     if (cliFormat === "bash") {
-      return `21st publish ${compPath}${hasDemo ? ` \\\n  --demo ${demoPath}` : ""} \\\n  --name "${safeName}" \\\n  --slug "${safeSlug}" \\\n  --visibility ${visibility}${tagsFlag ? ` \\\n  ${tagsFlag}` : ""}`;
+      return `21st publish ${compPath}${hasDemo ? ` \\\n  --demo ${demoPath}` : ""} \\\n  --name "${safeName}" \\\n  --slug "${safeSlug}" \\\n  --visibility ${visibility}${descFlag ? ` \\\n  ${descFlag.trim()}` : ""}${tagsFlag ? ` \\\n  ${tagsFlag.trim()}` : ""}`;
     }
-    return `21st publish ${compPath}${demoFlag} --name "${safeName}" --slug "${safeSlug}" --visibility ${visibility}${tagsFlag}`;
+    return `21st publish ${compPath}${demoFlag} --name "${safeName}" --slug "${safeSlug}" --visibility ${visibility}${descFlag}${tagsFlag}`;
   }, [
     compPath,
     demoPath,
     hasDemo,
-    activeName,
-    derivedSlug,
+    publishName,
+    publishSlug,
+    customDescription,
     visibility,
     customTags,
     cliFormat,
@@ -233,12 +281,24 @@ export function RepoSyncModal() {
   };
 
   const handleDownloadAllFiles = () => {
-    handleDownloadFile(compFilename, compCode);
+    const downloads: Array<{ filename: string; content: string }> = [
+      { filename: repoCompFilename, content: compCode },
+    ];
     if (hasDemo) {
-      setTimeout(() => {
-        handleDownloadFile(demoFilename, demoCode);
-      }, 180);
+      downloads.push({ filename: repoDemoFilename, content: demoCode });
     }
+    if (hasCss) {
+      downloads.push({ filename: repoCssFilename, content: cssCode });
+    }
+    downloads.forEach((item, index) => {
+      if (index === 0) {
+        handleDownloadFile(item.filename, item.content);
+      } else {
+        setTimeout(() => {
+          handleDownloadFile(item.filename, item.content);
+        }, index * 180);
+      }
+    });
     setDownloadedAll(true);
     setTimeout(() => setDownloadedAll(false), 2200);
     confetti({ particleCount: 55, spread: 60, origin: { y: 0.65 } });
@@ -257,37 +317,210 @@ export function RepoSyncModal() {
     setTimeout(() => setCopiedSetupCli(false), 2000);
   };
 
-  const handleExportWorkspaceJson = () => {
-    // Export strictly sanitized component & variant data — never dump raw localStorage or credentials
-    const storeState = useStudioStore.getState();
-    const payload = JSON.stringify(
-      {
-        version: 1,
-        exportedAt: new Date().toISOString(),
-        state: {
-          userComponents: storeState.userComponents || {},
-          variantsByTemplate: storeState.variantsByTemplate || {},
-          activeVariantByTemplate: storeState.activeVariantByTemplate || {},
+  const handleExportWorkspaceJson = async () => {
+    setIsExportingBundle(true);
+    setBundleStatus(null);
+    try {
+      // Export strictly sanitized component & variant data — never dump raw localStorage or credentials
+      const storeState = useStudioStore.getState();
+      const exportComponents: Record<string, UserComponent> = {};
+      const exportVariants: Record<string, ComponentVariant[]> = {
+        ...(storeState.variantsByTemplate || {}),
+      };
+      const exportActiveVariants: Record<string, string> = {
+        ...(storeState.activeVariantByTemplate || {}),
+      };
+
+      const localEntries = Object.entries(storeState.userComponents || {});
+      const hasUnloadedSummary = localEntries.some(
+        ([, comp]) =>
+          comp &&
+          (comp.filesLoaded === false || !comp.files?.["component.tsx"])
+      );
+
+      const serverFullMap = new Map<
+        string,
+        {
+          manifest: {
+            id: string;
+            slug: string;
+            name: string;
+            description?: string;
+            category?: string;
+            isBuiltIn?: boolean;
+            createdAt?: number;
+            updatedAt?: number;
+            lastRepoSyncAt?: number;
+            dependencies?: string[];
+            previewImage?: string;
+            variants?: ComponentVariant[];
+            activeVariantId?: string;
+          };
+          files: StudioFiles;
+        }
+      >();
+      let fullFetchFailed = false;
+
+      if (hasUnloadedSummary) {
+        try {
+          const res = await fetch("/api/repo-sync?mode=full", {
+            method: "GET",
+            credentials: "same-origin",
+            headers: { Accept: "application/json" },
+          });
+          if (res.ok) {
+            const data = (await res.json()) as {
+              success?: boolean;
+              components?: Array<{
+                manifest: {
+                  id: string;
+                  slug: string;
+                  name: string;
+                  description?: string;
+                  category?: string;
+                  isBuiltIn?: boolean;
+                  createdAt?: number;
+                  updatedAt?: number;
+                  lastRepoSyncAt?: number;
+                  dependencies?: string[];
+                  previewImage?: string;
+                  variants?: ComponentVariant[];
+                  activeVariantId?: string;
+                };
+                files: StudioFiles;
+              }>;
+            };
+            if (data.success && Array.isArray(data.components)) {
+              for (const item of data.components) {
+                if (item?.manifest?.id) {
+                  serverFullMap.set(item.manifest.id, item);
+                }
+              }
+            } else {
+              fullFetchFailed = true;
+            }
+          } else {
+            fullFetchFailed = true;
+          }
+        } catch {
+          fullFetchFailed = true;
+        }
+      }
+
+      let skippedUnloadedCount = 0;
+
+      for (const [id, comp] of localEntries) {
+        if (!comp) continue;
+        const isActive = id === storeState.currentTemplateId;
+        const hasLocalSource =
+          isActive ||
+          (comp.filesLoaded !== false && Boolean(comp.files?.["component.tsx"]));
+
+        if (hasLocalSource) {
+          const resolvedFiles = isActive
+            ? {
+                ...storeState.files,
+                "default.tsx":
+                  storeState.files["default.tsx"] ??
+                  storeState.files["demo.tsx"] ??
+                  "",
+                "demo.tsx":
+                  storeState.files["demo.tsx"] ??
+                  storeState.files["default.tsx"] ??
+                  "",
+              }
+            : comp.files;
+          if (!resolvedFiles?.["component.tsx"]) {
+            skippedUnloadedCount++;
+            continue;
+          }
+          exportComponents[id] = {
+            ...comp,
+            files: resolvedFiles,
+            dependencies: isActive
+              ? [...storeState.dependencies]
+              : comp.dependencies || [],
+            filesLoaded: true,
+          };
+          continue;
+        }
+
+        const serverEntry = serverFullMap.get(id);
+        if (serverEntry?.files?.["component.tsx"]) {
+          exportComponents[id] = {
+            ...comp,
+            files: serverEntry.files,
+            dependencies:
+              serverEntry.manifest.dependencies || comp.dependencies || [],
+            filesLoaded: true,
+          };
+          if (
+            Array.isArray(serverEntry.manifest.variants) &&
+            serverEntry.manifest.variants.length > 0 &&
+            !exportVariants[id]
+          ) {
+            exportVariants[id] = serverEntry.manifest.variants;
+          }
+          if (
+            serverEntry.manifest.activeVariantId &&
+            !exportActiveVariants[id]
+          ) {
+            exportActiveVariants[id] = serverEntry.manifest.activeVariantId;
+          }
+        } else {
+          skippedUnloadedCount++;
+        }
+      }
+
+      const exportedCount = Object.keys(exportComponents).length;
+      if (exportedCount === 0) {
+        setBundleStatus({
+          type: "error",
+          message:
+            "Could not load source files for any component. Open a component or verify the server connection and try again.",
+        });
+        return;
+      }
+
+      const payload = JSON.stringify(
+        {
+          version: 1,
+          exportedAt: new Date().toISOString(),
+          state: {
+            userComponents: exportComponents,
+            variantsByTemplate: exportVariants,
+            activeVariantByTemplate: exportActiveVariants,
+          },
         },
-      },
-      null,
-      2
-    );
-    const blob = new Blob([payload], {
-      type: "application/json;charset=utf-8",
-    });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `component-studio-backup-${allComponentsCount}-components.json`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-    setBundleStatusMsg(
-      `Exported all ${allComponentsCount} components to sanitized backup .json`
-    );
-    setTimeout(() => setBundleStatusMsg(null), 3500);
+        null,
+        2
+      );
+      const blob = new Blob([payload], {
+        type: "application/json;charset=utf-8",
+      });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `component-studio-backup-${exportedCount}-components.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      if (skippedUnloadedCount > 0 || fullFetchFailed) {
+        setBundleStatus({
+          type: "error",
+          message: `Exported ${exportedCount} complete components (${skippedUnloadedCount} unloaded summary entries skipped because full repo fetch failed).`,
+        });
+      } else {
+        setBundleStatus({
+          type: "success",
+          message: `Exported all ${exportedCount} complete components to sanitized backup .json`,
+        });
+      }
+    } finally {
+      setIsExportingBundle(false);
+    }
   };
 
   const handleImportWorkspaceJsonFile = (
@@ -300,12 +533,18 @@ export function RepoSyncModal() {
       const content = typeof reader.result === "string" ? reader.result : "";
       const res = importWorkspaceBundle(content);
       if (res.success) {
-        setBundleStatusMsg(
-          `Imported ${res.importedCount} components! Click 'Sync All to Repo' below to save them to GitHub.`
-        );
+        setBundleStatus({
+          type: "success",
+          message: `Imported ${res.importedCount} component${
+            res.importedCount === 1 ? "" : "s"
+          }! Click 'Sync' below to save them to the repository.`,
+        });
         confetti({ particleCount: 55, spread: 60, origin: { y: 0.65 } });
       } else {
-        setBundleStatusMsg(res.error || "Failed to import JSON backup.");
+        setBundleStatus({
+          type: "error",
+          message: res.error || "Failed to import JSON backup.",
+        });
       }
       if (fileInputRef.current) {
         fileInputRef.current.value = "";
@@ -316,17 +555,19 @@ export function RepoSyncModal() {
 
   const handleSaveActiveToRepo = async () => {
     setActionResult(null);
+    const wasPushEnabled = pushToGithub;
     const res = await saveComponentToProjectRepo({
       componentId: currentTemplateId,
       commitMessage: commitMessage.trim() || defaultCommitMsg,
-      pushToGithub,
+      pushToGithub: wasPushEnabled,
     });
     if (res.success) {
       setActionResult({
         type: "single",
-        repoPath: res.repoPath || targetDir,
+        repoPath: res.repoPath || repoTargetDir,
         commitSha: res.commitSha,
         commitUrl: res.commitUrl,
+        pushedToGithub: wasPushEnabled,
       });
       setCommitMessage("");
       confetti({ particleCount: 55, spread: 60, origin: { y: 0.65 } });
@@ -335,30 +576,65 @@ export function RepoSyncModal() {
 
   const handleSyncAllToRepo = async () => {
     setActionResult(null);
+    const wasPushEnabled = pushToGithub;
+    const expectedCount = wasPushEnabled
+      ? allComponentsCount
+      : syncableComponentsCount;
     const res = await syncAllComponentsToProjectRepo({
       commitMessage:
         commitMessage.trim() ||
-        `feat(registry): sync all ${allComponentsCount} workspace components to project repo`,
-      pushToGithub,
+        `feat(registry): sync ${expectedCount} workspace component${
+          expectedCount === 1 ? "" : "s"
+        } to project repo`,
+      pushToGithub: wasPushEnabled,
     });
     if (res.success) {
       setActionResult({
         type: "all",
-        savedCount: res.savedCount || allComponentsCount,
+        savedCount: res.savedCount ?? 0,
         commitSha: res.commitSha,
         commitUrl: res.commitUrl,
+        pushedToGithub: wasPushEnabled,
       });
       setCommitMessage("");
       confetti({ particleCount: 70, spread: 70, origin: { y: 0.65 } });
     }
   };
 
+  const handleCommitMessageChange = (val: string) => {
+    setCommitMessage(val);
+    setActionResult(null);
+  };
+
+  const handlePushToGithubChange = (checked: boolean) => {
+    setPushToGithub(checked);
+    setActionResult(null);
+  };
+
+  const handleGithubRepoConfigChange = (
+    config: Partial<{ repo: string; branch: string; token: string }>
+  ) => {
+    setGithubRepoConfig(config);
+    setActionResult(null);
+  };
+
   const isSyncing = repoSyncStatus === "syncing";
+  const isActiveSavedInRepo =
+    Boolean(activeComponent?.savedInRepo) && repoSyncStatus !== "dirty";
+
+  const syncAllLabel = pushToGithub
+    ? `Sync All (${allComponentsCount}) to GitHub`
+    : syncableComponentsCount < allComponentsCount
+    ? `Sync Loaded (${syncableComponentsCount}/${allComponentsCount})`
+    : `Sync All (${allComponentsCount}) to Repo`;
+
+  const tabBarPathLabel =
+    activeTab === "repo" ? `${repoTargetDir}/` : compPath;
 
   return (
     <Dialog open={isOpen} onOpenChange={setRepoSyncModalOpen}>
-      <DialogContent className="max-w-2xl w-[calc(100vw-2rem)] max-h-[90vh] flex flex-col border border-border bg-card p-0 gap-0 rounded-none overflow-y-auto overflow-x-hidden font-sans">
-        {/* Architectural Header Bar */}
+      <DialogContent className="max-w-2xl w-[calc(100vw-2rem)] max-h-[90vh] flex flex-col border border-border bg-card p-0 gap-0 rounded-none overflow-hidden font-sans">
+        {/* Architectural Header Bar (Fixed) */}
         <DialogHeader className="studio-toolbar-surface border-b border-border px-6 py-4 pr-12 shrink-0">
           <div className="flex items-center justify-between gap-2">
             <Badge variant="eyebrow" className="rounded-none font-mono">
@@ -378,12 +654,12 @@ export function RepoSyncModal() {
                 variant="secondary"
                 className={cn(
                   "rounded-none text-[10px] py-0 px-1.5 font-sans font-medium",
-                  activeComponent?.savedInRepo && repoSyncStatus !== "dirty"
+                  isActiveSavedInRepo
                     ? "bg-emerald-500/15 text-emerald-500 border border-emerald-500/30"
                     : "bg-amber-500/15 text-amber-500 border border-amber-500/30"
                 )}
               >
-                {activeComponent?.savedInRepo && repoSyncStatus !== "dirty"
+                {isActiveSavedInRepo
                   ? "Saved in Project Repo"
                   : "Unsaved Repo Changes"}
               </Badge>
@@ -394,14 +670,14 @@ export function RepoSyncModal() {
             <div className="flex size-9 items-center justify-center rounded-none border border-border bg-background text-foreground shrink-0 mt-0.5">
               <FolderGit2 className="size-4 text-primary" />
             </div>
-            <div>
+            <div className="min-w-0 flex-1">
               <DialogTitle className="flex items-center gap-2 text-base sm:text-lg font-semibold tracking-tight text-foreground font-sans">
                 <span>Save to Project Repo, Export &amp; Publish</span>
               </DialogTitle>
               <DialogDescription className="text-xs text-muted-foreground mt-0.5 font-sans">
                 Sync directly with{" "}
-                <span className="font-mono text-foreground">
-                  registry/components/{derivedSlug}/
+                <span className="font-mono text-foreground break-all">
+                  {repoTargetDir}/
                 </span>
                 , download <span className="font-mono text-foreground">.tsx</span>{" "}
                 files, or publish via CLI from one unified workspace dialog.
@@ -413,11 +689,11 @@ export function RepoSyncModal() {
         <Tabs
           value={activeTab}
           onValueChange={(v) => setActiveTab(v as "repo" | "publish")}
-          className="flex flex-1 flex-col"
+          className="flex flex-1 min-h-0 flex-col overflow-hidden"
         >
-          {/* Mode Switcher Strip */}
-          <div className="border-b border-border bg-background/60 px-6 py-2.5 flex items-center justify-between gap-3">
-            <TabsList className="h-8 rounded-none border border-border bg-card p-0.5 font-sans">
+          {/* Mode Switcher Strip (Fixed) */}
+          <div className="shrink-0 border-b border-border bg-background/60 px-6 py-2.5 flex items-center justify-between gap-3">
+            <TabsList className="h-8 rounded-none border border-border bg-card p-0.5 font-sans shrink-0">
               <TabsTrigger
                 value="repo"
                 className="rounded-none h-7 px-3 text-xs font-sans gap-1.5"
@@ -434,17 +710,23 @@ export function RepoSyncModal() {
               </TabsTrigger>
             </TabsList>
 
-            <span className="hidden sm:inline font-mono text-[11px] text-muted-foreground truncate">
-              {targetDir}/
+            <span
+              className="hidden sm:block min-w-0 flex-1 text-right font-mono text-[11px] text-muted-foreground truncate"
+              title={tabBarPathLabel}
+            >
+              {tabBarPathLabel}
             </span>
           </div>
 
-          {/* TAB 1: Project Repo Storage & File Export */}
-          <TabsContent value="repo" className="flex-1 px-6 py-4 m-0">
+          {/* TAB 1: Project Repo Storage & File Export (Scrollable Body) */}
+          <TabsContent
+            value="repo"
+            className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-6 py-4 m-0"
+          >
             <RepoSyncTab
-              activeName={activeName}
-              derivedSlug={derivedSlug}
-              targetDir={targetDir}
+              activeName={repoComponentName}
+              derivedSlug={repoSlug}
+              targetDir={repoTargetDir}
               savedRepoCount={savedRepoCount}
               allComponentsCount={allComponentsCount}
               autoSaveToRepo={autoSaveToRepo}
@@ -464,27 +746,31 @@ export function RepoSyncModal() {
               fileInputRef={fileInputRef}
               onImportWorkspaceJsonFile={handleImportWorkspaceJsonFile}
               onExportWorkspaceJson={handleExportWorkspaceJson}
-              bundleStatusMsg={bundleStatusMsg}
+              isExportingBundle={isExportingBundle}
+              bundleStatus={bundleStatus}
               showAdvancedGit={showAdvancedGit}
               onToggleAdvancedGit={() => setShowAdvancedGit((p) => !p)}
               commitMessage={commitMessage}
-              onCommitMessageChange={setCommitMessage}
+              onCommitMessageChange={handleCommitMessageChange}
               defaultCommitMsg={defaultCommitMsg}
               pushToGithub={pushToGithub}
-              onPushToGithubChange={setPushToGithub}
+              onPushToGithubChange={handlePushToGithubChange}
               githubRepoConfig={githubRepoConfig}
-              onGithubRepoConfigChange={setGithubRepoConfig}
+              onGithubRepoConfigChange={handleGithubRepoConfigChange}
               repoGitInfo={repoGitInfo}
               lastRepoSyncError={lastRepoSyncError}
               actionResult={actionResult}
             />
           </TabsContent>
 
-          {/* TAB 2: CLI Publish & Metadata */}
-          <TabsContent value="publish" className="flex-1 px-6 py-4 m-0">
+          {/* TAB 2: CLI Publish & Metadata (Scrollable Body) */}
+          <TabsContent
+            value="publish"
+            className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-6 py-4 m-0"
+          >
             <PublishExportTab
-              activeName={activeName}
-              derivedSlug={derivedSlug}
+              activeName={publishName}
+              derivedSlug={publishSlug}
               defaultDescription={activeComponent?.description}
               customTitle={customTitle}
               onCustomTitleChange={setCustomTitle}
@@ -509,26 +795,33 @@ export function RepoSyncModal() {
           </TabsContent>
         </Tabs>
 
-        {/* Sticky Footer */}
-        <DialogFooter className="studio-toolbar-surface sticky bottom-0 z-10 flex flex-wrap items-center justify-between gap-2 border-t border-border px-6 py-3.5 bg-card/95 backdrop-blur-xs font-sans">
+        {/* Fixed Footer Bar */}
+        <DialogFooter className="studio-toolbar-surface shrink-0 flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between sm:space-x-0 gap-2 border-t border-border px-6 py-3.5 bg-card font-sans">
           {activeTab === "repo" ? (
             <>
               <Button
                 variant="outline"
                 size="sm"
-                disabled={isSyncing}
+                disabled={isSyncing || syncableComponentsCount === 0}
                 onClick={handleSyncAllToRepo}
-                className="rounded-none h-8 gap-1.5 text-xs font-sans"
+                title={
+                  pushToGithub
+                    ? `Push all ${allComponentsCount} repository components to GitHub in one atomic commit`
+                    : syncableComponentsCount < allComponentsCount
+                    ? `Sync ${syncableComponentsCount} loaded components (${allComponentsCount - syncableComponentsCount} untouched repo components are already saved on disk)`
+                    : `Sync all ${allComponentsCount} workspace components to project repo`
+                }
+                className="rounded-none h-8 gap-1.5 text-xs font-sans shrink-0"
               >
                 {isSyncing ? (
                   <Loader2 className="size-3.5 animate-spin" />
                 ) : (
                   <Layers className="size-3.5 text-primary" />
                 )}
-                <span>Sync All ({allComponentsCount}) to Repo</span>
+                <span>{syncAllLabel}</span>
               </Button>
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-center justify-end gap-2">
                 <Button
                   variant="outline"
                   size="sm"
@@ -553,7 +846,11 @@ export function RepoSyncModal() {
                   ) : actionResult?.type === "single" ? (
                     <>
                       <Check className="size-3.5 text-emerald-400" />
-                      <span>Saved in Project Repo</span>
+                      <span>
+                        {actionResult.pushedToGithub
+                          ? "Saved & Pushed to GitHub"
+                          : "Saved in Project Repo"}
+                      </span>
                     </>
                   ) : (
                     <>
@@ -597,7 +894,7 @@ export function RepoSyncModal() {
                 </Button>
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-center justify-end gap-2">
                 <Button
                   variant="outline"
                   size="sm"

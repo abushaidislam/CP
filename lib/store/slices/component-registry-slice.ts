@@ -11,11 +11,13 @@ import {
   normalizeStudioFiles,
   syncVariantWithWorking,
 } from "../default-previews";
+import { flushPendingStorageNow } from "../storage";
 import type { StudioSliceCreator, StudioState, UserComponent } from "../types";
 
 export type ComponentRegistrySlice = Pick<
   StudioState,
   | "userComponents"
+  | "deletedBuiltInIds"
   | "recentComponentIds"
   | "quickPreviewComponentId"
   | "isCreateComponentDialogOpen"
@@ -42,6 +44,7 @@ export const createComponentRegistrySlice: StudioSliceCreator<ComponentRegistryS
   get
 ) => ({
   userComponents: createInitialUserComponents(),
+  deletedBuiltInIds: [],
   recentComponentIds: [initialTemplate.id],
   quickPreviewComponentId: null,
   isCreateComponentDialogOpen: false,
@@ -112,12 +115,23 @@ export const createComponentRegistrySlice: StudioSliceCreator<ComponentRegistryS
           },
         };
 
+    const loadedComp = nextUserComponents[target.id];
+    const nextRepoSyncStatus =
+      state.repoSyncStatus === "syncing"
+        ? "syncing"
+        : loadedComp?.savedInRepo === true
+        ? "synced"
+        : loadedComp?.savedInRepo === false
+        ? "dirty"
+        : "idle";
+
     set({
       files: filesToLoad,
       dependencies: depsToLoad,
       currentTemplateId: target.id,
       activeTab: "component.tsx",
       compilerError: null,
+      repoSyncStatus: nextRepoSyncStatus,
       userComponents: nextUserComponents,
       variantsByTemplate: {
         ...(state.variantsByTemplate || {}),
@@ -134,7 +148,6 @@ export const createComponentRegistrySlice: StudioSliceCreator<ComponentRegistryS
       ].slice(0, 50),
     });
 
-    const loadedComp = nextUserComponents[target.id];
     if (
       loadedComp &&
       (loadedComp.filesLoaded === false || !loadedComp.files?.["component.tsx"])
@@ -188,6 +201,7 @@ export const createComponentRegistrySlice: StudioSliceCreator<ComponentRegistryS
       files: initialFiles,
       dependencies: initialDeps,
       previewImage,
+      savedInRepo: false,
     };
 
     const defaultVar = createDefaultVariant(id, initialFiles, initialDeps);
@@ -202,6 +216,8 @@ export const createComponentRegistrySlice: StudioSliceCreator<ComponentRegistryS
       dependencies: initialDeps,
       activeTab: "component.tsx",
       compilerError: null,
+      repoSyncStatus:
+        state.repoSyncStatus === "syncing" ? "syncing" : "dirty",
       recentComponentIds: [
         id,
         ...(state.recentComponentIds || []).filter((cid) => cid !== id),
@@ -221,87 +237,230 @@ export const createComponentRegistrySlice: StudioSliceCreator<ComponentRegistryS
     return id;
   },
 
-  deleteUserComponent: (id) => {
+  deleteUserComponent: async (id, options = {}) => {
     const compToDelete = get().userComponents?.[id];
-    if (compToDelete?.isBuiltIn || DEFAULT_TEMPLATES.some((t) => t.id === id)) {
-      return;
-    }
+    const isBuiltInTemplate =
+      Boolean(compToDelete?.isBuiltIn) ||
+      DEFAULT_TEMPLATES.some((t) => t.id === id);
 
-    if (typeof window !== "undefined" && typeof fetch === "function") {
-      const slug = compToDelete?.repoSlug || "";
-      const token = get().ownerSessionToken;
-      void removeCachedComponentPreview(id);
-      fetch(
-        `/api/repo-sync?id=${encodeURIComponent(id)}&slug=${encodeURIComponent(slug)}`,
-        {
-          method: "DELETE",
-          credentials: "same-origin",
-          headers: {
-            "X-Studio-Client": "component-studio",
-            ...(token ? { "X-Studio-Owner-Token": token } : {}),
-          },
-        }
-      ).catch(() => {});
-    }
+    const shouldSyncServerDelete =
+      typeof window !== "undefined" &&
+      typeof fetch === "function" &&
+      Boolean(compToDelete) &&
+      (compToDelete.savedInRepo !== false ||
+        Boolean(compToDelete.repoSlug) ||
+        isBuiltInTemplate);
 
-    set((state) => {
-      const nextUserComponents = { ...state.userComponents };
-      delete nextUserComponents[id];
-
-      const nextRecent = (state.recentComponentIds || [])
-        .filter((cid) => cid !== id)
-        .slice(0, 50);
-      const nextVariants = { ...state.variantsByTemplate };
-      delete nextVariants[id];
-      const nextActiveVariants = { ...state.activeVariantByTemplate };
-      delete nextActiveVariants[id];
-
-      let nextCurrentTemplateId = state.currentTemplateId;
-      let nextFiles = state.files;
-      let nextDeps = state.dependencies;
-
-      if (state.currentTemplateId === id) {
-        const remainingIds = Object.keys(nextUserComponents);
-        const fallbackComp =
-          remainingIds.length > 0
-            ? nextUserComponents[remainingIds[0]]
-            : DEFAULT_TEMPLATES[0];
-        nextCurrentTemplateId = fallbackComp.id;
-
-        const fallbackVariants = nextVariants[fallbackComp.id] || [];
-        const fallbackActiveVarId =
-          nextActiveVariants[fallbackComp.id] || fallbackVariants[0]?.id;
-        const activeVar = fallbackVariants.find(
-          (v) => v.id === fallbackActiveVarId
-        );
-
-        if (activeVar) {
-          nextFiles = { ...activeVar.files };
-          nextDeps = [...activeVar.dependencies];
-        } else {
-          nextFiles = { ...fallbackComp.files };
-          nextDeps = [...fallbackComp.dependencies];
-        }
+    const executeServerDelete = async (): Promise<{
+      success: boolean;
+      error?: string;
+      requiresOwnerAuth?: boolean;
+      totalRepoComponents?: number;
+    }> => {
+      if (!shouldSyncServerDelete) {
+        return { success: true };
       }
+      const slug =
+        compToDelete?.repoSlug || (isBuiltInTemplate ? id : "");
+      const token = get().ownerSessionToken;
+      try {
+        const res = await fetch(
+          `/api/repo-sync?id=${encodeURIComponent(id)}&slug=${encodeURIComponent(slug)}`,
+          {
+            method: "DELETE",
+            credentials: "same-origin",
+            headers: {
+              "X-Studio-Client": "component-studio",
+              ...(token ? { "X-Studio-Owner-Token": token } : {}),
+            },
+          }
+        );
+        let data: {
+          success?: boolean;
+          error?: string;
+          requiresOwnerAuth?: boolean;
+          totalRepoComponents?: number;
+        } = {};
+        try {
+          data = (await res.json()) as typeof data;
+        } catch {
+          // Non-JSON response
+        }
 
-      return {
-        userComponents: nextUserComponents,
-        recentComponentIds: nextRecent,
-        variantsByTemplate: nextVariants,
-        activeVariantByTemplate: nextActiveVariants,
-        currentTemplateId: nextCurrentTemplateId,
-        files: nextFiles,
-        dependencies: nextDeps,
-        selectedCheckpointId:
-          state.currentTemplateId === id ? null : state.selectedCheckpointId,
-        compilerError:
-          state.currentTemplateId === id ? null : state.compilerError,
-        quickPreviewComponentId:
-          state.quickPreviewComponentId === id
-            ? null
-            : state.quickPreviewComponentId,
-      };
-    });
+        if (!res.ok || data.success === false) {
+          return {
+            success: false,
+            requiresOwnerAuth:
+              res.status === 401 || Boolean(data.requiresOwnerAuth),
+            error:
+              data.error ||
+              (res.status === 401
+                ? "Owner authentication required to delete components from the repository."
+                : `Failed to delete component from repository (HTTP ${res.status}).`),
+          };
+        }
+
+        return {
+          success: true,
+          totalRepoComponents: data.totalRepoComponents,
+        };
+      } catch (err: unknown) {
+        return {
+          success: false,
+          error:
+            err instanceof Error
+              ? err.message
+              : "Network error while deleting component.",
+        };
+      }
+    };
+
+    const removeLocally = (totalRepoComponents?: number) => {
+      void removeCachedComponentPreview(id);
+      set((state) => {
+        const nextUserComponents = { ...state.userComponents };
+        delete nextUserComponents[id];
+
+        const nextRecent = (state.recentComponentIds || [])
+          .filter((cid) => cid !== id)
+          .slice(0, 50);
+        const nextVariants = { ...state.variantsByTemplate };
+        delete nextVariants[id];
+        const nextActiveVariants = { ...state.activeVariantByTemplate };
+        delete nextActiveVariants[id];
+
+        let nextCurrentTemplateId = state.currentTemplateId;
+        let nextFiles = state.files;
+        let nextDeps = state.dependencies;
+
+        const nextDeletedBuiltInIds = isBuiltInTemplate
+          ? Array.from(new Set([...(state.deletedBuiltInIds || []), id]))
+          : state.deletedBuiltInIds || [];
+
+        if (state.currentTemplateId === id) {
+          const remainingIds = Object.keys(nextUserComponents);
+          const fallbackComp =
+            remainingIds.length > 0
+              ? nextUserComponents[remainingIds[0]]
+              : DEFAULT_TEMPLATES.find(
+                  (t) => !nextDeletedBuiltInIds.includes(t.id)
+                ) || DEFAULT_TEMPLATES[0];
+          nextCurrentTemplateId = fallbackComp.id;
+
+          const fallbackVariants = nextVariants[fallbackComp.id] || [];
+          const fallbackActiveVarId =
+            nextActiveVariants[fallbackComp.id] || fallbackVariants[0]?.id;
+          const activeVar = fallbackVariants.find(
+            (v) => v.id === fallbackActiveVarId
+          );
+
+          if (activeVar) {
+            nextFiles = { ...activeVar.files };
+            nextDeps = [...activeVar.dependencies];
+          } else {
+            nextFiles = { ...fallbackComp.files };
+            nextDeps = [...fallbackComp.dependencies];
+          }
+        }
+
+        return {
+          userComponents: nextUserComponents,
+          deletedBuiltInIds: nextDeletedBuiltInIds,
+          recentComponentIds: nextRecent,
+          variantsByTemplate: nextVariants,
+          activeVariantByTemplate: nextActiveVariants,
+          currentTemplateId: nextCurrentTemplateId,
+          files: nextFiles,
+          dependencies: nextDeps,
+          selectedCheckpointId:
+            state.currentTemplateId === id ? null : state.selectedCheckpointId,
+          compilerError:
+            state.currentTemplateId === id ? null : state.compilerError,
+          quickPreviewComponentId:
+            state.quickPreviewComponentId === id
+              ? null
+              : state.quickPreviewComponentId,
+          ...(typeof totalRepoComponents === "number" && state.repoGitInfo
+            ? {
+                repoGitInfo: {
+                  ...state.repoGitInfo,
+                  totalComponents: totalRepoComponents,
+                },
+              }
+            : {}),
+        };
+      });
+      flushPendingStorageNow();
+    };
+
+    if (options.awaitServer) {
+      const serverResult = await executeServerDelete();
+      if (!serverResult.success) {
+        return {
+          success: false,
+          error: serverResult.error,
+          requiresOwnerAuth: serverResult.requiresOwnerAuth,
+        };
+      }
+      removeLocally(serverResult.totalRepoComponents);
+      await removeCachedComponentPreview(id);
+      if (compToDelete) {
+        get().addTerminalLog({
+          type: "system",
+          message: `[Repo Sync] Deleted "${compToDelete.name}" from workspace and repository.`,
+        });
+      }
+      return { success: true };
+    }
+
+    // Default optimistic synchronous removal (keeps direct callers & unit tests synchronous)
+    const snapshotComp = compToDelete;
+    const snapshotVariants = get().variantsByTemplate?.[id];
+    const snapshotActiveVariant = get().activeVariantByTemplate?.[id];
+    removeLocally();
+
+    if (shouldSyncServerDelete) {
+      const serverResult = await executeServerDelete();
+      if (!serverResult.success) {
+        // Restore component if server deletion was rejected so UI stays consistent with repo
+        if (snapshotComp) {
+          set((state) => ({
+            userComponents: {
+              ...state.userComponents,
+              [id]: snapshotComp,
+            },
+            deletedBuiltInIds: (state.deletedBuiltInIds || []).filter(
+              (deletedId) => deletedId !== id
+            ),
+            ...(snapshotVariants
+              ? {
+                  variantsByTemplate: {
+                    ...state.variantsByTemplate,
+                    [id]: snapshotVariants,
+                  },
+                }
+              : {}),
+            ...(snapshotActiveVariant
+              ? {
+                  activeVariantByTemplate: {
+                    ...state.activeVariantByTemplate,
+                    [id]: snapshotActiveVariant,
+                  },
+                }
+              : {}),
+            lastRepoSyncError: serverResult.error || "Failed to delete component.",
+          }));
+          flushPendingStorageNow();
+        }
+        return {
+          success: false,
+          error: serverResult.error,
+          requiresOwnerAuth: serverResult.requiresOwnerAuth,
+        };
+      }
+    }
+
+    return { success: true };
   },
 
   duplicateUserComponent: (id, newName) => {
@@ -362,7 +521,8 @@ export const createComponentRegistrySlice: StudioSliceCreator<ComponentRegistryS
       const comp = state.userComponents?.[id];
       if (!comp) return state;
       return {
-        repoSyncStatus: "dirty",
+        repoSyncStatus:
+          id === state.currentTemplateId ? "dirty" : state.repoSyncStatus,
         userComponents: {
           ...state.userComponents,
           [id]: {
@@ -415,11 +575,13 @@ export const createComponentRegistrySlice: StudioSliceCreator<ComponentRegistryS
         name: finalName,
         description: finalDescription,
         category: finalCategory,
+        savedInRepo: false,
         updatedAt: Date.now(),
       };
 
       return {
-        repoSyncStatus: "dirty",
+        repoSyncStatus:
+          id === state.currentTemplateId ? "dirty" : state.repoSyncStatus,
         userComponents: {
           ...state.userComponents,
           [id]: updatedComp,

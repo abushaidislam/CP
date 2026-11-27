@@ -42,8 +42,10 @@ export type RepoSyncSlice = Pick<
 interface RepoSyncApiResponse {
   success?: boolean;
   isPayloadTooLarge?: boolean;
+  readOnlyFs?: boolean;
   error?: string;
   savedCount?: number;
+  pushedComponentsCount?: number;
   savedRecords?: Array<{
     id: string;
     slug: string;
@@ -136,10 +138,11 @@ export const createRepoSyncSlice: StudioSliceCreator<RepoSyncSlice> = (
           ...(state.userComponents || {}),
         };
         let changed = false;
+        const deletedSet = new Set(state.deletedBuiltInIds || []);
 
         if (hasCachedComponents) {
           for (const [id, cachedComp] of Object.entries(cachedComponents!)) {
-            if (!nextUserComponents[id] && cachedComp) {
+            if (!nextUserComponents[id] && cachedComp && !deletedSet.has(id)) {
               nextUserComponents[id] = {
                 ...cachedComp,
                 files: normalizeStudioFiles(cachedComp.files),
@@ -179,7 +182,21 @@ export const createRepoSyncSlice: StudioSliceCreator<RepoSyncSlice> = (
     if (!Array.isArray(summaries) || summaries.length === 0) return;
     set((state) => {
       const nextUserComponents = { ...(state.userComponents || {}) };
+      const summaryIdSet = new Set(summaries.map((s) => s.id));
       let changed = false;
+
+      // Remove built-in or previously repo-synced components that were deleted from the authoritative server registry
+      for (const [id, existing] of Object.entries(nextUserComponents)) {
+        if (
+          existing &&
+          !summaryIdSet.has(id) &&
+          (existing.savedInRepo === true ||
+            (existing.isBuiltIn && existing.savedInRepo !== false))
+        ) {
+          delete nextUserComponents[id];
+          changed = true;
+        }
+      }
 
       for (const summary of summaries) {
         const existing = nextUserComponents[summary.id];
@@ -317,6 +334,12 @@ export const createRepoSyncSlice: StudioSliceCreator<RepoSyncSlice> = (
         files: resolvedComp.files,
         dependencies: [...(resolvedComp.dependencies || [])],
         compilerError: null,
+        repoSyncStatus:
+          state.repoSyncStatus === "syncing"
+            ? "syncing"
+            : resolvedComp.savedInRepo
+            ? "synced"
+            : "dirty",
         recentComponentIds: [
           component.id,
           ...(state.recentComponentIds || []).filter((cid) => cid !== component.id),
@@ -721,13 +744,22 @@ export const createRepoSyncSlice: StudioSliceCreator<RepoSyncSlice> = (
       let lastCommitSha: string | undefined;
       let lastCommitUrl: string | undefined;
       let latestTotalRepoComponents: number | undefined;
+      let latestPushedComponentsCount: number | undefined;
+      let fallbackPerChunkGithubPush = false;
       const authHeaders = buildAuthHeaders(state.ownerSessionToken);
 
       for (let i = 0; i < chunks.length; i++) {
         const chunk = chunks[i];
         const isFinalChunk = i === chunks.length - 1;
+        const shouldPushThisChunk =
+          Boolean(options.pushToGithub) &&
+          (isFinalChunk || fallbackPerChunkGithubPush);
+        const pushScope =
+          shouldPushThisChunk && !fallbackPerChunkGithubPush
+            ? "all_registry"
+            : "written";
         const chunkCommitMsg =
-          chunks.length === 1
+          !fallbackPerChunkGithubPush || chunks.length === 1
             ? options.commitMessage
             : `${
                 options.commitMessage ||
@@ -743,12 +775,46 @@ export const createRepoSyncSlice: StudioSliceCreator<RepoSyncSlice> = (
             items: chunk,
             commitMessage: chunkCommitMsg,
             commitToGit: isFinalChunk,
-            pushToGithub: Boolean(options.pushToGithub),
+            pushToGithub: shouldPushThisChunk,
+            pushScope,
             githubConfig: state.githubRepoConfig,
           }),
         });
 
         let data = await parseSafeJson(res);
+
+        // On read-only serverless filesystems, disk cannot accumulate earlier chunks across requests.
+        // Fall back to per-chunk GitHub push only when the server explicitly reports a read-only FS.
+        if (
+          !res.ok &&
+          data.readOnlyFs &&
+          Boolean(options.pushToGithub) &&
+          !shouldPushThisChunk
+        ) {
+          fallbackPerChunkGithubPush = true;
+          const fallbackMsg =
+            chunks.length === 1
+              ? options.commitMessage
+              : `${
+                  options.commitMessage ||
+                  `feat(registry): sync ${items.length} workspace components`
+                } (batch ${i + 1}/${chunks.length})`;
+          res = await fetch("/api/repo-sync", {
+            method: "POST",
+            credentials: "same-origin",
+            headers: authHeaders,
+            body: JSON.stringify({
+              action: "sync_all",
+              items: chunk,
+              commitMessage: fallbackMsg,
+              commitToGit: false,
+              pushToGithub: true,
+              pushScope: "written",
+              githubConfig: state.githubRepoConfig,
+            }),
+          });
+          data = await parseSafeJson(res);
+        }
 
         // If this chunk still hit HTTP 413 (e.g. a single component had a huge >1MB base64 PNG),
         // retry the chunk with heavy base64 PNGs stripped so component code is guaranteed to sync.
@@ -766,6 +832,9 @@ export const createRepoSyncSlice: StudioSliceCreator<RepoSyncSlice> = (
             variants: [],
           }));
 
+          const retryPush =
+            Boolean(options.pushToGithub) &&
+            (isFinalChunk || fallbackPerChunkGithubPush);
           res = await fetch("/api/repo-sync", {
             method: "POST",
             credentials: "same-origin",
@@ -775,7 +844,11 @@ export const createRepoSyncSlice: StudioSliceCreator<RepoSyncSlice> = (
               items: slimChunk,
               commitMessage: chunkCommitMsg,
               commitToGit: isFinalChunk,
-              pushToGithub: Boolean(options.pushToGithub),
+              pushToGithub: retryPush,
+              pushScope:
+                retryPush && !fallbackPerChunkGithubPush
+                  ? "all_registry"
+                  : "written",
               githubConfig: state.githubRepoConfig,
             }),
           });
@@ -792,6 +865,7 @@ export const createRepoSyncSlice: StudioSliceCreator<RepoSyncSlice> = (
 
         if (
           options.pushToGithub &&
+          (isFinalChunk || fallbackPerChunkGithubPush) &&
           data.githubPush &&
           !data.githubPush.pushed
         ) {
@@ -808,6 +882,9 @@ export const createRepoSyncSlice: StudioSliceCreator<RepoSyncSlice> = (
         if (data.commitUrl) lastCommitUrl = data.commitUrl;
         if (typeof data.totalRepoComponents === "number") {
           latestTotalRepoComponents = data.totalRepoComponents;
+        }
+        if (typeof data.pushedComponentsCount === "number") {
+          latestPushedComponentsCount = data.pushedComponentsCount;
         }
       }
 
@@ -846,16 +923,19 @@ export const createRepoSyncSlice: StudioSliceCreator<RepoSyncSlice> = (
         };
       });
 
+      const reportedCount =
+        latestPushedComponentsCount ?? (allSavedRecords.length || items.length);
+
       get().addTerminalLog({
         type: "system",
-        message: `[Repo Sync] Synced ${allSavedRecords.length || items.length} components to registry/components/${
+        message: `[Repo Sync] Synced ${reportedCount} components to registry/components/${
           lastCommitSha ? ` (commit ${lastCommitSha})` : ""
         }.`,
       });
 
       return {
         success: true,
-        savedCount: allSavedRecords.length || items.length,
+        savedCount: reportedCount,
         commitSha: lastCommitSha,
         commitUrl: lastCommitUrl,
       };
@@ -939,6 +1019,10 @@ export const createRepoSyncSlice: StudioSliceCreator<RepoSyncSlice> = (
           importedCount++;
         }
 
+        if (importedCount === 0) {
+          return state;
+        }
+
         return {
           userComponents: nextUserComponents,
           variantsByTemplate: nextVariants,
@@ -947,6 +1031,15 @@ export const createRepoSyncSlice: StudioSliceCreator<RepoSyncSlice> = (
           lastRepoSyncError: null,
         };
       });
+
+      if (importedCount === 0) {
+        return {
+          success: false,
+          importedCount: 0,
+          error:
+            "No components with valid source code (component.tsx) were found in this backup file.",
+        };
+      }
 
       return {
         success: true,

@@ -195,18 +195,20 @@ export function QuickPreviewModal({
 
   const similarComponents = useMemo((): UserComponent[] => {
     if (!component) return [];
-    const fallbackTemplates: UserComponent[] = DEFAULT_TEMPLATES.filter(
-      (t) => !userComponents?.[t.id]
-    ).map((t) => ({
-      ...t,
-      isBuiltIn: true,
-      createdAt: 1700000000000,
-      updatedAt: 1700000000000,
-      previewImage: DEFAULT_TEMPLATE_PREVIEWS[t.id],
-    }));
+    const existingList = Object.values(userComponents || {});
+    const fallbackTemplates: UserComponent[] =
+      existingList.length > 0
+        ? []
+        : DEFAULT_TEMPLATES.map((t) => ({
+            ...t,
+            isBuiltIn: true,
+            createdAt: 1700000000000,
+            updatedAt: 1700000000000,
+            previewImage: DEFAULT_TEMPLATE_PREVIEWS[t.id],
+          }));
 
     const allItems: UserComponent[] = [
-      ...Object.values(userComponents || {}),
+      ...existingList,
       ...fallbackTemplates,
     ].filter((item) => item.id !== component.id);
 

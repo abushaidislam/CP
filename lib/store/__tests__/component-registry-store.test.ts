@@ -129,7 +129,7 @@ describe("Component Registry & Work History Store Slice", () => {
     expect(state.files["component.tsx"]).toBe(originalCode);
   });
 
-  it("should prevent deleting built-in components", () => {
+  it("should allow deleting built-in components and track them in deletedBuiltInIds", () => {
     useStudioStore.setState((state) => ({
       userComponents: {
         ...state.userComponents,
@@ -157,8 +157,9 @@ describe("Component Registry & Work History Store Slice", () => {
 
     store.deleteUserComponent("test-builtin");
     const state = useStudioStore.getState();
-    expect(state.userComponents["test-builtin"]).toBeDefined();
-    expect(state.currentTemplateId).toBe("test-builtin");
+    expect(state.userComponents["test-builtin"]).toBeUndefined();
+    expect(state.deletedBuiltInIds).toContain("test-builtin");
+    expect(state.currentTemplateId).not.toBe("test-builtin");
   });
 
   it("should reset selectedCheckpointId and compilerError when deleting active custom component", () => {

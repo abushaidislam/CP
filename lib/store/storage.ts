@@ -19,6 +19,19 @@ import type {
 
 const memoryStorageFallback = new Map<string, string>();
 let pendingStorageTimer: ReturnType<typeof setTimeout> | null = null;
+let pendingStorageWrite: { name: string; value: string } | null = null;
+
+export const flushPendingStorageNow = (): void => {
+  if (pendingStorageTimer) {
+    clearTimeout(pendingStorageTimer);
+    pendingStorageTimer = null;
+  }
+  if (pendingStorageWrite) {
+    const { name, value } = pendingStorageWrite;
+    pendingStorageWrite = null;
+    flushToLocalStorage(name, value);
+  }
+};
 
 export const flushToLocalStorage = (name: string, value: string): void => {
   if (typeof window === "undefined" || !window.localStorage) return;
@@ -83,11 +96,13 @@ export const resilientStudioStorage: StateStorage = {
   setItem: (name: string, value: string): void => {
     memoryStorageFallback.set(name, value);
     if (typeof window === "undefined" || !window.localStorage) return;
+    pendingStorageWrite = { name, value };
     if (pendingStorageTimer) {
       clearTimeout(pendingStorageTimer);
     }
     pendingStorageTimer = setTimeout(() => {
       pendingStorageTimer = null;
+      pendingStorageWrite = null;
       flushToLocalStorage(name, value);
     }, 400);
   },
@@ -96,6 +111,7 @@ export const resilientStudioStorage: StateStorage = {
       clearTimeout(pendingStorageTimer);
       pendingStorageTimer = null;
     }
+    pendingStorageWrite = null;
     memoryStorageFallback.delete(name);
     try {
       if (typeof window !== "undefined" && window.localStorage) {
@@ -194,11 +210,25 @@ export function studioPersistMerge(
   const validResolution: "1080p" | "720p" =
     legacyRec.resolution === "720p" ? "720p" : "1080p";
 
+  const deletedBuiltInSet = new Set(
+    Array.isArray(persisted.deletedBuiltInIds) ? persisted.deletedBuiltInIds : []
+  );
+  const filteredInitialComponents: Record<string, UserComponent> = {};
+  for (const [id, comp] of Object.entries(initialComponents)) {
+    if (!deletedBuiltInSet.has(id)) {
+      filteredInitialComponents[id] = comp;
+    }
+  }
+  for (const deletedId of deletedBuiltInSet) {
+    delete normalizedPersistedComponents[deletedId];
+  }
+
   return {
     ...currentState,
     ...persisted,
     aiModel: persistedModel,
     files: mergedFiles,
+    deletedBuiltInIds: Array.from(deletedBuiltInSet),
     recordingConfig: {
       ...currentState.recordingConfig,
       ...legacyRec,
@@ -206,7 +236,7 @@ export function studioPersistMerge(
       resolution: validResolution,
     },
     userComponents: {
-      ...initialComponents,
+      ...filteredInitialComponents,
       ...normalizedPersistedComponents,
     },
     variantsByTemplate: {

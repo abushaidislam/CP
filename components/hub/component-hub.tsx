@@ -210,7 +210,10 @@ export function ComponentHub({
     if (!isServerSeededInitialPass) {
       return userComponents || {};
     }
-    const merged: Record<string, UserComponent> = createInitialUserComponents();
+    const hasInitialSummaries = Boolean(initialSummaries && initialSummaries.length > 0);
+    const merged: Record<string, UserComponent> = hasInitialSummaries
+      ? {}
+      : createInitialUserComponents();
     for (const s of initialSummaries || []) {
       const existing = merged[s.id];
       if (!existing) {
@@ -442,7 +445,7 @@ export function ComponentHub({
 
   const handleDelete = useCallback(
     (id: string) => {
-      deleteUserComponent(id);
+      return deleteUserComponent(id, { awaitServer: true });
     },
     [deleteUserComponent]
   );

@@ -304,18 +304,36 @@ export async function listRedisSummaries(): Promise<RepoSummaryComponent[]> {
 /**
  * Delete a component from Upstash Redis.
  */
-export async function deleteRedisComponent(slug: string): Promise<boolean> {
+export async function deleteRedisComponent(
+  slug: string,
+  componentId?: string
+): Promise<boolean> {
   const redis = getRedisClient();
-  if (!redis || !slug) return false;
+  if (!redis || (!slug && !componentId)) return false;
 
   try {
+    const slugsToDelete = new Set<string>();
+    if (slug) slugsToDelete.add(slug);
+
+    if (componentId) {
+      const summaries = await listRedisSummaries();
+      for (const s of summaries) {
+        if (s.id === componentId || s.repoSlug === slug) {
+          slugsToDelete.add(s.repoSlug);
+        }
+      }
+    }
+
+    const keys = Array.from(slugsToDelete).filter(Boolean);
+    if (keys.length === 0) return false;
+
     await Promise.all([
-      redis.del(`${REDIS_COMPONENT_KEY_PREFIX}${slug}`),
-      redis.hdel(REDIS_SUMMARIES_HASH, slug),
+      ...keys.map((k) => redis.del(`${REDIS_COMPONENT_KEY_PREFIX}${k}`)),
+      redis.hdel(REDIS_SUMMARIES_HASH, ...keys),
     ]);
     return true;
   } catch (err) {
-    console.warn(`[Redis] Error deleting component ${slug}:`, err);
+    console.warn(`[Redis] Error deleting component ${slug || componentId}:`, err);
     return false;
   }
 }

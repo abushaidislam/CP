@@ -30,6 +30,7 @@ function applyDependencyUpdate(state: StudioState, nextDeps: string[]) {
         [state.currentTemplateId]: {
           ...currentComp,
           dependencies: nextDeps,
+          savedInRepo: false,
           updatedAt: Date.now(),
         },
       }
@@ -38,6 +39,7 @@ function applyDependencyUpdate(state: StudioState, nextDeps: string[]) {
   return {
     dependencies: nextDeps,
     userComponents: updatedUserComponents,
+    repoSyncStatus: "dirty" as const,
     ...sync,
   };
 }
@@ -144,6 +146,7 @@ export const useStudioStore = create<StudioState>()(
                 [state.currentTemplateId]: {
                   ...currentComp,
                   files: nextFiles,
+                  savedInRepo: false,
                   updatedAt: Date.now(),
                 },
               }
@@ -342,6 +345,7 @@ export const useStudioStore = create<StudioState>()(
         variantsByTemplate: state.variantsByTemplate,
         activeVariantByTemplate: state.activeVariantByTemplate,
         userComponents: state.userComponents,
+        deletedBuiltInIds: state.deletedBuiltInIds,
         recentComponentIds: state.recentComponentIds,
         autoSaveToRepo: state.autoSaveToRepo,
         // Never persist GitHub Personal Access Tokens or session secrets to localStorage
