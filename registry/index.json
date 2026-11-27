@@ -1,8 +1,29 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-27T04:42:13.780Z",
+  "updatedAt": "2026-11-27T05:36:15.452Z",
   "totalComponents": 92,
   "components": [
+    {
+      "id": "avatar-gender-toggle",
+      "slug": "avatar-gender-toggle",
+      "name": "AvatarGenderToggle",
+      "description": "An expressive vertical avatar toggle where an illustrated face slides between female and male states with morphing bangs, hair color crossfades, synchronized vertical-wipe labels, and subtle idle micro-animations.",
+      "category": "Forms",
+      "isBuiltIn": false,
+      "updatedAt": 1795757768596,
+      "lastRepoSyncAt": 1795757775171,
+      "path": "registry/components/avatar-gender-toggle",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "index.css",
+        "manifest.json",
+        "preview.png"
+      ],
+      "dependencies": [
+        "framer-motion"
+      ]
+    },
     {
       "id": "account-switcher-menu",
       "slug": "account-switcher-menu",
@@ -35,26 +56,6 @@
       "updatedAt": 1795701889180,
       "lastRepoSyncAt": 1795701889180,
       "path": "registry/components/matrix-chevron-button",
-      "files": [
-        "component.tsx",
-        "default.tsx",
-        "index.css",
-        "manifest.json"
-      ],
-      "dependencies": [
-        "framer-motion"
-      ]
-    },
-    {
-      "id": "avatar-gender-toggle",
-      "slug": "avatar-gender-toggle",
-      "name": "AvatarGenderToggle",
-      "description": "An expressive vertical avatar toggle where an illustrated face slides between female and male states with morphing bangs, hair color crossfades, synchronized vertical-wipe labels, and subtle idle micro-animations.",
-      "category": "Forms",
-      "isBuiltIn": false,
-      "updatedAt": 1795701831943,
-      "lastRepoSyncAt": 1795701831943,
-      "path": "registry/components/avatar-gender-toggle",
       "files": [
         "component.tsx",
         "default.tsx",
@@ -1703,7 +1704,7 @@
       "category": "Heroes",
       "isBuiltIn": true,
       "updatedAt": 1700000000000,
-      "lastRepoSyncAt": 1795265384870,
+      "lastRepoSyncAt": 1795756539149,
       "path": "registry/components/aurora-ambient-hero",
       "files": [
         "component.tsx",
@@ -1723,7 +1724,7 @@
       "category": "Cards",
       "isBuiltIn": true,
       "updatedAt": 1700000000000,
-      "lastRepoSyncAt": 1795265384870,
+      "lastRepoSyncAt": 1795756539149,
       "path": "registry/components/bento-metric-grid",
       "files": [
         "component.tsx",
@@ -1743,7 +1744,7 @@
       "category": "Heroes",
       "isBuiltIn": true,
       "updatedAt": 1700000000000,
-      "lastRepoSyncAt": 1795265384870,
+      "lastRepoSyncAt": 1795756539149,
       "path": "registry/components/ink-orbit-hero",
       "files": [
         "component.tsx",
@@ -1761,7 +1762,7 @@
       "category": "Badges",
       "isBuiltIn": true,
       "updatedAt": 1700000000000,
-      "lastRepoSyncAt": 1795265384870,
+      "lastRepoSyncAt": 1795756539149,
       "path": "registry/components/live-ping-status-pill",
       "files": [
         "component.tsx",
@@ -1781,7 +1782,7 @@
       "category": "Badges",
       "isBuiltIn": true,
       "updatedAt": 1700000000000,
-      "lastRepoSyncAt": 1795265384870,
+      "lastRepoSyncAt": 1795756539149,
       "path": "registry/components/metric-badge",
       "files": [
         "component.tsx",
@@ -1801,7 +1802,7 @@
       "category": "Buttons",
       "isBuiltIn": true,
       "updatedAt": 1700000000000,
-      "lastRepoSyncAt": 1795265384870,
+      "lastRepoSyncAt": 1795756539149,
       "path": "registry/components/neon-glow-button",
       "files": [
         "component.tsx",
@@ -1821,7 +1822,7 @@
       "category": "Buttons",
       "isBuiltIn": true,
       "updatedAt": 1700000000000,
-      "lastRepoSyncAt": 1795265384870,
+      "lastRepoSyncAt": 1795756539149,
       "path": "registry/components/shimmer-button",
       "files": [
         "component.tsx",
@@ -1842,7 +1843,7 @@
       "category": "Cards",
       "isBuiltIn": true,
       "updatedAt": 1700000000000,
-      "lastRepoSyncAt": 1795265384870,
+      "lastRepoSyncAt": 1795756539149,
       "path": "registry/components/spotlight-card",
       "files": [
         "component.tsx",

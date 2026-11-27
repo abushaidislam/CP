@@ -76,7 +76,7 @@ const SIZE_CONFIG: Record<
 /**
  * Matching-topology cubic Bezier paths (7 C-segments) so Framer Motion
  * interpolates smoothly between the side-swept female bangs and the
- * straighter male fringe with zero path-morph artifacts.
+ * short, crisp male haircut with tapered sideburns.
  */
 const FEMALE_BANGS_PATH =
   "M 16 74 " +
@@ -91,12 +91,44 @@ const FEMALE_BANGS_PATH =
 const MALE_BANGS_PATH =
   "M 16 74 " +
   "C 16 40, 188 40, 188 74 " +
-  "C 188 96, 184 126, 171 151 " +
-  "C 161 146, 155 130, 151 112 " +
-  "C 128 119, 98 112, 62 115 " +
-  "C 50 116, 46 121, 41 112 " +
-  "C 38 128, 33 144, 26 146 " +
-  "C 20 130, 16 104, 16 74 Z";
+  "C 188 92, 185 112, 175 130 " +
+  "C 169 124, 165 112, 160 104 " +
+  "C 138 107, 108 102, 76 105 " +
+  "C 64 106, 56 100, 50 105 " +
+  "C 42 110, 35 122, 29 130 " +
+  "C 19 112, 16 92, 16 74 Z";
+
+/**
+ * Matching 4-segment cubic Bezier lens paths:
+ * Soft round frames (Female) morph cleanly into classic wayfarer frames (Male).
+ */
+const FEMALE_LEFT_LENS_PATH =
+  "M 41 143 " +
+  "C 41 127.8, 53.3 115.5, 68.5 115.5 " +
+  "C 83.7 115.5, 96 127.8, 96 143 " +
+  "C 96 158.2, 83.7 170.5, 68.5 170.5 " +
+  "C 53.3 170.5, 41 158.2, 41 143 Z";
+
+const MALE_LEFT_LENS_PATH =
+  "M 38.5 138 " +
+  "C 38.5 122, 45 119, 68.5 119 " +
+  "C 91 119, 96.5 123, 96.5 139 " +
+  "C 96.5 157, 85 167, 67.5 167 " +
+  "C 50 167, 38.5 156, 38.5 138 Z";
+
+const FEMALE_RIGHT_LENS_PATH =
+  "M 108 143 " +
+  "C 108 127.8, 120.3 115.5, 135.5 115.5 " +
+  "C 150.7 115.5, 163 127.8, 163 143 " +
+  "C 163 158.2, 150.7 170.5, 135.5 170.5 " +
+  "C 120.3 170.5, 108 158.2, 108 143 Z";
+
+const MALE_RIGHT_LENS_PATH =
+  "M 107.5 139 " +
+  "C 107.5 123, 113 119, 135.5 119 " +
+  "C 159 119, 165.5 122, 165.5 138 " +
+  "C 165.5 156, 154 167, 136.5 167 " +
+  "C 119 167, 107.5 157, 107.5 139 Z";
 
 const PALETTE = {
   female: {
@@ -268,10 +300,10 @@ export const AvatarGenderToggle = React.forwardRef<
               <rect x="-13" y="0" width="204" height="348" rx="102" fill="#000000" />
             </mask>
 
-            {/* Clip path for glasses lens specular glint */}
+            {/* Clip path for female glasses lens specular glint */}
             <clipPath id={lensClipId}>
-              <circle cx="68.5" cy="142" r="28" />
-              <circle cx="135.5" cy="142" r="28" />
+              <circle cx="68.5" cy="143" r="27.5" />
+              <circle cx="135.5" cy="143" r="27.5" />
             </clipPath>
           </defs>
 
@@ -333,6 +365,24 @@ export const AvatarGenderToggle = React.forwardRef<
               {/* Face base */}
               <ellipse cx="102" cy="146" rx="76" ry="67" fill="#fbd08d" />
 
+              {/* Groomed Male Beard & Mustache (Male only) */}
+              <motion.g
+                initial={false}
+                animate={{
+                  opacity: isMale ? 1 : 0,
+                  y: isMale ? 0 : 8,
+                }}
+                transition={colorTransition}
+              >
+                {/* Sculpted short boxed beard hugging the lower jawline & chin */}
+                <path
+                  d="M 27.5 152 C 29 194, 60 215, 102 215 C 144 215, 175 194, 176.5 152 C 173 164, 161 177, 144 179 C 134 180, 127 173, 119 170.5 C 109 167.5, 95 167.5, 85 170.5 C 77 173, 70 180, 60 179 C 43 177, 31 164, 27.5 152 Z"
+                  fill="#333231"
+                />
+                {/* Clean mouth opening framed by mustache & chin beard */}
+                <ellipse cx="102" cy="184.5" rx="19" ry="8.5" fill="#fbd08d" />
+              </motion.g>
+
               {/* Soft blush cheeks (Female only) */}
               <motion.g
                 initial={false}
@@ -343,10 +393,35 @@ export const AvatarGenderToggle = React.forwardRef<
                 <ellipse cx="140" cy="166" rx="15.5" ry="6.2" fill="#e49b60" />
               </motion.g>
 
+              {/* Defined Male Eyebrows (Male only) */}
+              <motion.g
+                initial={false}
+                animate={{
+                  opacity: isMale ? 1 : 0,
+                  y: isMale ? 0 : 4,
+                }}
+                transition={colorTransition}
+              >
+                <path
+                  d="M 52 113 Q 68.5 109.5 85 113.5"
+                  stroke="#333231"
+                  strokeWidth="4.6"
+                  strokeLinecap="round"
+                  fill="none"
+                />
+                <path
+                  d="M 119 113.5 Q 135.5 109.5 152 113"
+                  stroke="#333231"
+                  strokeWidth="4.6"
+                  strokeLinecap="round"
+                  fill="none"
+                />
+              </motion.g>
+
               {/* Eyes with Male idle blink */}
               <g>
                 <motion.g
-                  style={{ originX: "70px", originY: "136px" }}
+                  style={{ originX: "70px", originY: "137px" }}
                   animate={
                     shouldAnimateIdle && isMale
                       ? { scaleY: [1, 1, 0.08, 1, 1] }
@@ -363,12 +438,12 @@ export const AvatarGenderToggle = React.forwardRef<
                       : { duration: 0.15 }
                   }
                 >
-                  <circle cx="70" cy="136" r="5.3" fill="#5b5c5e" />
-                  <circle cx="68.3" cy="134.2" r="1.7" fill="#ffffff" />
+                  <circle cx="70" cy="137" r="5.3" fill="#4b4c4e" />
+                  <circle cx="68.3" cy="135.2" r="1.7" fill="#ffffff" />
                 </motion.g>
 
                 <motion.g
-                  style={{ originX: "134px", originY: "136px" }}
+                  style={{ originX: "134px", originY: "137px" }}
                   animate={
                     shouldAnimateIdle && isMale
                       ? { scaleY: [1, 1, 0.08, 1, 1] }
@@ -385,8 +460,8 @@ export const AvatarGenderToggle = React.forwardRef<
                       : { duration: 0.15 }
                   }
                 >
-                  <circle cx="134" cy="136" r="5.3" fill="#5b5c5e" />
-                  <circle cx="132.3" cy="134.2" r="1.7" fill="#ffffff" />
+                  <circle cx="134" cy="137" r="5.3" fill="#4b4c4e" />
+                  <circle cx="132.3" cy="135.2" r="1.7" fill="#ffffff" />
                 </motion.g>
               </g>
 
@@ -398,24 +473,28 @@ export const AvatarGenderToggle = React.forwardRef<
 
               {/* Gentle smile */}
               <path
-                d="M 91.5 184 Q 102 190.5 112.5 184"
+                d="M 91.5 183.5 Q 102 190 112.5 183.5"
                 stroke="#b59868"
                 strokeWidth="4.4"
                 strokeLinecap="round"
                 fill="none"
               />
 
-              {/* Glasses lenses (subtle warm glass tint) */}
-              <circle
-                cx="68.5"
-                cy="142"
-                r="28"
+              {/* Morphing Glasses Lenses (Round -> Wayfarer) */}
+              <motion.path
+                initial={false}
+                animate={{
+                  d: isMale ? MALE_LEFT_LENS_PATH : FEMALE_LEFT_LENS_PATH,
+                }}
+                transition={slideTransition}
                 fill="rgba(255, 250, 238, 0.24)"
               />
-              <circle
-                cx="135.5"
-                cy="142"
-                r="28"
+              <motion.path
+                initial={false}
+                animate={{
+                  d: isMale ? MALE_RIGHT_LENS_PATH : FEMALE_RIGHT_LENS_PATH,
+                }}
+                transition={slideTransition}
                 fill="rgba(255, 250, 238, 0.24)"
               />
 
@@ -450,39 +529,42 @@ export const AvatarGenderToggle = React.forwardRef<
                 </motion.g>
               </g>
 
-              {/* Glasses frames & curved bridge */}
-              <circle
-                cx="68.5"
-                cy="142"
-                r="28"
-                stroke="#3c3f44"
-                strokeWidth="4.4"
+              {/* Morphing Glasses Frames & Bridge */}
+              <motion.path
+                initial={false}
+                animate={{
+                  d: isMale ? MALE_LEFT_LENS_PATH : FEMALE_LEFT_LENS_PATH,
+                }}
+                transition={slideTransition}
+                stroke="#383b40"
+                strokeWidth="4.6"
                 fill="none"
               />
-              <circle
-                cx="135.5"
-                cy="142"
-                r="28"
-                stroke="#3c3f44"
-                strokeWidth="4.4"
+              <motion.path
+                initial={false}
+                animate={{
+                  d: isMale ? MALE_RIGHT_LENS_PATH : FEMALE_RIGHT_LENS_PATH,
+                }}
+                transition={slideTransition}
+                stroke="#383b40"
+                strokeWidth="4.6"
                 fill="none"
               />
               <path
                 d="M 93.5 130.5 Q 102 126.5 110.5 130.5 L 111.5 139.5 Q 102 134 92.5 139.5 Z"
-                fill="#3c3f44"
+                fill="#383b40"
               />
-              {/* Subtle temple hinge highlight visible when male fringe lifts */}
-              <motion.circle
-                cx="42"
-                cy="125"
-                r="1.7"
-                fill="#ffffff"
+              {/* Wayfarer temple hinge pins (Male state) */}
+              <motion.g
                 initial={false}
-                animate={{ opacity: isMale ? 0.9 : 0 }}
+                animate={{ opacity: isMale ? 0.92 : 0 }}
                 transition={colorTransition}
-              />
+              >
+                <circle cx="43.5" cy="124.5" r="1.7" fill="#ffffff" />
+                <circle cx="160.5" cy="124.5" r="1.7" fill="#ffffff" />
+              </motion.g>
 
-              {/* Morphing Hair Bangs / Fringe */}
+              {/* Morphing Hair Bangs / Short Male Hairline */}
               <motion.path
                 initial={false}
                 animate={{
