@@ -12,7 +12,10 @@ const settings = {
   digit: 2,
   autoPlay: true,
   sequence: "pingpong",
-  duration: 850,
+  duration: 1451,
+  blockRadius: 17,
+  gap: 15,
+  stretch: 0.2,
   palette: "glacial",
   showHeader: true,
 };
@@ -52,6 +55,18 @@ export default function KineticNumeralDemo(
     ? Math.min(2600, Math.max(200, Number(config.duration)))
     : 850;
 
+  const blockRadius = Number.isFinite(Number(config.blockRadius))
+    ? Math.min(40, Math.max(0, Number(config.blockRadius)))
+    : 0;
+
+  const gap = Number.isFinite(Number(config.gap))
+    ? Math.min(36, Math.max(0, Number(config.gap)))
+    : 15;
+
+  const stretch = Number.isFinite(Number(config.stretch))
+    ? Math.min(0.45, Math.max(0, Number(config.stretch)))
+    : 0.2;
+
   return (
     <div className="flex min-h-[480px] w-full items-center justify-center p-6">
       <KineticNumeral
@@ -59,6 +74,9 @@ export default function KineticNumeralDemo(
         autoPlay={Boolean(config.autoPlay)}
         sequence={sequence}
         duration={duration}
+        blockRadius={blockRadius}
+        gap={gap}
+        stretch={stretch}
         palette={palette}
         showHeader={Boolean(config.showHeader)}
       />

@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-27T07:12:01.747Z",
+  "updatedAt": "2026-11-27T07:59:53.767Z",
   "totalComponents": 93,
   "components": [
     {
@@ -10,15 +10,14 @@
       "description": "A Swiss-modernist modular 3x8 kinetic numeral specimen where solid rectangular bars elastically stretch and swim across the grid to morph seamlessly between digits 0-9.",
       "category": "Widgets",
       "isBuiltIn": false,
-      "updatedAt": 1795763515761,
-      "lastRepoSyncAt": 1795763521660,
+      "updatedAt": 1795766385643,
+      "lastRepoSyncAt": 1795766393455,
       "path": "registry/components/kinetic-numeral",
       "files": [
         "component.tsx",
         "default.tsx",
         "index.css",
-        "manifest.json",
-        "preview.png"
+        "manifest.json"
       ],
       "dependencies": [
         "framer-motion"
