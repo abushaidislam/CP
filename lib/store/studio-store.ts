@@ -69,6 +69,7 @@ export const useStudioStore = create<StudioState>()(
       viewport: "desktop",
       customViewportWidth: 1200,
       canvasBg: "dark",
+      appTheme: "dark",
       previewTheme: "dark",
       zoom: 100,
       dependencies: initialTemplate.dependencies,
@@ -169,6 +170,13 @@ export const useStudioStore = create<StudioState>()(
 
       setCustomViewportWidth: (width) => set({ customViewportWidth: width }),
       setCanvasBg: (bg) => set({ canvasBg: bg }),
+      setAppTheme: (theme) => set({ appTheme: theme }),
+
+      toggleAppTheme: () =>
+        set((state) => ({
+          appTheme: state.appTheme === "dark" ? "light" : "dark",
+        })),
+
       setPreviewTheme: (theme) => set({ previewTheme: theme }),
 
       togglePreviewTheme: () =>
@@ -316,6 +324,7 @@ export const useStudioStore = create<StudioState>()(
         layoutMode: state.layoutMode,
         viewport: state.viewport,
         canvasBg: state.canvasBg,
+        appTheme: state.appTheme,
         previewTheme: state.previewTheme,
         zoom: state.zoom,
         dependencies: state.dependencies,

@@ -95,6 +95,8 @@ export function ComponentHub({
     setRepoSyncModalOpen,
     hydrateFromProjectRepo,
     seedRepoSummaries,
+    appTheme,
+    setAppTheme,
   } = useStudioStore(
     useShallow((state) => ({
       userComponents: state.userComponents,
@@ -116,6 +118,8 @@ export function ComponentHub({
       setRepoSyncModalOpen: state.setRepoSyncModalOpen,
       hydrateFromProjectRepo: state.hydrateFromProjectRepo,
       seedRepoSummaries: state.seedRepoSummaries,
+      appTheme: state.appTheme,
+      setAppTheme: state.setAppTheme,
     }))
   );
 
@@ -143,10 +147,20 @@ export function ComponentHub({
     return () => window.removeEventListener("keydown", onKeyDown);
   }, []);
 
-  // Sync theme with document element & seed/hydrate saved repo components post-render
+  // Sync app theme with document element
   useEffect(() => {
     const root = document.documentElement;
-    setIsDark(root.classList.contains("dark"));
+    const shouldBeDark = appTheme === "dark";
+    setIsDark(shouldBeDark);
+    if (shouldBeDark) {
+      root.classList.add("dark");
+    } else {
+      root.classList.remove("dark");
+    }
+  }, [appTheme]);
+
+  // Seed/hydrate saved repo components post-render
+  useEffect(() => {
     if (initialSummaries && initialSummaries.length > 0) {
       if (!hasSeededSummariesRef.current) {
         hasSeededSummariesRef.current = true;
@@ -159,13 +173,15 @@ export function ComponentHub({
   }, [hydrateFromProjectRepo, initialSummaries, seedRepoSummaries]);
 
   const toggleTheme = () => {
+    const nextTheme = appTheme === "dark" ? "light" : "dark";
+    setAppTheme(nextTheme);
     const root = document.documentElement;
-    if (root.classList.contains("dark")) {
-      root.classList.remove("dark");
-      setIsDark(false);
-    } else {
+    if (nextTheme === "dark") {
       root.classList.add("dark");
       setIsDark(true);
+    } else {
+      root.classList.remove("dark");
+      setIsDark(false);
     }
   };
 

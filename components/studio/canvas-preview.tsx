@@ -148,12 +148,6 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
 
   const handleThemeChange = (nextTheme: PreviewTheme) => {
     setPreviewTheme(nextTheme);
-    const root = document.documentElement;
-    if (nextTheme === "dark") {
-      root.classList.add("dark");
-    } else {
-      root.classList.remove("dark");
-    }
 
     if (iframeRef.current && iframeRef.current.contentWindow) {
       iframeRef.current.contentWindow.postMessage(
@@ -793,7 +787,7 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
         return isDark ? "bg-black" : "bg-zinc-200";
       case "dark":
       default:
-        return isDark ? "bg-muted/30" : "bg-zinc-100/80";
+        return isDark ? "bg-zinc-950/95" : "bg-zinc-100/80";
     }
   };
 
@@ -903,7 +897,8 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
                   transformOrigin: "center center",
                 }}
                 className={cn(
-                  "relative rounded-none border border-border shadow-vercel-floating overflow-hidden bg-background flex flex-col",
+                  "relative rounded-none border border-border shadow-vercel-floating overflow-hidden flex flex-col",
+                  previewTheme === "dark" ? "bg-zinc-950" : "bg-white",
                   isFluidResponsive ? "w-full" : "",
                   draggedWidth !== null
                     ? "transition-none"

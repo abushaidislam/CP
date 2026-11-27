@@ -92,8 +92,8 @@ export function StudioHeader() {
     setSecurityModalOpen,
     isRecordingModalOpen,
     setRecordingModalOpen,
-    previewTheme,
-    setPreviewTheme,
+    appTheme,
+    setAppTheme,
     setCreateComponentDialogOpen,
     setEditComponentDialogOpen,
   } = useStudioStore(
@@ -124,8 +124,8 @@ export function StudioHeader() {
       setSecurityModalOpen: state.setSecurityModalOpen,
       isRecordingModalOpen: state.isRecordingModalOpen,
       setRecordingModalOpen: state.setRecordingModalOpen,
-      previewTheme: state.previewTheme,
-      setPreviewTheme: state.setPreviewTheme,
+      appTheme: state.appTheme,
+      setAppTheme: state.setAppTheme,
       setCreateComponentDialogOpen: state.setCreateComponentDialogOpen,
       setEditComponentDialogOpen: state.setEditComponentDialogOpen,
     }))
@@ -136,6 +136,7 @@ export function StudioHeader() {
   const [capturedSuccess, setCapturedSuccess] = useState(false);
   const [isMcpConnectOpen, setIsMcpConnectOpen] = useState(false);
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
+  const [isTemplateMenuOpen, setIsTemplateMenuOpen] = useState(false);
   const [templateSearchQuery, setTemplateSearchQuery] = useState("");
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState("All");
   const captureTimeoutRef = React.useRef<NodeJS.Timeout | number | null>(null);
@@ -225,18 +226,18 @@ export function StudioHeader() {
 
   React.useEffect(() => {
     const root = document.documentElement;
-    const shouldBeDark = previewTheme === "dark";
+    const shouldBeDark = appTheme === "dark";
     setIsDark(shouldBeDark);
     if (shouldBeDark) {
       root.classList.add("dark");
     } else {
       root.classList.remove("dark");
     }
-  }, [previewTheme]);
+  }, [appTheme]);
 
   const toggleTheme = () => {
-    const nextTheme = previewTheme === "dark" ? "light" : "dark";
-    setPreviewTheme(nextTheme);
+    const nextTheme = appTheme === "dark" ? "light" : "dark";
+    setAppTheme(nextTheme);
     const root = document.documentElement;
     if (nextTheme === "dark") {
       root.classList.add("dark");
@@ -324,7 +325,10 @@ export function StudioHeader() {
 
           {/* Active Template Selector as Breadcrumb Leaf */}
           <div className="flex items-center gap-0.5 min-w-0">
-            <DropdownMenu>
+            <DropdownMenu
+              open={isTemplateMenuOpen}
+              onOpenChange={setIsTemplateMenuOpen}
+            >
               <Tooltip>
                 <TooltipTrigger asChild>
                   <DropdownMenuTrigger asChild>
@@ -355,7 +359,10 @@ export function StudioHeader() {
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => setEditComponentDialogOpen(true, currentTemplateId)}
+                      onClick={() => {
+                        setIsTemplateMenuOpen(false);
+                        setEditComponentDialogOpen(true, currentTemplateId);
+                      }}
                       className="h-6 text-[11px] gap-1 px-1.5 font-sans text-muted-foreground hover:text-foreground rounded-none border border-transparent hover:border-border"
                       title="Edit current component details"
                     >
@@ -372,16 +379,19 @@ export function StudioHeader() {
                       onChange={(e) => setTemplateSearchQuery(e.target.value)}
                       onKeyDown={(e) => e.stopPropagation()}
                       placeholder="Search templates or components..."
-                      className="h-7 pl-7 pr-6 text-xs font-sans rounded-none bg-background border-border"
+                      className="h-7 pl-7 pr-7 text-xs font-sans rounded-none bg-background border-border"
                     />
                     {templateSearchQuery && (
-                      <button
+                      <Button
                         type="button"
+                        variant="ghost"
+                        size="icon-sm"
+                        aria-label="Clear template search"
                         onClick={() => setTemplateSearchQuery("")}
-                        className="absolute right-1.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-0.5"
+                        className="absolute right-1 top-1/2 -translate-y-1/2 size-5 rounded-none text-muted-foreground hover:text-foreground"
                       >
                         <X className="size-3" />
-                      </button>
+                      </Button>
                     )}
                   </div>
 
@@ -391,19 +401,21 @@ export function StudioHeader() {
                       {templateCategories.map((cat) => {
                         const isCatActive = selectedCategoryFilter.toLowerCase() === cat.toLowerCase();
                         return (
-                          <button
+                          <Button
                             key={cat}
                             type="button"
+                            variant={isCatActive ? "default" : "outline"}
+                            size="sm"
                             onClick={() => setSelectedCategoryFilter(cat)}
                             className={cn(
-                              "px-2 py-0.5 rounded-none font-sans transition-colors whitespace-nowrap select-none border",
+                              "h-5 px-2 py-0 text-[10px] rounded-none font-sans whitespace-nowrap select-none shrink-0",
                               isCatActive
-                                ? "bg-primary text-primary-foreground border-primary font-medium"
-                                : "bg-card text-muted-foreground border-border hover:bg-muted hover:text-foreground"
+                                ? "font-medium"
+                                : "bg-card text-muted-foreground hover:text-foreground"
                             )}
                           >
                             {cat}
-                          </button>
+                          </Button>
                         );
                       })}
                     </div>
@@ -422,13 +434,24 @@ export function StudioHeader() {
                       return (
                         <div
                           key={comp.id}
+                          role="button"
+                          tabIndex={0}
                           className={cn(
-                            "group relative flex items-start justify-between gap-2 p-2 hover:bg-muted/70 transition-colors cursor-pointer select-none font-sans",
+                            "group relative flex items-start justify-between gap-2 p-2 hover:bg-muted/70 transition-colors cursor-pointer select-none font-sans focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
                             isActive && "bg-muted/50 border-l-2 border-primary"
                           )}
                           onClick={() => {
+                            setIsTemplateMenuOpen(false);
                             loadComponent(comp.id);
                             router?.push?.(`/studio/${comp.id}`);
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" || e.key === " ") {
+                              e.preventDefault();
+                              setIsTemplateMenuOpen(false);
+                              loadComponent(comp.id);
+                              router?.push?.(`/studio/${comp.id}`);
+                            }
                           }}
                         >
                           <div className="flex flex-col min-w-0 flex-1 gap-0.5">
@@ -475,6 +498,7 @@ export function StudioHeader() {
                               onClick={(e) => {
                                 e.stopPropagation();
                                 e.preventDefault();
+                                setIsTemplateMenuOpen(false);
                                 setEditComponentDialogOpen(true, comp.id);
                               }}
                               title={`Edit ${comp.name} title, description & category`}
@@ -495,7 +519,10 @@ export function StudioHeader() {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => setCreateComponentDialogOpen(true)}
+                    onClick={() => {
+                      setIsTemplateMenuOpen(false);
+                      setCreateComponentDialogOpen(true);
+                    }}
                     className="h-7 text-xs gap-1.5 rounded-none font-sans font-medium w-full"
                   >
                     <Plus className="size-3 text-primary" />

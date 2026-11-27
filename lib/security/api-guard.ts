@@ -168,21 +168,30 @@ export function verifyOwnerPasscode(candidate: string): boolean {
 
   const envCode = getEnvPasscode();
   const store = getSecurityStore();
+  const candidateHashHex = sha256Hex(cleanCandidate);
+  const candidateBuf = Buffer.from(candidateHashHex, "hex");
 
-  const targetHashHex = envCode
-    ? sha256Hex(envCode)
-    : store.runtimePasscodeHash;
-
-  if (!targetHashHex) {
-    return false;
+  if (store.runtimePasscodeHash) {
+    const runtimeBuf = Buffer.from(store.runtimePasscodeHash, "hex");
+    if (
+      candidateBuf.length === runtimeBuf.length &&
+      timingSafeEqual(candidateBuf, runtimeBuf)
+    ) {
+      return true;
+    }
   }
 
-  const candidateHashHex = sha256Hex(cleanCandidate);
-  const a = Buffer.from(candidateHashHex, "hex");
-  const b = Buffer.from(targetHashHex, "hex");
-  if (a.length !== b.length) return false;
+  if (envCode) {
+    const envBuf = Buffer.from(sha256Hex(envCode), "hex");
+    if (
+      candidateBuf.length === envBuf.length &&
+      timingSafeEqual(candidateBuf, envBuf)
+    ) {
+      return true;
+    }
+  }
 
-  return timingSafeEqual(a, b);
+  return false;
 }
 
 /**
@@ -193,7 +202,10 @@ export function createOwnerSessionToken(ttlSeconds: number = 60 * 60 * 24 * 7): 
   const exp = now + ttlSeconds;
   const store = getSecurityStore();
   const envCode = getEnvPasscode();
-  const fingerprint = (envCode ? sha256Hex(envCode) : store.runtimePasscodeHash || "default").slice(0, 16);
+  const fingerprint = (
+    store.runtimePasscodeHash ||
+    (envCode ? sha256Hex(envCode) : "default")
+  ).slice(0, 16);
 
   const payload = JSON.stringify({
     role: "owner",
@@ -242,7 +254,10 @@ export function verifyOwnerSessionToken(token?: string | null): boolean {
 
     const store = getSecurityStore();
     const envCode = getEnvPasscode();
-    const currentFp = (envCode ? sha256Hex(envCode) : store.runtimePasscodeHash || "default").slice(0, 16);
+    const currentFp = (
+      store.runtimePasscodeHash ||
+      (envCode ? sha256Hex(envCode) : "default")
+    ).slice(0, 16);
     return decoded.fp === currentFp;
   } catch {
     return false;
@@ -265,10 +280,8 @@ export function isOwnerRequestAuthenticated(req: NextRequest): boolean {
     return true;
   }
 
-  // If no passcode has been configured via STUDIO_ACCESS_CODE or runtime setup,
-  // and the session has not been explicitly locked, allow verified same-origin Studio requests seamlessly.
+  // If the session has not been explicitly locked, allow verified same-origin Studio requests seamlessly.
   if (
-    !hasConfiguredPasscode() &&
     !isExplicitlyLocked() &&
     req.headers.get(STUDIO_CLIENT_HEADER) === STUDIO_CLIENT_HEADER_VALUE &&
     verifySameOriginRequest(req).valid

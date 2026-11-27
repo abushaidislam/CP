@@ -99,24 +99,33 @@ export const createAiSlice: StudioSliceCreator<AiSlice> = (set) => ({
 
   approveAiMessageChanges: (id, changedFiles) =>
     set((state) => {
+      const targetMsg = state.aiChatMessages.find((m) => m.id === id);
+      const targetTemplateId = targetMsg?.templateId || state.currentTemplateId;
+      const isCurrentTemplate = targetTemplateId === state.currentTemplateId;
+      const baseFiles: StudioFiles = isCurrentTemplate
+        ? { ...state.files }
+        : {
+            ...(state.userComponents?.[targetTemplateId]?.files || state.files),
+          };
+
       const previousSnapshot: Partial<{
         "component.tsx": string;
         "default.tsx": string;
         "demo.tsx": string;
         "index.css": string;
       }> = {};
-      const nextFiles: StudioFiles = { ...state.files };
+      const nextFiles: StudioFiles = { ...baseFiles };
 
       if (
         changedFiles["component.tsx"] !== undefined &&
         changedFiles["component.tsx"] !== null
       ) {
-        previousSnapshot["component.tsx"] = state.files["component.tsx"];
+        previousSnapshot["component.tsx"] = baseFiles["component.tsx"];
         nextFiles["component.tsx"] = changedFiles["component.tsx"];
       }
       const nextDemoCode = changedFiles["default.tsx"] ?? changedFiles["demo.tsx"];
       if (nextDemoCode !== undefined && nextDemoCode !== null) {
-        const prevDemoCode = state.files["default.tsx"] ?? state.files["demo.tsx"];
+        const prevDemoCode = baseFiles["default.tsx"] ?? baseFiles["demo.tsx"];
         previousSnapshot["default.tsx"] = prevDemoCode;
         previousSnapshot["demo.tsx"] = prevDemoCode;
         nextFiles["default.tsx"] = nextDemoCode;
@@ -126,33 +135,48 @@ export const createAiSlice: StudioSliceCreator<AiSlice> = (set) => ({
         changedFiles["index.css"] !== undefined &&
         changedFiles["index.css"] !== null
       ) {
-        previousSnapshot["index.css"] = state.files["index.css"];
+        previousSnapshot["index.css"] = baseFiles["index.css"];
         nextFiles["index.css"] = changedFiles["index.css"];
       }
+
+      const incomingDeps = Array.isArray(targetMsg?.addedDependencies)
+        ? targetMsg.addedDependencies.filter(
+            (d) => typeof d === "string" && d.trim().length > 0
+          )
+        : [];
+      const baseDeps = isCurrentTemplate
+        ? state.dependencies
+        : state.userComponents?.[targetTemplateId]?.dependencies ||
+          state.dependencies;
+      const nextDeps = Array.from(new Set([...baseDeps, ...incomingDeps]));
 
       const sync = syncVariantWithWorking(
         state.variantsByTemplate,
         state.activeVariantByTemplate,
-        state.currentTemplateId,
+        targetTemplateId,
         nextFiles,
-        state.dependencies
+        nextDeps
       );
 
-      const currentComp = state.userComponents?.[state.currentTemplateId];
+      const currentComp = state.userComponents?.[targetTemplateId];
       const updatedUserComponents = currentComp
         ? {
             ...state.userComponents,
-            [state.currentTemplateId]: {
+            [targetTemplateId]: {
               ...currentComp,
               files: nextFiles,
+              dependencies: nextDeps,
               updatedAt: Date.now(),
             },
           }
         : state.userComponents;
 
       return {
-        files: nextFiles,
+        ...(isCurrentTemplate
+          ? { files: nextFiles, dependencies: nextDeps }
+          : {}),
         userComponents: updatedUserComponents,
+        repoSyncStatus: "dirty",
         ...sync,
         aiChatMessages: state.aiChatMessages.map((m) =>
           m.id === id
@@ -189,7 +213,15 @@ export const createAiSlice: StudioSliceCreator<AiSlice> = (set) => ({
         };
       }
 
-      const nextFiles: StudioFiles = { ...state.files };
+      const targetTemplateId = targetMsg.templateId || state.currentTemplateId;
+      const isCurrentTemplate = targetTemplateId === state.currentTemplateId;
+      const baseFiles: StudioFiles = isCurrentTemplate
+        ? { ...state.files }
+        : {
+            ...(state.userComponents?.[targetTemplateId]?.files || state.files),
+          };
+
+      const nextFiles: StudioFiles = { ...baseFiles };
       if (targetMsg.previousFiles["component.tsx"] !== undefined) {
         nextFiles["component.tsx"] = targetMsg.previousFiles["component.tsx"];
       }
@@ -203,19 +235,24 @@ export const createAiSlice: StudioSliceCreator<AiSlice> = (set) => ({
         nextFiles["index.css"] = targetMsg.previousFiles["index.css"];
       }
 
+      const targetDeps = isCurrentTemplate
+        ? state.dependencies
+        : state.userComponents?.[targetTemplateId]?.dependencies ||
+          state.dependencies;
+
       const sync = syncVariantWithWorking(
         state.variantsByTemplate,
         state.activeVariantByTemplate,
-        state.currentTemplateId,
+        targetTemplateId,
         nextFiles,
-        state.dependencies
+        targetDeps
       );
 
-      const currentComp = state.userComponents?.[state.currentTemplateId];
+      const currentComp = state.userComponents?.[targetTemplateId];
       const updatedUserComponents = currentComp
         ? {
             ...state.userComponents,
-            [state.currentTemplateId]: {
+            [targetTemplateId]: {
               ...currentComp,
               files: nextFiles,
               updatedAt: Date.now(),
@@ -224,8 +261,9 @@ export const createAiSlice: StudioSliceCreator<AiSlice> = (set) => ({
         : state.userComponents;
 
       return {
-        files: nextFiles,
+        ...(isCurrentTemplate ? { files: nextFiles } : {}),
         userComponents: updatedUserComponents,
+        repoSyncStatus: "dirty",
         ...sync,
         aiChatMessages: state.aiChatMessages.map((m) =>
           m.id === id
@@ -242,7 +280,7 @@ export const createAiSlice: StudioSliceCreator<AiSlice> = (set) => ({
 
   setAiThinking: (thinking) => set({ isAiThinking: thinking }),
 
-  applyAiChanges: (changedFiles) =>
+  applyAiChanges: (changedFiles, addedDependencies) =>
     set((state) => {
       const nextFiles: StudioFiles = { ...state.files };
       if (
@@ -262,12 +300,22 @@ export const createAiSlice: StudioSliceCreator<AiSlice> = (set) => ({
       ) {
         nextFiles["index.css"] = changedFiles["index.css"];
       }
+      const cleanDeps = Array.isArray(addedDependencies)
+        ? addedDependencies
+            .map((d) => (typeof d === "string" ? d.trim() : ""))
+            .filter(Boolean)
+        : [];
+      const nextDeps =
+        cleanDeps.length > 0
+          ? Array.from(new Set([...state.dependencies, ...cleanDeps]))
+          : state.dependencies;
+
       const sync = syncVariantWithWorking(
         state.variantsByTemplate,
         state.activeVariantByTemplate,
         state.currentTemplateId,
         nextFiles,
-        state.dependencies
+        nextDeps
       );
       const currentComp = state.userComponents?.[state.currentTemplateId];
       const updatedUserComponents = currentComp
@@ -276,6 +324,7 @@ export const createAiSlice: StudioSliceCreator<AiSlice> = (set) => ({
             [state.currentTemplateId]: {
               ...currentComp,
               files: nextFiles,
+              dependencies: nextDeps,
               updatedAt: Date.now(),
             },
           }
@@ -283,6 +332,7 @@ export const createAiSlice: StudioSliceCreator<AiSlice> = (set) => ({
 
       return {
         files: nextFiles,
+        dependencies: nextDeps,
         userComponents: updatedUserComponents,
         repoSyncStatus: "dirty",
         ...sync,

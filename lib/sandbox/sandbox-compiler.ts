@@ -1012,6 +1012,20 @@ export function compileSandboxHtml(
           });
           return;
         }
+        const rootText = root.textContent || "";
+        if (
+          rootText.includes("Runtime JavaScript Error") ||
+          rootText.includes("Component Render Error") ||
+          rootText.includes("Bootstrap Error")
+        ) {
+          notifyParent({
+            type: "PREVIEW_CAPTURED",
+            dataUrl: null,
+            error: "Skipped preview capture because an error overlay is displayed",
+            componentId: componentId,
+          });
+          return;
+        }
 
         // Wait for web fonts & one animation frame so 2D/WebGL canvases and Framer Motion settle
         if (document.fonts && document.fonts.ready) {

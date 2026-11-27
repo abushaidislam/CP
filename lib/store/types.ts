@@ -67,6 +67,8 @@ export interface AiChatMessage {
   role: "user" | "assistant" | "system";
   content: string;
   timestamp: string;
+  templateId?: string;
+  actionType?: "chat" | "autofix" | "audit";
   authorRole?: string;
   modelUsed?: string;
   reasoning?: AiReasoningTrace;
@@ -202,6 +204,7 @@ export interface StudioState {
   viewport: StudioViewport;
   customViewportWidth: number;
   canvasBg: CanvasBackground;
+  appTheme: PreviewTheme;
   previewTheme: PreviewTheme;
   zoom: number;
 
@@ -284,6 +287,8 @@ export interface StudioState {
   setViewport: (viewport: StudioViewport) => void;
   setCustomViewportWidth: (width: number) => void;
   setCanvasBg: (bg: CanvasBackground) => void;
+  setAppTheme: (theme: PreviewTheme) => void;
+  toggleAppTheme: () => void;
   setPreviewTheme: (theme: PreviewTheme) => void;
   togglePreviewTheme: () => void;
   setZoom: (zoom: number) => void;
@@ -384,12 +389,15 @@ export interface StudioState {
   revertAiMessageChanges: (id: string) => void;
   clearAiChat: () => void;
   setAiThinking: (thinking: boolean) => void;
-  applyAiChanges: (files: Partial<{
-    "component.tsx": string;
-    "default.tsx": string;
-    "demo.tsx": string;
-    "index.css": string;
-  }>) => void;
+  applyAiChanges: (
+    files: Partial<{
+      "component.tsx": string;
+      "default.tsx": string;
+      "demo.tsx": string;
+      "index.css": string;
+    }>,
+    addedDependencies?: string[]
+  ) => void;
 
   // Project Repository & GitHub Actions
   setRepoSyncModalOpen: (open: boolean) => void;

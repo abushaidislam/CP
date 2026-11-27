@@ -214,6 +214,16 @@ function normalizeGeminiModel(requestedModel?: string): string {
   return "gemini-4-hydrogen";
 }
 
+function buildModelCascade(primaryModel: string): string[] {
+  const ordered =
+    primaryModel === "gemini-4-argon"
+      ? ["gemini-4-argon", "gemini-4-hydrogen", "gemini-3.1-flash-lite"]
+      : primaryModel === "gemini-3.1-flash-lite"
+        ? ["gemini-3.1-flash-lite", "gemini-4-hydrogen", "gemini-4-argon"]
+        : ["gemini-4-hydrogen", "gemini-3.1-flash-lite", "gemini-4-argon"];
+  return Array.from(new Set(ordered));
+}
+
 function unescapeJsonStringLiteral(raw: string): string {
   try {
     return JSON.parse(`"${raw}"`);
@@ -224,6 +234,26 @@ function unescapeJsonStringLiteral(raw: string): string {
       .replace(/\\"/g, '"')
       .replace(/\\\\/g, "\\");
   }
+}
+
+function extractJsonStringField(source: string, fieldName: string): string | null {
+  const escapedKey = fieldName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const keyMatch = new RegExp(`"${escapedKey}"\\s*:\\s*"`).exec(source);
+  if (!keyMatch) return null;
+  const startIdx = keyMatch.index + keyMatch[0].length;
+  let i = startIdx;
+  while (i < source.length) {
+    const ch = source[i];
+    if (ch === "\\") {
+      i += 2;
+      continue;
+    }
+    if (ch === '"') {
+      return unescapeJsonStringLiteral(source.slice(startIdx, i));
+    }
+    i += 1;
+  }
+  return null;
 }
 
 function parseJsonResponseSafely(textOutput: string): {
@@ -271,34 +301,30 @@ function parseJsonResponseSafely(textOutput: string): {
       try {
         return JSON.parse(trimmed.slice(firstBrace, lastBrace + 1));
       } catch {
-        // Fallback field extraction if JSON was partially truncated on a very large file
-        const msgMatch = trimmed.match(/"message"\s*:\s*"((?:\\.|[^"\\])*)"/);
-        const summaryMatch = trimmed.match(/"reasoningSummary"\s*:\s*"((?:\\.|[^"\\])*)"/);
-        const compMatch = trimmed.match(/"component\.tsx"\s*:\s*"((?:\\.|[^"\\])*)"/);
-        const defMatch = trimmed.match(/"default\.tsx"\s*:\s*"((?:\\.|[^"\\])*)"/);
-        const cssMatch = trimmed.match(/"index\.css"\s*:\s*"((?:\\.|[^"\\])*)"/);
+        // Linear-time fallback field extraction if JSON was partially truncated on a large file
+        const msgVal = extractJsonStringField(trimmed, "message");
+        const summaryVal = extractJsonStringField(trimmed, "reasoningSummary");
+        const compVal = extractJsonStringField(trimmed, "component.tsx");
+        const defVal = extractJsonStringField(trimmed, "default.tsx");
+        const cssVal = extractJsonStringField(trimmed, "index.css");
 
         const recoveredFiles: Partial<Record<string, string | null>> = {};
-        if (compMatch?.[1]) recoveredFiles["component.tsx"] = unescapeJsonStringLiteral(compMatch[1]);
-        if (defMatch?.[1]) recoveredFiles["default.tsx"] = unescapeJsonStringLiteral(defMatch[1]);
-        if (cssMatch?.[1]) recoveredFiles["index.css"] = unescapeJsonStringLiteral(cssMatch[1]);
+        if (compVal) recoveredFiles["component.tsx"] = compVal;
+        if (defVal) recoveredFiles["default.tsx"] = defVal;
+        if (cssVal) recoveredFiles["index.css"] = cssVal;
 
-        if (msgMatch?.[1] || Object.keys(recoveredFiles).length > 0) {
+        if (msgVal || Object.keys(recoveredFiles).length > 0) {
           return {
-            message: msgMatch?.[1]
-              ? unescapeJsonStringLiteral(msgMatch[1])
-              : "Applied the requested updates to your component files.",
-            reasoningSummary: summaryMatch?.[1]
-              ? unescapeJsonStringLiteral(summaryMatch[1])
-              : undefined,
+            message:
+              msgVal || "Applied the requested updates to your component files.",
+            reasoningSummary: summaryVal || undefined,
             changedFiles: recoveredFiles,
           };
         }
 
-        // Never dump raw broken JSON braces directly into the user's chat bubble
         return {
           message:
-            "I analyzed your component, but the generated output was too large to format in a single payload. Try breaking the request into a smaller step or switching to Gemini 4 Hydrogen.",
+            "I analyzed your component, but the generated output was too large to format in a single payload. Try breaking the request into a smaller step or switching to Gemini 3.1 Flash Lite.",
           changedFiles: {},
         };
       }
@@ -627,19 +653,49 @@ ${userPrompt}${designLockReminder}`;
       });
     }
 
-    // Invoke Gemini multi-turn generation; deduct daily quota only after successful upstream call
-    const response = await ai.models.generateContent({
-      model: activeModel,
-      contents,
-      config: {
-        systemInstruction,
-        responseMimeType: "application/json",
-        responseSchema: COPILOT_RESPONSE_SCHEMA,
-      },
-    });
-    const updatedQuota = incrementDailyAiQuota();
+    // Invoke Gemini multi-turn generation with automatic model fallback on 503/429/404/500
+    const candidateModels = buildModelCascade(activeModel);
+    let textOutput = "";
+    let resolvedModel = activeModel;
+    let lastModelError: unknown = null;
 
-    const textOutput = response.text || "";
+    for (const candidateModel of candidateModels) {
+      try {
+        const response = await ai.models.generateContent({
+          model: candidateModel,
+          contents,
+          config: {
+            systemInstruction,
+            responseMimeType: "application/json",
+            responseSchema: COPILOT_RESPONSE_SCHEMA,
+          },
+        });
+        const candidateText = (response.text || "").trim();
+        if (candidateText.length > 0) {
+          textOutput = candidateText;
+          resolvedModel = candidateModel;
+          lastModelError = null;
+          break;
+        }
+      } catch (modelErr: unknown) {
+        lastModelError = modelErr;
+        const errMsg = modelErr instanceof Error ? modelErr.message : String(modelErr);
+        const isFatalAuth =
+          errMsg.includes("API key not valid") ||
+          errMsg.includes("API_KEY_INVALID") ||
+          errMsg.includes("PERMISSION_DENIED");
+        if (isFatalAuth) {
+          throw modelErr;
+        }
+        // Otherwise (503 UNAVAILABLE, 429 RESOURCE_EXHAUSTED, 404 NOT_FOUND, 500 INTERNAL), try next fallback model
+      }
+    }
+
+    if (!textOutput && lastModelError) {
+      throw lastModelError;
+    }
+
+    const updatedQuota = incrementDailyAiQuota();
     const parsedResult = parseJsonResponseSafely(textOutput);
 
     // Filter changedFiles so only non-null, non-empty modified files are returned,
@@ -722,7 +778,7 @@ ${userPrompt}${designLockReminder}`;
                 changedFileKeys.length > 0
                   ? `Prepared complete, compilable TypeScript updates for ${changedFileKeys.join(", ")}.`
                   : "Synthesized response aligned with Component Studio Co-Pilot standards.",
-              detail: activeModel.replace("gemini-", ""),
+              detail: resolvedModel.replace("gemini-", ""),
               category: "synthesis" as const,
               items:
                 changedFileKeys.length > 0
@@ -732,7 +788,7 @@ ${userPrompt}${designLockReminder}`;
                       "Ready for diff review",
                     ]
                   : [
-                      `Model: ${activeModel.replace("gemini-", "")}`,
+                      `Model: ${resolvedModel.replace("gemini-", "")}`,
                       "Architectural review",
                       "Zero unintended mutations",
                     ],
@@ -757,7 +813,7 @@ ${userPrompt}${designLockReminder}`;
       source: "gemini-api",
       hasApiKey: true,
       dailyQuota: updatedQuota,
-      modelUsed: activeModel,
+      modelUsed: resolvedModel,
       roleUsed: requestedRole || "copilot",
       complianceScore: parsedResult.complianceScore ?? staticAudit.score,
       reasoningSteps: normalizedSteps,
@@ -789,6 +845,10 @@ ${userPrompt}${designLockReminder}`;
       message.includes("401");
     const isQuotaError =
       message.includes("RESOURCE_EXHAUSTED") || message.includes("429");
+    const isOverloadError =
+      message.includes("UNAVAILABLE") ||
+      message.includes("503") ||
+      message.includes("high demand");
     const isNotFoundError =
       message.includes("NOT_FOUND") || message.includes("404");
 
@@ -796,9 +856,12 @@ ${userPrompt}${designLockReminder}`;
     if (isApiKeyError) {
       userFriendlyError =
         "Invalid or unauthorized Gemini API Key. Please check GEMINI_API_KEY in Settings > Secrets.";
+    } else if (isOverloadError) {
+      userFriendlyError =
+        "Gemini models are currently experiencing high demand (503). Please click Retry in a few seconds.";
     } else if (isQuotaError) {
       userFriendlyError =
-        "Gemini API rate limit or quota exceeded (429). Try switching to Gemini 4 Hydrogen or Gemini 3.1 Flash Lite, or check your billing quota.";
+        "Gemini API rate limit or quota exceeded (429). Try switching to Gemini 3.1 Flash Lite or retry shortly.";
     } else if (isNotFoundError) {
       userFriendlyError =
         "Selected Gemini model was not found (404). Please try Gemini 4 Hydrogen or Gemini 3.1 Flash Lite.";
@@ -810,7 +873,17 @@ ${userPrompt}${designLockReminder}`;
         error: userFriendlyError,
         isApiKeyError,
       },
-      { status: isApiKeyError ? 401 : isQuotaError ? 429 : isNotFoundError ? 404 : 500 }
+      {
+        status: isApiKeyError
+          ? 401
+          : isQuotaError
+            ? 429
+            : isOverloadError
+              ? 503
+              : isNotFoundError
+                ? 404
+                : 500,
+      }
     );
   }
 }

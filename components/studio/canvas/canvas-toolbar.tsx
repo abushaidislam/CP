@@ -130,7 +130,7 @@ export function CanvasToolbar({
           value={isFluidResponsive ? "responsive" : viewport}
           onValueChange={(val) => onSelectViewport(val as StudioViewport)}
         >
-          <TabsList className="h-7 bg-muted/60 dark:bg-muted/40 p-0.5 rounded-none border border-border/80 gap-0.5">
+          <TabsList className="h-7 bg-muted/60 dark:bg-muted/40 p-px rounded-none border border-border/80 gap-0.5">
             <Tooltip>
               <TooltipTrigger asChild>
                 <TabsTrigger
@@ -199,7 +199,7 @@ export function CanvasToolbar({
 
         <Badge
           variant="outline"
-          className="hidden @[480px]:inline-flex h-5 rounded-none px-1.5 text-[11px] font-sans font-normal text-muted-foreground border-border/60 bg-muted/30 tabular-nums whitespace-nowrap shrink-0"
+          className="hidden @[580px]:inline-flex h-5 rounded-none px-1.5 text-[11px] font-sans font-normal text-muted-foreground border-border/60 bg-muted/30 tabular-nums whitespace-nowrap shrink-0"
         >
           {draggedWidth !== null
             ? `${draggedWidth}px`
@@ -292,7 +292,7 @@ export function CanvasToolbar({
               onClick={onTriggerTestSimulation}
               disabled={isSimulatingHover}
               aria-label="Simulate pointer hover"
-              className="studio-icon-btn hidden @[520px]:inline-flex size-7 rounded-none border-border/80 bg-background/70 text-muted-foreground hover:text-foreground"
+              className="studio-icon-btn hidden @[640px]:inline-flex size-7 rounded-none border-border/80 bg-background/70 text-muted-foreground hover:text-foreground"
             >
               <MousePointerClick className="size-3.5" />
               <span className="sr-only">Simulate</span>
@@ -338,7 +338,7 @@ export function CanvasToolbar({
                 <Button
                   variant="outline"
                   size="icon-sm"
-                  className="studio-icon-btn hidden @[460px]:inline-flex size-7 rounded-none border-border/80 bg-background/70 text-muted-foreground hover:text-foreground"
+                  className="studio-icon-btn hidden @[500px]:inline-flex size-7 rounded-none border-border/80 bg-background/70 text-muted-foreground hover:text-foreground"
                 >
                   <Paintbrush className="size-3.5" />
                   <span className="sr-only">Canvas background</span>
@@ -380,7 +380,7 @@ export function CanvasToolbar({
 
         <Separator
           orientation="vertical"
-          className="hidden @[460px]:block h-4 mx-0.5 bg-border/60"
+          className="hidden @[500px]:block h-4 mx-0.5 bg-border/60"
         />
 
         {/* Refresh Canvas */}
@@ -417,7 +417,7 @@ export function CanvasToolbar({
                   disabled={isCapturingSnapshot}
                   aria-label="Capture preview snapshot"
                   className={cn(
-                    "studio-icon-btn relative size-7 rounded-none border-border/80 bg-background/70 transition-colors",
+                    "studio-icon-btn relative hidden @[360px]:inline-flex size-7 rounded-none border-border/80 bg-background/70 transition-colors",
                     captureSuccess
                       ? "text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border-emerald-500/40"
                       : "text-muted-foreground hover:text-foreground"
@@ -562,7 +562,7 @@ export function CanvasToolbar({
               aria-label="Toggle 16:9 Video Capture Side Panel"
               aria-pressed={isRecordingOpen}
               className={cn(
-                "studio-icon-btn relative size-7 rounded-none border-border/80 transition-colors",
+                "studio-icon-btn relative hidden @[420px]:inline-flex size-7 rounded-none border-border/80 transition-colors",
                 isRecordingOpen
                   ? "bg-muted text-foreground border-foreground/30"
                   : "bg-background/70 text-muted-foreground hover:text-foreground"

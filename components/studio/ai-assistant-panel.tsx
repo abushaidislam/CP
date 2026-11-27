@@ -80,10 +80,9 @@ export function AiAssistantPanel({
     revertAiMessageChanges,
     clearAiChat,
     setAiThinking,
-    addDependencies,
+    applyAiChanges,
     saveCheckpoint,
     addTerminalLog,
-    updateFile,
   } = useStudioStore(
     useShallow((state) => ({
       files: state.files,
@@ -115,10 +114,9 @@ export function AiAssistantPanel({
       revertAiMessageChanges: state.revertAiMessageChanges,
       clearAiChat: state.clearAiChat,
       setAiThinking: state.setAiThinking,
-      addDependencies: state.addDependencies,
+      applyAiChanges: state.applyAiChanges,
       saveCheckpoint: state.saveCheckpoint,
       addTerminalLog: state.addTerminalLog,
-      updateFile: state.updateFile,
     }))
   );
 
@@ -522,21 +520,27 @@ export function AiAssistantPanel({
   // Submit AI Prompt
   const handleSubmitPrompt = async (
     customPrompt?: string,
-    action: "chat" | "autofix" | "audit" = "chat"
+    action: "chat" | "autofix" | "audit" = "chat",
+    retryAttachments?: {
+      images?: AttachedImage[];
+      codeSnippets?: AttachedCodeSnippet[];
+    }
   ) => {
     const latestState = useStudioStore.getState();
     if (latestState.isAiThinking) return;
 
     const text = (customPrompt ?? promptInput).trim();
+    const currentImages = retryAttachments?.images
+      ? [...retryAttachments.images]
+      : [...attachedImages];
+    const currentCodeSnippets = retryAttachments?.codeSnippets
+      ? [...retryAttachments.codeSnippets]
+      : [...attachedCodeSnippets];
     const hasAttachments =
-      attachedImages.length > 0 || attachedCodeSnippets.length > 0;
+      currentImages.length > 0 || currentCodeSnippets.length > 0;
     if (!text && !hasAttachments && action === "chat") return;
 
-    // Snapshot attached items and reset input
-    const currentImages = [...attachedImages];
-    const currentCodeSnippets = [...attachedCodeSnippets];
-
-    if (!customPrompt) {
+    if (!customPrompt && !retryAttachments) {
       setPromptInput("");
       setAttachedImages([]);
       setAttachedCodeSnippets([]);
@@ -550,6 +554,7 @@ export function AiAssistantPanel({
         ? "Perform a full standards and quality audit."
         : "Please review and incorporate the attached images and code references.");
 
+    const requestTemplateId = latestState.currentTemplateId;
     const latestFiles = latestState.files;
     const latestDemoCode =
       latestFiles["default.tsx"] ?? latestFiles["demo.tsx"] ?? "";
@@ -563,7 +568,12 @@ export function AiAssistantPanel({
     };
 
     const historyPayload = latestState.aiChatMessages
-      .filter((m) => !m.isError && m.role !== "system")
+      .filter(
+        (m) =>
+          !m.isError &&
+          m.role !== "system" &&
+          (!m.templateId || m.templateId === requestTemplateId)
+      )
       .slice(-10)
       .map((m) => ({
         role: m.role,
@@ -573,6 +583,8 @@ export function AiAssistantPanel({
     addAiChatMessage({
       role: "user",
       content: userMessageContent,
+      templateId: requestTemplateId,
+      actionType: action,
       attachments:
         currentImages.length > 0 || currentCodeSnippets.length > 0
           ? {
@@ -633,6 +645,7 @@ export function AiAssistantPanel({
       type AiAssistantApiResponse = {
         error?: string;
         message?: string;
+        modelUsed?: string;
         requiresOwnerAuth?: boolean;
         quotaExceeded?: boolean;
         rateLimited?: boolean;
@@ -672,9 +685,10 @@ export function AiAssistantPanel({
         };
       }
 
-      if (data.dailyQuota && latestState.securityTelemetry) {
+      const postFetchState = useStudioStore.getState();
+      if (data.dailyQuota && postFetchState.securityTelemetry) {
         setSecurityTelemetry({
-          ...latestState.securityTelemetry,
+          ...postFetchState.securityTelemetry,
           dailyQuota: {
             used: data.dailyQuota.used,
             limit: data.dailyQuota.limit,
@@ -682,7 +696,7 @@ export function AiAssistantPanel({
             resetAt:
               data.dailyQuota.resetAt ||
               data.dailyQuota.resetAtUtc ||
-              latestState.securityTelemetry.dailyQuota.resetAt,
+              postFetchState.securityTelemetry.dailyQuota.resetAt,
           },
         });
       }
@@ -692,6 +706,8 @@ export function AiAssistantPanel({
         Math.round((Date.now() - requestStartTimeRef.current) / 1000)
       );
 
+      const effectiveModelUsed = data.modelUsed || currentModelObj.id;
+
       if (!res.ok) {
         if (res.status === 401 || data.requiresOwnerAuth) {
           setOwnerAuthenticated(false);
@@ -699,8 +715,10 @@ export function AiAssistantPanel({
         }
         addAiChatMessage({
           role: "assistant",
+          templateId: requestTemplateId,
+          actionType: action,
           authorRole: currentRoleObj.name,
-          modelUsed: currentModelObj.id,
+          modelUsed: effectiveModelUsed,
           isError: true,
           content:
             (typeof data.error === "string" && data.error) ||
@@ -721,18 +739,20 @@ export function AiAssistantPanel({
         : [];
       const hasChangedFiles = changedFileNames.length > 0;
 
-      // Auto-install any new NPM dependencies detected or returned by the AI
       const addedDeps = Array.isArray(data.addedDependencies)
-        ? data.addedDependencies.filter(
-            (d) =>
-              typeof d === "string" &&
-              d.trim().length > 0 &&
-              !latestState.dependencies.includes(d.trim())
-          )
+        ? data.addedDependencies
+            .map((d) => (typeof d === "string" ? d.trim() : ""))
+            .filter(
+              (d) => d.length > 0 && !latestState.dependencies.includes(d)
+            )
         : [];
-      if (addedDeps.length > 0) {
-        addDependencies(addedDeps);
-      }
+
+      const stillOnRequestTemplate =
+        postFetchState.currentTemplateId === requestTemplateId;
+      const shouldAutoApply =
+        hasChangedFiles &&
+        postFetchState.autoApplyAiChanges &&
+        stillOnRequestTemplate;
 
       const recordedSteps: ReasoningStep[] =
         Array.isArray(data.reasoningSteps) && data.reasoningSteps.length > 0
@@ -791,7 +811,7 @@ export function AiAssistantPanel({
                 description: hasChangedFiles
                   ? `Generated complete, compilable TypeScript updates for ${changedFileNames.join(", ")}.`
                   : "Synthesized technical guidance aligned with Component Studio Co-Pilot standards.",
-                detail: currentModelObj.id.replace("gemini-", ""),
+                detail: effectiveModelUsed.replace("gemini-", ""),
                 category: "synthesis" as const,
                 items: hasChangedFiles
                   ? [
@@ -800,7 +820,7 @@ export function AiAssistantPanel({
                       "Unified diff prepared",
                     ]
                   : [
-                      `Model: ${currentModelObj.id.replace("gemini-", "")}`,
+                      `Model: ${effectiveModelUsed.replace("gemini-", "")}`,
                       "Architectural analysis",
                       "Zero unintended mutations",
                     ],
@@ -813,17 +833,17 @@ export function AiAssistantPanel({
         !recordedSteps.some((s) => s.category === "verify")
       ) {
         recordedSteps.push({
-          title: latestState.autoApplyAiChanges
+          title: shouldAutoApply
             ? "Auto-applied changes & verified diff"
             : "Prepared unified diff & sandbox check",
-          description: latestState.autoApplyAiChanges
+          description: shouldAutoApply
             ? `Applied updates to ${changedFileNames.join(", ")} on the live canvas with 1-click rollback support.`
             : `Computed line-by-line diff across ${changedFileNames.join(", ")} and staged changes for approval.`,
           detail: `${changedFileNames.length} file${changedFileNames.length === 1 ? "" : "s"}`,
           category: "verify",
           items: [
             ...changedFileNames.map((f) =>
-              latestState.autoApplyAiChanges ? `Applied ${f}` : `Staged ${f}`
+              shouldAutoApply ? `Applied ${f}` : `Staged ${f}`
             ),
             "1-click Revert ready",
           ],
@@ -831,21 +851,9 @@ export function AiAssistantPanel({
         });
       }
 
-      const shouldAutoApply = hasChangedFiles && latestState.autoApplyAiChanges;
-
-      // Apply files immediately if autoApplyAiChanges is enabled
+      // Atomically apply files and any added dependencies if autoApplyAiChanges is enabled
       if (shouldAutoApply && data.changedFiles) {
-        if (typeof data.changedFiles["component.tsx"] === "string") {
-          updateFile("component.tsx", data.changedFiles["component.tsx"]);
-        }
-        const incomingDemo =
-          data.changedFiles["default.tsx"] ?? data.changedFiles["demo.tsx"];
-        if (typeof incomingDemo === "string") {
-          updateFile("default.tsx", incomingDemo);
-        }
-        if (typeof data.changedFiles["index.css"] === "string") {
-          updateFile("index.css", data.changedFiles["index.css"]);
-        }
+        applyAiChanges(data.changedFiles, addedDeps);
         addTerminalLog({
           type: "system",
           message: `Copilot auto-applied updates to ${changedFileNames.join(", ")}.`,
@@ -854,8 +862,10 @@ export function AiAssistantPanel({
 
       addAiChatMessage({
         role: "assistant",
+        templateId: requestTemplateId,
+        actionType: action,
         authorRole: currentRoleObj.name,
-        modelUsed: currentModelObj.id,
+        modelUsed: effectiveModelUsed,
         content: data.message || "I've reviewed and updated your component.",
         reasoning: {
           durationSeconds: elapsedSeconds,
@@ -886,6 +896,8 @@ export function AiAssistantPanel({
       const errorMsg = err instanceof Error ? err.message : String(err);
       addAiChatMessage({
         role: "assistant",
+        templateId: requestTemplateId,
+        actionType: action,
         authorRole: currentRoleObj.name,
         modelUsed: currentModelObj.id,
         isError: true,
@@ -897,22 +909,30 @@ export function AiAssistantPanel({
     }
   };
 
-  // Retry a previous assistant response by finding the preceding user prompt
+  // Retry a previous assistant response by removing both the assistant turn and its preceding user turn
   const handleRetryTurn = (assistantMsgIndex: number) => {
     if (isAiThinking) return;
-    let precedingUserPrompt = "";
+    let precedingUserMsg: (typeof aiChatMessages)[number] | undefined;
     for (let i = assistantMsgIndex - 1; i >= 0; i--) {
       if (aiChatMessages[i]?.role === "user") {
-        precedingUserPrompt = aiChatMessages[i].content;
+        precedingUserMsg = aiChatMessages[i];
         break;
       }
     }
     const targetMsg = aiChatMessages[assistantMsgIndex];
     if (targetMsg) {
+      if (targetMsg.applied && targetMsg.previousFiles) {
+        revertAiMessageChanges(targetMsg.id);
+      }
       deleteAiChatMessage(targetMsg.id);
     }
-    if (precedingUserPrompt) {
-      handleSubmitPrompt(precedingUserPrompt, "chat");
+    if (precedingUserMsg) {
+      deleteAiChatMessage(precedingUserMsg.id);
+      void handleSubmitPrompt(
+        precedingUserMsg.content,
+        precedingUserMsg.actionType || targetMsg?.actionType || "chat",
+        precedingUserMsg.attachments
+      );
     }
   };
 

@@ -67,12 +67,18 @@ function buildSessionPayload(
 }
 
 export async function GET(req: NextRequest) {
-  const payload = buildSessionPayload(req);
+  const basePayload = buildSessionPayload(req);
+  const existingCookie = req.cookies.get(OWNER_SESSION_COOKIE)?.value;
+  const issuedToken = basePayload.authenticated
+    ? existingCookie || createOwnerSessionToken()
+    : null;
+  const payload = buildSessionPayload(req, basePayload.authenticated, {
+    exposeSessionToken: issuedToken,
+  });
   const res = NextResponse.json(payload);
-  if (payload.authenticated && !req.cookies.get(OWNER_SESSION_COOKIE)?.value) {
+  if (payload.authenticated && issuedToken && !existingCookie) {
     const https = isHttpsRequest(req);
-    const token = createOwnerSessionToken();
-    res.cookies.set(OWNER_SESSION_COOKIE, token, {
+    res.cookies.set(OWNER_SESSION_COOKIE, issuedToken, {
       httpOnly: true,
       sameSite: https ? "none" : "lax",
       path: "/",
@@ -136,8 +142,7 @@ export async function POST(req: NextRequest) {
       let refreshedToken: string | null = null;
       if (
         typeof body.newPasscode === "string" &&
-        body.newPasscode.trim().length >= 4 &&
-        !getEnvPasscode()
+        body.newPasscode.trim().length >= 4
       ) {
         setRuntimeOwnerPasscode(body.newPasscode.trim());
         refreshedToken = createOwnerSessionToken();

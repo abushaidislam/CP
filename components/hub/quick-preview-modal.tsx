@@ -834,9 +834,9 @@ export function QuickPreviewModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-      <DialogContent className="w-screen max-w-none h-screen max-h-screen overflow-hidden flex flex-col font-sans p-0 gap-0 rounded-none border-0 bg-transparent shadow-none">
+      <DialogContent className="w-screen max-w-none h-screen max-h-screen overflow-hidden flex flex-col font-sans p-0 gap-0 rounded-none border-0 bg-background/95 backdrop-blur-md shadow-none">
         {/* 1. PINNED VIEWPORT TOP BAR: Top-Left Component Identity & Top-Right Action Icons */}
-        <DialogHeader className="w-full px-4 py-4 pr-13 shrink-0 z-10 pointer-events-none">
+        <DialogHeader className="studio-glass-header w-full px-4 py-4 pr-12 shrink-0 z-20 border-b border-border">
           <div className="sr-only">
             <Badge variant="eyebrow" className="rounded-none">
               21ST QUICK PREVIEW
@@ -846,22 +846,22 @@ export function QuickPreviewModal({
             </DialogDescription>
           </div>
 
-          <div className="flex items-center justify-between gap-4 w-full">
+          <div className="flex items-center justify-between gap-3 w-full min-w-0">
             {/* Top-Left Corner of Screen: Creator Avatar + Title + Category */}
-            <div className="flex items-center gap-2.5 min-w-0 pointer-events-auto">
+            <div className="flex items-center gap-2 min-w-0 flex-1">
               <div className="size-6 rounded-none border border-border bg-card flex items-center justify-center text-[11px] font-semibold text-foreground shrink-0">
                 {component.name.charAt(0).toUpperCase()}
               </div>
-              <DialogTitle className="font-sans font-semibold text-sm tracking-tight text-foreground truncate">
+              <DialogTitle className="font-sans font-semibold text-sm tracking-tight text-foreground truncate min-w-0">
                 {component.name}
               </DialogTitle>
-              <Badge variant="secondary" className="rounded-none font-sans text-[11px]">
+              <Badge variant="secondary" className="rounded-none font-sans text-[11px] shrink-0">
                 {component.category || "Custom"}
               </Badge>
               <Button
                 variant="ghost"
                 size="icon-sm"
-                className="size-6 rounded-none text-muted-foreground hover:text-foreground hover:bg-muted"
+                className="size-6 rounded-none shrink-0 text-muted-foreground hover:text-foreground hover:bg-muted"
                 onClick={() => {
                   useStudioStore
                     .getState()
@@ -874,8 +874,8 @@ export function QuickPreviewModal({
               </Button>
             </div>
 
-            {/* Top-Right Corner of Screen (next to Dialog Close X at top-4 right-4): Utility Action Icons */}
-            <div className="flex items-center gap-1 shrink-0 pointer-events-auto">
+            {/* Top-Right Corner of Screen (aligned next to Dialog Close X at top-4 right-4): Utility Action Icons */}
+            <div className="flex items-center gap-1 shrink-0">
               <Button
                 variant="outline"
                 size="sm"
@@ -905,19 +905,30 @@ export function QuickPreviewModal({
                 variant="ghost"
                 size="icon-sm"
                 className="size-7 rounded-none border border-border/80 bg-background/80 text-muted-foreground hover:bg-muted hover:text-foreground"
-                onClick={() =>
-                  setPreviewTheme(previewTheme === "dark" ? "light" : "dark")
-                }
+                onClick={() => {
+                  const nextTheme: PreviewTheme =
+                    previewTheme === "dark" ? "light" : "dark";
+                  setPreviewTheme(nextTheme);
+                  setStageThemeSelect(nextTheme);
+                  if (hasNativeThemeControl) {
+                    const nativeThemeCtrl = parsedDemoControls.controls.find(
+                      (c) => c.key.toLowerCase() === "theme"
+                    );
+                    if (nativeThemeCtrl) {
+                      handleQuickControlChange(nativeThemeCtrl.key, nextTheme);
+                    }
+                  }
+                }}
                 title={
                   previewTheme === "dark"
-                    ? "Switch to Light Mode"
-                    : "Switch to Dark Mode"
+                    ? "Switch component preview to Light Mode"
+                    : "Switch component preview to Dark Mode"
                 }
               >
                 {previewTheme === "dark" ? (
-                  <Sun className="size-3.5" />
+                  <Sun className="size-3.5 text-amber-500" />
                 ) : (
-                  <Moon className="size-3.5" />
+                  <Moon className="size-3.5 text-sky-400" />
                 )}
                 <span className="sr-only">
                   {previewTheme === "dark" ? "Light Mode" : "Dark Mode"}
@@ -1000,7 +1011,12 @@ export function QuickPreviewModal({
 
                 <div className="w-full flex-1 min-h-[420px] flex flex-col lg:flex-row items-stretch gap-3 overflow-hidden">
                   {/* Left: Standalone Preview Stage Box (Never covered by Controls) */}
-                  <div className="relative flex-1 min-w-0 h-full min-h-[380px] rounded-none border border-border bg-background shadow-2xl overflow-hidden">
+                  <div
+                    className={cn(
+                      "relative flex-1 min-w-0 h-full min-h-[380px] rounded-none border border-border shadow-2xl overflow-hidden transition-colors duration-200",
+                      previewTheme === "dark" ? "bg-zinc-950" : "bg-white"
+                    )}
+                  >
                     {isIframeLoading && !compileError && (
                       <div
                         role="status"
