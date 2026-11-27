@@ -1,8 +1,27 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-27T07:06:52.192Z",
-  "totalComponents": 93,
+  "updatedAt": "2026-11-27T07:07:23.824Z",
+  "totalComponents": 94,
   "components": [
+    {
+      "id": "kinetic-poster-typography",
+      "slug": "kinetic-poster-typography",
+      "name": "KineticPosterTypography",
+      "description": "A Swiss-inspired kinetic typography poster featuring a staggered vertical letter-column swap and a 3D perspective X-axis cylinder flip driven by zero-rerender 60fps requestAnimationFrame motion.",
+      "category": "Effects",
+      "isBuiltIn": false,
+      "updatedAt": 1795763243716,
+      "lastRepoSyncAt": 1795763243716,
+      "path": "registry/components/kinetic-poster-typography",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "manifest.json"
+      ],
+      "dependencies": [
+        "framer-motion"
+      ]
+    },
     {
       "id": "kinetic-numeral",
       "slug": "kinetic-numeral",
