@@ -1,18 +1,18 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-27T07:10:39.778Z",
+  "updatedAt": "2026-11-27T07:12:01.747Z",
   "totalComponents": 93,
   "components": [
     {
-      "id": "kinetic-poster-typography",
-      "slug": "kinetic-poster-typography",
-      "name": "KineticPosterTypography",
-      "description": "A Swiss-inspired kinetic typography poster featuring a staggered vertical letter-column swap and a 3D perspective X-axis cylinder flip driven by zero-rerender 60fps requestAnimationFrame motion.",
-      "category": "Effects",
+      "id": "kinetic-numeral",
+      "slug": "kinetic-numeral",
+      "name": "KineticNumeral",
+      "description": "A Swiss-modernist modular 3x8 kinetic numeral specimen where solid rectangular bars elastically stretch and swim across the grid to morph seamlessly between digits 0-9.",
+      "category": "Widgets",
       "isBuiltIn": false,
-      "updatedAt": 1795763433202,
-      "lastRepoSyncAt": 1795763439459,
-      "path": "registry/components/kinetic-poster-typography",
+      "updatedAt": 1795763515761,
+      "lastRepoSyncAt": 1795763521660,
+      "path": "registry/components/kinetic-numeral",
       "files": [
         "component.tsx",
         "default.tsx",

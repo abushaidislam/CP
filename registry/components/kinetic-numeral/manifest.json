@@ -6,12 +6,12 @@
   "category": "Widgets",
   "isBuiltIn": false,
   "createdAt": 1795763211861,
-  "updatedAt": 1795763211861,
-  "lastRepoSyncAt": 1795763211861,
+  "updatedAt": 1795763515761,
+  "lastRepoSyncAt": 1795763521660,
   "dependencies": [
     "framer-motion"
   ],
-  "version": "v1",
+  "previewImage": "./preview.png",
   "variants": [
     {
       "id": "var-default",
