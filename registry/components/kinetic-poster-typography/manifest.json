@@ -6,12 +6,12 @@
   "category": "Effects",
   "isBuiltIn": false,
   "createdAt": 1795763243716,
-  "updatedAt": 1795763243716,
-  "lastRepoSyncAt": 1795763243716,
+  "updatedAt": 1795763433202,
+  "lastRepoSyncAt": 1795763439459,
   "dependencies": [
     "framer-motion"
   ],
-  "version": "v1",
+  "previewImage": "./preview.png",
   "variants": [
     {
       "id": "var-default",
