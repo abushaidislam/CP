@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-28T14:05:21.171Z",
+  "updatedAt": "2026-11-28T14:05:56.487Z",
   "totalComponents": 96,
   "components": [
     {
@@ -10,8 +10,8 @@
       "description": "Pitch-black developer cloud dashboard shell with workspace and project switchers, F-shortcut navigation filtering, expandable route groups, and a contextual Agent drawer.",
       "category": "Navigation",
       "isBuiltIn": false,
-      "updatedAt": 1795874713653,
-      "lastRepoSyncAt": 1795874720960,
+      "updatedAt": 1795874749370,
+      "lastRepoSyncAt": 1795874756346,
       "path": "registry/components/cloud-dashboard-shell",
       "files": [
         "component.tsx",
