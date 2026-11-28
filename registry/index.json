@@ -1,18 +1,18 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-28T11:56:15.580Z",
+  "updatedAt": "2026-11-28T11:58:48.971Z",
   "totalComponents": 93,
   "components": [
     {
-      "id": "cloud-dashboard-shell",
-      "slug": "cloud-dashboard-shell",
-      "name": "CloudDashboardShell",
-      "description": "Pitch-black developer cloud dashboard shell with workspace and project switchers, F-shortcut navigation filtering, expandable route groups, and a contextual Agent drawer.",
-      "category": "Navigation",
+      "id": "kinetic-numeral",
+      "slug": "kinetic-numeral",
+      "name": "KineticNumeral",
+      "description": "A Swiss-modernist modular 3x8 kinetic numeral specimen where solid rectangular bars elastically stretch and swim across the grid to morph seamlessly between digits 0-9.",
+      "category": "Widgets",
       "isBuiltIn": false,
-      "updatedAt": 1795866967377,
-      "lastRepoSyncAt": 1795866975297,
-      "path": "registry/components/cloud-dashboard-shell",
+      "updatedAt": 1795867120058,
+      "lastRepoSyncAt": 1795867128853,
+      "path": "registry/components/kinetic-numeral",
       "files": [
         "component.tsx",
         "default.tsx",
@@ -21,12 +21,9 @@
         "preview.png"
       ],
       "dependencies": [
-        "@radix-ui/react-collapsible",
-        "@radix-ui/react-dialog",
-        "@radix-ui/react-dropdown-menu",
-        "@radix-ui/react-popover",
         "framer-motion",
-        "lucide-react"
+        "clsx",
+        "tailwind-merge"
       ]
     },
     {
