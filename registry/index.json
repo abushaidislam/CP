@@ -1,7 +1,7 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-28T15:12:43.281Z",
-  "totalComponents": 99,
+  "updatedAt": "2026-11-28T15:15:56.335Z",
+  "totalComponents": 98,
   "components": [
     {
       "id": "pocket-assistant-cards",
@@ -1938,26 +1938,6 @@
       "updatedAt": 1700000000000,
       "lastRepoSyncAt": 1795870486318,
       "path": "registry/components/metric-badge",
-      "files": [
-        "component.tsx",
-        "default.tsx",
-        "index.css",
-        "manifest.json"
-      ],
-      "dependencies": [
-        "lucide-react"
-      ]
-    },
-    {
-      "id": "neon-glow-button",
-      "slug": "neon-glow-button",
-      "name": "Neon Glow Interactive Button",
-      "description": "Cyberpunk-inspired interactive button with luminous border glow, particle pulse, and ripple feedback.",
-      "category": "Buttons",
-      "isBuiltIn": true,
-      "updatedAt": 1700000000000,
-      "lastRepoSyncAt": 1795870486318,
-      "path": "registry/components/neon-glow-button",
       "files": [
         "component.tsx",
         "default.tsx",
