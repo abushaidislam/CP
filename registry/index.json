@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-28T14:55:54.322Z",
+  "updatedAt": "2026-11-28T14:56:00.974Z",
   "totalComponents": 99,
   "components": [
     {
@@ -11,7 +11,7 @@
       "category": "Forms",
       "isBuiltIn": false,
       "updatedAt": 1795877567462,
-      "lastRepoSyncAt": 1795877754036,
+      "lastRepoSyncAt": 1795877760871,
       "path": "registry/components/avatar-gender-toggle",
       "files": [
         "component.tsx",
