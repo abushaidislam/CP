@@ -1,18 +1,18 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-28T14:56:43.937Z",
+  "updatedAt": "2026-11-28T15:09:05.315Z",
   "totalComponents": 99,
   "components": [
     {
-      "id": "account-switcher-menu",
-      "slug": "account-switcher-menu",
-      "name": "AccountSwitcherMenu",
-      "description": "Interactive multi-account profile popover menu with smooth spring-animated hover highlights, instant account switching with animated radio selection, keyboard accessibility, and adaptive light/dark theming.",
-      "category": "Navigation",
+      "id": "matrix-chevron-button",
+      "slug": "matrix-chevron-button",
+      "name": "MatrixChevronButton",
+      "description": "Tactile dark-chassis CTA button with a glossy neon-lime dot-matrix chevron pill that expands smoothly across the full button on hover or keyboard focus, uncovering a cascading left-to-right LED chevron wave.",
+      "category": "Buttons",
       "isBuiltIn": false,
-      "updatedAt": 1795877796302,
-      "lastRepoSyncAt": 1795877803821,
-      "path": "registry/components/account-switcher-menu",
+      "updatedAt": 1795878538374,
+      "lastRepoSyncAt": 1795878545204,
+      "path": "registry/components/matrix-chevron-button",
       "files": [
         "component.tsx",
         "default.tsx",
@@ -21,8 +21,7 @@
         "preview.png"
       ],
       "dependencies": [
-        "framer-motion",
-        "lucide-react"
+        "framer-motion"
       ]
     },
     {
@@ -201,23 +200,25 @@
       ]
     },
     {
-      "id": "matrix-chevron-button",
-      "slug": "matrix-chevron-button",
-      "name": "MatrixChevronButton",
-      "description": "Tactile dark-chassis CTA button with a glossy neon-lime dot-matrix chevron pill that expands smoothly across the full button on hover or keyboard focus, uncovering a cascading left-to-right LED chevron wave.",
-      "category": "Buttons",
+      "id": "account-switcher-menu",
+      "slug": "account-switcher-menu",
+      "name": "AccountSwitcherMenu",
+      "description": "Interactive multi-account profile popover menu with smooth spring-animated hover highlights, instant account switching with animated radio selection, keyboard accessibility, and adaptive light/dark theming.",
+      "category": "Navigation",
       "isBuiltIn": false,
-      "updatedAt": 1795701889180,
-      "lastRepoSyncAt": 1795701889180,
-      "path": "registry/components/matrix-chevron-button",
+      "updatedAt": 1795754527091,
+      "lastRepoSyncAt": 1795754533502,
+      "path": "registry/components/account-switcher-menu",
       "files": [
         "component.tsx",
         "default.tsx",
         "index.css",
-        "manifest.json"
+        "manifest.json",
+        "preview.png"
       ],
       "dependencies": [
-        "framer-motion"
+        "framer-motion",
+        "lucide-react"
       ]
     },
     {

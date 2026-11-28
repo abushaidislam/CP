@@ -9,24 +9,86 @@ function cn(...classes: Array<string | undefined | null | false>): string {
 
 export type MatrixChevronAccent = "lime" | "amber" | "cyan" | "coral";
 export type MatrixChevronSize = "sm" | "md" | "lg";
+export type MatrixChevronTrigger = "click" | "hover";
 
 export interface MatrixChevronButtonProps
   extends Omit<HTMLMotionProps<"button">, "children" | "className"> {
   /** Primary button label displayed in the resting state. */
   label?: string;
-  /** Accent color preset for the tactile expanding pill. */
+  /** Hex color for the expanding tactile pill (renders a native color picker in 21st.dev Controls). */
+  accentColor?: string;
+  /** Hex color for the outer button chassis (renders a native color picker in 21st.dev Controls). */
+  chassisColor?: string;
+  /** Optional named accent preset used when accentColor is not provided. */
   accent?: MatrixChevronAccent;
   /** Size preset scaling height, pill width, chevron matrix, and typography. */
   size?: MatrixChevronSize;
+  /** Interaction mode: click to toggle expansion (default) or hover to expand. */
+  trigger?: MatrixChevronTrigger;
   /** Duration in seconds for one full left-to-right dot-matrix wave cycle. */
   waveSpeed?: number;
-  /** Optional controlled expanded state (overrides internal hover/focus state). */
+  /** Optional controlled expanded state (overrides internal click/hover state). */
   expanded?: boolean;
+  /** Callback fired when the expanded state toggles in click mode. */
+  onExpandedChange?: (expanded: boolean) => void;
   /** Optional custom classes merged onto the button element. */
   className?: string;
 }
 
-interface AccentPalette {
+const ACCENT_PRESET_HEX: Record<MatrixChevronAccent, string> = {
+  lime: "#d2fe00",
+  amber: "#ffb300",
+  cyan: "#00d9f5",
+  coral: "#ff5c33",
+};
+
+type Rgb = [number, number, number];
+
+function parseHexColor(input: string | undefined, fallback: Rgb): Rgb {
+  if (!input || typeof input !== "string") return fallback;
+  const cleaned = input.trim().replace(/^#/, "");
+  if (/^[0-9a-fA-F]{3}$/.test(cleaned)) {
+    const r = parseInt(cleaned[0] + cleaned[0], 16);
+    const g = parseInt(cleaned[1] + cleaned[1], 16);
+    const b = parseInt(cleaned[2] + cleaned[2], 16);
+    return [r, g, b];
+  }
+  if (/^[0-9a-fA-F]{6}$/.test(cleaned)) {
+    const r = parseInt(cleaned.slice(0, 2), 16);
+    const g = parseInt(cleaned.slice(2, 4), 16);
+    const b = parseInt(cleaned.slice(4, 6), 16);
+    return [r, g, b];
+  }
+  return fallback;
+}
+
+function mixRgb(a: Rgb, b: Rgb, t: number): Rgb {
+  return [
+    Math.round(a[0] + (b[0] - a[0]) * t),
+    Math.round(a[1] + (b[1] - a[1]) * t),
+    Math.round(a[2] + (b[2] - a[2]) * t),
+  ];
+}
+
+function rgbToHex([r, g, b]: Rgb): string {
+  return `#${[r, g, b]
+    .map((v) => Math.min(255, Math.max(0, v)).toString(16).padStart(2, "0"))
+    .join("")}`;
+}
+
+function rgbToRgba([r, g, b]: Rgb, alpha: number): string {
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
+function getRelativeLuminance([r, g, b]: Rgb): number {
+  const toLinear = (c: number) => {
+    const s = c / 255;
+    return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4);
+  };
+  return 0.2126 * toLinear(r) + 0.7152 * toLinear(g) + 0.0722 * toLinear(b);
+}
+
+interface DerivedPalette {
   pillGradient: string;
   pillInnerShadow: string;
   dotActive: string;
@@ -35,63 +97,46 @@ interface AccentPalette {
   dotDimStroke: string;
   dotGlow: string;
   ambientGlowDark: string;
-  focusRing: string;
+  focusRingColor: string;
+  chassisHex: string;
+  labelColor: string;
 }
 
-const ACCENT_PALETTES: Record<MatrixChevronAccent, AccentPalette> = {
-  lime: {
-    pillGradient:
-      "linear-gradient(180deg, #e7ff72 0%, #d8fd35 46%, #d2fe00 100%)",
-    pillInnerShadow:
-      "inset 0 1.5px 1px rgba(255, 255, 255, 0.8), inset 0 -1.5px 1.5px rgba(120, 152, 0, 0.35), inset 1px 0 1px rgba(255, 255, 255, 0.35), inset -1px 0 1px rgba(255, 255, 255, 0.35)",
-    dotActive: "#1a2016",
-    dotMid: "#5b7119",
-    dotDimFill: "#d6fe28",
-    dotDimStroke: "rgba(26, 32, 22, 0.36)",
-    dotGlow: "rgba(255, 255, 255, 0.42)",
-    ambientGlowDark: "rgba(210, 254, 0, 0.22)",
-    focusRing: "focus-visible:ring-[#d2fe00]/70",
-  },
-  amber: {
-    pillGradient:
-      "linear-gradient(180deg, #ffe27a 0%, #ffc426 48%, #ffaa00 100%)",
-    pillInnerShadow:
-      "inset 0 1.5px 1px rgba(255, 255, 255, 0.8), inset 0 -1.5px 1.5px rgba(168, 96, 0, 0.35), inset 1px 0 1px rgba(255, 255, 255, 0.35), inset -1px 0 1px rgba(255, 255, 255, 0.35)",
-    dotActive: "#23190b",
-    dotMid: "#82560c",
-    dotDimFill: "#ffbe1f",
-    dotDimStroke: "rgba(35, 25, 11, 0.34)",
-    dotGlow: "rgba(255, 255, 255, 0.42)",
-    ambientGlowDark: "rgba(255, 176, 0, 0.24)",
-    focusRing: "focus-visible:ring-[#ffb800]/70",
-  },
-  cyan: {
-    pillGradient:
-      "linear-gradient(180deg, #8ef8ff 0%, #3ce9ff 48%, #00d9f5 100%)",
-    pillInnerShadow:
-      "inset 0 1.5px 1px rgba(255, 255, 255, 0.82), inset 0 -1.5px 1.5px rgba(0, 125, 150, 0.35), inset 1px 0 1px rgba(255, 255, 255, 0.35), inset -1px 0 1px rgba(255, 255, 255, 0.35)",
-    dotActive: "#0b1e26",
-    dotMid: "#126072",
-    dotDimFill: "#2be4fc",
-    dotDimStroke: "rgba(11, 30, 38, 0.34)",
-    dotGlow: "rgba(255, 255, 255, 0.45)",
-    ambientGlowDark: "rgba(0, 217, 245, 0.24)",
-    focusRing: "focus-visible:ring-[#00d9f5]/70",
-  },
-  coral: {
-    pillGradient:
-      "linear-gradient(180deg, #ff9d7e 0%, #ff744d 48%, #ff572c 100%)",
-    pillInnerShadow:
-      "inset 0 1.5px 1px rgba(255, 255, 255, 0.72), inset 0 -1.5px 1.5px rgba(156, 36, 10, 0.38), inset 1px 0 1px rgba(255, 255, 255, 0.3), inset -1px 0 1px rgba(255, 255, 255, 0.3)",
-    dotActive: "#260f0a",
-    dotMid: "#7d2914",
-    dotDimFill: "#ff6e47",
-    dotDimStroke: "rgba(38, 15, 10, 0.36)",
-    dotGlow: "rgba(255, 255, 255, 0.36)",
-    ambientGlowDark: "rgba(255, 87, 44, 0.26)",
-    focusRing: "focus-visible:ring-[#ff6a42]/70",
-  },
-};
+function buildDynamicPalette(
+  accentHexInput: string | undefined,
+  chassisHexInput: string | undefined
+): DerivedPalette {
+  const base = parseHexColor(accentHexInput, [210, 254, 0]);
+  const chassis = parseHexColor(chassisHexInput, [29, 33, 41]);
+
+  const topStop = mixRgb(base, [255, 255, 255], 0.32);
+  const midStop = mixRgb(base, [255, 255, 255], 0.12);
+  const bottomBevel = mixRgb(base, [0, 0, 0], 0.42);
+
+  const isLightAccent = getRelativeLuminance(base) > 0.34;
+  const inkTarget: Rgb = isLightAccent ? [22, 28, 18] : [255, 255, 255];
+  const dotActiveRgb = mixRgb(inkTarget, base, 0.06);
+  const dotMidRgb = mixRgb(dotActiveRgb, base, 0.48);
+  const dotDimRgb = mixRgb(base, [255, 255, 255], isLightAccent ? 0.12 : 0.18);
+
+  const isLightChassis = getRelativeLuminance(chassis) > 0.45;
+
+  return {
+    pillGradient: `linear-gradient(180deg, ${rgbToHex(topStop)} 0%, ${rgbToHex(midStop)} 46%, ${rgbToHex(base)} 100%)`,
+    pillInnerShadow: `inset 0 1.5px 1px rgba(255, 255, 255, ${isLightAccent ? 0.8 : 0.45}), inset 0 -1.5px 1.5px ${rgbToRgba(bottomBevel, 0.42)}, inset 1px 0 1px rgba(255, 255, 255, 0.32), inset -1px 0 1px rgba(255, 255, 255, 0.32)`,
+    dotActive: rgbToHex(dotActiveRgb),
+    dotMid: rgbToHex(dotMidRgb),
+    dotDimFill: rgbToHex(dotDimRgb),
+    dotDimStroke: rgbToRgba(dotActiveRgb, 0.38),
+    dotGlow: isLightAccent
+      ? "rgba(255, 255, 255, 0.42)"
+      : "rgba(255, 255, 255, 0.16)",
+    ambientGlowDark: rgbToRgba(base, 0.24),
+    focusRingColor: rgbToRgba(base, 0.72),
+    chassisHex: rgbToHex(chassis),
+    labelColor: isLightChassis ? "#111827" : "#ffffff",
+  };
+}
 
 interface SizeMetrics {
   height: number;
@@ -101,7 +146,7 @@ interface SizeMetrics {
   idlePillWidth: number;
   chevronWidth: number;
   chevronHeight: number;
-  chevronGap: number;
+  idealChevronGap: number;
   textPaddingLeft: number;
   textPaddingRight: number;
   fontSizeClass: string;
@@ -110,46 +155,46 @@ interface SizeMetrics {
 const SIZE_METRICS: Record<MatrixChevronSize, SizeMetrics> = {
   sm: {
     height: 48,
-    inset: 3,
-    outerRadius: 12,
-    innerRadius: 9,
-    idlePillWidth: 58,
-    chevronWidth: 13.5,
-    chevronHeight: 17,
-    chevronGap: 10,
-    textPaddingLeft: 76,
-    textPaddingRight: 20,
+    inset: 2.5,
+    outerRadius: 8,
+    innerRadius: 5.5,
+    idlePillWidth: 52,
+    chevronWidth: 12.5,
+    chevronHeight: 15.5,
+    idealChevronGap: 9.5,
+    textPaddingLeft: 70,
+    textPaddingRight: 18,
     fontSizeClass: "text-[14px]",
   },
   md: {
     height: 58,
-    inset: 3.5,
-    outerRadius: 14,
-    innerRadius: 10.5,
-    idlePillWidth: 70,
-    chevronWidth: 16,
-    chevronHeight: 20,
-    chevronGap: 12,
-    textPaddingLeft: 92,
-    textPaddingRight: 24,
+    inset: 3,
+    outerRadius: 10,
+    innerRadius: 7,
+    idlePillWidth: 62,
+    chevronWidth: 14.5,
+    chevronHeight: 18.5,
+    idealChevronGap: 11,
+    textPaddingLeft: 86,
+    textPaddingRight: 22,
     fontSizeClass: "text-[17px]",
   },
   lg: {
     height: 68,
-    inset: 4,
-    outerRadius: 16,
-    innerRadius: 12,
-    idlePillWidth: 82,
-    chevronWidth: 19,
-    chevronHeight: 23.5,
-    chevronGap: 14,
-    textPaddingLeft: 108,
-    textPaddingRight: 28,
-    fontSizeClass: "text-[19px]",
+    inset: 3.5,
+    outerRadius: 11.5,
+    innerRadius: 8,
+    idlePillWidth: 74,
+    chevronWidth: 17.5,
+    chevronHeight: 22,
+    idealChevronGap: 13,
+    textPaddingLeft: 102,
+    textPaddingRight: 26,
+    fontSizeClass: "text-[20px]",
   },
 };
 
-// 10-dot chevron matrix on a 4-column x 5-row grid (matches reference geometry)
+// 10-dot chevron matrix on a 4-column x 5-row grid (exact reference geometry)
 const CHEVRON_DOTS: ReadonlyArray<{ col: number; row: number }> = [
   { col: 0, row: 0 },
   { col: 1, row: 0 },
@@ -176,12 +221,18 @@ export const MatrixChevronButton = React.forwardRef<
 >(function MatrixChevronButton(
   {
     label = "Book a demo",
+    accentColor,
+    chassisColor = "#1d2129",
     accent = "lime",
     size = "md",
+    trigger = "click",
     waveSpeed = 1.6,
     expanded: controlledExpanded,
+    onExpandedChange,
     disabled = false,
     className,
+    onClick,
+    onKeyDown,
     onMouseEnter,
     onMouseLeave,
     onFocus,
@@ -196,15 +247,31 @@ export const MatrixChevronButton = React.forwardRef<
   const prefersReducedMotion = useReducedMotion();
 
   const innerRef = useRef<HTMLButtonElement | null>(null);
+  const [isClickedOpen, setIsClickedOpen] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
   const [buttonWidth, setButtonWidth] = useState<number>(0);
 
-  const palette = ACCENT_PALETTES[accent] ?? ACCENT_PALETTES.lime;
+  const resolvedAccentHex =
+    accentColor ?? ACCENT_PRESET_HEX[accent] ?? ACCENT_PRESET_HEX.lime;
+
+  const palette = useMemo(
+    () => buildDynamicPalette(resolvedAccentHex, chassisColor),
+    [resolvedAccentHex, chassisColor]
+  );
+
   const metrics = SIZE_METRICS[size] ?? SIZE_METRICS.md;
   const clampedWaveSpeed = Number.isFinite(waveSpeed)
     ? Math.min(Math.max(waveSpeed, 0.5), 5)
     : 1.6;
+
+  useEffect(() => {
+    if (disabled) {
+      setIsClickedOpen(false);
+      setIsHovered(false);
+      setIsFocused(false);
+    }
+  }, [disabled]);
 
   useEffect(() => {
     const node = innerRef.current;
@@ -236,27 +303,41 @@ export const MatrixChevronButton = React.forwardRef<
     !disabled &&
     (controlledExpanded !== undefined
       ? controlledExpanded
-      : isHovered || isFocused);
+      : trigger === "hover"
+        ? isHovered || isFocused
+        : isClickedOpen);
 
-  // Align Chevron #1 dead-center inside the idle left pill and fill any button width evenly
-  const chevronPaddingLeft = (metrics.idlePillWidth - metrics.chevronWidth) / 2;
-  const pitch = metrics.chevronWidth + metrics.chevronGap;
-  const availableInnerWidth = Math.max(
-    buttonWidth - metrics.inset * 2,
-    metrics.idlePillWidth + pitch * 6
+  // Guaranteed symmetrical left/right margins + even chevron spacing for any label width
+  const sideMargin = (metrics.idlePillWidth - metrics.chevronWidth) / 2;
+  const fallbackInnerWidth =
+    sideMargin * 2 + metrics.chevronWidth * 7 + metrics.idealChevronGap * 6;
+  const expandedInnerWidth =
+    buttonWidth > 0
+      ? Math.max(metrics.idlePillWidth, buttonWidth - metrics.inset * 2)
+      : fallbackInnerWidth;
+
+  const usableSpan = Math.max(
+    metrics.chevronWidth,
+    expandedInnerWidth - sideMargin * 2
   );
+  const idealPitch = metrics.chevronWidth + metrics.idealChevronGap;
   const chevronCount = Math.max(
-    7,
-    Math.floor(
-      (availableInnerWidth - chevronPaddingLeft * 2 + metrics.chevronGap) /
-        pitch
-    )
+    2,
+    Math.round((usableSpan + metrics.idealChevronGap) / idealPitch)
   );
+  const dynamicGap =
+    chevronCount > 1
+      ? Math.max(
+          4,
+          (usableSpan - chevronCount * metrics.chevronWidth) /
+            (chevronCount - 1)
+        )
+      : 0;
 
   const expandedWidth =
     buttonWidth > 0
-      ? Math.max(metrics.idlePillWidth, buttonWidth - metrics.inset * 2)
-      : "calc(100% - 7px)";
+      ? expandedInnerWidth
+      : `calc(100% - ${metrics.inset * 2}px)`;
 
   const keyframesName = `mcb-wave-${safeId}`;
 
@@ -330,26 +411,46 @@ export const MatrixChevronButton = React.forwardRef<
         type={type}
         disabled={disabled}
         aria-label={label}
+        aria-pressed={trigger === "click" ? isExpanded : undefined}
         whileTap={
           disabled || prefersReducedMotion ? undefined : { scale: 0.985 }
         }
         transition={{ duration: 0.12 }}
+        onClick={(e) => {
+          if (!disabled && trigger === "click") {
+            const next = !isExpanded;
+            if (controlledExpanded === undefined) {
+              setIsClickedOpen(next);
+            }
+            onExpandedChange?.(next);
+          }
+          onClick?.(e);
+        }}
+        onKeyDown={(e) => {
+          if (e.key === "Escape" && trigger === "click" && isExpanded) {
+            if (controlledExpanded === undefined) {
+              setIsClickedOpen(false);
+            }
+            onExpandedChange?.(false);
+          }
+          onKeyDown?.(e);
+        }}
         onMouseEnter={(e) => {
-          setIsHovered(true);
+          if (trigger === "hover") setIsHovered(true);
           onMouseEnter?.(e);
         }}
         onMouseLeave={(e) => {
-          setIsHovered(false);
+          if (trigger === "hover") setIsHovered(false);
           onMouseLeave?.(e);
         }}
         onFocus={(e) => {
-          if (e.target.matches(":focus-visible")) {
+          if (trigger === "hover" && e.target.matches(":focus-visible")) {
             setIsFocused(true);
           }
           onFocus?.(e);
         }}
         onBlur={(e) => {
-          setIsFocused(false);
+          if (trigger === "hover") setIsFocused(false);
           onBlur?.(e);
         }}
         style={{
@@ -357,13 +458,15 @@ export const MatrixChevronButton = React.forwardRef<
           borderRadius: metrics.outerRadius,
           paddingLeft: metrics.textPaddingLeft,
           paddingRight: metrics.textPaddingRight,
+          backgroundColor: palette.chassisHex,
+          color: palette.labelColor,
+          ["--tw-ring-color" as string]: palette.focusRingColor,
         }}
         className={cn(
           "relative z-10 inline-flex select-none items-center justify-center overflow-hidden",
-          "bg-[#1d2129] text-white font-semibold tracking-[-0.015em] whitespace-nowrap",
+          "font-bold tracking-[-0.015em] whitespace-nowrap",
           "ring-1 ring-inset ring-white/[0.06] dark:ring-white/[0.12]",
           "outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-          palette.focusRing,
           disabled ? "cursor-not-allowed opacity-55" : "cursor-pointer",
           metrics.fontSizeClass,
           className
@@ -402,68 +505,85 @@ export const MatrixChevronButton = React.forwardRef<
             }}
           />
 
-          {/* Anchored row of dot-matrix chevrons uncovered during expansion */}
+          {/* Symmetrical row of dot-matrix chevrons anchored to Chevron #1's idle center */}
           <span
             className="absolute inset-y-0 left-0 flex items-center"
             style={{
-              paddingLeft: chevronPaddingLeft,
-              gap: metrics.chevronGap,
+              width: expandedInnerWidth,
+              paddingLeft: sideMargin,
+              paddingRight: sideMargin,
+              gap: dynamicGap,
             }}
           >
-            {Array.from({ length: chevronCount }).map((_, chevronIdx) => (
-              <svg
-                key={chevronIdx}
-                width={metrics.chevronWidth}
-                height={metrics.chevronHeight}
-                viewBox="0 0 22 28"
-                fill="none"
-                className="shrink-0 overflow-visible"
-              >
-                {CHEVRON_DOTS.map(({ col, row }, dotIdx) => {
-                  const cx = 3 + col * 5.3;
-                  const cy = 3.4 + row * 5.3;
-                  // Continuous left-to-right phase across chevrons AND dot columns
-                  const phaseFraction =
-                    (chevronIdx + col * 0.14) / Math.max(chevronCount, 7);
-                  const delaySeconds = -(
-                    (1 - (phaseFraction % 1)) *
-                    clampedWaveSpeed
-                  );
-
-                  return (
-                    <g key={dotIdx}>
-                      {/* Subtle recessed luminous rim behind each dot */}
-                      <circle
-                        cx={cx}
-                        cy={cy}
-                        r={2.55}
-                        fill={palette.dotGlow}
-                      />
-                      <circle
-                        cx={cx}
-                        cy={cy}
-                        r={2.05}
-                        fill={palette.dotActive}
-                        stroke={palette.dotDimStroke}
-                        strokeWidth={0.55}
-                        strokeOpacity={0}
-                        style={
-                          prefersReducedMotion || disabled
-                            ? undefined
-                            : {
-                                animationName: keyframesName,
-                                animationDuration: `${clampedWaveSpeed}s`,
-                                animationTimingFunction: "ease-in-out",
-                                animationIterationCount: "infinite",
-                                animationDelay: `${delaySeconds.toFixed(3)}s`,
-                              }
+            {Array.from({ length: chevronCount }).map((_, chevronIdx) => {
+              const isSecondary = chevronIdx > 0;
+              return (
+                <motion.svg
+                  key={chevronIdx}
+                  width={metrics.chevronWidth}
+                  height={metrics.chevronHeight}
+                  viewBox="0 0 21 26"
+                  fill="none"
+                  initial={false}
+                  animate={{
+                    opacity: isSecondary ? (isExpanded ? 1 : 0) : 1,
+                  }}
+                  transition={
+                    prefersReducedMotion
+                      ? { duration: 0 }
+                      : {
+                          duration: isExpanded ? 0.14 : 0.1,
+                          delay: isExpanded ? Math.min(chevronIdx * 0.02, 0.12) : 0,
                         }
-                      />
-                    </g>
-                  );
-                })}
-              </svg>
-            ))}
+                  }
+                  className="shrink-0 overflow-visible"
+                >
+                  {CHEVRON_DOTS.map(({ col, row }, dotIdx) => {
+                    const cx = 3 + col * 5.0;
+                    const cy = 3.0 + row * 5.0;
+                    // Continuous left-to-right phase across chevrons AND dot columns
+                    const phaseFraction =
+                      (chevronIdx + col * 0.14) / Math.max(chevronCount, 2);
+                    const delaySeconds = -(
+                      (1 - (phaseFraction % 1)) *
+                      clampedWaveSpeed
+                    );
+
+                    return (
+                      <g key={dotIdx}>
+                        {/* Subtle recessed luminous rim behind each dot */}
+                        <circle
+                          cx={cx}
+                          cy={cy}
+                          r={2.65}
+                          fill={palette.dotGlow}
+                        />
+                        <circle
+                          cx={cx}
+                          cy={cy}
+                          r={2.2}
+                          fill={palette.dotActive}
+                          stroke={palette.dotDimStroke}
+                          strokeWidth={0.55}
+                          strokeOpacity={0}
+                          style={
+                            prefersReducedMotion || disabled
+                              ? undefined
+                              : {
+                                  animationName: keyframesName,
+                                  animationDuration: `${clampedWaveSpeed}s`,
+                                  animationTimingFunction: "ease-in-out",
+                                  animationIterationCount: "infinite",
+                                  animationDelay: `${delaySeconds.toFixed(3)}s`,
+                                }
+                          }
+                        />
+                      </g>
+                    );
+                  })}
+                </motion.svg>
+              );
+            })}
           </span>
         </motion.span>
       </motion.button>
