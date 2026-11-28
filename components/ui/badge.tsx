@@ -16,7 +16,7 @@ const badgeVariants = cva(
         outline:
           "border border-border text-foreground",
         eyebrow:
-          "rounded-none border border-border bg-muted/60 px-1.5 py-0 font-mono text-[10px] uppercase tracking-wider text-muted-foreground",
+          "rounded-none border border-border bg-muted/60 px-1.5 py-0 font-sans text-[10px] uppercase tracking-wider text-muted-foreground",
         blue:
           "border border-sky-500/20 bg-sky-500/10 text-sky-600 dark:text-sky-400",
         success:

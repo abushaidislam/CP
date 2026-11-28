@@ -403,7 +403,7 @@ export function ComponentHub({
   return (
       <div className="flex flex-col min-h-screen w-full bg-background text-foreground font-sans selection:bg-primary/20 selection:text-foreground">
         {/* 1. Top Navigation Bar with Pure Icon Action Buttons */}
-        <header className="studio-glass-header sticky top-0 z-20 flex h-14 shrink-0 items-center justify-between border-b border-border px-4 sm:px-6 select-none">
+        <header className="studio-glass-header sticky top-0 z-40 flex h-14 shrink-0 items-center justify-between border-b border-border px-4 sm:px-6 select-none">
           {/* Brand / Title & Workspace Eyebrow */}
           <div className="flex items-center gap-2.5">
             <AppLogo size="md" priority />
@@ -411,7 +411,7 @@ export function ComponentHub({
               <h1 className="font-sans font-semibold text-sm sm:text-base tracking-tight text-foreground m-0">
                 Component Studio
               </h1>
-              <Badge variant="eyebrow" className="rounded-none">
+              <Badge variant="eyebrow" className="rounded-none font-sans">
                 21ST WORKSPACE
               </Badge>
             </div>
@@ -664,7 +664,7 @@ export function ComponentHub({
                   {/* Integrated Architectural Filtered Header Bar */}
                   <div className="studio-toolbar-surface flex items-center justify-between border border-b-0 border-border px-4 py-2.5 rounded-none">
                     <div className="flex items-center gap-2.5">
-                      <span className="font-mono text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                      <span className="font-sans text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
                         {searchQuery.trim() ? "SEARCH QUERY" : "COMPONENT LIBRARY"}
                       </span>
                       <span className="text-border select-none">/</span>
