@@ -1,7 +1,7 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-28T15:15:56.335Z",
-  "totalComponents": 98,
+  "updatedAt": "2026-11-28T15:16:04.159Z",
+  "totalComponents": 97,
   "components": [
     {
       "id": "pocket-assistant-cards",
@@ -1907,26 +1907,6 @@
         "manifest.json"
       ],
       "dependencies": []
-    },
-    {
-      "id": "live-ping-status-pill",
-      "slug": "live-ping-status-pill",
-      "name": "Live Telemetry Health Pill",
-      "description": "Real-time service health pill with animated beacon ping, latency counter, and status indicator.",
-      "category": "Badges",
-      "isBuiltIn": true,
-      "updatedAt": 1700000000000,
-      "lastRepoSyncAt": 1795870486318,
-      "path": "registry/components/live-ping-status-pill",
-      "files": [
-        "component.tsx",
-        "default.tsx",
-        "index.css",
-        "manifest.json"
-      ],
-      "dependencies": [
-        "lucide-react"
-      ]
     },
     {
       "id": "metric-badge",
