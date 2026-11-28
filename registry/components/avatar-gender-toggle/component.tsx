@@ -2,10 +2,7 @@
 
 import React, { useCallback, useId, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
-
-function cn(...classes: Array<string | false | null | undefined>): string {
-  return classes.filter(Boolean).join(" ");
-}
+import { cn } from "@/lib/utils";
 
 export type AvatarGenderValue = "female" | "male";
 export type AvatarGenderToggleSize = "sm" | "md" | "lg";
@@ -249,7 +246,7 @@ export const AvatarGenderToggle = React.forwardRef<
       aria-disabled={disabled || undefined}
       onKeyDown={handleKeyDown}
       className={cn(
-        "inline-flex items-center select-none",
+        "inline-flex items-center select-none tabular-nums",
         metrics.gapClass,
         disabled && "opacity-60 pointer-events-none",
         className
@@ -640,7 +637,7 @@ export const AvatarGenderToggle = React.forwardRef<
             disabled={disabled}
             onClick={() => selectValue("female")}
             className={cn(
-              "relative text-left font-extrabold tracking-tight leading-none rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-4 focus-visible:ring-[#cb662b] dark:focus-visible:ring-zinc-300 dark:focus-visible:ring-offset-zinc-950",
+              "relative text-left font-extrabold tracking-tight leading-none tabular-nums rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-4 focus-visible:ring-[#cb662b] dark:focus-visible:ring-zinc-300 dark:focus-visible:ring-offset-zinc-950",
               metrics.labelTextClass,
               !disabled && "cursor-pointer"
             )}
@@ -671,7 +668,7 @@ export const AvatarGenderToggle = React.forwardRef<
             disabled={disabled}
             onClick={() => selectValue("male")}
             className={cn(
-              "relative text-left font-extrabold tracking-tight leading-none rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-4 focus-visible:ring-[#cb662b] dark:focus-visible:ring-zinc-300 dark:focus-visible:ring-offset-zinc-950",
+              "relative text-left font-extrabold tracking-tight leading-none tabular-nums rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-4 focus-visible:ring-[#cb662b] dark:focus-visible:ring-zinc-300 dark:focus-visible:ring-offset-zinc-950",
               metrics.labelTextClass,
               !disabled && "cursor-pointer"
             )}

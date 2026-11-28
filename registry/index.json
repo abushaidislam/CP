@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-28T14:51:45.294Z",
+  "updatedAt": "2026-11-28T14:55:54.322Z",
   "totalComponents": 99,
   "components": [
     {
@@ -10,8 +10,8 @@
       "description": "An expressive vertical avatar toggle where an illustrated face slides between female and male states with morphing bangs, hair color crossfades, synchronized vertical-wipe labels, and subtle idle micro-animations.",
       "category": "Forms",
       "isBuiltIn": false,
-      "updatedAt": 1795877498190,
-      "lastRepoSyncAt": 1795877504843,
+      "updatedAt": 1795877567462,
+      "lastRepoSyncAt": 1795877754036,
       "path": "registry/components/avatar-gender-toggle",
       "files": [
         "component.tsx",
