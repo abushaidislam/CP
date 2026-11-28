@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-28T14:02:47.542Z",
+  "updatedAt": "2026-11-28T14:03:37.815Z",
   "totalComponents": 97,
   "components": [
     {
@@ -10,13 +10,15 @@
       "description": "Architectural 3-column integration showcase grid where hovering or focusing each card triggers a 60fps radial dot-matrix canvas wave, crossfading monochrome wireframe marks into full-color emblems with an optical lift and label reveal.",
       "category": "Cards",
       "isBuiltIn": false,
-      "updatedAt": 1795874567307,
-      "lastRepoSyncAt": 1795874567307,
+      "updatedAt": 1795874611226,
+      "lastRepoSyncAt": 1795874617475,
       "path": "registry/components/matrix-reveal-grid",
       "files": [
         "component.tsx",
         "default.tsx",
-        "manifest.json"
+        "index.css",
+        "manifest.json",
+        "preview.png"
       ],
       "dependencies": [
         "framer-motion"
@@ -50,8 +52,8 @@
       "description": "A Swiss-modernist modular 3x8 kinetic numeral specimen where solid rectangular bars elastically stretch and swim across the grid to morph seamlessly between digits 0-9.",
       "category": "Widgets",
       "isBuiltIn": false,
-      "updatedAt": 1795867120058,
-      "lastRepoSyncAt": 1795867128853,
+      "updatedAt": 1795867907360,
+      "lastRepoSyncAt": 1795867914639,
       "path": "registry/components/kinetic-numeral",
       "files": [
         "component.tsx",
@@ -1814,7 +1816,7 @@
       "category": "Heroes",
       "isBuiltIn": true,
       "updatedAt": 1700000000000,
-      "lastRepoSyncAt": 1795756539149,
+      "lastRepoSyncAt": 1795870486318,
       "path": "registry/components/aurora-ambient-hero",
       "files": [
         "component.tsx",
@@ -1834,7 +1836,7 @@
       "category": "Cards",
       "isBuiltIn": true,
       "updatedAt": 1700000000000,
-      "lastRepoSyncAt": 1795756539149,
+      "lastRepoSyncAt": 1795870486318,
       "path": "registry/components/bento-metric-grid",
       "files": [
         "component.tsx",
@@ -1854,7 +1856,7 @@
       "category": "Heroes",
       "isBuiltIn": true,
       "updatedAt": 1700000000000,
-      "lastRepoSyncAt": 1795756539149,
+      "lastRepoSyncAt": 1795870486318,
       "path": "registry/components/ink-orbit-hero",
       "files": [
         "component.tsx",
@@ -1872,7 +1874,7 @@
       "category": "Badges",
       "isBuiltIn": true,
       "updatedAt": 1700000000000,
-      "lastRepoSyncAt": 1795756539149,
+      "lastRepoSyncAt": 1795870486318,
       "path": "registry/components/live-ping-status-pill",
       "files": [
         "component.tsx",
@@ -1892,7 +1894,7 @@
       "category": "Badges",
       "isBuiltIn": true,
       "updatedAt": 1700000000000,
-      "lastRepoSyncAt": 1795756539149,
+      "lastRepoSyncAt": 1795870486318,
       "path": "registry/components/metric-badge",
       "files": [
         "component.tsx",
@@ -1912,7 +1914,7 @@
       "category": "Buttons",
       "isBuiltIn": true,
       "updatedAt": 1700000000000,
-      "lastRepoSyncAt": 1795756539149,
+      "lastRepoSyncAt": 1795870486318,
       "path": "registry/components/neon-glow-button",
       "files": [
         "component.tsx",
@@ -1932,7 +1934,7 @@
       "category": "Buttons",
       "isBuiltIn": true,
       "updatedAt": 1700000000000,
-      "lastRepoSyncAt": 1795756539149,
+      "lastRepoSyncAt": 1795870486318,
       "path": "registry/components/shimmer-button",
       "files": [
         "component.tsx",
@@ -1953,7 +1955,7 @@
       "category": "Cards",
       "isBuiltIn": true,
       "updatedAt": 1700000000000,
-      "lastRepoSyncAt": 1795756539149,
+      "lastRepoSyncAt": 1795870486318,
       "path": "registry/components/spotlight-card",
       "files": [
         "component.tsx",
