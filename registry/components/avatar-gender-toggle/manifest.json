@@ -6,8 +6,8 @@
   "category": "Forms",
   "isBuiltIn": false,
   "createdAt": 1795701831943,
-  "updatedAt": 1795757768596,
-  "lastRepoSyncAt": 1795757775171,
+  "updatedAt": 1795877498190,
+  "lastRepoSyncAt": 1795877504843,
   "dependencies": [
     "framer-motion"
   ],
