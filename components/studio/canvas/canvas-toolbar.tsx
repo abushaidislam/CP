@@ -42,8 +42,6 @@ import {
   MoreHorizontal,
   Check,
   Camera,
-  Download,
-  Copy,
   Video,
   SlidersHorizontal,
 } from "lucide-react";
@@ -406,151 +404,48 @@ export function CanvasToolbar({
           </TooltipContent>
         </Tooltip>
 
-        {/* Unified Snapshot & Card Thumbnail Studio Menu */}
-        <DropdownMenu>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="icon-sm"
-                  disabled={isCapturingSnapshot}
-                  aria-label="Capture preview snapshot"
-                  className={cn(
-                    "studio-icon-btn relative hidden @[360px]:inline-flex size-7 rounded-none border-border/80 bg-background/70 transition-colors",
-                    captureSuccess
-                      ? "text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border-emerald-500/40"
-                      : "text-muted-foreground hover:text-foreground"
-                  )}
-                >
-                  {isCapturingSnapshot ? (
-                    <Loader2 className="size-3.5 animate-spin text-primary" />
-                  ) : captureSuccess ? (
-                    <Check className="size-3.5 text-emerald-500" />
-                  ) : (
-                    <Camera className="size-3.5" />
-                  )}
-                  {currentPreviewImage &&
-                    !captureSuccess &&
-                    !isCapturingSnapshot && (
-                      <span
-                        className="absolute top-1 right-1 size-1.5 rounded-full bg-emerald-500"
-                        aria-hidden="true"
-                      />
-                    )}
-                  <span className="sr-only">Capture preview snapshot</span>
-                </Button>
-              </DropdownMenuTrigger>
-            </TooltipTrigger>
-            <TooltipContent side="bottom" className="font-sans text-xs">
-              {captureSuccess
-                ? toastMessage || "Snapshot captured!"
-                : isCapturingSnapshot
-                ? "Capturing preview snapshot..."
-                : "Snapshot & Card Thumbnail Studio"}
-            </TooltipContent>
-          </Tooltip>
-
-          <DropdownMenuContent
-            align="end"
-            className="w-72 rounded-none p-0 font-sans border-border/80"
-          >
-            {/* Header + Live Thumbnail Preview Card */}
-            <div className="p-3 bg-muted/25 border-b border-border/60 space-y-2.5">
-              <div className="flex items-center justify-between gap-2">
-                <div>
-                  <div className="text-xs font-semibold text-foreground font-sans">
-                    Snapshot &amp; Card Thumbnail
-                  </div>
-                  <div className="text-[11px] text-muted-foreground font-sans">
-                    Syncs with Component Hub &amp;{" "}
-                    <span className="font-mono text-[10px] text-foreground/80">
-                      preview.png
-                    </span>
-                  </div>
-                </div>
-                <Badge
-                  variant="outline"
-                  className={cn(
-                    "rounded-none text-[10px] px-1.5 py-0 h-5 font-sans",
-                    currentPreviewImage
-                      ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-                      : "border-border/70 text-muted-foreground"
-                  )}
-                >
-                  {currentPreviewImage ? "Saved" : "Auto"}
-                </Badge>
-              </div>
-
-              {/* Mini Thumbnail Preview */}
-              <div className="relative h-24 w-full overflow-hidden border border-border/70 bg-background/90 flex items-center justify-center">
-                {currentPreviewImage ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={currentPreviewImage}
-                    alt="Current component card thumbnail"
-                    className="h-full w-full object-cover object-center"
+        {/* Direct Capture & Framing Modal Trigger */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="outline"
+              size="icon-sm"
+              onClick={() => onCaptureSnapshot("thumbnail")}
+              disabled={isCapturingSnapshot}
+              aria-label="Capture preview snapshot"
+              className={cn(
+                "studio-icon-btn relative hidden @[360px]:inline-flex size-7 rounded-none border-border/80 bg-background/70 transition-colors",
+                captureSuccess
+                  ? "text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border-emerald-500/40"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              {isCapturingSnapshot ? (
+                <Loader2 className="size-3.5 animate-spin text-primary" />
+              ) : captureSuccess ? (
+                <Check className="size-3.5 text-emerald-500" />
+              ) : (
+                <Camera className="size-3.5" />
+              )}
+              {currentPreviewImage &&
+                !captureSuccess &&
+                !isCapturingSnapshot && (
+                  <span
+                    className="absolute top-1 right-1 size-1.5 rounded-none bg-emerald-500"
+                    aria-hidden="true"
                   />
-                ) : (
-                  <div className="flex flex-col items-center justify-center gap-1 text-center px-3">
-                    <Camera className="size-4 text-muted-foreground/60" />
-                    <span className="text-[11px] text-muted-foreground font-sans">
-                      No custom thumbnail captured yet
-                    </span>
-                  </div>
                 )}
-              </div>
-            </div>
-
-            <div className="p-1">
-              <DropdownMenuItem
-                onClick={() => onCaptureSnapshot("thumbnail")}
-                disabled={isCapturingSnapshot}
-                className="flex items-start gap-2.5 rounded-none py-2 px-2.5 text-xs cursor-pointer font-sans"
-              >
-                <Camera className="size-3.5 mt-0.5 text-primary shrink-0" />
-                <div className="flex flex-col gap-0.5">
-                  <span className="font-medium text-foreground">
-                    Update Card &amp; Repo Thumbnail
-                  </span>
-                  <span className="text-[11px] text-muted-foreground">
-                    Save live view to Hub card &amp;{" "}
-                    <span className="font-mono text-[10px]">preview.png</span>
-                  </span>
-                </div>
-              </DropdownMenuItem>
-
-              <DropdownMenuSeparator />
-
-              <DropdownMenuItem
-                onClick={() => onCaptureSnapshot("copy")}
-                disabled={isCapturingSnapshot}
-                className="flex items-center gap-2.5 rounded-none py-1.5 px-2.5 text-xs cursor-pointer font-sans"
-              >
-                <Copy className="size-3.5 text-muted-foreground shrink-0" />
-                <span>Copy Snapshot PNG to Clipboard</span>
-              </DropdownMenuItem>
-
-              <DropdownMenuItem
-                onClick={() => onCaptureSnapshot("download")}
-                disabled={isCapturingSnapshot}
-                className="flex items-center gap-2.5 rounded-none py-1.5 px-2.5 text-xs cursor-pointer font-sans"
-              >
-                <Download className="size-3.5 text-muted-foreground shrink-0" />
-                <span>Download PNG File</span>
-              </DropdownMenuItem>
-
-              <DropdownMenuItem
-                onClick={() => onCaptureSnapshot("both")}
-                disabled={isCapturingSnapshot}
-                className="flex items-center gap-2.5 rounded-none py-1.5 px-2.5 text-xs cursor-pointer font-sans"
-              >
-                <Check className="size-3.5 text-muted-foreground shrink-0" />
-                <span>Capture, Copy &amp; Download All</span>
-              </DropdownMenuItem>
-            </div>
-          </DropdownMenuContent>
-        </DropdownMenu>
+              <span className="sr-only">Capture preview snapshot</span>
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" className="font-sans text-xs">
+            {captureSuccess
+              ? toastMessage || "Thumbnail updated!"
+              : isCapturingSnapshot
+              ? "Capturing preview snapshot..."
+              : "Capture & frame thumbnail / export PNG"}
+          </TooltipContent>
+        </Tooltip>
 
         {/* 16:9 60fps Video Capture Side Panel Toggle */}
         <Tooltip>
@@ -655,23 +550,7 @@ export function CanvasToolbar({
               className="flex items-center gap-2 rounded-none text-xs cursor-pointer font-sans"
             >
               <Camera className="size-3.5" />
-              <span>Update Card &amp; Repo Thumbnail</span>
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => onCaptureSnapshot("download")}
-              disabled={isCapturingSnapshot}
-              className="flex items-center gap-2 rounded-none text-xs cursor-pointer font-sans"
-            >
-              <Download className="size-3.5" />
-              <span>Download PNG only</span>
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => onCaptureSnapshot("copy")}
-              disabled={isCapturingSnapshot}
-              className="flex items-center gap-2 rounded-none text-xs cursor-pointer font-sans"
-            >
-              <Copy className="size-3.5" />
-              <span>Copy image to clipboard</span>
+              <span>Capture &amp; Frame Snapshot...</span>
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={onOpenRecordingModal}

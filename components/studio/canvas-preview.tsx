@@ -5,7 +5,6 @@ import dynamic from "next/dynamic";
 import { useShallow } from "zustand/react/shallow";
 import {
   useStudioStore,
-  DEFAULT_TEMPLATE_PREVIEWS,
   StudioViewport,
   CanvasBackground,
   PreviewTheme,
@@ -23,6 +22,7 @@ import {
 import { DemoControlsPanel } from "./demo-controls-panel";
 import { CanvasToolbar } from "./canvas/canvas-toolbar";
 import { SandboxHydrationOverlay } from "./canvas/sandbox-hydration-overlay";
+import { ThumbnailSelectionDialog } from "./thumbnail-selection-dialog";
 import { cn } from "@/lib/utils";
 
 const VideoStudioWorkspace = dynamic(
@@ -125,12 +125,13 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
   const [isCapturingSnapshot, setIsCapturingSnapshot] = useState(false);
   const [captureSuccess, setCaptureSuccess] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [pendingThumbnail, setPendingThumbnail] = useState<{ id: string; image: string } | null>(null);
+  const pendingThumbnailRef = useRef<{ id: string; image: string } | null>(null);
   const pendingCaptureActionRef = useRef<
     "thumbnail" | "both" | "download" | "copy" | null
   >(null);
   const captureTimeoutRef = useRef<NodeJS.Timeout | number | null>(null);
   const toastTimeoutRef = useRef<NodeJS.Timeout | number | null>(null);
-  const autoCapturedIdsRef = useRef<Set<string>>(new Set());
 
   const activeVariantId =
     activeVariantByTemplate?.[currentTemplateId] || "default";
@@ -329,15 +330,27 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
     }
   };
 
-  const showQuickToast = (msg: string) => {
-    setToastMessage(msg);
-    if (toastTimeoutRef.current) {
-      clearTimeout(toastTimeoutRef.current);
-    }
-    toastTimeoutRef.current = setTimeout(() => {
-      setToastMessage(null);
-    }, 2400);
-  };
+  const showQuickToast = useCallback(
+    (
+      msg: string,
+      options?: { markCaptureSuccess?: boolean; durationMs?: number }
+    ) => {
+      if (options?.markCaptureSuccess) {
+        setCaptureSuccess(true);
+      }
+      setToastMessage(msg);
+      if (toastTimeoutRef.current) {
+        clearTimeout(toastTimeoutRef.current);
+      }
+      toastTimeoutRef.current = setTimeout(() => {
+        if (options?.markCaptureSuccess) {
+          setCaptureSuccess(false);
+        }
+        setToastMessage(null);
+      }, options?.durationMs ?? 2400);
+    },
+    []
+  );
 
   const handleCopyBakedDemoCode = () => {
     const rawDemo = files["default.tsx"] || files["demo.tsx"] || "";
@@ -577,27 +590,6 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
             pushDemoPropsToIframe(controlOverridesRef.current);
           }
 
-          // Auto-capture preview thumbnail once if this custom/MCP component has no real previewImage yet
-          const activeComp = useStudioStore.getState().userComponents?.[currentTemplateId];
-          const isPlaceholderPreview =
-            !activeComp?.previewImage ||
-            activeComp.previewImage === "./preview.png" ||
-            activeComp.previewImage === DEFAULT_TEMPLATE_PREVIEWS["blank"];
-          if (
-            activeComp &&
-            !activeComp.isBuiltIn &&
-            isPlaceholderPreview &&
-            !autoCapturedIdsRef.current.has(currentTemplateId) &&
-            iframeRef.current?.contentWindow
-          ) {
-            autoCapturedIdsRef.current.add(currentTemplateId);
-            setTimeout(() => {
-              iframeRef.current?.contentWindow?.postMessage(
-                { type: "CAPTURE_PREVIEW", componentId: currentTemplateId },
-                "*"
-              );
-            }, 900);
-          }
         }
         if (event.data.type === "RUNTIME_ERROR") {
           setHydrationStage("error");
@@ -621,25 +613,30 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
           if (event.data.dataUrl) {
             const dataUrl = event.data.dataUrl as string;
             const targetId = event.data.componentId || currentTemplateId;
-            updateComponentPreview(targetId, dataUrl);
-
             const requestedAction =
               pendingCaptureActionRef.current || "thumbnail";
             pendingCaptureActionRef.current = null;
 
             if (requestedAction === "thumbnail") {
-              const targetComp =
-                useStudioStore.getState().userComponents?.[targetId];
-              if (
-                targetComp &&
-                (targetComp.savedInRepo || !targetComp.isBuiltIn) &&
-                dataUrl.startsWith("data:image/png;base64,")
-              ) {
-                void useStudioStore.getState().saveComponentToProjectRepo?.({
-                  componentId: targetId,
-                });
-              }
+              const staged = { id: targetId, image: dataUrl };
+              pendingThumbnailRef.current = staged;
+              setPendingThumbnail(staged);
+              showQuickToast("Select the area for your thumbnail", {
+                durationMs: 2600,
+              });
+              window.dispatchEvent(
+                new CustomEvent("studio:preview-captured", {
+                  detail: {
+                    componentId: targetId,
+                    dataUrl: null,
+                    pendingSelection: true,
+                  },
+                })
+              );
+              return;
             }
+
+            updateComponentPreview(targetId, dataUrl);
 
             if (requestedAction === "both" || requestedAction === "download") {
               try {
@@ -676,24 +673,16 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
               }
             }
 
-            setCaptureSuccess(true);
             const message =
               requestedAction === "both"
                 ? "Snapshot downloaded & copied"
                 : requestedAction === "download"
                 ? "Snapshot PNG downloaded"
-                : requestedAction === "copy"
-                ? "Snapshot copied to clipboard"
-                : "Card & Repo thumbnail updated";
-            setToastMessage(message);
-
-            if (toastTimeoutRef.current) {
-              clearTimeout(toastTimeoutRef.current);
-            }
-            toastTimeoutRef.current = setTimeout(() => {
-              setCaptureSuccess(false);
-              setToastMessage(null);
-            }, 2600);
+                : "Snapshot copied to clipboard";
+            showQuickToast(message, {
+              markCaptureSuccess: true,
+              durationMs: 2600,
+            });
           }
 
           window.dispatchEvent(
@@ -728,6 +717,7 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
     updateComponentPreview,
     currentTemplateId,
     pushDemoPropsToIframe,
+    showQuickToast,
   ]);
 
   useEffect(() => {
@@ -903,6 +893,48 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
           />
         ) : (
           <>
+            <ThumbnailSelectionDialog
+              image={pendingThumbnail?.image || null}
+              fileNameBase={pendingThumbnail?.id || currentTemplateId || "component"}
+              open={Boolean(pendingThumbnail)}
+              onOpenChange={(open) => {
+                if (!open) {
+                  const cancelled = pendingThumbnailRef.current;
+                  pendingThumbnailRef.current = null;
+                  setPendingThumbnail(null);
+                  if (cancelled) {
+                    window.dispatchEvent(
+                      new CustomEvent("studio:preview-captured", {
+                        detail: {
+                          componentId: cancelled.id,
+                          dataUrl: null,
+                          cancelled: true,
+                        },
+                      })
+                    );
+                  }
+                }
+              }}
+              onConfirm={(croppedImage) => {
+                const active = pendingThumbnailRef.current || pendingThumbnail;
+                pendingThumbnailRef.current = null;
+                setPendingThumbnail(null);
+                if (!active) return;
+                updateComponentPreview(active.id, croppedImage);
+                showQuickToast(
+                  "Thumbnail saved. Push to publish it with the component.",
+                  { markCaptureSuccess: true, durationMs: 3000 }
+                );
+                window.dispatchEvent(
+                  new CustomEvent("studio:preview-captured", {
+                    detail: {
+                      componentId: active.id,
+                      dataUrl: croppedImage,
+                    },
+                  })
+                );
+              }}
+            />
             <div
               className={`flex-1 min-w-0 relative overflow-auto p-4 md:p-6 flex items-center justify-center transition-colors duration-250 ease-smooth-out ${getCanvasBackgroundClass(
                 canvasBg,

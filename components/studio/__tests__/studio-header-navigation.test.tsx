@@ -475,7 +475,22 @@ describe("StudioHeader Navigation & Route Integration", () => {
   });
 
   describe("CanvasPreview Integration", () => {
-    it("should handle PREVIEW_CAPTURED message and update store with snapshot dataUrl", () => {
+    const findElementWithProp = (node: any, propName: string): any => {
+      if (!node || typeof node !== "object") return null;
+      if (node.props && typeof node.props[propName] === "function") return node;
+      const children = node.props?.children;
+      if (Array.isArray(children)) {
+        for (const child of children) {
+          const found = findElementWithProp(child, propName);
+          if (found) return found;
+        }
+      } else if (children) {
+        return findElementWithProp(children, propName);
+      }
+      return null;
+    };
+
+    it("should stage PREVIEW_CAPTURED for framing, reject untrusted origins, and update store on dialog confirm", () => {
       const mockIframeRef = {
         current: {
           contentWindow: {
@@ -485,13 +500,14 @@ describe("StudioHeader Navigation & Route Integration", () => {
       };
 
       // Call CanvasPreview directly to register hook effects with the test dispatcher
-      CanvasPreview({ iframeRef: mockIframeRef as any });
+      const tree = CanvasPreview({ iframeRef: mockIframeRef as any });
       runEffects();
 
       const messageHandler = listeners["message"]?.[0];
       expect(messageHandler).toBeDefined();
 
-      const sampleDataUrl = "data:image/svg+xml;base64,PHN2Zz5wb2xsPC9zdmc+";
+      const sampleDataUrl = "data:image/png;base64,PHN2Zz5wb2xsPC9zdmc+";
+      const croppedDataUrl = "data:image/png;base64,CROPPED_THUMBNAIL";
 
       // Verify messages from an untrusted source are rejected
       messageHandler({
@@ -506,7 +522,7 @@ describe("StudioHeader Navigation & Route Integration", () => {
         useStudioStore.getState().userComponents["custom-neon-button"].previewImage
       ).not.toBe("data:image/png;base64,EVIL");
 
-      // Verify messages from the active preview iframe contentWindow are accepted
+      // Verify trusted PREVIEW_CAPTURED stages selection without prematurely saving
       messageHandler({
         source: mockIframeRef.current.contentWindow,
         data: {
@@ -516,14 +532,47 @@ describe("StudioHeader Navigation & Route Integration", () => {
         },
       });
 
-      // Verify store updated with snapshot dataUrl
-      const component = useStudioStore.getState().userComponents["custom-neon-button"];
-      expect(component.previewImage).toBe(sampleDataUrl);
+      expect(
+        useStudioStore.getState().userComponents["custom-neon-button"].previewImage
+      ).toBeUndefined();
 
-      // Verify custom event studio:preview-captured was dispatched
-      const capturedEvent = dispatchedEvents.find((e) => e.type === "studio:preview-captured");
+      const pendingEvent = dispatchedEvents.find(
+        (e) => e.type === "studio:preview-captured" && e.detail?.pendingSelection
+      );
+      expect(pendingEvent).toBeDefined();
+      expect(pendingEvent.detail.dataUrl).toBeNull();
+
+      // Confirming selection in ThumbnailSelectionDialog updates store and emits final dataUrl
+      const selectionDialog = findElementWithProp(tree, "onConfirm");
+      expect(selectionDialog).toBeDefined();
+      selectionDialog.props.onConfirm(croppedDataUrl);
+
+      const component = useStudioStore.getState().userComponents["custom-neon-button"];
+      expect(component.previewImage).toBe(croppedDataUrl);
+
+      const capturedEvent = dispatchedEvents.find(
+        (e) => e.type === "studio:preview-captured" && e.detail?.dataUrl === croppedDataUrl
+      );
       expect(capturedEvent).toBeDefined();
-      expect(capturedEvent.detail.dataUrl).toBe(sampleDataUrl);
+
+      // Cancelling another staged capture emits cancelled: true without overwriting previewImage
+      messageHandler({
+        source: mockIframeRef.current.contentWindow,
+        data: {
+          type: "PREVIEW_CAPTURED",
+          componentId: "custom-neon-button",
+          dataUrl: sampleDataUrl,
+        },
+      });
+      selectionDialog.props.onOpenChange(false);
+
+      expect(
+        useStudioStore.getState().userComponents["custom-neon-button"].previewImage
+      ).toBe(croppedDataUrl);
+      const cancelledEvent = dispatchedEvents.find(
+        (e) => e.type === "studio:preview-captured" && e.detail?.cancelled === true
+      );
+      expect(cancelledEvent).toBeDefined();
     });
 
     it("should forward CAPTURE_PREVIEW postMessage to iframe contentWindow when studio:request-preview-capture event occurs", () => {
