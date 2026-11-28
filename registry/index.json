@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-28T14:34:42.152Z",
+  "updatedAt": "2026-11-28T14:38:52.702Z",
   "totalComponents": 99,
   "components": [
     {
@@ -10,13 +10,15 @@
       "description": "Interactive Social Sign-On (SSO) feature card with staggered stepped OAuth provider conveyor tracks, a hover-illuminated cyan cloud core, and animated dotted circuit data pulses.",
       "category": "Cards",
       "isBuiltIn": false,
-      "updatedAt": 1795876481796,
-      "lastRepoSyncAt": 1795876481796,
+      "updatedAt": 1795876725554,
+      "lastRepoSyncAt": 1795876732359,
       "path": "registry/components/social-sign-on-card",
       "files": [
         "component.tsx",
         "default.tsx",
-        "manifest.json"
+        "index.css",
+        "manifest.json",
+        "preview.png"
       ],
       "dependencies": [
         "framer-motion"
