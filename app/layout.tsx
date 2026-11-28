@@ -1,7 +1,38 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import "./globals.css";
+
+const themeInitScript = String.raw`
+  try {
+    var root = document.documentElement;
+    var theme = localStorage.getItem("cp-app-theme");
+    if (theme !== "light" && theme !== "dark") {
+      var rawStore = localStorage.getItem("21st-component-studio-storage-v3");
+      if (rawStore) {
+        var parsed = JSON.parse(rawStore);
+        var storedTheme = parsed && parsed.state && parsed.state.appTheme;
+        if (storedTheme === "light" || storedTheme === "dark") {
+          theme = storedTheme;
+        }
+      }
+    }
+    if (theme === "light") {
+      root.classList.remove("dark");
+      root.style.colorScheme = "light";
+    } else {
+      root.classList.add("dark");
+      root.style.colorScheme = "dark";
+    }
+  } catch (_) {}
+`;
+
+export const viewport: Viewport = {
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#f8f9fa" },
+    { media: "(prefers-color-scheme: dark)", color: "#050506" },
+  ],
+};
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -67,6 +98,10 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} dark min-h-full antialiased`}
     >
       <head>
+        <script
+          type="text/javascript"
+          dangerouslySetInnerHTML={{ __html: themeInitScript }}
+        />
         <link rel="preconnect" href="https://cdn.tailwindcss.com" crossOrigin="" />
         <link rel="preconnect" href="https://esm.sh" crossOrigin="" />
         <link rel="dns-prefetch" href="https://cdn.tailwindcss.com" />

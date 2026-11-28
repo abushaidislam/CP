@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { AppLogo } from "@/components/ui/app-logo";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 import {
   Tooltip,
   TooltipContent,
@@ -28,8 +29,6 @@ import { cn } from "@/lib/utils";
 import {
   Plus,
   Search,
-  Sun,
-  Moon,
   FolderSearch,
   RotateCcw,
   ArrowLeft,
@@ -95,8 +94,6 @@ export function ComponentHub({
     setRepoSyncModalOpen,
     hydrateFromProjectRepo,
     seedRepoSummaries,
-    appTheme,
-    setAppTheme,
   } = useStudioStore(
     useShallow((state) => ({
       userComponents: state.userComponents,
@@ -118,8 +115,6 @@ export function ComponentHub({
       setRepoSyncModalOpen: state.setRepoSyncModalOpen,
       hydrateFromProjectRepo: state.hydrateFromProjectRepo,
       seedRepoSummaries: state.seedRepoSummaries,
-      appTheme: state.appTheme,
-      setAppTheme: state.setAppTheme,
     }))
   );
 
@@ -132,7 +127,6 @@ export function ComponentHub({
   const [selectedCategory, setSelectedCategory] = useState<CategoryType>(initialCategory);
   const [visibleComponentCount, setVisibleComponentCount] = useState(COMPONENTS_PER_BATCH);
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
-  const [isDark, setIsDark] = useState(true);
   const [isShortcutsOpen, setIsShortcutsOpen] = useState(false);
   const [isMcpConnectOpen, setIsMcpConnectOpen] = useState(false);
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
@@ -149,18 +143,6 @@ export function ComponentHub({
     return () => window.removeEventListener("keydown", onKeyDown);
   }, []);
 
-  // Sync app theme with document element
-  useEffect(() => {
-    const root = document.documentElement;
-    const shouldBeDark = appTheme === "dark";
-    setIsDark(shouldBeDark);
-    if (shouldBeDark) {
-      root.classList.add("dark");
-    } else {
-      root.classList.remove("dark");
-    }
-  }, [appTheme]);
-
   // Seed/hydrate saved repo components post-render
   useEffect(() => {
     if (initialSummaries && initialSummaries.length > 0) {
@@ -173,19 +155,6 @@ export function ComponentHub({
     }
     setHasHydratedSummaries(true);
   }, [hydrateFromProjectRepo, initialSummaries, seedRepoSummaries]);
-
-  const toggleTheme = () => {
-    const nextTheme = appTheme === "dark" ? "light" : "dark";
-    setAppTheme(nextTheme);
-    const root = document.documentElement;
-    if (nextTheme === "dark") {
-      root.classList.add("dark");
-      setIsDark(true);
-    } else {
-      root.classList.remove("dark");
-      setIsDark(false);
-    }
-  };
 
   // When initialSummaries is passed from SSR (app/page.tsx), use deterministic initial store state
   // on both server and initial client hydration pass so persisted localStorage state never causes a hydration mismatch.
@@ -546,22 +515,7 @@ export function ComponentHub({
               </TooltipContent>
             </Tooltip>
 
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={toggleTheme}
-                  className="studio-icon-btn size-8 rounded-none border-border/80 bg-card/70 text-muted-foreground hover:text-foreground"
-                  aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
-                >
-                  {isDark ? <Sun className="size-4" aria-hidden="true" /> : <Moon className="size-4" aria-hidden="true" />}
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom" className="font-sans text-xs">
-                {isDark ? "Switch to light mode" : "Switch to dark mode"}
-              </TooltipContent>
-            </Tooltip>
+            <ThemeToggle />
 
             <Tooltip>
               <TooltipTrigger asChild>

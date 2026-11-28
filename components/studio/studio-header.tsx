@@ -9,6 +9,8 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { AppLogo } from "@/components/ui/app-logo";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
+import { useAppTheme } from "@/lib/hooks/use-app-theme";
 import {
   Tooltip,
   TooltipContent,
@@ -91,8 +93,6 @@ export function StudioHeader() {
     setSecurityModalOpen,
     isRecordingModalOpen,
     setRecordingModalOpen,
-    appTheme,
-    setAppTheme,
     setCreateComponentDialogOpen,
     setEditComponentDialogOpen,
   } = useStudioStore(
@@ -122,14 +122,12 @@ export function StudioHeader() {
       setSecurityModalOpen: state.setSecurityModalOpen,
       isRecordingModalOpen: state.isRecordingModalOpen,
       setRecordingModalOpen: state.setRecordingModalOpen,
-      appTheme: state.appTheme,
-      setAppTheme: state.setAppTheme,
       setCreateComponentDialogOpen: state.setCreateComponentDialogOpen,
       setEditComponentDialogOpen: state.setEditComponentDialogOpen,
     }))
   );
 
-  const [isDark, setIsDark] = useState(true);
+  const { isDark, toggleTheme } = useAppTheme();
   const [isCapturing, setIsCapturing] = useState(false);
   const [capturedSuccess, setCapturedSuccess] = useState(false);
   const [isMcpConnectOpen, setIsMcpConnectOpen] = useState(false);
@@ -221,30 +219,6 @@ export function StudioHeader() {
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [setSaveCheckpointDialogOpen, saveComponentToProjectRepo, currentTemplateId]);
-
-  React.useEffect(() => {
-    const root = document.documentElement;
-    const shouldBeDark = appTheme === "dark";
-    setIsDark(shouldBeDark);
-    if (shouldBeDark) {
-      root.classList.add("dark");
-    } else {
-      root.classList.remove("dark");
-    }
-  }, [appTheme]);
-
-  const toggleTheme = () => {
-    const nextTheme = appTheme === "dark" ? "light" : "dark";
-    setAppTheme(nextTheme);
-    const root = document.documentElement;
-    if (nextTheme === "dark") {
-      root.classList.add("dark");
-      setIsDark(true);
-    } else {
-      root.classList.remove("dark");
-      setIsDark(false);
-    }
-  };
 
   const currentTemplate =
     DEFAULT_TEMPLATES.find((t) => t.id === currentTemplateId) ||
@@ -920,31 +894,7 @@ export function StudioHeader() {
 
         {/* Theme Switcher (Icon-Only) */}
         <div className="hidden sm:flex items-center">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={toggleTheme}
-                aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
-                className="studio-icon-btn size-8 rounded-none border-border/80 bg-card/60 text-muted-foreground hover:text-foreground"
-              >
-                <motion.div
-                  key={isDark ? "sun" : "moon"}
-                  initial={{ scale: 0.5, rotate: -30, opacity: 0 }}
-                  animate={{ scale: 1, rotate: 0, opacity: 1 }}
-                  transition={{ duration: 0.18, ease: "easeOut" }}
-                  className="flex items-center justify-center"
-                >
-                  {isDark ? <Sun className="size-3.5" /> : <Moon className="size-3.5" />}
-                </motion.div>
-                <span className="sr-only">Toggle theme</span>
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom" className="font-sans text-xs">
-              {isDark ? "Switch to light mode" : "Switch to dark mode"}
-            </TooltipContent>
-          </Tooltip>
+          <ThemeToggle className="bg-card/60" iconClassName="size-3.5" />
         </div>
 
         {/* Unified Project Repo Sync, Export & Publish Button */}
@@ -1238,7 +1188,7 @@ export function StudioHeader() {
 
               {/* Theme Toggle (< sm screens) */}
               <DropdownMenuItem
-                onClick={toggleTheme}
+                onClick={(e) => toggleTheme(e)}
                 className="gap-2.5 cursor-pointer rounded-none font-sans text-xs sm:hidden"
               >
                 {isDark ? <Sun className="size-3.5" /> : <Moon className="size-3.5" />}
