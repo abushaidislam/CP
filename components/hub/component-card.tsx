@@ -84,65 +84,6 @@ function renderCategoryIcon(category?: string, customClassName?: string) {
   }
 }
 
-type ThumbnailFraming = "cover-center" | "cover-top" | "contain-ambient";
-
-function computeThumbnailFraming(
-  naturalWidth: number,
-  naturalHeight: number
-): ThumbnailFraming {
-  if (!naturalWidth || !naturalHeight) return "cover-center";
-  const ratio = naturalWidth / naturalHeight;
-  // Tall full-page / vertical captures: anchor to top so hero content stays crisp & full-width
-  if (ratio < 0.95) return "cover-top";
-  // Wide full-width grids / multi-column bentos: keep full width visible with ambient backdrop
-  if (ratio > 1.85 && ratio <= 2.25) return "contain-ambient";
-  // Standard full-bleed viewports (0.95..1.85) & ultra-wide centered widget strips (>2.25): edge-to-edge cover
-  return "cover-center";
-}
-
-function isSolidBlankImage(img: HTMLImageElement): boolean {
-  try {
-    if (!img.complete || img.naturalWidth < 4 || img.naturalHeight < 4) {
-      return false;
-    }
-    const src = img.currentSrc || img.src || "";
-    // Only pixel-sample same-origin / data-URI raster previews (never SVGs or cross-origin URLs)
-    if (src.startsWith("data:image/svg+xml")) return false;
-    if (
-      src.startsWith("http://") ||
-      src.startsWith("https://")
-    ) {
-      if (typeof window !== "undefined" && !src.startsWith(window.location.origin)) {
-        return false;
-      }
-    }
-    const canvas = document.createElement("canvas");
-    const sw = 64;
-    const sh = 48;
-    canvas.width = sw;
-    canvas.height = sh;
-    const ctx = canvas.getContext("2d", { willReadFrequently: true });
-    if (!ctx) return false;
-    ctx.drawImage(img, 0, 0, sw, sh);
-    const data = ctx.getImageData(0, 0, sw, sh).data;
-    const r0 = data[0];
-    const g0 = data[1];
-    const b0 = data[2];
-    let maxDelta = 0;
-    for (let i = 4; i < data.length; i += 4) {
-      const delta =
-        Math.abs(data[i] - r0) +
-        Math.abs(data[i + 1] - g0) +
-        Math.abs(data[i + 2] - b0);
-      if (delta > maxDelta) maxDelta = delta;
-      if (maxDelta > 16) return false;
-    }
-    return true;
-  } catch {
-    return false;
-  }
-}
-
 function ComponentCardInner({
   component,
   priority = false,
@@ -156,9 +97,7 @@ function ComponentCardInner({
   const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
   const [failedPreviewSrcs, setFailedPreviewSrcs] = useState<string[]>([]);
   const [cachedBrowserPreview, setCachedBrowserPreview] = useState<string>();
-  const [isImageLoaded, setIsImageLoaded] = useState(false);
-  const [framing, setFraming] = useState<ThumbnailFraming>("cover-center");
-  const imgRef = useRef<HTMLImageElement | null>(null);
+  const [loadedPreviewSrc, setLoadedPreviewSrc] = useState<string>();
   const [isDownloadingZip, setIsDownloadingZip] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<{
@@ -307,36 +246,7 @@ function ComponentCardInner({
 
   const hasValidPreviewImage = Boolean(effectivePreviewImage);
 
-  const inspectLoadedImage = useCallback(
-    (img: HTMLImageElement, src: string) => {
-      if (!img.naturalWidth || !img.naturalHeight) return;
-      if (isSolidBlankImage(img)) {
-        markPreviewFailed(src);
-        return;
-      }
-      setFraming(computeThumbnailFraming(img.naturalWidth, img.naturalHeight));
-      setIsImageLoaded(true);
-    },
-    [markPreviewFailed]
-  );
-
-  // Sync framing & blank-capture check when cached images finish loading before hydration
-  useEffect(() => {
-    const img = imgRef.current;
-    if (!img || !effectivePreviewImage) {
-      setIsImageLoaded(false);
-      return;
-    }
-    if (img.complete) {
-      if (img.naturalWidth > 0) {
-        inspectLoadedImage(img, effectivePreviewImage);
-      } else {
-        markPreviewFailed(effectivePreviewImage);
-      }
-    } else {
-      setIsImageLoaded(false);
-    }
-  }, [effectivePreviewImage, inspectLoadedImage, markPreviewFailed]);
+  const isImageLoaded = loadedPreviewSrc === effectivePreviewImage;
 
   return (
     <>
@@ -353,7 +263,7 @@ function ComponentCardInner({
             }
           }}
           aria-label={`Preview ${component.name}`}
-          className="aspect-[4/3] w-full rounded-none bg-zinc-950 border-b border-border/70 relative overflow-hidden flex items-center justify-center cursor-pointer group/canvas transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
+          className="aspect-[4/3] w-full rounded-none bg-gradient-to-br from-zinc-950 via-zinc-900 to-zinc-950 border-b border-border/70 relative overflow-hidden flex items-center justify-center cursor-pointer group/canvas transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
         >
           {/* Subtle shimmer while network thumbnail is decoding */}
           {hasValidPreviewImage && !isImageLoaded && (
@@ -363,24 +273,10 @@ function ComponentCardInner({
             />
           )}
 
-          {/* Ambient blurred backdrop for wide full-width bento/grid captures so edges never show harsh black letterbox bars */}
-          {hasValidPreviewImage && framing === "contain-ambient" && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={effectivePreviewImage}
-              alt=""
-              aria-hidden="true"
-              decoding="async"
-              referrerPolicy="no-referrer"
-              className="pointer-events-none select-none absolute inset-0 z-[6] w-full h-full object-cover object-center scale-110 blur-xl opacity-35"
-            />
-          )}
-
-          {/* Static Component Preview Image (Smart Aspect-Ratio Edge-to-Edge Framing) */}
+          {/* Keep the full captured composition visible in a consistent thumbnail frame. */}
           {hasValidPreviewImage ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
-              ref={imgRef}
               src={effectivePreviewImage}
               alt={component.name}
               loading={priority ? "eager" : "lazy"}
@@ -389,7 +285,7 @@ function ComponentCardInner({
               referrerPolicy="no-referrer"
               onLoad={(e) => {
                 if (effectivePreviewImage) {
-                  inspectLoadedImage(e.currentTarget, effectivePreviewImage);
+                  setLoadedPreviewSrc(effectivePreviewImage);
                 }
               }}
               onError={() => {
@@ -398,10 +294,8 @@ function ComponentCardInner({
                 }
               }}
               className={cn(
-                "relative z-10 w-full h-full pointer-events-none select-none transition-transform duration-300 group-hover:scale-105 opacity-100",
-                framing === "cover-top" && "object-cover object-top",
-                framing === "cover-center" && "object-cover object-center",
-                framing === "contain-ambient" && "object-contain object-center"
+                "relative z-10 w-full h-full object-contain pointer-events-none select-none transition-transform duration-300 group-hover:scale-[1.02]",
+                isImageLoaded ? "opacity-100" : "opacity-0"
               )}
             />
           ) : (
