@@ -6,12 +6,12 @@
   "category": "Cards",
   "isBuiltIn": false,
   "createdAt": 1795874861643,
-  "updatedAt": 1795874861643,
-  "lastRepoSyncAt": 1795874861643,
+  "updatedAt": 1795874958005,
+  "lastRepoSyncAt": 1795874964945,
   "dependencies": [
     "framer-motion"
   ],
-  "version": "v1",
+  "previewImage": "./preview.png",
   "variants": [
     {
       "id": "var-default",
