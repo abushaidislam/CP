@@ -1,8 +1,29 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-28T14:39:55.414Z",
+  "updatedAt": "2026-11-28T15:12:43.281Z",
   "totalComponents": 99,
   "components": [
+    {
+      "id": "pocket-assistant-cards",
+      "slug": "pocket-assistant-cards",
+      "name": "PocketAssistantCards",
+      "description": "An interactive 3-column stitched pocket deck with 9 swappable AI note cards, drag-to-pull spring physics, live recipe scalers & checklists, clickable trail map waypoints, essay structure highlighters, and optional Web Audio paper-slide SFX.",
+      "category": "Cards",
+      "isBuiltIn": false,
+      "updatedAt": 1795878753965,
+      "lastRepoSyncAt": 1795878761582,
+      "path": "registry/components/pocket-assistant-cards",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "index.css",
+        "manifest.json",
+        "preview.png"
+      ],
+      "dependencies": [
+        "framer-motion"
+      ]
+    },
     {
       "id": "social-sign-on-card",
       "slug": "social-sign-on-card",
@@ -104,27 +125,6 @@
       "updatedAt": 1795874682478,
       "lastRepoSyncAt": 1795874688675,
       "path": "registry/components/matrix-reveal-grid",
-      "files": [
-        "component.tsx",
-        "default.tsx",
-        "index.css",
-        "manifest.json",
-        "preview.png"
-      ],
-      "dependencies": [
-        "framer-motion"
-      ]
-    },
-    {
-      "id": "pocket-assistant-cards",
-      "slug": "pocket-assistant-cards",
-      "name": "PocketAssistantCards",
-      "description": "An interactive 3-column stitched pocket deck with 9 swappable AI note cards, drag-to-pull spring physics, live recipe scalers & checklists, clickable trail map waypoints, essay structure highlighters, and optional Web Audio paper-slide SFX.",
-      "category": "Cards",
-      "isBuiltIn": false,
-      "updatedAt": 1795873383294,
-      "lastRepoSyncAt": 1795873390165,
-      "path": "registry/components/pocket-assistant-cards",
       "files": [
         "component.tsx",
         "default.tsx",
