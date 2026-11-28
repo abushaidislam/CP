@@ -11,6 +11,7 @@ const settings = {
   subheadline: "Wherever you are",
   interactive: true,
   autoPeek: false,
+  soundEnabled: false,
   theme: "auto",
 };
 
@@ -40,6 +41,7 @@ export default function PocketAssistantCardsDemo(
         }
         interactive={Boolean(config.interactive)}
         autoPeek={Boolean(config.autoPeek)}
+        soundEnabled={Boolean(config.soundEnabled)}
         theme={theme}
       />
     </div>

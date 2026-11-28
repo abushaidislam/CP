@@ -1,17 +1,17 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-28T12:13:33.954Z",
+  "updatedAt": "2026-11-28T13:43:10.539Z",
   "totalComponents": 96,
   "components": [
     {
       "id": "pocket-assistant-cards",
       "slug": "pocket-assistant-cards",
       "name": "PocketAssistantCards",
-      "description": "A tactile 3-column stitched pocket card showcase with tilted AI assistant notes that smoothly peek on hover and pull out on click for full readability.",
+      "description": "An interactive 3-column stitched pocket deck with 9 swappable AI note cards, drag-to-pull spring physics, live recipe scalers & checklists, clickable trail map waypoints, essay structure highlighters, and optional Web Audio paper-slide SFX.",
       "category": "Cards",
       "isBuiltIn": false,
-      "updatedAt": 1795868006312,
-      "lastRepoSyncAt": 1795868013696,
+      "updatedAt": 1795873383294,
+      "lastRepoSyncAt": 1795873390165,
       "path": "registry/components/pocket-assistant-cards",
       "files": [
         "component.tsx",
@@ -31,8 +31,8 @@
       "description": "A Swiss-modernist modular 3x8 kinetic numeral specimen where solid rectangular bars elastically stretch and swim across the grid to morph seamlessly between digits 0-9.",
       "category": "Widgets",
       "isBuiltIn": false,
-      "updatedAt": 1795867120058,
-      "lastRepoSyncAt": 1795867128853,
+      "updatedAt": 1795867907360,
+      "lastRepoSyncAt": 1795867914639,
       "path": "registry/components/kinetic-numeral",
       "files": [
         "component.tsx",
@@ -1795,7 +1795,7 @@
       "category": "Heroes",
       "isBuiltIn": true,
       "updatedAt": 1700000000000,
-      "lastRepoSyncAt": 1795756539149,
+      "lastRepoSyncAt": 1795870486318,
       "path": "registry/components/aurora-ambient-hero",
       "files": [
         "component.tsx",
@@ -1815,7 +1815,7 @@
       "category": "Cards",
       "isBuiltIn": true,
       "updatedAt": 1700000000000,
-      "lastRepoSyncAt": 1795756539149,
+      "lastRepoSyncAt": 1795870486318,
       "path": "registry/components/bento-metric-grid",
       "files": [
         "component.tsx",
@@ -1835,7 +1835,7 @@
       "category": "Heroes",
       "isBuiltIn": true,
       "updatedAt": 1700000000000,
-      "lastRepoSyncAt": 1795756539149,
+      "lastRepoSyncAt": 1795870486318,
       "path": "registry/components/ink-orbit-hero",
       "files": [
         "component.tsx",
@@ -1853,7 +1853,7 @@
       "category": "Badges",
       "isBuiltIn": true,
       "updatedAt": 1700000000000,
-      "lastRepoSyncAt": 1795756539149,
+      "lastRepoSyncAt": 1795870486318,
       "path": "registry/components/live-ping-status-pill",
       "files": [
         "component.tsx",
@@ -1873,7 +1873,7 @@
       "category": "Badges",
       "isBuiltIn": true,
       "updatedAt": 1700000000000,
-      "lastRepoSyncAt": 1795756539149,
+      "lastRepoSyncAt": 1795870486318,
       "path": "registry/components/metric-badge",
       "files": [
         "component.tsx",
@@ -1893,7 +1893,7 @@
       "category": "Buttons",
       "isBuiltIn": true,
       "updatedAt": 1700000000000,
-      "lastRepoSyncAt": 1795756539149,
+      "lastRepoSyncAt": 1795870486318,
       "path": "registry/components/neon-glow-button",
       "files": [
         "component.tsx",
@@ -1913,7 +1913,7 @@
       "category": "Buttons",
       "isBuiltIn": true,
       "updatedAt": 1700000000000,
-      "lastRepoSyncAt": 1795756539149,
+      "lastRepoSyncAt": 1795870486318,
       "path": "registry/components/shimmer-button",
       "files": [
         "component.tsx",
@@ -1934,7 +1934,7 @@
       "category": "Cards",
       "isBuiltIn": true,
       "updatedAt": 1700000000000,
-      "lastRepoSyncAt": 1795756539149,
+      "lastRepoSyncAt": 1795870486318,
       "path": "registry/components/spotlight-card",
       "files": [
         "component.tsx",
