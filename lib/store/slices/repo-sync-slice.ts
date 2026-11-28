@@ -155,11 +155,20 @@ export const createRepoSyncSlice: StudioSliceCreator<RepoSyncSlice> = (
         for (const [id, comp] of Object.entries(nextUserComponents)) {
           if (!comp) continue;
           const cachedImg = previews[id];
+          if (!cachedImg || cachedImg === DEFAULT_TEMPLATE_PREVIEWS["blank"]) {
+            continue;
+          }
           const isPlaceholder =
             !comp.previewImage ||
             comp.previewImage === "./preview.png" ||
             comp.previewImage === DEFAULT_TEMPLATE_PREVIEWS["blank"];
-          if (cachedImg && (isPlaceholder || comp.previewImage !== cachedImg)) {
+          const hasAuthoritativeRepoPreview = Boolean(
+            comp.savedInRepo !== false &&
+              comp.previewImage?.startsWith("/api/repo-sync/preview/")
+          );
+          // Only hydrate from browser cache when the component lacks an authoritative server preview URL
+          // or has unsaved local edits whose captured preview lives in browser cache.
+          if (isPlaceholder || (!hasAuthoritativeRepoPreview && comp.savedInRepo === false && comp.previewImage !== cachedImg)) {
             nextUserComponents[id] = {
               ...comp,
               previewImage: cachedImg,
@@ -200,14 +209,20 @@ export const createRepoSyncSlice: StudioSliceCreator<RepoSyncSlice> = (
 
       for (const summary of summaries) {
         const existing = nextUserComponents[summary.id];
+        const existingIsPlaceholder =
+          !existing?.previewImage ||
+          existing.previewImage === "./preview.png" ||
+          existing.previewImage === DEFAULT_TEMPLATE_PREVIEWS["blank"];
         const resolvedPreview =
           summary.previewImage ||
           getCachedPreviewSync(summary.id) ||
-          existing?.previewImage ||
+          (!existingIsPlaceholder ? existing?.previewImage : undefined) ||
           DEFAULT_TEMPLATE_PREVIEWS[summary.id] ||
           DEFAULT_TEMPLATE_PREVIEWS["blank"];
 
-        setCachedPreviewSync(summary.id, resolvedPreview);
+        if (resolvedPreview && resolvedPreview !== DEFAULT_TEMPLATE_PREVIEWS["blank"]) {
+          setCachedPreviewSync(summary.id, resolvedPreview);
+        }
 
         if (!existing) {
           nextUserComponents[summary.id] = {
@@ -240,7 +255,9 @@ export const createRepoSyncSlice: StudioSliceCreator<RepoSyncSlice> = (
           const needsPreviewUpgrade =
             Boolean(summary.previewImage) &&
             existing.previewImage !== summary.previewImage &&
-            !existing.previewImage?.startsWith("data:image/png;base64,");
+            (existingIsPlaceholder ||
+              shouldUpdateMeta ||
+              !existing.previewImage?.startsWith("data:image/png;base64,"));
 
           if (shouldUpdateMeta || needsPreviewUpgrade || !existing.repoSlug) {
             nextUserComponents[summary.id] = {
@@ -610,6 +627,16 @@ export const createRepoSyncSlice: StudioSliceCreator<RepoSyncSlice> = (
 
       set((s) => {
         const existing = s.userComponents?.[targetId] || compToSave;
+        const resolvedSlug = record?.slug || existing.repoSlug;
+        const nextPreviewImage =
+          resolvedSlug &&
+          (compToSave.previewImage?.startsWith("data:image/png;base64,") ||
+            existing.previewImage?.startsWith("/api/repo-sync/preview/"))
+            ? `/api/repo-sync/preview/${encodeURIComponent(resolvedSlug)}?v=${Math.floor(syncedAt)}`
+            : existing.previewImage;
+        if (nextPreviewImage && nextPreviewImage !== DEFAULT_TEMPLATE_PREVIEWS["blank"]) {
+          setCachedPreviewSync(targetId, nextPreviewImage);
+        }
         return {
           repoSyncStatus: "synced",
           lastRepoSyncError: null,
@@ -628,7 +655,8 @@ export const createRepoSyncSlice: StudioSliceCreator<RepoSyncSlice> = (
             ...s.userComponents,
             [targetId]: {
               ...existing,
-              repoSlug: record?.slug || existing.repoSlug,
+              previewImage: nextPreviewImage,
+              repoSlug: resolvedSlug,
               savedInRepo: true,
               lastRepoSyncAt: syncedAt,
               lastCommitSha: data.commitSha || existing.lastCommitSha,

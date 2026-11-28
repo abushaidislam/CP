@@ -1,12 +1,13 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   DEFAULT_TEMPLATE_PREVIEWS,
   UserComponent,
   useStudioStore,
 } from "@/lib/store/studio-store";
 import { getCachedPreviewSync } from "@/lib/cache/preview-cache";
+import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -83,6 +84,65 @@ function renderCategoryIcon(category?: string, customClassName?: string) {
   }
 }
 
+type ThumbnailFraming = "cover-center" | "cover-top" | "contain-ambient";
+
+function computeThumbnailFraming(
+  naturalWidth: number,
+  naturalHeight: number
+): ThumbnailFraming {
+  if (!naturalWidth || !naturalHeight) return "cover-center";
+  const ratio = naturalWidth / naturalHeight;
+  // Tall full-page / vertical captures: anchor to top so hero content stays crisp & full-width
+  if (ratio < 0.95) return "cover-top";
+  // Wide full-width grids / multi-column bentos: keep full width visible with ambient backdrop
+  if (ratio > 1.85 && ratio <= 2.25) return "contain-ambient";
+  // Standard full-bleed viewports (0.95..1.85) & ultra-wide centered widget strips (>2.25): edge-to-edge cover
+  return "cover-center";
+}
+
+function isSolidBlankImage(img: HTMLImageElement): boolean {
+  try {
+    if (!img.complete || img.naturalWidth < 4 || img.naturalHeight < 4) {
+      return false;
+    }
+    const src = img.currentSrc || img.src || "";
+    // Only pixel-sample same-origin / data-URI raster previews (never SVGs or cross-origin URLs)
+    if (src.startsWith("data:image/svg+xml")) return false;
+    if (
+      src.startsWith("http://") ||
+      src.startsWith("https://")
+    ) {
+      if (typeof window !== "undefined" && !src.startsWith(window.location.origin)) {
+        return false;
+      }
+    }
+    const canvas = document.createElement("canvas");
+    const sw = 64;
+    const sh = 48;
+    canvas.width = sw;
+    canvas.height = sh;
+    const ctx = canvas.getContext("2d", { willReadFrequently: true });
+    if (!ctx) return false;
+    ctx.drawImage(img, 0, 0, sw, sh);
+    const data = ctx.getImageData(0, 0, sw, sh).data;
+    const r0 = data[0];
+    const g0 = data[1];
+    const b0 = data[2];
+    let maxDelta = 0;
+    for (let i = 4; i < data.length; i += 4) {
+      const delta =
+        Math.abs(data[i] - r0) +
+        Math.abs(data[i + 1] - g0) +
+        Math.abs(data[i + 2] - b0);
+      if (delta > maxDelta) maxDelta = delta;
+      if (maxDelta > 16) return false;
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 function ComponentCardInner({
   component,
   priority = false,
@@ -94,8 +154,11 @@ function ComponentCardInner({
   onDeleteDialogOpenChange,
 }: ComponentCardProps) {
   const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
-  const [failedPreviewSrc, setFailedPreviewSrc] = useState<string | null>(null);
+  const [failedPreviewSrcs, setFailedPreviewSrcs] = useState<string[]>([]);
   const [isHydrated, setIsHydrated] = useState(false);
+  const [isImageLoaded, setIsImageLoaded] = useState(false);
+  const [framing, setFraming] = useState<ThumbnailFraming>("cover-center");
+  const imgRef = useRef<HTMLImageElement | null>(null);
   const [isDownloadingZip, setIsDownloadingZip] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<{
@@ -103,7 +166,7 @@ function ComponentCardInner({
     requiresOwnerAuth?: boolean;
   } | null>(null);
 
-  React.useEffect(() => {
+  useEffect(() => {
     setIsHydrated(true);
   }, []);
 
@@ -209,18 +272,68 @@ function ComponentCardInner({
     ? getCachedPreviewSync(component.id)
     : undefined;
   const isBlankPlaceholder =
+    !component.previewImage ||
     component.previewImage === "./preview.png" ||
     component.previewImage === DEFAULT_TEMPLATE_PREVIEWS["blank"];
 
-  const effectivePreviewImage = isBlankPlaceholder
+  const builtInTemplateFallback =
+    DEFAULT_TEMPLATE_PREVIEWS[component.id] &&
+    DEFAULT_TEMPLATE_PREVIEWS[component.id] !== DEFAULT_TEMPLATE_PREVIEWS["blank"]
+      ? DEFAULT_TEMPLATE_PREVIEWS[component.id]
+      : undefined;
+
+  const primaryPreviewImage = isBlankPlaceholder
     ? cachedBrowserPreview || component.previewImage
     : component.previewImage;
 
-  const hasValidPreviewImage = Boolean(
-    effectivePreviewImage &&
-      effectivePreviewImage !== "./preview.png" &&
-      failedPreviewSrc !== effectivePreviewImage
+  const markPreviewFailed = useCallback((src: string) => {
+    if (!src) return;
+    setFailedPreviewSrcs((prev) => (prev.includes(src) ? prev : [...prev, src]));
+  }, []);
+
+  const effectivePreviewImage =
+    primaryPreviewImage &&
+    primaryPreviewImage !== "./preview.png" &&
+    primaryPreviewImage !== DEFAULT_TEMPLATE_PREVIEWS["blank"] &&
+    !failedPreviewSrcs.includes(primaryPreviewImage)
+      ? primaryPreviewImage
+      : builtInTemplateFallback &&
+        !failedPreviewSrcs.includes(builtInTemplateFallback)
+      ? builtInTemplateFallback
+      : undefined;
+
+  const hasValidPreviewImage = Boolean(effectivePreviewImage);
+
+  const inspectLoadedImage = useCallback(
+    (img: HTMLImageElement, src: string) => {
+      if (!img.naturalWidth || !img.naturalHeight) return;
+      if (isSolidBlankImage(img)) {
+        markPreviewFailed(src);
+        return;
+      }
+      setFraming(computeThumbnailFraming(img.naturalWidth, img.naturalHeight));
+      setIsImageLoaded(true);
+    },
+    [markPreviewFailed]
   );
+
+  // Sync framing & blank-capture check when cached images finish loading before hydration
+  useEffect(() => {
+    const img = imgRef.current;
+    if (!img || !effectivePreviewImage) {
+      setIsImageLoaded(false);
+      return;
+    }
+    if (img.complete) {
+      if (img.naturalWidth > 0) {
+        inspectLoadedImage(img, effectivePreviewImage);
+      } else {
+        markPreviewFailed(effectivePreviewImage);
+      }
+    } else {
+      setIsImageLoaded(false);
+    }
+  }, [effectivePreviewImage, inspectLoadedImage, markPreviewFailed]);
 
   return (
     <>
@@ -245,43 +358,96 @@ function ComponentCardInner({
             className="pointer-events-none absolute inset-0 opacity-20 bg-[linear-gradient(to_right,#27272a_1px,transparent_1px),linear-gradient(to_bottom,#27272a_1px,transparent_1px)] bg-[size:24px_24px]"
           />
 
-          {/* Static Component Preview Image (Instant Browser Cache Rendering) */}
-          {hasValidPreviewImage ? (
+          {/* Subtle shimmer while network thumbnail is decoding */}
+          {hasValidPreviewImage && !isImageLoaded && (
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-0 z-[5] bg-zinc-900/50 animate-pulse"
+            />
+          )}
+
+          {/* Ambient blurred backdrop for wide full-width bento/grid captures so edges never show harsh black letterbox bars */}
+          {hasValidPreviewImage && framing === "contain-ambient" && (
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={effectivePreviewImage}
+              alt=""
+              aria-hidden="true"
+              decoding="async"
+              referrerPolicy="no-referrer"
+              className="pointer-events-none select-none absolute inset-0 z-[6] w-full h-full object-cover object-center scale-110 blur-xl opacity-35"
+            />
+          )}
+
+          {/* Static Component Preview Image (Smart Aspect-Ratio Edge-to-Edge Framing) */}
+          {hasValidPreviewImage ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              ref={imgRef}
+              src={effectivePreviewImage}
               alt={component.name}
               loading={priority ? "eager" : "lazy"}
+              fetchPriority={priority ? "high" : "auto"}
               decoding="async"
-              onError={() => setFailedPreviewSrc(effectivePreviewImage || null)}
-              className="relative z-10 w-full h-full object-contain p-5 pointer-events-none select-none transition-transform duration-300 group-hover:scale-105 drop-shadow-md opacity-100"
+              referrerPolicy="no-referrer"
+              onLoad={(e) => {
+                if (effectivePreviewImage) {
+                  inspectLoadedImage(e.currentTarget, effectivePreviewImage);
+                }
+              }}
+              onError={() => {
+                if (effectivePreviewImage) {
+                  markPreviewFailed(effectivePreviewImage);
+                }
+              }}
+              className={cn(
+                "relative z-10 w-full h-full pointer-events-none select-none transition-transform duration-300 group-hover:scale-105 opacity-100",
+                framing === "cover-top" && "object-cover object-top",
+                framing === "cover-center" && "object-cover object-center",
+                framing === "contain-ambient" && "object-contain object-center"
+              )}
             />
           ) : (
-            <div className="relative z-10 flex flex-col items-center justify-center gap-2 select-none pointer-events-none">
-              <div className="flex size-9 items-center justify-center rounded-none bg-zinc-900 border border-zinc-800 text-zinc-400">
-                {renderCategoryIcon(component.category, "size-4 text-zinc-400")}
+            <div className="relative z-10 flex flex-col items-center justify-center gap-2.5 px-6 text-center select-none pointer-events-none">
+              <div className="flex size-10 items-center justify-center rounded-none bg-zinc-900/90 border border-zinc-800 text-zinc-300 shadow-xs">
+                {renderCategoryIcon(component.category, "size-4 text-zinc-300")}
               </div>
-              <Badge
-                variant="outline"
-                className="font-sans text-[10px] text-zinc-400 font-normal px-2 py-0.5 rounded-none border-zinc-800 bg-zinc-900/80"
-              >
-                Preview canvas
-              </Badge>
+              <div className="space-y-1 max-w-[200px]">
+                <p className="truncate font-sans text-xs font-medium text-zinc-200">
+                  {component.name}
+                </p>
+                <Badge
+                  variant="outline"
+                  className="font-sans text-[10px] text-zinc-400 font-normal px-2 py-0.5 rounded-none border-zinc-800 bg-zinc-900/80"
+                >
+                  Preview canvas
+                </Badge>
+              </div>
             </div>
           )}
+
+          {/* Subtle Top Contrast Scrim & Inner Hairline so badges stay legible over light-mode screenshots */}
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-x-0 top-0 h-12 z-[15] bg-gradient-to-b from-black/35 via-black/10 to-transparent"
+          />
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0 z-[15] ring-1 ring-inset ring-white/5"
+          />
 
           {/* Top-Left Category Tag & Repo Sync Status on Stage */}
           <div className="pointer-events-none absolute top-2.5 left-2.5 z-20 flex items-center gap-1.5">
             <Badge
               variant="secondary"
-              className="rounded-none bg-zinc-900/90 text-zinc-300 border border-zinc-800 px-2 py-0.5 text-[10px] font-sans font-medium uppercase tracking-wider backdrop-blur-xs"
+              className="rounded-none bg-zinc-950/85 text-zinc-100 border border-white/15 px-2 py-0.5 text-[10px] font-sans font-medium uppercase tracking-wider backdrop-blur-sm shadow-xs"
             >
               {component.category || "Custom"}
             </Badge>
             {component.savedInRepo && (
               <Badge
                 variant="outline"
-                className="rounded-none bg-emerald-950/90 text-emerald-400 border border-emerald-500/40 px-1.5 py-0.5 text-[9px] font-sans font-medium uppercase tracking-wider backdrop-blur-xs gap-1"
+                className="rounded-none bg-emerald-950/90 text-emerald-300 border border-emerald-500/40 px-1.5 py-0.5 text-[9px] font-sans font-medium uppercase tracking-wider backdrop-blur-sm shadow-xs gap-1"
               >
                 <Check className="size-2.5" />
                 <span>In Repo</span>

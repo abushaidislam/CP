@@ -2,6 +2,7 @@
 
 import React from "react";
 import type { AiChatRole, StudioState } from "@/lib/store/studio-store";
+import type { AiDepthMode, RegistryReferenceMode } from "@/lib/ai/types";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -23,6 +24,7 @@ import {
   ChevronDown,
   ChevronUp,
   Code2,
+  Layers,
   Lock,
   PanelRightClose,
   Play,
@@ -31,7 +33,9 @@ import {
   Unlock,
 } from "lucide-react";
 import {
+  DEPTH_OPTIONS,
   MODEL_OPTIONS,
+  REGISTRY_REF_MODE_OPTIONS,
   ROLE_OPTIONS,
   type AiModelOption,
   type AiRoleOption,
@@ -40,6 +44,9 @@ import {
 export interface AiPanelHeaderProps {
   aiModel: string;
   aiRole: AiChatRole;
+  aiDepthMode: AiDepthMode;
+  registryRefMode: RegistryReferenceMode;
+  pinnedRefsCount: number;
   currentModelObj: AiModelOption;
   currentRoleObj: AiRoleOption;
   autoApplyAiChanges: boolean;
@@ -52,6 +59,9 @@ export interface AiPanelHeaderProps {
   securityTelemetry: StudioState["securityTelemetry"];
   onSelectModel: (model: string) => void;
   onSelectRole: (role: AiChatRole) => void;
+  onSelectDepthMode: (mode: AiDepthMode) => void;
+  onSelectRegistryRefMode: (mode: RegistryReferenceMode) => void;
+  onOpenRegistryPicker: () => void;
   onToggleAutoApply: () => void;
   onTogglePreserveDesign: () => void;
   onToggleGuidelinesDrawer: () => void;
@@ -63,6 +73,9 @@ export interface AiPanelHeaderProps {
 export function AiPanelHeader({
   aiModel,
   aiRole,
+  aiDepthMode,
+  registryRefMode,
+  pinnedRefsCount,
   currentModelObj,
   currentRoleObj,
   autoApplyAiChanges,
@@ -75,6 +88,9 @@ export function AiPanelHeader({
   securityTelemetry,
   onSelectModel,
   onSelectRole,
+  onSelectDepthMode,
+  onSelectRegistryRefMode,
+  onOpenRegistryPicker,
   onToggleAutoApply,
   onTogglePreserveDesign,
   onToggleGuidelinesDrawer,
@@ -200,6 +216,92 @@ export function AiPanelHeader({
                   </DropdownMenuItem>
                 );
               })}
+
+              <DropdownMenuSeparator />
+              <DropdownMenuLabel className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+                Reasoning & Detail Depth
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              {DEPTH_OPTIONS.map((d) => {
+                const DepthIcon = d.icon;
+                return (
+                  <DropdownMenuItem
+                    key={d.id}
+                    onClick={() => onSelectDepthMode(d.id)}
+                    className="flex flex-col items-start gap-1 py-1.5 cursor-pointer rounded-none font-sans"
+                  >
+                    <div className="flex items-center justify-between w-full">
+                      <div className="flex items-center gap-1.5">
+                        <DepthIcon className="size-3.5 text-muted-foreground" />
+                        <span className="font-medium text-xs text-foreground">
+                          {d.name}
+                        </span>
+                        <Badge
+                          variant="secondary"
+                          className="rounded-none text-[9px] py-0 px-1 font-normal font-sans"
+                        >
+                          {d.tag}
+                        </Badge>
+                      </div>
+                      {aiDepthMode === d.id && (
+                        <Check className="size-3.5 text-foreground" />
+                      )}
+                    </div>
+                    <span className="text-[10px] text-muted-foreground leading-snug">
+                      {d.description}
+                    </span>
+                  </DropdownMenuItem>
+                );
+              })}
+
+              <DropdownMenuSeparator />
+              <DropdownMenuLabel className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+                Registry Visual Grounding
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              {REGISTRY_REF_MODE_OPTIONS.map((opt) => {
+                const RefIcon = opt.icon;
+                return (
+                  <DropdownMenuItem
+                    key={opt.id}
+                    onClick={() => onSelectRegistryRefMode(opt.id)}
+                    className="flex flex-col items-start gap-1 py-1.5 cursor-pointer rounded-none font-sans"
+                  >
+                    <div className="flex items-center justify-between w-full">
+                      <div className="flex items-center gap-1.5">
+                        <RefIcon className="size-3.5 text-muted-foreground" />
+                        <span className="font-medium text-xs text-foreground">
+                          {opt.name}
+                        </span>
+                      </div>
+                      {registryRefMode === opt.id && (
+                        <Check className="size-3.5 text-foreground" />
+                      )}
+                    </div>
+                    <span className="text-[10px] text-muted-foreground leading-snug">
+                      {opt.description}
+                    </span>
+                  </DropdownMenuItem>
+                );
+              })}
+
+              <DropdownMenuItem
+                onClick={onOpenRegistryPicker}
+                className="flex items-center justify-between py-1.5 cursor-pointer rounded-none font-sans text-xs text-foreground"
+              >
+                <div className="flex items-center gap-1.5">
+                  <Layers className="size-3.5 text-muted-foreground" />
+                  <span>Browse & Pin Registry Designs...</span>
+                </div>
+                {pinnedRefsCount > 0 && (
+                  <Badge
+                    variant="secondary"
+                    className="rounded-none text-[9px] py-0 px-1 font-sans tabular-nums"
+                  >
+                    {pinnedRefsCount} pinned
+                  </Badge>
+                )}
+              </DropdownMenuItem>
 
               <DropdownMenuSeparator />
               <DropdownMenuLabel className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">

@@ -340,6 +340,8 @@ export const useStudioStore = create<StudioState>()(
         aiPanelWidth: state.aiPanelWidth,
         aiModel: state.aiModel,
         aiRole: state.aiRole,
+        aiDepthMode: state.aiDepthMode,
+        registryRefMode: state.registryRefMode,
         preserveDesignSkill: state.preserveDesignSkill,
         autoApplyAiChanges: state.autoApplyAiChanges,
         variantsByTemplate: state.variantsByTemplate,

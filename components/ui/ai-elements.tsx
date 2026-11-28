@@ -26,7 +26,9 @@ import {
   Slash,
   BookmarkPlus,
   PackagePlus,
+  Layers,
 } from "lucide-react";
+import type { AiReasoningStepCategory } from "@/lib/ai/types";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -59,7 +61,7 @@ export interface ReasoningStep {
   title: string;
   description?: string;
   detail?: string;
-  category?: "context" | "ast" | "audit" | "synthesis" | "verify";
+  category?: AiReasoningStepCategory;
   items?: string[];
   status: "done" | "running" | "pending";
 }
@@ -78,9 +80,12 @@ export interface ReasoningProps {
 function inferStepCategory(
   step: ReasoningStep,
   idx: number
-): "context" | "ast" | "audit" | "synthesis" | "verify" {
+): AiReasoningStepCategory {
   if (step.category) return step.category;
   const text = `${step.title} ${step.description || ""} ${step.detail || ""}`.toLowerCase();
+  if (text.includes("registry") || text.includes("reference") || text.includes("preview.png") || text.includes("visual ground")) {
+    return "reference";
+  }
   if (text.includes("read") || text.includes("workspace") || text.includes("context") || text.includes("file")) {
     return "context";
   }
@@ -90,14 +95,15 @@ function inferStepCategory(
   if (text.includes("audit") || text.includes("standard") || text.includes("21st") || text.includes("compliance") || text.includes("theme") || text.includes("evaluat")) {
     return "audit";
   }
-  if (text.includes("verif") || text.includes("sandbox") || text.includes("diff") || text.includes("compil")) {
+  if (text.includes("verif") || text.includes("sandbox") || text.includes("diff") || text.includes("compil") || text.includes("repair")) {
     return "verify";
   }
   if (text.includes("synthes") || text.includes("draft") || text.includes("generat") || text.includes("modif") || text.includes("code")) {
     return "synthesis";
   }
-  const fallbackOrder: Array<"context" | "ast" | "audit" | "synthesis" | "verify"> = [
+  const fallbackOrder: AiReasoningStepCategory[] = [
     "context",
+    "reference",
     "ast",
     "audit",
     "synthesis",
@@ -106,7 +112,7 @@ function inferStepCategory(
   return fallbackOrder[idx % fallbackOrder.length];
 }
 
-function deriveStepItems(step: ReasoningStep, category: string): string[] {
+function deriveStepItems(step: ReasoningStep, category: AiReasoningStepCategory): string[] {
   if (Array.isArray(step.items) && step.items.length > 0) {
     return step.items;
   }
@@ -131,26 +137,30 @@ function deriveStepItems(step: ReasoningStep, category: string): string[] {
     switch (category) {
       case "context":
         return ["Workspace files loaded", "Context synchronized"];
+      case "reference":
+        return ["Registry index scanned", "Visual craft calibrated"];
       case "ast":
         return ["Exports & JSX tree", "Props interface check"];
       case "audit":
         return ["21st.dev standards", "Tailwind token audit"];
       case "synthesis":
-        return ["Surgical code synthesis", "Type-safe implementation"];
+        return ["Architectural synthesis", "Type-safe implementation"];
       case "verify":
-        return ["Diff verification", "Sandbox compile check"];
+        return ["Sucrase compile check", "Diff verification"];
     }
   }
   return derived.slice(0, 4);
 }
 
 function renderStepCategoryIcon(
-  category: "context" | "ast" | "audit" | "synthesis" | "verify",
+  category: AiReasoningStepCategory,
   className?: string
 ) {
   switch (category) {
     case "context":
       return <FileCode className={cn("size-3.5", className)} />;
+    case "reference":
+      return <Layers className={cn("size-3.5", className)} />;
     case "ast":
       return <Cpu className={cn("size-3.5", className)} />;
     case "audit":
@@ -1567,6 +1577,22 @@ export const DEFAULT_SLASH_COMMANDS: SlashCommandItem[] = [
     action: "chat",
   },
   {
+    command: "/inspire",
+    label: "Elevate UI via Registry Visuals",
+    description: "Pull matching registry preview designs to elevate craft & hierarchy",
+    prompt:
+      "Redesign and elevate the visual craft, surface elevation, typography hierarchy, and micro-interactions of component.tsx inspired by the strongest matching visual references in our component registry.",
+    action: "chat",
+  },
+  {
+    command: "/architect",
+    label: "Deep Architecture & Prop System",
+    description: "Full senior refactor: composable subcomponents, strict props, demo settings",
+    prompt:
+      "Perform a deep architectural upgrade of component.tsx and default.tsx: refine TypeScript props with defaults, optimize state ergonomics, add 21st.dev native const settings demo controls, and handle all edge cases cleanly.",
+    action: "chat",
+  },
+  {
     command: "/a11y",
     label: "WCAG Accessibility & Keyboard Nav",
     description: "Add ARIA attributes, focus-visible rings, and keyboard support",
@@ -1597,6 +1623,11 @@ export interface PromptInputProps {
   onAttachImageClick?: () => void;
   onAttachCodeClick?: () => void;
   onImageFilesPasted?: (files: File[]) => void;
+  // Registry visual reference hooks
+  onOpenRegistryRefsClick?: () => void;
+  registryRefLabel?: string;
+  registryRefActive?: boolean;
+  pinnedRegistryBar?: React.ReactNode;
 }
 
 export function PromptInput({
@@ -1618,6 +1649,10 @@ export function PromptInput({
   onAttachImageClick,
   onAttachCodeClick,
   onImageFilesPasted,
+  onOpenRegistryRefsClick,
+  registryRefLabel,
+  registryRefActive = false,
+  pinnedRegistryBar,
 }: PromptInputProps) {
   const textareaRef = React.useRef<HTMLTextAreaElement>(null);
   const [isDragOver, setIsDragOver] = React.useState(false);
@@ -1931,6 +1966,9 @@ export function PromptInput({
         </div>
       )}
 
+      {/* Pinned Registry Visual References Strip */}
+      {pinnedRegistryBar}
+
       {/* Main Textarea */}
       <Textarea
         ref={textareaRef}
@@ -2005,6 +2043,34 @@ export function PromptInput({
               </TooltipTrigger>
               <TooltipContent side="top" className="font-sans text-xs">
                 Paste external code snippet or style reference
+              </TooltipContent>
+            </Tooltip>
+          )}
+
+          {/* Registry Visual References Picker Trigger */}
+          {onOpenRegistryRefsClick && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={onOpenRegistryRefsClick}
+                  className={cn(
+                    "h-6.5 gap-1.5 px-2 text-[11px] font-normal font-sans rounded-none shrink-0 transition-colors",
+                    registryRefActive
+                      ? "border-primary/45 bg-primary/10 text-foreground hover:bg-primary/15"
+                      : "text-muted-foreground hover:text-foreground bg-background/70 hover:bg-muted border-border/70"
+                  )}
+                >
+                  <Layers className="size-3.5 shrink-0" />
+                  <span className="hidden @[340px]:inline">
+                    {registryRefLabel || "Refs"}
+                  </span>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="top" className="font-sans text-xs">
+                Configure selective Registry visual design references or pin specific components
               </TooltipContent>
             </Tooltip>
           )}

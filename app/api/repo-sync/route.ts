@@ -1145,12 +1145,22 @@ export async function POST(req: NextRequest) {
         });
       }
 
+      let hasPreviewPngFile = Boolean(previewPngBase64);
+      if (!hasPreviewPngFile) {
+        try {
+          const stat = await fs.stat(path.join(compAbsDir, "preview.png"));
+          hasPreviewPngFile = stat.isFile() && stat.size > 0;
+        } catch {
+          hasPreviewPngFile = false;
+        }
+      }
+
       const fileList = [
         "component.tsx",
         "default.tsx",
         "index.css",
         "manifest.json",
-        ...(previewPngBase64 ? ["preview.png"] : []),
+        ...(hasPreviewPngFile ? ["preview.png"] : []),
       ];
 
       inMemoryIndexEntries.push({

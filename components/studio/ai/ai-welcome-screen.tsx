@@ -2,6 +2,7 @@
 
 import React from "react";
 import type { AiChatRole } from "@/lib/store/studio-store";
+import type { AiDepthMode, RegistryReferenceMode } from "@/lib/ai/types";
 import type { GuidelineCheckItem } from "@/lib/sandbox/guideline-linter";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -12,6 +13,7 @@ import {
   CheckCircle2,
   Code2,
   Layers,
+  Palette,
   ShieldCheck,
   SunMoon,
   Wand2,
@@ -21,6 +23,8 @@ import { ROLE_OPTIONS, type AiRoleOption } from "./ai-copilot-constants";
 
 export interface AiWelcomeScreenProps {
   aiRole: AiChatRole;
+  aiDepthMode: AiDepthMode;
+  registryRefMode: RegistryReferenceMode;
   currentRoleObj: AiRoleOption;
   compLinesCount: number;
   hasCompilerError: boolean;
@@ -29,6 +33,7 @@ export interface AiWelcomeScreenProps {
   passPercentage: number;
   failingChecks: GuidelineCheckItem[];
   onSelectRole: (role: AiChatRole) => void;
+  onOpenRegistryPicker: () => void;
   onSubmitPrompt: (
     customPrompt: string,
     action?: "chat" | "autofix" | "audit"
@@ -37,6 +42,8 @@ export interface AiWelcomeScreenProps {
 
 export function AiWelcomeScreen({
   aiRole,
+  aiDepthMode,
+  registryRefMode,
   currentRoleObj,
   compLinesCount,
   hasCompilerError,
@@ -45,6 +52,7 @@ export function AiWelcomeScreen({
   passPercentage,
   failingChecks,
   onSelectRole,
+  onOpenRegistryPicker,
   onSubmitPrompt,
 }: AiWelcomeScreenProps) {
   return (
@@ -69,12 +77,34 @@ export function AiWelcomeScreen({
                 </Badge>
               </div>
               <p className="text-[11px] text-muted-foreground leading-relaxed font-sans mt-0.5">
-                Grounded pairing assistant for React components, Tailwind styling, and Framer Motion springs. Type{" "}
+                Multi-stage engineering copilot with AST analysis, Sucrase compile verification, and selective registry visual grounding. Type{" "}
                 <kbd className="font-mono text-[10px] px-1 py-0.5 border border-border bg-muted/60">
                   /
                 </kbd>{" "}
-                for quick slash commands.
+                for commands.
               </p>
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-1.5 text-[10px] text-muted-foreground font-sans">
+                <span>
+                  {aiDepthMode === "deep" ? "Deep Architecture" : "Standard Fast"}
+                </span>
+                <span aria-hidden="true">·</span>
+                <Button
+                  type="button"
+                  variant="link"
+                  size="sm"
+                  onClick={onOpenRegistryPicker}
+                  className="h-auto p-0 text-[10px] text-foreground/85 hover:text-foreground font-sans underline-offset-2"
+                >
+                  Registry Visuals:{" "}
+                  {registryRefMode === "auto"
+                    ? "Smart Auto"
+                    : registryRefMode === "always"
+                    ? "Always"
+                    : "Off"}
+                </Button>
+                <span aria-hidden="true">·</span>
+                <span>Auto-Verify Build</span>
+              </div>
             </div>
           </div>
         </div>
@@ -280,6 +310,36 @@ export function AiWelcomeScreen({
 
       {/* Container-Responsive Smart Cards Grid (1 col on compact, 2 cols on >= 520px panel width) */}
       <div className="grid grid-cols-1 @[520px]:grid-cols-2 gap-2 w-full">
+        {/* Smart Card 0: Registry-Grounded Visual Craft */}
+        <Button
+          variant="outline"
+          onClick={() =>
+            onSubmitPrompt(
+              "Elevate the visual design, surface depth, typography hierarchy, and interactive polish of component.tsx inspired by the strongest matching visual references in our component registry, and add native const settings demo controls in default.tsx.",
+              "chat"
+            )
+          }
+          className="h-auto w-full @[520px]:col-span-2 flex items-start justify-start gap-2.5 p-3 rounded-none border-border bg-card/60 hover:bg-card hover:border-foreground/40 transition-all duration-150 group text-left whitespace-normal font-sans shadow-none"
+        >
+          <div className="size-7 rounded-none bg-foreground/10 border border-border flex items-center justify-center text-foreground shrink-0 mt-0.5">
+            <Palette className="size-3.5" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center justify-between gap-1">
+              <span className="text-xs font-semibold text-foreground transition-colors truncate">
+                Elevate Visual Craft with Registry References
+              </span>
+              <span className="font-mono text-[9px] uppercase tracking-wider text-muted-foreground shrink-0">
+                MULTIMODAL
+              </span>
+            </div>
+            <div className="text-[11px] font-normal text-muted-foreground leading-normal mt-0.5">
+              Selectively inspects preview images &amp; tokens from registered components to craft a cohesive, production-grade upgrade.
+            </div>
+          </div>
+          <ArrowRight className="size-3.5 text-muted-foreground/40 group-hover:text-foreground group-hover:translate-x-0.5 transition-all shrink-0 mt-1" />
+        </Button>
+
         {/* Smart Card 1: Spring Motion & Micro-interactions */}
         <Button
           variant="outline"

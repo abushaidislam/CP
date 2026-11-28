@@ -135,30 +135,66 @@ export async function readRegistrySummaries(
     sortedDiskEntries = [];
   }
 
-  const diskSummaries: RepoSummaryComponent[] = sortedDiskEntries.map((entry) => {
-    const hasPng =
-      Array.isArray(entry.files) && entry.files.includes("preview.png");
-    const versionStamp = entry.lastRepoSyncAt || entry.updatedAt || 1;
-    return {
-      id: entry.id,
-      repoSlug: entry.slug,
-      repoPath: entry.path || `${COMPONENTS_DIR_REL}/${entry.slug}`,
-      name: entry.name,
-      description: entry.description || "",
-      category: entry.category || "Custom",
-      isBuiltIn: entry.isBuiltIn,
-      createdAt: entry.updatedAt || Date.now(),
-      updatedAt: entry.updatedAt || Date.now(),
-      lastRepoSyncAt: entry.lastRepoSyncAt || entry.updatedAt || Date.now(),
-      dependencies: Array.isArray(entry.dependencies)
-        ? entry.dependencies
-        : [],
-      previewImage: hasPng
-        ? buildPreviewImageUrl(entry.slug, versionStamp)
-        : undefined,
-      filesLoaded: false,
-    };
-  });
+  const diskSummaries: RepoSummaryComponent[] = await Promise.all(
+    sortedDiskEntries.map(async (entry) => {
+      const versionStamp = entry.lastRepoSyncAt || entry.updatedAt || 1;
+      let hasPng =
+        Array.isArray(entry.files) && entry.files.includes("preview.png");
+      let fallbackManifestPreview: string | undefined;
+
+      if (!hasPng) {
+        try {
+          const compDir = resolveSafeComponentDir(cwd, entry.slug);
+          // Self-heal if preview.png actually exists on disk even when index.json omitted it
+          if (await hasNonEmptyFile(path.join(compDir, "preview.png"))) {
+            hasPng = true;
+          } else {
+            const manifestRaw = await fs
+              .readFile(path.join(compDir, "manifest.json"), "utf-8")
+              .catch(() => null);
+            if (manifestRaw) {
+              const parsedManifest = JSON.parse(
+                manifestRaw
+              ) as Partial<RepoComponentManifest>;
+              const candidate = parsedManifest.previewImage;
+              if (
+                typeof candidate === "string" &&
+                candidate.length > 0 &&
+                candidate !== "./preview.png" &&
+                (candidate.startsWith("data:image/") ||
+                  candidate.startsWith("/") ||
+                  candidate.startsWith("https://"))
+              ) {
+                fallbackManifestPreview = candidate;
+              }
+            }
+          }
+        } catch {
+          // Ignore invalid slug or unreadable manifest
+        }
+      }
+
+      return {
+        id: entry.id,
+        repoSlug: entry.slug,
+        repoPath: entry.path || `${COMPONENTS_DIR_REL}/${entry.slug}`,
+        name: entry.name,
+        description: entry.description || "",
+        category: entry.category || "Custom",
+        isBuiltIn: entry.isBuiltIn,
+        createdAt: entry.updatedAt || Date.now(),
+        updatedAt: entry.updatedAt || Date.now(),
+        lastRepoSyncAt: entry.lastRepoSyncAt || entry.updatedAt || Date.now(),
+        dependencies: Array.isArray(entry.dependencies)
+          ? entry.dependencies
+          : [],
+        previewImage: hasPng
+          ? buildPreviewImageUrl(entry.slug, versionStamp)
+          : fallbackManifestPreview,
+        filesLoaded: false,
+      };
+    })
+  );
 
   // Query Upstash Redis summaries
   let redisSummaries: RepoSummaryComponent[] = [];

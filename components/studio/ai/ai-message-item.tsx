@@ -33,15 +33,20 @@ import {
 import { MarkdownContent } from "@/components/ui/markdown-content";
 import { cn } from "@/lib/utils";
 import {
+  AlertTriangle,
   BookmarkCheck,
   Check,
+  CheckCircle2,
+  ChevronDown,
   Code2,
   Copy,
   Eye,
+  Layers,
   RotateCcw,
   Sparkles,
   Trash2,
   User,
+  Wrench,
 } from "lucide-react";
 
 export interface AiMessageItemProps {
@@ -90,12 +95,24 @@ export function AiMessageItem({
   onRetryTurn,
   onDeleteMessage,
 }: AiMessageItemProps) {
+  const [showBlueprint, setShowBlueprint] = React.useState(false);
   const isUser = msg.role === "user";
   const isSystem = msg.role === "system";
   const hasCodeChanges =
     msg.changedFiles && Object.keys(msg.changedFiles).length > 0;
   const resolvedStatus: "pending" | "approved" | "rejected" =
     msg.approvalStatus || (msg.applied ? "approved" : "pending");
+  const hasRegistryRefs =
+    Array.isArray(msg.registryReferences) && msg.registryReferences.length > 0;
+  const hasBlueprintContent = Boolean(
+    msg.blueprint &&
+      (msg.blueprint.architectureNotes.length > 0 ||
+        msg.blueprint.designTokens.length > 0 ||
+        msg.blueprint.motionStrategy ||
+        msg.blueprint.accessibilityNotes.length > 0 ||
+        (msg.blueprint.referenceTakeaways &&
+          msg.blueprint.referenceTakeaways.length > 0))
+  );
 
   if (isSystem) {
     return (
@@ -240,6 +257,80 @@ export function AiMessageItem({
           />
         )}
 
+        {/* Registry Visual References Grounding Strip (shown when selectively consulted) */}
+        {hasRegistryRefs && msg.registryReferences && (
+          <div className="w-full my-1.5 border border-border/80 bg-card/50 p-2.5 space-y-2 font-sans">
+            <div className="flex flex-wrap items-center justify-between gap-1.5">
+              <div className="flex items-center gap-1.5 min-w-0">
+                <Layers className="size-3 text-muted-foreground shrink-0" />
+                <span className="font-mono text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                  REGISTRY VISUAL REFERENCES
+                </span>
+              </div>
+              {msg.referenceDecision && (
+                <span className="text-[10px] text-muted-foreground font-sans truncate">
+                  {msg.referenceDecision.mode === "auto"
+                    ? "Smart Selective"
+                    : msg.referenceDecision.mode === "always"
+                    ? "Always Grounded"
+                    : "Pinned"}
+                </span>
+              )}
+            </div>
+
+            <div className="grid grid-cols-1 @[420px]:grid-cols-2 gap-2">
+              {msg.registryReferences.map((ref) => (
+                <div
+                  key={ref.slug}
+                  className="flex items-center gap-2 border border-border/70 bg-background/70 p-1.5 min-w-0"
+                >
+                  {ref.previewUrl ? (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon-sm"
+                      onClick={() =>
+                        onPreviewImage({
+                          url: ref.previewUrl!,
+                          name: `${ref.name} (${ref.category} Reference)`,
+                        })
+                      }
+                      className="relative size-11 p-0 rounded-none border border-border/70 overflow-hidden shrink-0 cursor-pointer group"
+                      title={`Inspect ${ref.name} preview reference`}
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={ref.previewUrl}
+                        alt={`${ref.name} visual reference`}
+                        referrerPolicy="no-referrer"
+                        className="size-full object-cover transition-transform group-hover:scale-105"
+                      />
+                    </Button>
+                  ) : (
+                    <div className="size-11 border border-border/70 bg-muted/50 flex items-center justify-center shrink-0">
+                      <Code2 className="size-3.5 text-muted-foreground" />
+                    </div>
+                  )}
+
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <span className="text-[11px] font-semibold text-foreground truncate">
+                        {ref.name}
+                      </span>
+                      <span className="text-[10px] text-muted-foreground shrink-0">
+                        · {ref.category}
+                      </span>
+                    </div>
+                    <div className="text-[10px] text-muted-foreground truncate mt-0.5">
+                      {ref.matchReasons.join(" · ") || ref.slug}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Main Response Content with Real Markdown & Code Blocks */}
         <Bubble
           variant="editorial"
@@ -252,6 +343,140 @@ export function AiMessageItem({
           )}
         >
           <MarkdownContent content={msg.content} />
+
+          {/* Collapsible Architecture & Design Blueprint */}
+          {hasBlueprintContent && msg.blueprint && (
+            <div className="mt-3 border border-border/70 bg-background/60 font-sans">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowBlueprint((prev) => !prev)}
+                className="w-full h-8 px-2.5 justify-between rounded-none text-xs font-medium text-foreground hover:bg-muted/40"
+              >
+                <span className="flex items-center gap-1.5">
+                  <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
+                    DESIGN &amp; ARCHITECTURE BLUEPRINT
+                  </span>
+                </span>
+                <ChevronDown
+                  className={cn(
+                    "size-3.5 text-muted-foreground transition-transform duration-150",
+                    showBlueprint && "rotate-180"
+                  )}
+                />
+              </Button>
+
+              {showBlueprint && (
+                <div className="border-t border-border/60 px-3 py-2.5 space-y-2.5 text-[11px] text-muted-foreground">
+                  {msg.blueprint.referenceTakeaways &&
+                    msg.blueprint.referenceTakeaways.length > 0 && (
+                      <div className="space-y-1">
+                        <div className="font-mono text-[10px] uppercase tracking-wider text-foreground/80">
+                          Registry Craft Takeaways
+                        </div>
+                        <ul className="space-y-0.5 list-disc pl-4">
+                          {msg.blueprint.referenceTakeaways.map((item, i) => (
+                            <li key={`ref-t-${i}`}>{item}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                  {msg.blueprint.architectureNotes.length > 0 && (
+                    <div className="space-y-1">
+                      <div className="font-mono text-[10px] uppercase tracking-wider text-foreground/80">
+                        Architecture &amp; Props
+                      </div>
+                      <ul className="space-y-0.5 list-disc pl-4">
+                        {msg.blueprint.architectureNotes.map((item, i) => (
+                          <li key={`arch-${i}`}>{item}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {msg.blueprint.designTokens.length > 0 && (
+                    <div className="space-y-1">
+                      <div className="font-mono text-[10px] uppercase tracking-wider text-foreground/80">
+                        Visual Surfaces &amp; Tokens
+                      </div>
+                      <ul className="space-y-0.5 list-disc pl-4">
+                        {msg.blueprint.designTokens.map((item, i) => (
+                          <li key={`tok-${i}`}>{item}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {msg.blueprint.motionStrategy && (
+                    <div className="space-y-0.5">
+                      <div className="font-mono text-[10px] uppercase tracking-wider text-foreground/80">
+                        Motion Choreography
+                      </div>
+                      <p className="leading-relaxed">{msg.blueprint.motionStrategy}</p>
+                    </div>
+                  )}
+
+                  {msg.blueprint.accessibilityNotes.length > 0 && (
+                    <div className="space-y-1">
+                      <div className="font-mono text-[10px] uppercase tracking-wider text-foreground/80">
+                        Accessibility &amp; Edge Cases
+                      </div>
+                      <ul className="space-y-0.5 list-disc pl-4">
+                        {[
+                          ...msg.blueprint.accessibilityNotes,
+                          ...msg.blueprint.edgeCasesHandled,
+                        ].map((item, i) => (
+                          <li key={`a11y-${i}`}>{item}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Real Post-Generation Compile & Compliance Verification Strip */}
+          {msg.verification && hasCodeChanges && (
+            <div className="mt-2.5 flex flex-wrap items-center justify-between gap-2 border border-border/70 bg-muted/20 px-2.5 py-1.5 text-[11px] font-sans">
+              <div className="flex flex-wrap items-center gap-2 min-w-0">
+                {msg.verification.compileValid ? (
+                  <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-medium">
+                    <CheckCircle2 className="size-3 shrink-0" />
+                    <span>TSX Compile Verified</span>
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 text-amber-600 dark:text-amber-400 font-medium">
+                    <AlertTriangle className="size-3 shrink-0" />
+                    <span>Syntax Warning</span>
+                  </span>
+                )}
+                {msg.verification.selfRepaired && (
+                  <>
+                    <span className="text-border">·</span>
+                    <span className="inline-flex items-center gap-1 text-foreground">
+                      <Wrench className="size-2.5 shrink-0" />
+                      <span>Auto-Repaired</span>
+                    </span>
+                  </>
+                )}
+              </div>
+
+              <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground tabular-nums shrink-0">
+                <span>
+                  21st.dev {msg.verification.beforeScore} →{" "}
+                  <strong className="text-foreground font-semibold">
+                    {msg.verification.afterScore}
+                  </strong>
+                  /100
+                </span>
+                <span className="text-border">·</span>
+                <span>{msg.verification.propsCount} props</span>
+              </div>
+            </div>
+          )}
 
           {/* Structured Change Approval Request Card */}
           {hasCodeChanges && msg.changedFiles && (

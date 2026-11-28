@@ -8,6 +8,9 @@ export type AiSlice = Pick<
   | "geminiApiKey"
   | "aiModel"
   | "aiRole"
+  | "aiDepthMode"
+  | "registryRefMode"
+  | "pinnedRegistryRefs"
   | "preserveDesignSkill"
   | "autoApplyAiChanges"
   | "aiChatMessages"
@@ -18,6 +21,10 @@ export type AiSlice = Pick<
   | "setGeminiApiKey"
   | "setAiModel"
   | "setAiRole"
+  | "setAiDepthMode"
+  | "setRegistryRefMode"
+  | "togglePinnedRegistryRef"
+  | "clearPinnedRegistryRefs"
   | "setPreserveDesignSkill"
   | "togglePreserveDesignSkill"
   | "setAutoApplyAiChanges"
@@ -39,6 +46,9 @@ export const createAiSlice: StudioSliceCreator<AiSlice> = (set) => ({
   geminiApiKey: "",
   aiModel: "gemini-4-hydrogen",
   aiRole: "copilot",
+  aiDepthMode: "deep",
+  registryRefMode: "auto",
+  pinnedRegistryRefs: [],
   preserveDesignSkill: true,
   autoApplyAiChanges: true,
   aiChatMessages: [],
@@ -57,6 +67,27 @@ export const createAiSlice: StudioSliceCreator<AiSlice> = (set) => ({
   setAiModel: (model) => set({ aiModel: model }),
 
   setAiRole: (role) => set({ aiRole: role }),
+
+  setAiDepthMode: (mode) => set({ aiDepthMode: mode }),
+
+  setRegistryRefMode: (mode) => set({ registryRefMode: mode }),
+
+  togglePinnedRegistryRef: (slug) =>
+    set((state) => {
+      const clean = slug.trim();
+      if (!clean) return state;
+      const exists = state.pinnedRegistryRefs.includes(clean);
+      if (exists) {
+        return {
+          pinnedRegistryRefs: state.pinnedRegistryRefs.filter((s) => s !== clean),
+        };
+      }
+      // Cap at 2 pinned visual references to keep multimodal grounding focused and fast
+      const next = [...state.pinnedRegistryRefs.slice(-1), clean];
+      return { pinnedRegistryRefs: next };
+    }),
+
+  clearPinnedRegistryRefs: () => set({ pinnedRegistryRefs: [] }),
 
   setPreserveDesignSkill: (preserve) => set({ preserveDesignSkill: preserve }),
 

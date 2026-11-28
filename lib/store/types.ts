@@ -1,4 +1,13 @@
 import type { StateCreator } from "zustand";
+import type {
+  AiBlueprintPlan,
+  AiDepthMode,
+  AiReasoningStepCategory,
+  AiVerificationReport,
+  RegistryReferenceDecision,
+  RegistryReferenceMode,
+  RegistryReferenceSummary,
+} from "@/lib/ai/types";
 
 export type StudioFileName = "component.tsx" | "default.tsx" | "demo.tsx" | "index.css";
 
@@ -36,7 +45,7 @@ export interface AiReasoningStepItem {
   title: string;
   description?: string;
   detail?: string;
-  category?: "context" | "ast" | "audit" | "synthesis" | "verify";
+  category?: AiReasoningStepCategory;
   items?: string[];
   status: "done" | "running" | "pending";
 }
@@ -93,6 +102,11 @@ export interface AiChatMessage {
   followUpSuggestions?: string[];
   addedDependencies?: string[];
   complianceScore?: number;
+  depthMode?: AiDepthMode;
+  blueprint?: AiBlueprintPlan;
+  verification?: AiVerificationReport;
+  registryReferences?: RegistryReferenceSummary[];
+  referenceDecision?: RegistryReferenceDecision;
   isError?: boolean;
 }
 
@@ -264,6 +278,9 @@ export interface StudioState {
   geminiApiKey: string;
   aiModel: string;
   aiRole: AiChatRole;
+  aiDepthMode: AiDepthMode;
+  registryRefMode: RegistryReferenceMode;
+  pinnedRegistryRefs: string[];
   preserveDesignSkill: boolean;
   autoApplyAiChanges: boolean;
   aiChatMessages: AiChatMessage[];
@@ -377,6 +394,10 @@ export interface StudioState {
   setGeminiApiKey: (key: string) => void;
   setAiModel: (model: string) => void;
   setAiRole: (role: AiChatRole) => void;
+  setAiDepthMode: (mode: AiDepthMode) => void;
+  setRegistryRefMode: (mode: RegistryReferenceMode) => void;
+  togglePinnedRegistryRef: (slug: string) => void;
+  clearPinnedRegistryRefs: () => void;
   setPreserveDesignSkill: (preserve: boolean) => void;
   togglePreserveDesignSkill: () => void;
   setAutoApplyAiChanges: (enabled: boolean) => void;

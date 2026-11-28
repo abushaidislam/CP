@@ -1058,7 +1058,8 @@ export function compileSandboxHtml(
         const vh = window.innerHeight || Math.ceil(rect.height) || 600;
         const width = Math.max(Math.ceil(rect.width) || vw || 800, 320);
         const rawHeight = Math.max(Math.ceil(rect.height) || 0, vh || 0) || 600;
-        const height = Math.max(Math.min(rawHeight, Math.round(width * 1.15)), 240);
+        // Clamp height to a crisp thumbnail frame (max ~4:3 / 0.85 aspect) so tall scrolling demos never capture as thin slivers
+        const height = Math.max(Math.min(rawHeight, Math.round(width * 0.85)), 240);
 
         let stylesText = "";
         const styleElements = document.querySelectorAll("style");
@@ -1075,11 +1076,13 @@ export function compileSandboxHtml(
           }
         }
         // Sanitize styles so external @import / url(http...) never block or taint <foreignObject> rasterization
+        // Also alias :root / html / body selectors to .__capture_root__ so Tailwind v4 CSS variables resolve inside <foreignObject>
         stylesText = stylesText
           .replace(/\\]\\]>/g, "")
           .replace(/@import\\s+[^;]+;/gi, "")
           .replace(/@charset\\s+[^;]+;/gi, "")
-          .replace(/url\\(\\s*['"]?(?!data:|#)[^'")]+['"]?\\s*\\)/gi, "none");
+          .replace(/url\\(\\s*['"]?(?!data:|#)[^'")]+['"]?\\s*\\)/gi, "none")
+          .replace(/:root\\b/g, ":root, .__capture_root__");
         stylesText += "\\n*, *::before, *::after { animation-play-state: paused !important; transition: none !important; }\\n";
 
         const clonedRoot = root.cloneNode(true);
@@ -1278,7 +1281,7 @@ export function compileSandboxHtml(
         const svgString =
           '<svg xmlns="http://www.w3.org/2000/svg" width="' + width + '" height="' + height + '" viewBox="0 0 ' + width + ' ' + height + '">' +
           '<foreignObject width="100%" height="100%">' +
-          '<div xmlns="http://www.w3.org/1999/xhtml" class="' + wrapperClasses + '" style="width:100%;height:100%;overflow:hidden;background-color:' + stageBgColor + ';color:' + stageTextColor + ';' + centerAlignStyle + bodyStyles + '">' +
+          '<div xmlns="http://www.w3.org/1999/xhtml" class="__capture_root__ ' + wrapperClasses + '" style="width:100%;height:100%;overflow:hidden;background-color:' + stageBgColor + ';color:' + stageTextColor + ';' + centerAlignStyle + bodyStyles + '">' +
           '<style>/* <![CDATA[ */\\n' + stylesText + '\\n/* ]]> */</style>' +
           serializedHtml +
           '</div>' +
@@ -1286,6 +1289,32 @@ export function compileSandboxHtml(
           '</svg>';
 
         const svgDataUrl = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svgString);
+
+        function isCanvasBlank(canvas) {
+          try {
+            const c = canvas.getContext("2d", { willReadFrequently: true });
+            if (!c || canvas.width < 4 || canvas.height < 4) return true;
+            const sw = Math.min(48, canvas.width);
+            const sh = Math.min(36, canvas.height);
+            const probe = document.createElement("canvas");
+            probe.width = sw;
+            probe.height = sh;
+            const pCtx = probe.getContext("2d", { willReadFrequently: true });
+            if (!pCtx) return false;
+            pCtx.drawImage(canvas, 0, 0, sw, sh);
+            const data = pCtx.getImageData(0, 0, sw, sh).data;
+            const r0 = data[0], g0 = data[1], b0 = data[2];
+            let maxDelta = 0;
+            for (let i = 4; i < data.length; i += 4) {
+              const d = Math.abs(data[i] - r0) + Math.abs(data[i + 1] - g0) + Math.abs(data[i + 2] - b0);
+              if (d > maxDelta) maxDelta = d;
+              if (maxDelta > 18) return false;
+            }
+            return true;
+          } catch (e) {
+            return false;
+          }
+        }
 
         // 3. Attempt offscreen Image -> Canvas conversion for clean PNG
         const convertToPng = new Promise((resolve) => {
@@ -1312,6 +1341,10 @@ export function compileSandboxHtml(
               ctx.fillStyle = stageBgColor;
               ctx.fillRect(0, 0, offCanvas.width, offCanvas.height);
               ctx.drawImage(img, 0, 0, offCanvas.width, offCanvas.height);
+              if (isCanvasBlank(offCanvas)) {
+                resolve(null);
+                return;
+              }
               const pngDataUrl = offCanvas.toDataURL("image/png");
               resolve(pngDataUrl);
             } catch (e) {
@@ -1331,7 +1364,7 @@ export function compileSandboxHtml(
         if (!pngResult) {
           pngResult = renderDomFallbackToPng(root, width, height, stageBgColor);
         }
-        const finalDataUrl = pngResult || fallbackSingleCanvasUrl || svgDataUrl;
+        const finalDataUrl = pngResult || fallbackSingleCanvasUrl || null;
 
         notifyParent({
           type: "PREVIEW_CAPTURED",

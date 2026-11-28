@@ -35,11 +35,33 @@ import {
   SlashCommandItem,
 } from "@/components/ui/ai-elements";
 import { cn } from "@/lib/utils";
-import { AlertCircle, Code2, Lock, Play, Unlock, X } from "lucide-react";
-import { MODEL_OPTIONS, ROLE_OPTIONS } from "./ai/ai-copilot-constants";
+import {
+  AlertCircle,
+  Brain,
+  Code2,
+  Lock,
+  Pin,
+  Play,
+  Unlock,
+  X,
+} from "lucide-react";
+import type {
+  AiBlueprintPlan,
+  AiDepthMode,
+  AiReasoningStepCategory,
+  AiVerificationReport,
+  RegistryReferenceDecision,
+  RegistryReferenceSummary,
+} from "@/lib/ai/types";
+import {
+  MODEL_OPTIONS,
+  REGISTRY_REF_MODE_OPTIONS,
+  ROLE_OPTIONS,
+} from "./ai/ai-copilot-constants";
 import { AiPanelHeader } from "./ai/ai-panel-header";
 import { AiWelcomeScreen } from "./ai/ai-welcome-screen";
 import { AiMessageItem } from "./ai/ai-message-item";
+import { RegistryReferencePicker } from "./ai/registry-reference-picker";
 
 export interface AiAssistantPanelProps {
   isMobile?: boolean;
@@ -53,10 +75,15 @@ export function AiAssistantPanel({
   const {
     files,
     dependencies,
+    currentTemplateId,
+    userComponents,
     isAiPanelOpen,
     aiPanelWidth,
     aiModel,
     aiRole,
+    aiDepthMode,
+    registryRefMode,
+    pinnedRegistryRefs,
     preserveDesignSkill,
     autoApplyAiChanges,
     aiChatMessages,
@@ -71,6 +98,10 @@ export function AiAssistantPanel({
     setAiPanelWidth,
     setAiModel,
     setAiRole,
+    setAiDepthMode,
+    setRegistryRefMode,
+    togglePinnedRegistryRef,
+    clearPinnedRegistryRefs,
     togglePreserveDesignSkill,
     toggleAutoApplyAiChanges,
     addAiChatMessage,
@@ -87,10 +118,15 @@ export function AiAssistantPanel({
     useShallow((state) => ({
       files: state.files,
       dependencies: state.dependencies,
+      currentTemplateId: state.currentTemplateId,
+      userComponents: state.userComponents,
       isAiPanelOpen: state.isAiPanelOpen,
       aiPanelWidth: state.aiPanelWidth,
       aiModel: state.aiModel,
       aiRole: state.aiRole,
+      aiDepthMode: state.aiDepthMode,
+      registryRefMode: state.registryRefMode,
+      pinnedRegistryRefs: state.pinnedRegistryRefs,
       preserveDesignSkill: state.preserveDesignSkill,
       autoApplyAiChanges: state.autoApplyAiChanges,
       aiChatMessages: state.aiChatMessages,
@@ -105,6 +141,10 @@ export function AiAssistantPanel({
       setAiPanelWidth: state.setAiPanelWidth,
       setAiModel: state.setAiModel,
       setAiRole: state.setAiRole,
+      setAiDepthMode: state.setAiDepthMode,
+      setRegistryRefMode: state.setRegistryRefMode,
+      togglePinnedRegistryRef: state.togglePinnedRegistryRef,
+      clearPinnedRegistryRefs: state.clearPinnedRegistryRefs,
       togglePreserveDesignSkill: state.togglePreserveDesignSkill,
       toggleAutoApplyAiChanges: state.toggleAutoApplyAiChanges,
       addAiChatMessage: state.addAiChatMessage,
@@ -126,6 +166,7 @@ export function AiAssistantPanel({
     AttachedCodeSnippet[]
   >([]);
   const [isAttachCodeDialogOpen, setIsAttachCodeDialogOpen] = useState(false);
+  const [isRegistryPickerOpen, setIsRegistryPickerOpen] = useState(false);
   const [previewImage, setPreviewImage] = useState<{
     url: string;
     name?: string;
@@ -270,33 +311,51 @@ export function AiAssistantPanel({
     MODEL_OPTIONS.find((m) => m.id === aiModel) || MODEL_OPTIONS[0];
   const currentRoleObj =
     ROLE_OPTIONS.find((r) => r.id === aiRole) || ROLE_OPTIONS[0];
+  const currentRefModeObj =
+    REGISTRY_REF_MODE_OPTIONS.find((r) => r.id === registryRefMode) ||
+    REGISTRY_REF_MODE_OPTIONS[0];
+  const activeComponentMeta = userComponents?.[currentTemplateId];
 
-  // Detailed 5-stage sequential execution pipeline showing exact AI work in real time
+  // Detailed 6-stage sequential execution pipeline reflecting the re-architected orchestrator
   const workingSteps = useMemo<ReasoningStep[]>(() => {
     const step1: ReasoningStep = {
-      title: "Scanning workspace files & context",
-      description: `Reading component.tsx (${compLinesCount} lines), default.tsx (${demoLinesCount} lines), and ${dependencies.length} active package dependencies.`,
-      detail: "component.tsx",
-      category: "context",
+      title: "Building Workspace AST & File Dossier",
+      description: `Analyzing component.tsx (${compLinesCount}L), default.tsx (${demoLinesCount}L), props interface, and ${dependencies.length} package dependencies.`,
+      detail: "AST Dossier",
+      category: "ast",
       items: [
-        `Read component.tsx (${compLinesCount}L)`,
-        `Read default.tsx (${demoLinesCount}L)`,
-        `${dependencies.length} NPM packages`,
+        `component.tsx (${compLinesCount}L)`,
+        `default.tsx (${demoLinesCount}L)`,
+        `${dependencies.length} NPM deps`,
       ],
       status: thinkingSeconds < 1 ? "running" : "done",
     };
 
     const step2: ReasoningStep = {
-      title: "Parsing React AST, Props & Hooks",
+      title:
+        pinnedRegistryRefs.length > 0
+          ? "Loading Pinned Registry Visual References"
+          : registryRefMode === "off"
+          ? "Intent Routing (Local Workspace Only)"
+          : "Selective Registry Visual Grounding",
       description:
-        "Inspecting exported React 19 component signature, TypeScript Props interface, and DOM hierarchy.",
-      detail: "AST & Props",
-      category: "ast",
-      items: [
-        "Exported component AST",
-        `Specialist: ${currentRoleObj.name}`,
-        preserveDesignSkill ? "UI Design Lock active" : "Visual edit mode",
-      ],
+        pinnedRegistryRefs.length > 0
+          ? `Attaching ${pinnedRegistryRefs.length} pinned component preview image(s) and design tokens.`
+          : registryRefMode === "off"
+          ? "Registry visual grounding disabled; focusing strictly on active editor code."
+          : "Evaluating visual design intent and selectively pulling matching registry preview.png & craft tokens.",
+      detail:
+        pinnedRegistryRefs.length > 0
+          ? `${pinnedRegistryRefs.length} pinned`
+          : currentRefModeObj.shortLabel,
+      category: "reference",
+      items:
+        pinnedRegistryRefs.length > 0
+          ? pinnedRegistryRefs.slice(0, 2)
+          : [
+              `Mode: ${currentRefModeObj.name}`,
+              `Specialist: ${currentRoleObj.name}`,
+            ],
       status:
         thinkingSeconds < 1
           ? "pending"
@@ -306,14 +365,13 @@ export function AiAssistantPanel({
     };
 
     const step3: ReasoningStep = {
-      title: "Auditing 21st.dev & Design Rules",
-      description: `Evaluating className merging with cn(), Tailwind dark/light theme tokens, and interactive states (${passedCount}/${planTasks.length} static checks passed).`,
+      title: "Auditing 21st.dev & Accessibility Rules",
+      description: `Checking cn() merging, dark/light tokens, native demo controls, and WCAG focus states (${passedCount}/${planTasks.length} passed).`,
       detail: `${auditResult.score}/100`,
       category: "audit",
       items: [
         `${passedCount}/${planTasks.length} rules verified`,
-        "Tailwind cn() merge",
-        "Theme token contrast",
+        preserveDesignSkill ? "UI Design Lock active" : "Visual edit unlocked",
       ],
       status:
         thinkingSeconds < 2
@@ -324,38 +382,43 @@ export function AiAssistantPanel({
     };
 
     const step4: ReasoningStep = {
-      title: "Synthesizing code & architectural plan",
+      title:
+        aiDepthMode === "deep"
+          ? "Deep Blueprint & Code Synthesis"
+          : "Fast Code Synthesis",
       description:
-        "Generating complete, self-contained TypeScript updates and implementation guidance.",
+        aiDepthMode === "deep"
+          ? "Drafting architecture blueprint, visual tokens, motion choreography, and complete compilable files."
+          : "Generating focused, type-safe updates for modified workspace files.",
       detail: aiModel.replace("gemini-", ""),
       category: "synthesis",
       items: [
         `Engine: ${aiModel.replace("gemini-", "")}`,
+        aiDepthMode === "deep" ? "Deep Architecture" : "Standard Fast",
         "Complete file synthesis",
-        preserveDesignSkill ? "Zero layout drift" : "Responsive styling",
       ],
       status:
         thinkingSeconds < 4
           ? "pending"
-          : thinkingSeconds < 6
+          : thinkingSeconds < 7
           ? "running"
           : "done",
     };
 
     const step5: ReasoningStep = {
-      title: "Preparing diff & sandbox verification",
+      title: "Sucrase TSX Compile & Auto-Repair Check",
       description:
-        "Validating JSX syntax, import resolution, and formatting unified diff hunks for review.",
-      detail: "Diff Check",
+        "Compiling generated TypeScript/JSX in Sucrase, verifying compliance delta, and auto-repairing syntax if needed.",
+      detail: "Compile Check",
       category: "verify",
       items: [
-        "TypeScript & JSX check",
-        "Unified diff calculation",
+        "Sucrase TSX verification",
+        "21st.dev score delta",
         autoApplyAiChanges
-          ? "Auto-applying to live canvas"
+          ? "Auto-applying to canvas"
           : "Staging diff for approval",
       ],
-      status: thinkingSeconds < 6 ? "pending" : "running",
+      status: thinkingSeconds < 7 ? "pending" : "running",
     };
 
     return [step1, step2, step3, step4, step5];
@@ -364,23 +427,33 @@ export function AiAssistantPanel({
     compLinesCount,
     demoLinesCount,
     dependencies.length,
+    pinnedRegistryRefs,
+    registryRefMode,
+    currentRefModeObj.shortLabel,
+    currentRefModeObj.name,
     preserveDesignSkill,
     passedCount,
     planTasks.length,
     auditResult.score,
+    aiDepthMode,
     aiModel,
     currentRoleObj.name,
     autoApplyAiChanges,
   ]);
 
   const currentStepTitle = useMemo(() => {
-    if (thinkingSeconds < 1) return "Scanning workspace files & context...";
-    if (thinkingSeconds < 2) return "Parsing React AST, Props & Hooks...";
-    if (thinkingSeconds < 4) return "Auditing 21st.dev & Design Rules...";
-    if (thinkingSeconds < 6)
-      return "Synthesizing code & architectural plan...";
-    return "Preparing diff & sandbox verification...";
-  }, [thinkingSeconds]);
+    if (thinkingSeconds < 1) return "Building Workspace AST & File Dossier...";
+    if (thinkingSeconds < 2)
+      return pinnedRegistryRefs.length > 0
+        ? "Loading pinned registry preview visuals..."
+        : "Evaluating selective registry visual grounding...";
+    if (thinkingSeconds < 4) return "Auditing 21st.dev & accessibility rules...";
+    if (thinkingSeconds < 7)
+      return aiDepthMode === "deep"
+        ? "Synthesizing deep blueprint & production code..."
+        : "Synthesizing code updates...";
+    return "Running Sucrase TSX compile & verification check...";
+  }, [thinkingSeconds, pinnedRegistryRefs.length, aiDepthMode]);
 
   // Timer for reasoning duration
   useEffect(() => {
@@ -611,6 +684,7 @@ export function AiAssistantPanel({
         requestHeaders["X-Studio-Owner-Token"] = latestState.ownerSessionToken;
       }
 
+      const currentComp = latestState.userComponents?.[requestTemplateId];
       const res = await fetch("/api/ai-assistant", {
         method: "POST",
         headers: requestHeaders,
@@ -625,6 +699,13 @@ export function AiAssistantPanel({
           dependencies: latestState.dependencies,
           model: currentModelObj.id,
           role: latestState.aiRole || "copilot",
+          depthMode: latestState.aiDepthMode || "deep",
+          registryRefMode: latestState.registryRefMode || "auto",
+          pinnedReferenceSlugs: latestState.pinnedRegistryRefs || [],
+          currentComponentId: requestTemplateId,
+          currentComponentSlug: currentComp?.repoSlug || requestTemplateId,
+          currentComponentName: currentComp?.name,
+          currentComponentCategory: currentComp?.category,
           preserveDesign: latestState.preserveDesignSkill,
           compilerError: latestState.compilerError || null,
           history: historyPayload,
@@ -646,12 +727,17 @@ export function AiAssistantPanel({
         error?: string;
         message?: string;
         modelUsed?: string;
+        depthMode?: AiDepthMode;
         requiresOwnerAuth?: boolean;
         quotaExceeded?: boolean;
         rateLimited?: boolean;
         complianceScore?: number;
         addedDependencies?: string[];
         followUpSuggestions?: string[];
+        blueprint?: AiBlueprintPlan;
+        verification?: AiVerificationReport;
+        registryReferences?: RegistryReferenceSummary[];
+        referenceDecision?: RegistryReferenceDecision;
         dailyQuota?: {
           used: number;
           limit: number;
@@ -664,7 +750,7 @@ export function AiAssistantPanel({
           title: string;
           description?: string;
           detail?: string;
-          category?: "context" | "ast" | "audit" | "synthesis" | "verify";
+          category?: AiReasoningStepCategory;
           items?: string[];
         }>;
         changedFiles?: Partial<{
@@ -866,12 +952,21 @@ export function AiAssistantPanel({
         actionType: action,
         authorRole: currentRoleObj.name,
         modelUsed: effectiveModelUsed,
+        depthMode: data.depthMode || latestState.aiDepthMode,
         content: data.message || "I've reviewed and updated your component.",
         reasoning: {
           durationSeconds: elapsedSeconds,
           steps: recordedSteps,
           summary: data.reasoningSummary,
         },
+        blueprint: data.blueprint,
+        verification: data.verification,
+        registryReferences:
+          Array.isArray(data.registryReferences) &&
+          data.registryReferences.length > 0
+            ? data.registryReferences
+            : undefined,
+        referenceDecision: data.referenceDecision,
         changedFiles: hasChangedFiles ? data.changedFiles : undefined,
         previousFiles: hasChangedFiles ? baselineSnapshot : undefined,
         approvalStatus: hasChangedFiles
@@ -987,6 +1082,9 @@ export function AiAssistantPanel({
       <AiPanelHeader
         aiModel={aiModel}
         aiRole={aiRole}
+        aiDepthMode={aiDepthMode}
+        registryRefMode={registryRefMode}
+        pinnedRefsCount={pinnedRegistryRefs.length}
         currentModelObj={currentModelObj}
         currentRoleObj={currentRoleObj}
         autoApplyAiChanges={autoApplyAiChanges}
@@ -999,6 +1097,9 @@ export function AiAssistantPanel({
         securityTelemetry={securityTelemetry}
         onSelectModel={setAiModel}
         onSelectRole={setAiRole}
+        onSelectDepthMode={setAiDepthMode}
+        onSelectRegistryRefMode={setRegistryRefMode}
+        onOpenRegistryPicker={() => setIsRegistryPickerOpen(true)}
         onToggleAutoApply={toggleAutoApplyAiChanges}
         onTogglePreserveDesign={togglePreserveDesignSkill}
         onToggleGuidelinesDrawer={() =>
@@ -1041,6 +1142,8 @@ export function AiAssistantPanel({
         {aiChatMessages.length === 0 ? (
           <AiWelcomeScreen
             aiRole={aiRole}
+            aiDepthMode={aiDepthMode}
+            registryRefMode={registryRefMode}
             currentRoleObj={currentRoleObj}
             compLinesCount={compLinesCount}
             hasCompilerError={hasCompilerError}
@@ -1049,6 +1152,7 @@ export function AiAssistantPanel({
             passPercentage={passPercentage}
             failingChecks={failingChecks}
             onSelectRole={setAiRole}
+            onOpenRegistryPicker={() => setIsRegistryPickerOpen(true)}
             onSubmitPrompt={(prompt, action) =>
               handleSubmitPrompt(prompt, action)
             }
@@ -1155,7 +1259,7 @@ export function AiAssistantPanel({
           onStop={handleStopGeneration}
           onSlashCommandSelect={handleSlashCommandSelect}
           isLoading={isAiThinking}
-          placeholder="Ask Copilot or type / for commands..."
+          placeholder="Ask Copilot or type / for commands (/inspire, /architect)..."
           attachedImages={attachedImages}
           onRemoveImage={handleRemoveImage}
           onPreviewImage={(img) =>
@@ -1167,8 +1271,74 @@ export function AiAssistantPanel({
           onAttachImageClick={() => fileInputRef.current?.click()}
           onAttachCodeClick={() => setIsAttachCodeDialogOpen(true)}
           onImageFilesPasted={handleImageFilesAdded}
+          onOpenRegistryRefsClick={() => setIsRegistryPickerOpen(true)}
+          registryRefLabel={
+            pinnedRegistryRefs.length > 0
+              ? `${pinnedRegistryRefs.length} Pinned`
+              : currentRefModeObj.shortLabel
+          }
+          registryRefActive={
+            pinnedRegistryRefs.length > 0 || registryRefMode !== "off"
+          }
+          pinnedRegistryBar={
+            pinnedRegistryRefs.length > 0 ? (
+              <div className="flex flex-wrap items-center gap-1.5 px-2.5 py-1.5 border-b border-border/50 bg-muted/15 font-sans">
+                <span className="inline-flex items-center gap-1 font-mono text-[9px] uppercase tracking-wider text-muted-foreground">
+                  <Pin className="size-2.5" />
+                  Pinned Refs:
+                </span>
+                {pinnedRegistryRefs.map((slug) => (
+                  <span
+                    key={slug}
+                    className="inline-flex items-center gap-1 border border-border bg-background px-1.5 py-0.5 text-[10px] font-mono text-foreground"
+                  >
+                    <span className="truncate max-w-[120px]">{slug}</span>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon-sm"
+                      onClick={() => togglePinnedRegistryRef(slug)}
+                      className="size-3.5 p-0 rounded-none text-muted-foreground hover:text-foreground"
+                    >
+                      <X className="size-2.5" />
+                      <span className="sr-only">Unpin {slug}</span>
+                    </Button>
+                  </span>
+                ))}
+              </div>
+            ) : null
+          }
           modelBadge={
             <div className="flex items-center gap-1 shrink-0">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() =>
+                      setAiDepthMode(aiDepthMode === "deep" ? "standard" : "deep")
+                    }
+                    className={cn(
+                      "h-5 gap-1 px-1.5 text-[10px] font-normal font-sans rounded-none transition-colors shrink-0",
+                      aiDepthMode === "deep"
+                        ? "border-primary/40 bg-primary/10 text-foreground hover:bg-primary/15"
+                        : "border-border/80 bg-background/80 text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    <Brain className="size-2.5 shrink-0" />
+                    <span className="hidden @[400px]:inline">
+                      {aiDepthMode === "deep" ? "Deep" : "Fast"}
+                    </span>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="top" className="font-sans text-xs">
+                  {aiDepthMode === "deep"
+                    ? "Deep Architecture ON: High-depth reasoning, design blueprint & compile self-repair"
+                    : "Standard Fast: Concise single-pass edits (click for Deep Architecture)"}
+                </TooltipContent>
+              </Tooltip>
+
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
@@ -1244,6 +1414,18 @@ export function AiAssistantPanel({
               e.target.value = "";
             }
           }}
+        />
+
+        {/* Registry Visual Reference Grounding Picker Modal */}
+        <RegistryReferencePicker
+          open={isRegistryPickerOpen}
+          onOpenChange={setIsRegistryPickerOpen}
+          mode={registryRefMode}
+          pinnedSlugs={pinnedRegistryRefs}
+          currentSlug={activeComponentMeta?.repoSlug || currentTemplateId}
+          onSelectMode={setRegistryRefMode}
+          onTogglePin={togglePinnedRegistryRef}
+          onClearPins={clearPinnedRegistryRefs}
         />
 
         {/* Attach Code Snippet Modal */}

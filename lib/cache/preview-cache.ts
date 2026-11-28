@@ -12,6 +12,10 @@ let memoryComponentsCache: Record<string, UserComponent> | null = null;
 
 function isValidPreview(preview?: string | null): preview is string {
   if (!preview || preview === "./preview.png") return false;
+  // Never cache the generic blank wireframe placeholder SVG
+  if (preview.includes("id%3D%22bl-grid%22") || preview.includes('id="bl-grid"')) {
+    return false;
+  }
   return true;
 }
 
