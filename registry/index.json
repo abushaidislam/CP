@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-28T14:03:37.815Z",
+  "updatedAt": "2026-11-28T14:04:30.965Z",
   "totalComponents": 97,
   "components": [
     {
@@ -10,8 +10,8 @@
       "description": "Architectural 3-column integration showcase grid where hovering or focusing each card triggers a 60fps radial dot-matrix canvas wave, crossfading monochrome wireframe marks into full-color emblems with an optical lift and label reveal.",
       "category": "Cards",
       "isBuiltIn": false,
-      "updatedAt": 1795874611226,
-      "lastRepoSyncAt": 1795874617475,
+      "updatedAt": 1795874664314,
+      "lastRepoSyncAt": 1795874670830,
       "path": "registry/components/matrix-reveal-grid",
       "files": [
         "component.tsx",
