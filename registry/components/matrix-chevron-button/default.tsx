@@ -3,37 +3,39 @@
 import React from "react";
 import {
   MatrixChevronButton,
-  type MatrixChevronAccent,
   type MatrixChevronSize,
+  type MatrixChevronTrigger,
 } from "@/components/ui/component";
 
 const settings = {
   label: "Book a demo",
-  accent: "lime",
+  accentColor: "#d2fe00",
+  chassisColor: "#1d2129",
   size: "md",
+  trigger: "click",
   waveSpeed: 1.6,
   disabled: false,
 };
 
-const VALID_ACCENTS: MatrixChevronAccent[] = ["lime", "amber", "cyan", "coral"];
 const VALID_SIZES: MatrixChevronSize[] = ["sm", "md", "lg"];
+const VALID_TRIGGERS: MatrixChevronTrigger[] = ["click", "hover"];
 
 export default function MatrixChevronButtonDemo(
   props: Partial<typeof settings>
 ) {
   const config = { ...settings, ...props };
 
-  const accent: MatrixChevronAccent = VALID_ACCENTS.includes(
-    config.accent as MatrixChevronAccent
-  )
-    ? (config.accent as MatrixChevronAccent)
-    : "lime";
-
   const size: MatrixChevronSize = VALID_SIZES.includes(
     config.size as MatrixChevronSize
   )
     ? (config.size as MatrixChevronSize)
     : "md";
+
+  const trigger: MatrixChevronTrigger = VALID_TRIGGERS.includes(
+    config.trigger as MatrixChevronTrigger
+  )
+    ? (config.trigger as MatrixChevronTrigger)
+    : "click";
 
   const waveSpeed =
     typeof config.waveSpeed === "number" && Number.isFinite(config.waveSpeed)
@@ -48,8 +50,18 @@ export default function MatrixChevronButtonDemo(
             ? config.label
             : "Book a demo"
         }
-        accent={accent}
+        accentColor={
+          typeof config.accentColor === "string"
+            ? config.accentColor
+            : "#d2fe00"
+        }
+        chassisColor={
+          typeof config.chassisColor === "string"
+            ? config.chassisColor
+            : "#1d2129"
+        }
         size={size}
+        trigger={trigger}
         waveSpeed={waveSpeed}
         disabled={Boolean(config.disabled)}
       />

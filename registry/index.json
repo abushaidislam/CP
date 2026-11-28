@@ -4,6 +4,27 @@
   "totalComponents": 96,
   "components": [
     {
+      "id": "social-sign-on-card",
+      "slug": "social-sign-on-card",
+      "name": "SocialSignOnCard",
+      "description": "Interactive Social Sign-On (SSO) feature card with staggered stepped OAuth provider conveyor tracks, a hover-illuminated cyan cloud core, and animated dotted circuit data pulses.",
+      "category": "Cards",
+      "isBuiltIn": false,
+      "updatedAt": 1795876786666,
+      "lastRepoSyncAt": 1795880031301,
+      "path": "registry/components/social-sign-on-card",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "index.css",
+        "manifest.json",
+        "preview.png"
+      ],
+      "dependencies": [
+        "framer-motion"
+      ]
+    },
+    {
       "id": "pocket-assistant-cards",
       "slug": "pocket-assistant-cards",
       "name": "PocketAssistantCards",
@@ -25,15 +46,15 @@
       ]
     },
     {
-      "id": "social-sign-on-card",
-      "slug": "social-sign-on-card",
-      "name": "SocialSignOnCard",
-      "description": "Interactive Social Sign-On (SSO) feature card with staggered stepped OAuth provider conveyor tracks, a hover-illuminated cyan cloud core, and animated dotted circuit data pulses.",
-      "category": "Cards",
+      "id": "matrix-chevron-button",
+      "slug": "matrix-chevron-button",
+      "name": "MatrixChevronButton",
+      "description": "Tactile dark-chassis CTA button with a glossy neon-lime dot-matrix chevron pill that expands smoothly across the full button on hover or keyboard focus, uncovering a cascading left-to-right LED chevron wave.",
+      "category": "Buttons",
       "isBuiltIn": false,
-      "updatedAt": 1795876786666,
-      "lastRepoSyncAt": 1795880031301,
-      "path": "registry/components/social-sign-on-card",
+      "updatedAt": 1795878622831,
+      "lastRepoSyncAt": 1795878629471,
+      "path": "registry/components/matrix-chevron-button",
       "files": [
         "component.tsx",
         "default.tsx",
@@ -137,6 +158,108 @@
       ]
     },
     {
+      "id": "aurora-ambient-hero",
+      "slug": "aurora-ambient-hero",
+      "name": "Aurora Ambient Mesh Hero",
+      "description": "Vibrant ambient blur aurora hero with dual CTA buttons, live headline gradient, and responsive design.",
+      "category": "Heroes",
+      "isBuiltIn": true,
+      "updatedAt": 1700000000000,
+      "lastRepoSyncAt": 1795870486318,
+      "path": "registry/components/aurora-ambient-hero",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "index.css",
+        "manifest.json"
+      ],
+      "dependencies": [
+        "lucide-react"
+      ]
+    },
+    {
+      "id": "ink-orbit-hero",
+      "slug": "ink-orbit-hero",
+      "name": "Ink Orbit 3D Hero",
+      "description": "Generative 3D ink sculpture hero with interactive canvas physics, phrase blur cycling, and live workflow demo dialog.",
+      "category": "Heroes",
+      "isBuiltIn": true,
+      "updatedAt": 1700000000000,
+      "lastRepoSyncAt": 1795870486318,
+      "path": "registry/components/ink-orbit-hero",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "index.css",
+        "manifest.json"
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "metric-badge",
+      "slug": "metric-badge",
+      "name": "Live Status Radar Badge",
+      "description": "Compact telemetry badge with animated pulsing ping, status tooltip, and gradient border.",
+      "category": "Badges",
+      "isBuiltIn": true,
+      "updatedAt": 1700000000000,
+      "lastRepoSyncAt": 1795870486318,
+      "path": "registry/components/metric-badge",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "index.css",
+        "manifest.json"
+      ],
+      "dependencies": [
+        "lucide-react"
+      ]
+    },
+    {
+      "id": "shimmer-button",
+      "slug": "shimmer-button",
+      "name": "Aurora Shimmer Button",
+      "description": "High-contrast border shimmer button with glowing conic gradient aura and micro-press physics.",
+      "category": "Buttons",
+      "isBuiltIn": true,
+      "updatedAt": 1700000000000,
+      "lastRepoSyncAt": 1795870486318,
+      "path": "registry/components/shimmer-button",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "index.css",
+        "manifest.json"
+      ],
+      "dependencies": [
+        "framer-motion",
+        "lucide-react"
+      ]
+    },
+    {
+      "id": "spotlight-card",
+      "slug": "spotlight-card",
+      "name": "Interactive Spotlight Card",
+      "description": "A high-performance modern card with dynamic pointer-following radial glow, border gradient, and micro-interactions.",
+      "category": "Cards",
+      "isBuiltIn": true,
+      "updatedAt": 1700000000000,
+      "lastRepoSyncAt": 1795870486318,
+      "path": "registry/components/spotlight-card",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "index.css",
+        "manifest.json"
+      ],
+      "dependencies": [
+        "framer-motion",
+        "lucide-react",
+        "clsx",
+        "tailwind-merge"
+      ]
+    },
+    {
       "id": "kinetic-poster-typography",
       "slug": "kinetic-poster-typography",
       "name": "KineticPosterTypography",
@@ -198,26 +321,6 @@
       "dependencies": [
         "framer-motion",
         "lucide-react"
-      ]
-    },
-    {
-      "id": "matrix-chevron-button",
-      "slug": "matrix-chevron-button",
-      "name": "MatrixChevronButton",
-      "description": "Tactile dark-chassis CTA button with a glossy neon-lime dot-matrix chevron pill that expands smoothly across the full button on hover or keyboard focus, uncovering a cascading left-to-right LED chevron wave.",
-      "category": "Buttons",
-      "isBuiltIn": false,
-      "updatedAt": 1795701889180,
-      "lastRepoSyncAt": 1795701889180,
-      "path": "registry/components/matrix-chevron-button",
-      "files": [
-        "component.tsx",
-        "default.tsx",
-        "index.css",
-        "manifest.json"
-      ],
-      "dependencies": [
-        "framer-motion"
       ]
     },
     {
@@ -1441,181 +1544,6 @@
       "dependencies": []
     },
     {
-      "id": "comp-1794673524638-yody2",
-      "slug": "floatingtoolbar",
-      "name": "Floatingtoolbar",
-      "description": "",
-      "category": "Custom",
-      "isBuiltIn": false,
-      "updatedAt": 1794674134550,
-      "lastRepoSyncAt": 1794678641680,
-      "path": "registry/components/floatingtoolbar",
-      "files": [
-        "component.tsx",
-        "default.tsx",
-        "index.css",
-        "manifest.json",
-        "preview.png"
-      ],
-      "dependencies": []
-    },
-    {
-      "id": "comp-1794668174105-ojojo",
-      "slug": "schedulecalendar",
-      "name": "Schedulecalendar",
-      "description": "",
-      "category": "Cards",
-      "isBuiltIn": false,
-      "updatedAt": 1794668572435,
-      "lastRepoSyncAt": 1794678932190,
-      "path": "registry/components/schedulecalendar",
-      "files": [
-        "component.tsx",
-        "default.tsx",
-        "index.css",
-        "manifest.json"
-      ],
-      "dependencies": [
-        "framer-motion",
-        "lucide-react",
-        "clsx",
-        "tailwind-merge"
-      ]
-    },
-    {
-      "id": "comp-1794667946115-uzl1i",
-      "slug": "segmentedmodetoggle",
-      "name": "Segmentedmodetoggle",
-      "description": "",
-      "category": "Buttons",
-      "isBuiltIn": false,
-      "updatedAt": 1794668114655,
-      "lastRepoSyncAt": 1794678918558,
-      "path": "registry/components/segmentedmodetoggle",
-      "files": [
-        "component.tsx",
-        "default.tsx",
-        "index.css",
-        "manifest.json",
-        "preview.png"
-      ],
-      "dependencies": []
-    },
-    {
-      "id": "comp-1792523276168-z7cvi",
-      "slug": "value",
-      "name": "Value",
-      "description": "",
-      "category": "Custom",
-      "isBuiltIn": false,
-      "updatedAt": 1794666731864,
-      "lastRepoSyncAt": 1794678849696,
-      "path": "registry/components/value",
-      "files": [
-        "component.tsx",
-        "default.tsx",
-        "index.css",
-        "manifest.json",
-        "preview.png"
-      ],
-      "dependencies": []
-    },
-    {
-      "id": "comp-1794633759466-efzax",
-      "slug": "fmradiotuner",
-      "name": "Fmradiotuner",
-      "description": "",
-      "category": "Cards",
-      "isBuiltIn": false,
-      "updatedAt": 1794634754434,
-      "lastRepoSyncAt": 1794678949691,
-      "path": "registry/components/fmradiotuner",
-      "files": [
-        "component.tsx",
-        "default.tsx",
-        "index.css",
-        "manifest.json",
-        "preview.png"
-      ],
-      "dependencies": []
-    },
-    {
-      "id": "comp-1794626474629-cy0xn",
-      "slug": "swimmingpoolwidget",
-      "name": "Swimmingpoolwidget",
-      "description": "",
-      "category": "Cards",
-      "isBuiltIn": false,
-      "updatedAt": 1794630292381,
-      "lastRepoSyncAt": 1794678952161,
-      "path": "registry/components/swimmingpoolwidget",
-      "files": [
-        "component.tsx",
-        "default.tsx",
-        "index.css",
-        "manifest.json",
-        "preview.png"
-      ],
-      "dependencies": []
-    },
-    {
-      "id": "comp-1794546412282-yetcc",
-      "slug": "bento-gird",
-      "name": "Bento Gird",
-      "description": "",
-      "category": "Custom",
-      "isBuiltIn": false,
-      "updatedAt": 1794597450398,
-      "lastRepoSyncAt": 1794678960784,
-      "path": "registry/components/bento-gird",
-      "files": [
-        "component.tsx",
-        "default.tsx",
-        "index.css",
-        "manifest.json",
-        "preview.png"
-      ],
-      "dependencies": []
-    },
-    {
-      "id": "comp-1793992621538-is3my",
-      "slug": "b-ento",
-      "name": "bENTO",
-      "description": "",
-      "category": "Custom",
-      "isBuiltIn": false,
-      "updatedAt": 1794568755188,
-      "lastRepoSyncAt": 1794678956430,
-      "path": "registry/components/b-ento",
-      "files": [
-        "component.tsx",
-        "default.tsx",
-        "index.css",
-        "manifest.json",
-        "preview.png"
-      ],
-      "dependencies": []
-    },
-    {
-      "id": "comp-1794548767132-o1uzb",
-      "slug": "flex-fit-brand-showcase-bento-grid-layout",
-      "name": "FlexFit Brand Showcase Bento Grid layout",
-      "description": "",
-      "category": "Custom",
-      "isBuiltIn": false,
-      "updatedAt": 1794564626210,
-      "lastRepoSyncAt": 1794678963972,
-      "path": "registry/components/flex-fit-brand-showcase-bento-grid-layout",
-      "files": [
-        "component.tsx",
-        "default.tsx",
-        "index.css",
-        "manifest.json",
-        "preview.png"
-      ],
-      "dependencies": []
-    },
-    {
       "id": "comp-1794303148718-az41d",
       "slug": "multi-on-dock",
       "name": "MultiOnDock",
@@ -1625,25 +1553,6 @@
       "updatedAt": 1794307285226,
       "lastRepoSyncAt": 1794678990433,
       "path": "registry/components/multi-on-dock",
-      "files": [
-        "component.tsx",
-        "default.tsx",
-        "index.css",
-        "manifest.json",
-        "preview.png"
-      ],
-      "dependencies": []
-    },
-    {
-      "id": "comp-1794059967767-p8sj7",
-      "slug": "mega-menu",
-      "name": "Mega menu",
-      "description": "",
-      "category": "Custom",
-      "isBuiltIn": false,
-      "updatedAt": 1794064126760,
-      "lastRepoSyncAt": 1794678967909,
-      "path": "registry/components/mega-menu",
       "files": [
         "component.tsx",
         "default.tsx",
@@ -1701,6 +1610,162 @@
       "updatedAt": 1793525937887,
       "lastRepoSyncAt": 1794678972818,
       "path": "registry/components/open-new-page",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "index.css",
+        "manifest.json",
+        "preview.png"
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "comp-1794059967767-p8sj7",
+      "slug": "mega-menu",
+      "name": "Mega menu",
+      "description": "",
+      "category": "Custom",
+      "isBuiltIn": false,
+      "updatedAt": 1794064126760,
+      "lastRepoSyncAt": 1794678967909,
+      "path": "registry/components/mega-menu",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "index.css",
+        "manifest.json",
+        "preview.png"
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "comp-1794548767132-o1uzb",
+      "slug": "flex-fit-brand-showcase-bento-grid-layout",
+      "name": "FlexFit Brand Showcase Bento Grid layout",
+      "description": "",
+      "category": "Custom",
+      "isBuiltIn": false,
+      "updatedAt": 1794564626210,
+      "lastRepoSyncAt": 1794678963972,
+      "path": "registry/components/flex-fit-brand-showcase-bento-grid-layout",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "index.css",
+        "manifest.json",
+        "preview.png"
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "comp-1794546412282-yetcc",
+      "slug": "bento-gird",
+      "name": "Bento Gird",
+      "description": "",
+      "category": "Custom",
+      "isBuiltIn": false,
+      "updatedAt": 1794597450398,
+      "lastRepoSyncAt": 1794678960784,
+      "path": "registry/components/bento-gird",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "index.css",
+        "manifest.json",
+        "preview.png"
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "comp-1793992621538-is3my",
+      "slug": "b-ento",
+      "name": "bENTO",
+      "description": "",
+      "category": "Custom",
+      "isBuiltIn": false,
+      "updatedAt": 1794568755188,
+      "lastRepoSyncAt": 1794678956430,
+      "path": "registry/components/b-ento",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "index.css",
+        "manifest.json",
+        "preview.png"
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "comp-1794626474629-cy0xn",
+      "slug": "swimmingpoolwidget",
+      "name": "Swimmingpoolwidget",
+      "description": "",
+      "category": "Cards",
+      "isBuiltIn": false,
+      "updatedAt": 1794630292381,
+      "lastRepoSyncAt": 1794678952161,
+      "path": "registry/components/swimmingpoolwidget",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "index.css",
+        "manifest.json",
+        "preview.png"
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "comp-1794633759466-efzax",
+      "slug": "fmradiotuner",
+      "name": "Fmradiotuner",
+      "description": "",
+      "category": "Cards",
+      "isBuiltIn": false,
+      "updatedAt": 1794634754434,
+      "lastRepoSyncAt": 1794678949691,
+      "path": "registry/components/fmradiotuner",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "index.css",
+        "manifest.json",
+        "preview.png"
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "comp-1794668174105-ojojo",
+      "slug": "schedulecalendar",
+      "name": "Schedulecalendar",
+      "description": "",
+      "category": "Cards",
+      "isBuiltIn": false,
+      "updatedAt": 1794668572435,
+      "lastRepoSyncAt": 1794678932190,
+      "path": "registry/components/schedulecalendar",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "index.css",
+        "manifest.json"
+      ],
+      "dependencies": [
+        "framer-motion",
+        "lucide-react",
+        "clsx",
+        "tailwind-merge"
+      ]
+    },
+    {
+      "id": "comp-1794667946115-uzl1i",
+      "slug": "segmentedmodetoggle",
+      "name": "Segmentedmodetoggle",
+      "description": "",
+      "category": "Buttons",
+      "isBuiltIn": false,
+      "updatedAt": 1794668114655,
+      "lastRepoSyncAt": 1794678918558,
+      "path": "registry/components/segmentedmodetoggle",
       "files": [
         "component.tsx",
         "default.tsx",
@@ -1829,6 +1894,25 @@
       "dependencies": []
     },
     {
+      "id": "comp-1792523276168-z7cvi",
+      "slug": "value",
+      "name": "Value",
+      "description": "",
+      "category": "Custom",
+      "isBuiltIn": false,
+      "updatedAt": 1794666731864,
+      "lastRepoSyncAt": 1794678849696,
+      "path": "registry/components/value",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "index.css",
+        "manifest.json",
+        "preview.png"
+      ],
+      "dependencies": []
+    },
+    {
       "id": "comp-1792522646826-3xyfx",
       "slug": "career-hero",
       "name": "Career Hero",
@@ -1851,106 +1935,23 @@
       ]
     },
     {
-      "id": "aurora-ambient-hero",
-      "slug": "aurora-ambient-hero",
-      "name": "Aurora Ambient Mesh Hero",
-      "description": "Vibrant ambient blur aurora hero with dual CTA buttons, live headline gradient, and responsive design.",
-      "category": "Heroes",
-      "isBuiltIn": true,
-      "updatedAt": 1700000000000,
-      "lastRepoSyncAt": 1795870486318,
-      "path": "registry/components/aurora-ambient-hero",
+      "id": "comp-1794673524638-yody2",
+      "slug": "floatingtoolbar",
+      "name": "Floatingtoolbar",
+      "description": "",
+      "category": "Custom",
+      "isBuiltIn": false,
+      "updatedAt": 1794674134550,
+      "lastRepoSyncAt": 1794678641680,
+      "path": "registry/components/floatingtoolbar",
       "files": [
         "component.tsx",
         "default.tsx",
         "index.css",
-        "manifest.json"
-      ],
-      "dependencies": [
-        "lucide-react"
-      ]
-    },
-    {
-      "id": "ink-orbit-hero",
-      "slug": "ink-orbit-hero",
-      "name": "Ink Orbit 3D Hero",
-      "description": "Generative 3D ink sculpture hero with interactive canvas physics, phrase blur cycling, and live workflow demo dialog.",
-      "category": "Heroes",
-      "isBuiltIn": true,
-      "updatedAt": 1700000000000,
-      "lastRepoSyncAt": 1795870486318,
-      "path": "registry/components/ink-orbit-hero",
-      "files": [
-        "component.tsx",
-        "default.tsx",
-        "index.css",
-        "manifest.json"
+        "manifest.json",
+        "preview.png"
       ],
       "dependencies": []
-    },
-    {
-      "id": "metric-badge",
-      "slug": "metric-badge",
-      "name": "Live Status Radar Badge",
-      "description": "Compact telemetry badge with animated pulsing ping, status tooltip, and gradient border.",
-      "category": "Badges",
-      "isBuiltIn": true,
-      "updatedAt": 1700000000000,
-      "lastRepoSyncAt": 1795870486318,
-      "path": "registry/components/metric-badge",
-      "files": [
-        "component.tsx",
-        "default.tsx",
-        "index.css",
-        "manifest.json"
-      ],
-      "dependencies": [
-        "lucide-react"
-      ]
-    },
-    {
-      "id": "shimmer-button",
-      "slug": "shimmer-button",
-      "name": "Aurora Shimmer Button",
-      "description": "High-contrast border shimmer button with glowing conic gradient aura and micro-press physics.",
-      "category": "Buttons",
-      "isBuiltIn": true,
-      "updatedAt": 1700000000000,
-      "lastRepoSyncAt": 1795870486318,
-      "path": "registry/components/shimmer-button",
-      "files": [
-        "component.tsx",
-        "default.tsx",
-        "index.css",
-        "manifest.json"
-      ],
-      "dependencies": [
-        "framer-motion",
-        "lucide-react"
-      ]
-    },
-    {
-      "id": "spotlight-card",
-      "slug": "spotlight-card",
-      "name": "Interactive Spotlight Card",
-      "description": "A high-performance modern card with dynamic pointer-following radial glow, border gradient, and micro-interactions.",
-      "category": "Cards",
-      "isBuiltIn": true,
-      "updatedAt": 1700000000000,
-      "lastRepoSyncAt": 1795870486318,
-      "path": "registry/components/spotlight-card",
-      "files": [
-        "component.tsx",
-        "default.tsx",
-        "index.css",
-        "manifest.json"
-      ],
-      "dependencies": [
-        "framer-motion",
-        "lucide-react",
-        "clsx",
-        "tailwind-merge"
-      ]
     }
   ]
 }
