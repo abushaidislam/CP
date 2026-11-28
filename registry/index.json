@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-28T11:34:30.080Z",
+  "updatedAt": "2026-11-28T11:56:15.580Z",
   "totalComponents": 93,
   "components": [
     {
@@ -10,8 +10,8 @@
       "description": "Pitch-black developer cloud dashboard shell with workspace and project switchers, F-shortcut navigation filtering, expandable route groups, and a contextual Agent drawer.",
       "category": "Navigation",
       "isBuiltIn": false,
-      "updatedAt": 1795865662313,
-      "lastRepoSyncAt": 1795865669781,
+      "updatedAt": 1795866967377,
+      "lastRepoSyncAt": 1795866975297,
       "path": "registry/components/cloud-dashboard-shell",
       "files": [
         "component.tsx",
@@ -21,6 +21,10 @@
         "preview.png"
       ],
       "dependencies": [
+        "@radix-ui/react-collapsible",
+        "@radix-ui/react-dialog",
+        "@radix-ui/react-dropdown-menu",
+        "@radix-ui/react-popover",
         "framer-motion",
         "lucide-react"
       ]

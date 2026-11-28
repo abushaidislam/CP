@@ -9,11 +9,15 @@ import React, {
   useRef,
   useState,
 } from "react";
+import * as CollapsiblePrimitive from "@radix-ui/react-collapsible";
+import * as DialogPrimitive from "@radix-ui/react-dialog";
+import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu";
+import * as PopoverPrimitive from "@radix-ui/react-popover";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import {
   Bell,
-  Blocks,
   Box,
+  Bug,
   Check,
   ChevronRight,
   ChevronsUpDown,
@@ -21,20 +25,15 @@ import {
   Eye,
   Gauge,
   Globe,
-  ListFilter,
   Menu,
   MoreHorizontal,
   Plug,
   Plus,
-  ScanLine,
   Search,
   Settings,
-  Shield,
-  ShieldAlert,
-  ToggleLeft,
-  TrendingUp,
+  Store,
+  ToggleRight,
   X,
-  Zap,
 } from "lucide-react";
 
 function cn(...classes: Array<string | false | null | undefined>): string {
@@ -252,8 +251,8 @@ function ProjectMonogramIcon({
     theme === "dark"
       ? "fill-[#f4f4f5]"
       : theme === "light"
-      ? "fill-[#18181b]"
-      : "fill-[#18181b] dark:fill-[#f4f4f5]";
+      ? "fill-[#171717]"
+      : "fill-[#171717] dark:fill-[#f4f4f5]";
   const pathStroke =
     theme === "dark"
       ? "stroke-[#09090b]"
@@ -268,11 +267,18 @@ function ProjectMonogramIcon({
       aria-hidden="true"
       className={cn("h-4 w-4 shrink-0", className)}
     >
-      <rect x="1" y="1" width="16" height="16" rx="4" className={rectFill} />
+      <rect
+        x="0.75"
+        y="0.75"
+        width="16.5"
+        height="16.5"
+        rx="4.25"
+        className={rectFill}
+      />
       <path
-        d="M5.2 12V6l3.4 4.4V6M10.4 6l2.4 6M12.8 6l-2.4 6"
+        d="M5.2 12V6l3.4 4.4V6M10.5 6l2.3 6M12.8 6l-2.3 6"
         className={pathStroke}
-        strokeWidth="1.5"
+        strokeWidth="1.55"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
@@ -280,20 +286,125 @@ function ProjectMonogramIcon({
   );
 }
 
-function AgentConstellationIcon({ className }: { className?: string }) {
+function CiBoxIcon({ className }: { className?: string }) {
   return (
     <svg
       viewBox="0 0 16 16"
-      fill="currentColor"
+      fill="none"
       aria-hidden="true"
       className={cn("h-4 w-4 shrink-0", className)}
     >
-      <circle cx="8" cy="3.5" r="1.1" />
-      <circle cx="5.8" cy="7.5" r="1.1" />
-      <circle cx="10.2" cy="7.5" r="1.1" />
-      <circle cx="3.6" cy="11.5" r="1.1" />
-      <circle cx="8" cy="11.5" r="1.1" />
-      <circle cx="12.4" cy="11.5" r="1.1" />
+      <rect
+        x="2"
+        y="2"
+        width="12"
+        height="12"
+        rx="2.2"
+        stroke="currentColor"
+        strokeWidth="1.35"
+      />
+      <path
+        d="M8.6 4.4L5.8 8.3h2.3l-.7 3.3 2.8-3.9H7.9l.7-3.3z"
+        fill="currentColor"
+      />
+    </svg>
+  );
+}
+
+function LogsRowsIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 16 16"
+      fill="none"
+      aria-hidden="true"
+      className={cn("h-4 w-4 shrink-0", className)}
+    >
+      <circle cx="3" cy="4.2" r="1" fill="currentColor" />
+      <circle cx="3" cy="8" r="1" fill="currentColor" />
+      <circle cx="3" cy="11.8" r="1" fill="currentColor" />
+      <path
+        d="M6.2 4.2h7.3M6.2 8h7.3M6.2 11.8h7.3"
+        stroke="currentColor"
+        strokeWidth="1.4"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+function TracesSpanIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 16 16"
+      fill="none"
+      aria-hidden="true"
+      className={cn("h-4 w-4 shrink-0", className)}
+    >
+      <path
+        d="M4.5 2.2H3a.8.8 0 00-.8.8v1.5M11.5 2.2H13a.8.8 0 01.8.8v1.5M4.5 13.8H3a.8.8 0 01-.8-.8v-1.5M11.5 13.8H13a.8.8 0 00.8-.8v-1.5"
+        stroke="currentColor"
+        strokeWidth="1.35"
+        strokeLinecap="round"
+      />
+      <path
+        d="M4.8 5.5h3.8M6.2 8h5M4.8 10.5h4.2"
+        stroke="currentColor"
+        strokeWidth="1.35"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+function AnalyticsChartIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 16 16"
+      fill="none"
+      aria-hidden="true"
+      className={cn("h-4 w-4 shrink-0", className)}
+    >
+      <path
+        d="M2.5 2.5v10.2a.8.8 0 00.8.8h10.2"
+        stroke="currentColor"
+        strokeWidth="1.35"
+        strokeLinecap="round"
+      />
+      <path
+        d="M4.8 10.2l2.4-2.5 2 1.6 3.5-4"
+        stroke="currentColor"
+        strokeWidth="1.35"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function FirewallBrickIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 16 16"
+      fill="none"
+      aria-hidden="true"
+      className={cn("h-4 w-4 shrink-0", className)}
+    >
+      <path
+        d="M7.8 13H2.8a.8.8 0 01-.8-.8V3.8a.8.8 0 01.8-.8h10.4a.8.8 0 01.8.8v3.7"
+        stroke="currentColor"
+        strokeWidth="1.35"
+        strokeLinecap="round"
+      />
+      <path
+        d="M2 6.5h12M2 9.8h6.2M6 3v3.5M10 3v3.5M5 6.5v3.3"
+        stroke="currentColor"
+        strokeWidth="1.25"
+        strokeLinecap="round"
+      />
+      <path
+        d="M11.6 8.6c.8 1 1.7 1.8 1.7 3a1.9 1.9 0 01-3.8 0c0-.7.3-1.3.7-1.8.2.5.6.7.9.7.1-.7.2-1.3.5-1.9z"
+        fill="currentColor"
+      />
     </svg>
   );
 }
@@ -307,9 +418,9 @@ function EnvVarIcon({ className }: { className?: string }) {
       className={cn("h-4 w-4 shrink-0", className)}
     >
       <path
-        d="M4.2 4.5c1.1 0 1.6.5 2.4 2.1l2.8 5.1c.6 1 1.2 1.3 2.2 1.3M11.8 4.5c-1.1 0-1.7.5-2.6 1.9L6.4 11c-.6 1-1.2 1.5-2.2 1.5"
+        d="M3.8 4.2c1.2 0 1.8.6 2.7 2.2l3 5.2c.6 1 1.3 1.4 2.3 1.4M12.2 4.2c-1.2 0-1.9.6-2.8 2L6.3 11c-.6 1-1.3 1.6-2.4 1.6"
         stroke="currentColor"
-        strokeWidth="1.35"
+        strokeWidth="1.4"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
@@ -317,7 +428,7 @@ function EnvVarIcon({ className }: { className?: string }) {
   );
 }
 
-function DomainBrowserIcon({ className }: { className?: string }) {
+function DomainBrowserGlobeIcon({ className }: { className?: string }) {
   return (
     <svg
       viewBox="0 0 16 16"
@@ -325,68 +436,89 @@ function DomainBrowserIcon({ className }: { className?: string }) {
       aria-hidden="true"
       className={cn("h-4 w-4 shrink-0", className)}
     >
-      <rect
-        x="2"
-        y="3"
-        width="12"
-        height="10"
-        rx="1.8"
+      <path
+        d="M7.5 12.2H2.8a.8.8 0 01-.8-.8V3.8a.8.8 0 01.8-.8h10.4a.8.8 0 01.8.8v3.2M2 6h12"
         stroke="currentColor"
         strokeWidth="1.3"
-      />
-      <path
-        d="M2.5 6.2h11M8 6.2v6.5"
-        stroke="currentColor"
-        strokeWidth="1.2"
         strokeLinecap="round"
       />
-      <circle cx="4.3" cy="4.6" r="0.6" fill="currentColor" />
-      <circle cx="6.2" cy="4.6" r="0.6" fill="currentColor" />
+      <circle cx="4" cy="4.5" r="0.55" fill="currentColor" />
+      <circle cx="5.8" cy="4.5" r="0.55" fill="currentColor" />
+      <circle
+        cx="11.5"
+        cy="11.2"
+        r="2.7"
+        stroke="currentColor"
+        strokeWidth="1.2"
+      />
+      <path
+        d="M8.9 11.2h5.2M11.5 8.6c.7.7 1.1 1.6 1.1 2.6s-.4 1.9-1.1 2.6c-.7-.7-1.1-1.6-1.1-2.6s.4-1.9 1.1-2.6z"
+        stroke="currentColor"
+        strokeWidth="1"
+      />
+    </svg>
+  );
+}
+
+function AgentConstellationIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 16 16"
+      fill="currentColor"
+      aria-hidden="true"
+      className={cn("h-4 w-4 shrink-0", className)}
+    >
+      <circle cx="8" cy="3.5" r="1.15" />
+      <circle cx="5.7" cy="7.6" r="1.15" />
+      <circle cx="10.3" cy="7.6" r="1.15" />
+      <circle cx="3.4" cy="11.7" r="1.15" />
+      <circle cx="8" cy="11.7" r="1.15" />
+      <circle cx="12.6" cy="11.7" r="1.15" />
     </svg>
   );
 }
 
 function renderNavIcon(id: string, theme: ShellTheme): React.ReactNode {
-  const iconCls = "h-[15px] w-[15px] shrink-0 stroke-[1.6]";
+  const iconCls = "h-4 w-4 shrink-0 stroke-[1.55]";
   switch (id) {
     case "overview":
       return (
-        <ProjectMonogramIcon theme={theme} className="h-[16px] w-[16px]" />
+        <ProjectMonogramIcon theme={theme} className="h-[17px] w-[17px]" />
       );
     case "deployments":
       return <Box className={iconCls} />;
     case "ci":
-      return <Zap className={iconCls} />;
+      return <CiBoxIcon />;
     case "logs":
-      return <ListFilter className={iconCls} />;
+      return <LogsRowsIcon />;
     case "traces":
-      return <ScanLine className={iconCls} />;
+      return <TracesSpanIcon />;
     case "analytics":
-      return <TrendingUp className={iconCls} />;
+      return <AnalyticsChartIcon />;
     case "speed-insights":
       return <Gauge className={iconCls} />;
     case "observability":
       return <Eye className={iconCls} />;
     case "firewall":
-      return <Shield className={iconCls} />;
+      return <FirewallBrickIcon />;
     case "cdn":
       return <Globe className={iconCls} />;
     case "env-vars":
-      return <EnvVarIcon className="h-[15px] w-[15px] shrink-0" />;
+      return <EnvVarIcon />;
     case "domains":
-      return <DomainBrowserIcon className="h-[15px] w-[15px] shrink-0" />;
+      return <DomainBrowserGlobeIcon />;
     case "connect":
       return <Plug className={iconCls} />;
     case "integrations":
-      return <Blocks className={iconCls} />;
+      return <Store className={iconCls} />;
     case "storage":
       return <Database className={iconCls} />;
     case "flags":
-      return <ToggleLeft className={iconCls} />;
+      return <ToggleRight className={iconCls} />;
     case "agent":
-      return <AgentConstellationIcon className="h-[15px] w-[15px] shrink-0" />;
+      return <AgentConstellationIcon />;
     case "vulnerabilities":
-      return <ShieldAlert className={iconCls} />;
+      return <Bug className={iconCls} />;
     case "settings":
       return <Settings className={iconCls} />;
     default:
@@ -430,9 +562,6 @@ export const CloudDashboardShell = forwardRef<
   const [expandedIds, setExpandedIds] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
-  const [activePopover, setActivePopover] = useState<
-    "workspace" | "project" | "create" | "notifications" | "account" | null
-  >(null);
   const [agentDrawerOpen, setAgentDrawerOpen] = useState<boolean>(false);
   const [selectedWorkspace, setSelectedWorkspace] = useState<WorkspaceOption>({
     id: "ws-main",
@@ -450,7 +579,6 @@ export const CloudDashboardShell = forwardRef<
   );
 
   const searchInputRef = useRef<HTMLInputElement>(null);
-  const shellRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (activeItem !== undefined) {
@@ -549,21 +677,24 @@ export const CloudDashboardShell = forwardRef<
     [activeItem, onNavigate]
   );
 
-  const toggleExpand = useCallback((id: string) => {
+  const setGroupOpen = useCallback((id: string, open: boolean) => {
     setExpandedIds((prev) =>
-      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+      open
+        ? prev.includes(id)
+          ? prev
+          : [...prev, id]
+        : prev.filter((item) => item !== id)
     );
   }, []);
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        setActivePopover(null);
-        setMobileMenuOpen(false);
-        if (document.activeElement === searchInputRef.current) {
-          setSearchQuery("");
-          searchInputRef.current?.blur();
-        }
+      if (
+        e.key === "Escape" &&
+        document.activeElement === searchInputRef.current
+      ) {
+        setSearchQuery("");
+        searchInputRef.current?.blur();
         return;
       }
 
@@ -590,20 +721,15 @@ export const CloudDashboardShell = forwardRef<
     return () => window.removeEventListener("keydown", onKeyDown);
   }, []);
 
-  useEffect(() => {
-    if (!activePopover) return;
-    const handlePointerDown = (e: MouseEvent) => {
-      if (shellRef.current && !shellRef.current.contains(e.target as Node)) {
-        setActivePopover(null);
-      }
-    };
-    document.addEventListener("mousedown", handlePointerDown);
-    return () => document.removeEventListener("mousedown", handlePointerDown);
-  }, [activePopover]);
-
   const isDark = theme === "dark";
   const isLight = theme === "light";
 
+  const fontStyle = {
+    fontFamily:
+      '"Geist", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+  };
+
+  // shadcn/ui + Radix primitives styled with exact measured Geist monochrome tokens
   const T = {
     shellBg: isDark
       ? "bg-[#000000] text-[#ededed]"
@@ -611,70 +737,80 @@ export const CloudDashboardShell = forwardRef<
       ? "bg-[#ffffff] text-[#171717]"
       : "bg-[#ffffff] text-[#171717] dark:bg-[#000000] dark:text-[#ededed]",
     border: isDark
-      ? "border-[#1c1c1c]"
+      ? "border-[#1f1f1f]"
       : isLight
       ? "border-[#e5e5e5]"
-      : "border-[#e5e5e5] dark:border-[#1c1c1c]",
+      : "border-[#e5e5e5] dark:border-[#1f1f1f]",
+    divider: isDark
+      ? "border-[#1b1b1b]"
+      : isLight
+      ? "border-[#ebebeb]"
+      : "border-[#ebebeb] dark:border-[#1b1b1b]",
     inputBg: isDark
-      ? "bg-[#0a0a0a] border-[#222222] text-[#ededed] placeholder:text-[#666666] focus-within:border-[#3b3b3b]"
+      ? "bg-[#0a0a0a] border-[#242424] text-[#ededed] placeholder:text-[#6e6e6e] focus-within:border-[#3d3d3d] shadow-[inset_0_1px_0_0_rgba(255,255,255,0.03)]"
       : isLight
       ? "bg-[#fafafa] border-[#e5e5e5] text-[#171717] placeholder:text-[#737373] focus-within:border-[#a3a3a3]"
-      : "bg-[#fafafa] border-[#e5e5e5] text-[#171717] placeholder:text-[#737373] focus-within:border-[#a3a3a3] dark:bg-[#0a0a0a] dark:border-[#222222] dark:text-[#ededed] dark:placeholder:text-[#666666] dark:focus-within:border-[#3b3b3b]",
+      : "bg-[#fafafa] border-[#e5e5e5] text-[#171717] placeholder:text-[#737373] focus-within:border-[#a3a3a3] dark:bg-[#0a0a0a] dark:border-[#242424] dark:text-[#ededed] dark:placeholder:text-[#6e6e6e] dark:focus-within:border-[#3d3d3d] dark:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.03)]",
     keycap: isDark
-      ? "bg-[#141414] border-[#2a2a2a] text-[#8a8a8a]"
+      ? "bg-[#141414] border-[#2b2b2b] text-[#8f8f8f] shadow-[0_1px_0_0_rgba(255,255,255,0.04)]"
       : isLight
-      ? "bg-[#ffffff] border-[#e5e5e5] text-[#737373]"
-      : "bg-[#ffffff] border-[#e5e5e5] text-[#737373] dark:bg-[#141414] dark:border-[#2a2a2a] dark:text-[#8a8a8a]",
+      ? "bg-[#ffffff] border-[#e5e5e5] text-[#737373] shadow-[0_1px_1px_rgba(0,0,0,0.04)]"
+      : "bg-[#ffffff] border-[#e5e5e5] text-[#737373] shadow-[0_1px_1px_rgba(0,0,0,0.04)] dark:bg-[#141414] dark:border-[#2b2b2b] dark:text-[#8f8f8f] dark:shadow-[0_1px_0_0_rgba(255,255,255,0.04)]",
     planBadge: isDark
-      ? "bg-[#161616] border-[#262626] text-[#a1a1aa]"
+      ? "bg-[#171717] border-[#282828] text-[#a1a1a1]"
       : isLight
       ? "bg-[#f4f4f5] border-[#e4e4e7] text-[#52525b]"
-      : "bg-[#f4f4f5] border-[#e4e4e7] text-[#52525b] dark:bg-[#161616] dark:border-[#262626] dark:text-[#a1a1aa]",
-    navActiveBg: isDark
-      ? "bg-[#1f1f1f]"
+      : "bg-[#f4f4f5] border-[#e4e4e7] text-[#52525b] dark:bg-[#171717] dark:border-[#282828] dark:text-[#a1a1a1]",
+    navActivePill: isDark
+      ? "bg-[#1f1f1f] shadow-[inset_0_1px_0_0_rgba(255,255,255,0.045)]"
       : isLight
-      ? "bg-[#f4f4f5]"
-      : "bg-[#f4f4f5] dark:bg-[#1f1f1f]",
+      ? "bg-[#f2f2f3] shadow-[inset_0_1px_0_0_rgba(255,255,255,0.8)]"
+      : "bg-[#f2f2f3] shadow-[inset_0_1px_0_0_rgba(255,255,255,0.8)] dark:bg-[#1f1f1f] dark:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.045)]",
     navActiveText: isDark
-      ? "text-[#ffffff]"
+      ? "text-[#ededed]"
       : isLight
-      ? "text-[#09090b]"
-      : "text-[#09090b] dark:text-[#ffffff]",
+      ? "text-[#171717]"
+      : "text-[#171717] dark:text-[#ededed]",
     navIdleText: isDark
-      ? "text-[#9ca3af] hover:text-[#ededed] hover:bg-[#141414]"
+      ? "text-[#a1a1a1] hover:text-[#ededed] hover:bg-[#1a1a1a]"
       : isLight
-      ? "text-[#52525b] hover:text-[#09090b] hover:bg-[#f4f4f5]/70"
-      : "text-[#52525b] hover:text-[#09090b] hover:bg-[#f4f4f5]/70 dark:text-[#9ca3af] dark:hover:text-[#ededed] dark:hover:bg-[#141414]",
+      ? "text-[#666666] hover:text-[#171717] hover:bg-[#f5f5f5]"
+      : "text-[#666666] hover:text-[#171717] hover:bg-[#f5f5f5] dark:text-[#a1a1a1] dark:hover:text-[#ededed] dark:hover:bg-[#1a1a1a]",
+    chevron: isDark
+      ? "text-[#8a8a8a]"
+      : isLight
+      ? "text-[#8c8c8c]"
+      : "text-[#8c8c8c] dark:text-[#8a8a8a]",
     mutedText: isDark
+      ? "text-[#888888]"
+      : isLight
       ? "text-[#737373]"
-      : isLight
-      ? "text-[#71717a]"
-      : "text-[#71717a] dark:text-[#737373]",
+      : "text-[#737373] dark:text-[#888888]",
     iconButton: isDark
-      ? "border-[#242424] bg-[#0a0a0a] text-[#a1a1aa] hover:text-[#ffffff] hover:border-[#383838] hover:bg-[#141414]"
+      ? "border-[#242424] bg-[#0a0a0a] text-[#a1a1a1] hover:text-[#ededed] hover:border-[#363636] hover:bg-[#1a1a1a] shadow-[0_1px_2px_rgba(0,0,0,0.45)]"
       : isLight
-      ? "border-[#e4e4e7] bg-[#ffffff] text-[#52525b] hover:text-[#09090b] hover:border-[#d4d4d8] hover:bg-[#f4f4f5]"
-      : "border-[#e4e4e7] bg-[#ffffff] text-[#52525b] hover:text-[#09090b] hover:border-[#d4d4d8] hover:bg-[#f4f4f5] dark:border-[#242424] dark:bg-[#0a0a0a] dark:text-[#a1a1aa] dark:hover:text-[#ffffff] dark:hover:border-[#383838] dark:hover:bg-[#141414]",
+      ? "border-[#e5e5e5] bg-[#ffffff] text-[#52525b] hover:text-[#171717] hover:border-[#d4d4d8] hover:bg-[#f5f5f5] shadow-[0_1px_2px_rgba(0,0,0,0.04)]"
+      : "border-[#e5e5e5] bg-[#ffffff] text-[#52525b] hover:text-[#171717] hover:border-[#d4d4d8] hover:bg-[#f5f5f5] shadow-[0_1px_2px_rgba(0,0,0,0.04)] dark:border-[#242424] dark:bg-[#0a0a0a] dark:text-[#a1a1a1] dark:hover:text-[#ededed] dark:hover:border-[#363636] dark:hover:bg-[#1a1a1a] dark:shadow-[0_1px_2px_rgba(0,0,0,0.45)]",
     headerAction: isDark
-      ? "text-[#d4d4d8] hover:text-[#ffffff] hover:bg-[#141414]"
+      ? "text-[#ededed] hover:bg-[#1a1a1a]"
       : isLight
-      ? "text-[#3f3f46] hover:text-[#09090b] hover:bg-[#f4f4f5]"
-      : "text-[#3f3f46] hover:text-[#09090b] hover:bg-[#f4f4f5] dark:text-[#d4d4d8] dark:hover:text-[#ffffff] dark:hover:bg-[#141414]",
-    popover: isDark
-      ? "bg-[#0d0d0d] border-[#262626] text-[#ededed] shadow-[0_14px_36px_rgba(0,0,0,0.75)]"
+      ? "text-[#171717] hover:bg-[#f5f5f5]"
+      : "text-[#171717] hover:bg-[#f5f5f5] dark:text-[#ededed] dark:hover:bg-[#1a1a1a]",
+    menuSurface: isDark
+      ? "bg-[#0a0a0a] border-[#262626] text-[#ededed] shadow-[0_16px_40px_rgba(0,0,0,0.85),0_0_0_1px_rgba(255,255,255,0.03)]"
       : isLight
-      ? "bg-[#ffffff] border-[#e4e4e7] text-[#171717] shadow-[0_12px_32px_rgba(0,0,0,0.1)]"
-      : "bg-[#ffffff] border-[#e4e4e7] text-[#171717] shadow-[0_12px_32px_rgba(0,0,0,0.1)] dark:bg-[#0d0d0d] dark:border-[#262626] dark:text-[#ededed] dark:shadow-[0_14px_36px_rgba(0,0,0,0.75)]",
-    popoverHover: isDark
-      ? "hover:bg-[#1a1a1a]"
+      ? "bg-[#ffffff] border-[#e5e5e5] text-[#171717] shadow-[0_12px_32px_rgba(0,0,0,0.09)]"
+      : "bg-[#ffffff] border-[#e5e5e5] text-[#171717] shadow-[0_12px_32px_rgba(0,0,0,0.09)] dark:bg-[#0a0a0a] dark:border-[#262626] dark:text-[#ededed] dark:shadow-[0_16px_40px_rgba(0,0,0,0.85),0_0_0_1px_rgba(255,255,255,0.03)]",
+    menuItem: isDark
+      ? "focus:bg-[#1a1a1a] hover:bg-[#1a1a1a]"
       : isLight
-      ? "hover:bg-[#f4f4f5]"
-      : "hover:bg-[#f4f4f5] dark:hover:bg-[#1a1a1a]",
+      ? "focus:bg-[#f5f5f5] hover:bg-[#f5f5f5]"
+      : "focus:bg-[#f5f5f5] hover:bg-[#f5f5f5] dark:focus:bg-[#1a1a1a] dark:hover:bg-[#1a1a1a]",
     fadeMask: isDark
-      ? "from-[#000000] via-[#000000]/80 to-transparent"
+      ? "from-[#000000] via-[#000000]/85 to-transparent"
       : isLight
-      ? "from-[#ffffff] via-[#ffffff]/80 to-transparent"
-      : "from-[#ffffff] via-[#ffffff]/80 to-transparent dark:from-[#000000] dark:via-[#000000]/80 dark:to-transparent",
+      ? "from-[#ffffff] via-[#ffffff]/85 to-transparent"
+      : "from-[#ffffff] via-[#ffffff]/85 to-transparent dark:from-[#000000] dark:via-[#000000]/85 dark:to-transparent",
     ringBg: isDark
       ? "ring-[#000000]"
       : isLight
@@ -688,7 +824,7 @@ export const CloudDashboardShell = forwardRef<
   };
 
   const renderNavGroup = (items: NavItem[]) => (
-    <ul className="space-y-[2px]" role="list">
+    <ul className="space-y-[1px]" role="list">
       {items.map((item) => {
         const hasChildren = Boolean(item.children && item.children.length > 0);
         const isExpanded =
@@ -698,107 +834,166 @@ export const CloudDashboardShell = forwardRef<
         const hasActiveChild =
           item.children?.some((c) => c.id === currentActiveId) ?? false;
 
-        return (
-          <li key={item.id}>
-            <div className="relative">
-              {isDirectActive && (
-                <motion.div
-                  layoutId={`shell-active-pill-${uid}`}
-                  transition={
-                    prefersReducedMotion
-                      ? { duration: 0 }
-                      : { type: "spring", stiffness: 520, damping: 38 }
-                  }
-                  className={cn(
-                    "pointer-events-none absolute inset-0 rounded-[7px]",
-                    T.navActiveBg
-                  )}
-                />
-              )}
-              <button
-                type="button"
-                aria-current={isDirectActive ? "page" : undefined}
-                aria-expanded={hasChildren ? isExpanded : undefined}
-                onClick={() => {
-                  if (hasChildren) {
-                    toggleExpand(item.id);
-                    handleSelectNav(item.id, item.label);
-                  } else {
-                    handleSelectNav(item.id, item.label);
-                  }
-                }}
-                className={cn(
-                  "relative z-10 flex h-[34px] w-full items-center justify-between rounded-[7px] px-2.5 text-[13px] font-normal tracking-[-0.005em] transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#52525b]",
-                  isDirectActive
-                    ? cn(T.navActiveText, "font-medium")
-                    : hasActiveChild
-                    ? T.navActiveText
-                    : T.navIdleText
-                )}
-              >
-                <span className="flex min-w-0 items-center gap-2.5">
-                  <span
+        if (!hasChildren) {
+          return (
+            <li key={item.id}>
+              <div className="relative">
+                {isDirectActive && (
+                  <motion.div
+                    layoutId={`shell-active-pill-${uid}`}
+                    transition={
+                      prefersReducedMotion
+                        ? { duration: 0 }
+                        : { type: "spring", stiffness: 540, damping: 40 }
+                    }
                     className={cn(
-                      "flex items-center justify-center transition-colors",
-                      isDirectActive ? T.navActiveText : "opacity-80"
-                    )}
-                  >
-                    {renderNavIcon(item.id, theme)}
-                  </span>
-                  <span className="truncate">{item.label}</span>
-                </span>
-                {hasChildren && (
-                  <ChevronRight
-                    className={cn(
-                      "h-3.5 w-3.5 shrink-0 opacity-60 transition-transform duration-150",
-                      isExpanded && "rotate-90 opacity-90"
+                      "pointer-events-none absolute inset-0 rounded-[8px]",
+                      T.navActivePill
                     )}
                   />
                 )}
-              </button>
-            </div>
-
-            <AnimatePresence initial={false}>
-              {hasChildren && isExpanded && item.children && (
-                <motion.ul
-                  initial={
-                    prefersReducedMotion
-                      ? { opacity: 1 }
-                      : { height: 0, opacity: 0 }
-                  }
-                  animate={{ height: "auto", opacity: 1 }}
-                  exit={
-                    prefersReducedMotion
-                      ? { opacity: 0 }
-                      : { height: 0, opacity: 0 }
-                  }
-                  transition={{ duration: 0.16, ease: [0.22, 1, 0.36, 1] }}
-                  className="overflow-hidden pl-[26px] pr-1 pt-0.5"
+                <button
+                  type="button"
+                  aria-current={isDirectActive ? "page" : undefined}
+                  onClick={() => handleSelectNav(item.id, item.label)}
+                  className={cn(
+                    "group relative z-10 flex h-[36px] w-full items-center justify-between rounded-[8px] px-2.5 text-[14px] leading-[20px] tracking-[-0.011em] transition-colors duration-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#52525b]",
+                    isDirectActive
+                      ? cn(T.navActiveText, "font-medium")
+                      : cn(T.navIdleText, "font-normal")
+                  )}
                 >
-                  {item.children.map((child) => {
-                    const isChildActive = currentActiveId === child.id;
-                    return (
-                      <li key={child.id} className="relative">
-                        <button
-                          type="button"
-                          aria-current={isChildActive ? "page" : undefined}
-                          onClick={() => handleSelectNav(child.id, child.label)}
-                          className={cn(
-                            "flex h-[30px] w-full items-center rounded-[6px] px-2.5 text-[12.5px] transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#52525b]",
-                            isChildActive
-                              ? cn(T.navActiveBg, T.navActiveText, "font-medium")
-                              : T.navIdleText
-                          )}
-                        >
-                          <span className="truncate">{child.label}</span>
-                        </button>
-                      </li>
-                    );
-                  })}
-                </motion.ul>
-              )}
-            </AnimatePresence>
-          </li>
+                  <span className="flex min-w-0 items-center gap-3">
+                    <span
+                      className={cn(
+                        "flex h-4 w-4 shrink-0 items-center justify-center transition-colors duration-100",
+                        isDirectActive
+                          ? T.navActiveText
+                          : "text-current opacity-85 group-hover:opacity-100"
+                      )}
+                    >
+                      {renderNavIcon(item.id, theme)}
+                    </span>
+                    <span className="truncate">{item.label}</span>
+                  </span>
+                </button>
+              </div>
+            </li>
+          );
+        }
+
+        // Expandable section built with shadcn/ui Collapsible (Radix Collapsible)
+        return (
+          <CollapsiblePrimitive.Root
+            key={item.id}
+            asChild
+            open={isExpanded}
+            onOpenChange={(open) => setGroupOpen(item.id, open)}
+          >
+            <li>
+              <div className="relative">
+                {isDirectActive && (
+                  <motion.div
+                    layoutId={`shell-active-pill-${uid}`}
+                    transition={
+                      prefersReducedMotion
+                        ? { duration: 0 }
+                        : { type: "spring", stiffness: 540, damping: 40 }
+                    }
+                    className={cn(
+                      "pointer-events-none absolute inset-0 rounded-[8px]",
+                      T.navActivePill
+                    )}
+                  />
+                )}
+                <CollapsiblePrimitive.Trigger asChild>
+                  <button
+                    type="button"
+                    aria-current={isDirectActive ? "page" : undefined}
+                    onClick={() => handleSelectNav(item.id, item.label)}
+                    className={cn(
+                      "group relative z-10 flex h-[36px] w-full items-center justify-between rounded-[8px] px-2.5 text-[14px] leading-[20px] tracking-[-0.011em] transition-colors duration-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#52525b]",
+                      isDirectActive
+                        ? cn(T.navActiveText, "font-medium")
+                        : hasActiveChild
+                        ? cn(T.navActiveText, "font-normal")
+                        : cn(T.navIdleText, "font-normal")
+                    )}
+                  >
+                    <span className="flex min-w-0 items-center gap-3">
+                      <span
+                        className={cn(
+                          "flex h-4 w-4 shrink-0 items-center justify-center transition-colors duration-100",
+                          isDirectActive
+                            ? T.navActiveText
+                            : "text-current opacity-85 group-hover:opacity-100"
+                        )}
+                      >
+                        {renderNavIcon(item.id, theme)}
+                      </span>
+                      <span className="truncate">{item.label}</span>
+                    </span>
+                    <ChevronRight
+                      className={cn(
+                        "h-3.5 w-3.5 shrink-0 stroke-[1.7] transition-transform duration-150",
+                        T.chevron,
+                        isExpanded && "rotate-90 text-current"
+                      )}
+                    />
+                  </button>
+                </CollapsiblePrimitive.Trigger>
+              </div>
+
+              <CollapsiblePrimitive.Content forceMount asChild>
+                <AnimatePresence initial={false}>
+                  {isExpanded && item.children && (
+                    <motion.ul
+                      initial={
+                        prefersReducedMotion
+                          ? { opacity: 1 }
+                          : { height: 0, opacity: 0 }
+                      }
+                      animate={{ height: "auto", opacity: 1 }}
+                      exit={
+                        prefersReducedMotion
+                          ? { opacity: 0 }
+                          : { height: 0, opacity: 0 }
+                      }
+                      transition={{ duration: 0.16, ease: [0.22, 1, 0.36, 1] }}
+                      className="overflow-hidden pl-[30px] pr-1 pt-0.5 pb-1"
+                    >
+                      {item.children.map((child) => {
+                        const isChildActive = currentActiveId === child.id;
+                        return (
+                          <li key={child.id}>
+                            <button
+                              type="button"
+                              aria-current={isChildActive ? "page" : undefined}
+                              onClick={() =>
+                                handleSelectNav(child.id, child.label)
+                              }
+                              className={cn(
+                                "flex h-[32px] w-full items-center rounded-[7px] px-2.5 text-[13.5px] leading-[18px] tracking-[-0.01em] transition-colors duration-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#52525b]",
+                                isChildActive
+                                  ? cn(
+                                      T.navActivePill,
+                                      T.navActiveText,
+                                      "font-medium"
+                                    )
+                                  : T.navIdleText
+                              )}
+                            >
+                              <span className="truncate">{child.label}</span>
+                            </button>
+                          </li>
+                        );
+                      })}
+                    </motion.ul>
+                  )}
+                </AnimatePresence>
+              </CollapsiblePrimitive.Content>
+            </li>
+          </CollapsiblePrimitive.Root>
         );
       })}
     </ul>
@@ -806,82 +1001,64 @@ export const CloudDashboardShell = forwardRef<
 
   const sidebarContent = (
     <div className="flex h-full flex-col">
-      {/* Top Workspace Switcher */}
-      <div className="relative flex h-[52px] shrink-0 items-center px-3">
-        <button
-          type="button"
-          aria-haspopup="menu"
-          aria-expanded={activePopover === "workspace"}
-          onClick={() =>
-            setActivePopover((prev) =>
-              prev === "workspace" ? null : "workspace"
-            )
-          }
-          className={cn(
-            "flex w-full items-center justify-between gap-2 rounded-[7px] px-1.5 py-1.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#52525b]",
-            T.popoverHover
-          )}
-        >
-          <span className="flex min-w-0 items-center gap-2">
-            <WorkspaceOrbIcon />
-            <span className="truncate text-[13px] font-medium tracking-[-0.01em]">
-              {selectedWorkspace.name}
-            </span>
-            <span
+      {/* Top Workspace Switcher (shadcn DropdownMenu) */}
+      <div className="flex h-[52px] shrink-0 items-center px-3">
+        <DropdownMenuPrimitive.Root>
+          <DropdownMenuPrimitive.Trigger asChild>
+            <button
+              type="button"
               className={cn(
-                "shrink-0 rounded-full border px-2 py-[1px] text-[10.5px] font-medium leading-[16px]",
-                T.planBadge
+                "flex w-full items-center justify-between gap-2 rounded-[8px] px-1.5 py-1.5 text-left transition-colors duration-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#52525b]",
+                T.menuItem
               )}
             >
-              {selectedWorkspace.plan}
-            </span>
-          </span>
-          <ChevronsUpDown className={cn("h-3.5 w-3.5 shrink-0", T.mutedText)} />
-        </button>
+              <span className="flex min-w-0 items-center gap-2">
+                <WorkspaceOrbIcon />
+                <span className="truncate text-[14px] font-medium leading-[20px] tracking-[-0.012em]">
+                  {selectedWorkspace.name}
+                </span>
+                <span
+                  className={cn(
+                    "shrink-0 rounded-full border px-2 py-[1px] text-[11px] font-medium leading-[16px]",
+                    T.planBadge
+                  )}
+                >
+                  {selectedWorkspace.plan}
+                </span>
+              </span>
+              <ChevronsUpDown
+                className={cn("h-3.5 w-3.5 shrink-0", T.mutedText)}
+              />
+            </button>
+          </DropdownMenuPrimitive.Trigger>
 
-        <AnimatePresence>
-          {activePopover === "workspace" && (
-            <motion.div
-              role="menu"
-              initial={
-                prefersReducedMotion
-                  ? { opacity: 1 }
-                  : { opacity: 0, y: -4, scale: 0.98 }
-              }
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={
-                prefersReducedMotion
-                  ? { opacity: 0 }
-                  : { opacity: 0, y: -4, scale: 0.98 }
-              }
-              transition={{ duration: 0.14, ease: [0.22, 1, 0.36, 1] }}
+          <DropdownMenuPrimitive.Portal>
+            <DropdownMenuPrimitive.Content
+              align="start"
+              sideOffset={6}
+              style={fontStyle}
               className={cn(
-                "absolute left-3 right-3 top-[50px] z-40 rounded-lg border p-1.5",
-                T.popover
+                "z-50 w-[232px] rounded-[10px] border p-1.5 antialiased outline-none",
+                T.menuSurface
               )}
             >
-              <div
+              <DropdownMenuPrimitive.Label
                 className={cn(
-                  "px-2 py-1 text-[10.5px] font-medium uppercase tracking-wider",
+                  "px-2 py-1 text-[11px] font-medium uppercase tracking-wider",
                   T.mutedText
                 )}
               >
                 Workspaces
-              </div>
+              </DropdownMenuPrimitive.Label>
               {workspaceOptions.map((ws) => {
                 const isSelected = ws.name === selectedWorkspace.name;
                 return (
-                  <button
+                  <DropdownMenuPrimitive.Item
                     key={ws.id}
-                    type="button"
-                    role="menuitem"
-                    onClick={() => {
-                      setSelectedWorkspace(ws);
-                      setActivePopover(null);
-                    }}
+                    onSelect={() => setSelectedWorkspace(ws)}
                     className={cn(
-                      "flex w-full items-center justify-between rounded-md px-2 py-1.5 text-[12.5px] transition-colors",
-                      T.popoverHover
+                      "flex cursor-pointer select-none items-center justify-between rounded-[7px] px-2 py-1.5 text-[13px] outline-none transition-colors",
+                      T.menuItem
                     )}
                   >
                     <span className="flex min-w-0 items-center gap-2">
@@ -889,7 +1066,7 @@ export const CloudDashboardShell = forwardRef<
                       <span className="truncate font-medium">{ws.name}</span>
                       <span
                         className={cn(
-                          "rounded-full border px-1.5 py-[0.5px] text-[10px]",
+                          "rounded-full border px-1.5 py-[0.5px] text-[10.5px]",
                           T.planBadge
                         )}
                       >
@@ -897,19 +1074,19 @@ export const CloudDashboardShell = forwardRef<
                       </span>
                     </span>
                     {isSelected && <Check className="h-3.5 w-3.5 shrink-0" />}
-                  </button>
+                  </DropdownMenuPrimitive.Item>
                 );
               })}
-            </motion.div>
-          )}
-        </AnimatePresence>
+            </DropdownMenuPrimitive.Content>
+          </DropdownMenuPrimitive.Portal>
+        </DropdownMenuPrimitive.Root>
       </div>
 
       {/* Find Search Input */}
       <div className="shrink-0 px-3 pb-2.5 pt-0.5">
         <div
           className={cn(
-            "flex h-[34px] items-center gap-2 rounded-[7px] border px-2.5 transition-colors",
+            "flex h-[34px] items-center gap-2 rounded-[8px] border px-2.5 transition-colors duration-100",
             T.inputBg
           )}
         >
@@ -921,7 +1098,7 @@ export const CloudDashboardShell = forwardRef<
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Find"
             aria-label="Find navigation item"
-            className="w-full min-w-0 bg-transparent text-[13px] outline-none placeholder:text-inherit"
+            className="w-full min-w-0 bg-transparent text-[13.5px] leading-[18px] outline-none placeholder:text-inherit"
           />
           {searchQuery ? (
             <button
@@ -930,7 +1107,7 @@ export const CloudDashboardShell = forwardRef<
               aria-label="Clear search"
               className={cn("rounded p-0.5 transition-colors", T.mutedText)}
             >
-              <X className="h-3 w-3" />
+              <X className="h-3.5 w-3.5" />
             </button>
           ) : (
             <kbd
@@ -949,250 +1126,213 @@ export const CloudDashboardShell = forwardRef<
       <div className="relative flex-1 min-h-0">
         <nav
           aria-label="Dashboard Navigation"
-          className="h-full overflow-y-auto px-2.5 pb-10 pt-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          className="cloud-shell-scroll h-full overflow-y-auto px-2 pb-12 pt-0.5"
         >
           {primaryItems.length > 0 && renderNavGroup(primaryItems)}
 
           {primaryItems.length > 0 && platformItems.length > 0 && (
-            <div className={cn("my-2.5 mx-1 border-t", T.border)} />
+            <div
+              role="separator"
+              className={cn("my-3 mx-1.5 border-t", T.divider)}
+            />
           )}
 
           {platformItems.length > 0 && renderNavGroup(platformItems)}
 
           {primaryItems.length === 0 && platformItems.length === 0 && (
             <div
-              className={cn("px-3 py-6 text-center text-[12.5px]", T.mutedText)}
+              className={cn("px-3 py-6 text-center text-[13px]", T.mutedText)}
             >
               No sections matching &ldquo;{searchQuery}&rdquo;
             </div>
           )}
         </nav>
 
-        {/* Subtle bottom fade matching reference */}
         <div
           aria-hidden="true"
           className={cn(
-            "pointer-events-none absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t",
+            "pointer-events-none absolute inset-x-0 bottom-0 h-14 bg-gradient-to-t",
             T.fadeMask
           )}
         />
       </div>
 
-      {/* Pinned User Footer */}
-      <div className="relative flex h-[52px] shrink-0 items-center justify-between px-3">
+      {/* Pinned User Footer (shadcn DropdownMenu + Popover) */}
+      <div className="flex h-[54px] shrink-0 items-center justify-between px-3">
         <div className="flex min-w-0 items-center gap-2.5">
           <div
             aria-hidden="true"
             className={cn(
-              "flex h-6 w-6 shrink-0 items-center justify-center rounded-full border text-[10px] font-semibold tracking-tight",
+              "flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-full border text-[10.5px] font-semibold tracking-tight",
               isDark
-                ? "border-[#2e2e2e] bg-[#1a1a1a] text-[#e4e4e7]"
+                ? "border-[#2e2e2e] bg-[#1a1a1a] text-[#ededed]"
                 : isLight
-                ? "border-[#d4d4d8] bg-[#f4f4f5] text-[#18181b]"
-                : "border-[#d4d4d8] bg-[#f4f4f5] text-[#18181b] dark:border-[#2e2e2e] dark:bg-[#1a1a1a] dark:text-[#e4e4e7]"
+                ? "border-[#d4d4d8] bg-[#f4f4f5] text-[#171717]"
+                : "border-[#d4d4d8] bg-[#f4f4f5] text-[#171717] dark:border-[#2e2e2e] dark:bg-[#1a1a1a] dark:text-[#ededed]"
             )}
           >
             {getInitials(userName)}
           </div>
-          <span className="truncate text-[13px] font-medium tracking-[-0.01em]">
+          <span className="truncate text-[14px] font-medium leading-[20px] tracking-[-0.011em]">
             {userName}
           </span>
         </div>
 
-        <div className="flex shrink-0 items-center gap-1.5">
-          <button
-            type="button"
-            aria-label="Account options"
-            aria-expanded={activePopover === "account"}
-            onClick={() =>
-              setActivePopover((prev) =>
-                prev === "account" ? null : "account"
-              )
-            }
-            className={cn(
-              "flex h-7 w-7 items-center justify-center rounded-full border transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#52525b]",
-              T.iconButton
-            )}
-          >
-            <MoreHorizontal className="h-3.5 w-3.5" />
-          </button>
-
-          <button
-            type="button"
-            aria-label="Notifications"
-            aria-expanded={activePopover === "notifications"}
-            onClick={() =>
-              setActivePopover((prev) =>
-                prev === "notifications" ? null : "notifications"
-              )
-            }
-            className={cn(
-              "relative flex h-7 w-7 items-center justify-center rounded-full border transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#52525b]",
-              T.iconButton
-            )}
-          >
-            <Bell className="h-3.5 w-3.5" />
-            {unreadDot && (
-              <span
-                aria-label="Unread notifications"
+        <div className="flex shrink-0 items-center gap-2">
+          {/* Account Menu (shadcn DropdownMenu) */}
+          <DropdownMenuPrimitive.Root>
+            <DropdownMenuPrimitive.Trigger asChild>
+              <button
+                type="button"
+                aria-label="Account options"
                 className={cn(
-                  "absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-[#3b82f6] ring-2",
-                  T.ringBg
+                  "flex h-8 w-8 items-center justify-center rounded-full border transition-colors duration-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#52525b]",
+                  T.iconButton
                 )}
-              />
-            )}
-          </button>
-        </div>
+              >
+                <MoreHorizontal className="h-4 w-4" />
+              </button>
+            </DropdownMenuPrimitive.Trigger>
 
-        {/* Account Popover */}
-        <AnimatePresence>
-          {activePopover === "account" && (
-            <motion.div
-              role="menu"
-              initial={
-                prefersReducedMotion
-                  ? { opacity: 1 }
-                  : { opacity: 0, y: 4, scale: 0.98 }
-              }
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={
-                prefersReducedMotion
-                  ? { opacity: 0 }
-                  : { opacity: 0, y: 4, scale: 0.98 }
-              }
-              transition={{ duration: 0.14, ease: [0.22, 1, 0.36, 1] }}
-              className={cn(
-                "absolute bottom-[54px] left-3 right-3 z-40 rounded-lg border p-1.5",
-                T.popover
-              )}
-            >
-              <div className={cn("border-b px-2 py-1.5", T.border)}>
-                <p className="truncate text-[12.5px] font-medium">{userName}</p>
-                <p className={cn("truncate text-[11px]", T.mutedText)}>
-                  {selectedWorkspace.name} · {selectedWorkspace.plan}
-                </p>
-              </div>
-              {["Account Settings", "Command Menu", "Billing & Usage"].map(
-                (label) => (
-                  <button
-                    key={label}
-                    type="button"
-                    role="menuitem"
-                    onClick={() => {
-                      handleSelectNav(
-                        label.toLowerCase().replace(/\s+/g, "-"),
-                        label
-                      );
-                      setActivePopover(null);
-                    }}
-                    className={cn(
-                      "mt-0.5 flex w-full items-center rounded-md px-2 py-1.5 text-left text-[12.5px] transition-colors",
-                      T.popoverHover
-                    )}
-                  >
-                    {label}
-                  </button>
-                )
-              )}
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* Notifications Popover */}
-        <AnimatePresence>
-          {activePopover === "notifications" && (
-            <motion.div
-              role="dialog"
-              aria-label="Notifications"
-              initial={
-                prefersReducedMotion
-                  ? { opacity: 1 }
-                  : { opacity: 0, y: 4, scale: 0.98 }
-              }
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={
-                prefersReducedMotion
-                  ? { opacity: 0 }
-                  : { opacity: 0, y: 4, scale: 0.98 }
-              }
-              transition={{ duration: 0.14, ease: [0.22, 1, 0.36, 1] }}
-              className={cn(
-                "absolute bottom-[54px] left-3 right-3 z-40 rounded-lg border p-2",
-                T.popover
-              )}
-            >
-              <div className="mb-1.5 flex items-center justify-between px-1">
-                <span className="text-[12px] font-medium">Notifications</span>
-                {unreadDot && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setUnreadDot(false);
-                      setNotifications((prev) =>
-                        prev.map((n) => ({ ...n, unread: false }))
-                      );
-                    }}
-                    className="text-[11px] text-[#3b82f6] hover:underline"
-                  >
-                    Mark all read
-                  </button>
+            <DropdownMenuPrimitive.Portal>
+              <DropdownMenuPrimitive.Content
+                side="top"
+                align="end"
+                sideOffset={8}
+                style={fontStyle}
+                className={cn(
+                  "z-50 w-[224px] rounded-[10px] border p-1.5 antialiased outline-none",
+                  T.menuSurface
                 )}
-              </div>
-              <div className="space-y-1">
-                {notifications.map((note) => (
-                  <div
-                    key={note.id}
-                    className={cn(
-                      "flex items-start gap-2 rounded-md px-2 py-1.5 text-[12px]",
-                      T.popoverHover
-                    )}
-                  >
-                    <span
+              >
+                <div className={cn("border-b px-2 py-1.5", T.border)}>
+                  <p className="truncate text-[13px] font-medium">{userName}</p>
+                  <p className={cn("truncate text-[11.5px]", T.mutedText)}>
+                    {selectedWorkspace.name} · {selectedWorkspace.plan}
+                  </p>
+                </div>
+                {["Account Settings", "Command Menu", "Billing & Usage"].map(
+                  (label) => (
+                    <DropdownMenuPrimitive.Item
+                      key={label}
+                      onSelect={() =>
+                        handleSelectNav(
+                          label.toLowerCase().replace(/\s+/g, "-"),
+                          label
+                        )
+                      }
                       className={cn(
-                        "mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full",
-                        note.unread && unreadDot
-                          ? "bg-[#3b82f6]"
-                          : "bg-transparent"
+                        "mt-0.5 flex cursor-pointer select-none items-center rounded-[7px] px-2 py-1.5 text-[13px] outline-none transition-colors",
+                        T.menuItem
                       )}
-                    />
-                    <div className="min-w-0 flex-1">
-                      <p className="leading-snug">{note.title}</p>
-                      <p
+                    >
+                      {label}
+                    </DropdownMenuPrimitive.Item>
+                  )
+                )}
+              </DropdownMenuPrimitive.Content>
+            </DropdownMenuPrimitive.Portal>
+          </DropdownMenuPrimitive.Root>
+
+          {/* Notifications Popover (shadcn Popover) */}
+          <PopoverPrimitive.Root>
+            <PopoverPrimitive.Trigger asChild>
+              <button
+                type="button"
+                aria-label="Notifications"
+                className={cn(
+                  "relative flex h-8 w-8 items-center justify-center rounded-full border transition-colors duration-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#52525b]",
+                  T.iconButton
+                )}
+              >
+                <Bell className="h-4 w-4" />
+                {unreadDot && (
+                  <span
+                    aria-label="Unread notifications"
+                    className={cn(
+                      "absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-[#3b82f6] ring-2",
+                      T.ringBg
+                    )}
+                  />
+                )}
+              </button>
+            </PopoverPrimitive.Trigger>
+
+            <PopoverPrimitive.Portal>
+              <PopoverPrimitive.Content
+                side="top"
+                align="end"
+                sideOffset={8}
+                style={fontStyle}
+                className={cn(
+                  "z-50 w-[264px] rounded-[10px] border p-2 antialiased outline-none",
+                  T.menuSurface
+                )}
+              >
+                <div className="mb-1.5 flex items-center justify-between px-1">
+                  <span className="text-[12.5px] font-medium">
+                    Notifications
+                  </span>
+                  {unreadDot && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setUnreadDot(false);
+                        setNotifications((prev) =>
+                          prev.map((n) => ({ ...n, unread: false }))
+                        );
+                      }}
+                      className="text-[11.5px] text-[#3b82f6] hover:underline"
+                    >
+                      Mark all read
+                    </button>
+                  )}
+                </div>
+                <div className="space-y-1">
+                  {notifications.map((note) => (
+                    <div
+                      key={note.id}
+                      className={cn(
+                        "flex items-start gap-2 rounded-[7px] px-2 py-1.5 text-[12.5px] transition-colors",
+                        T.menuItem
+                      )}
+                    >
+                      <span
                         className={cn(
-                          "mt-0.5 text-[10.5px] tabular-nums",
-                          T.mutedText
+                          "mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full",
+                          note.unread && unreadDot
+                            ? "bg-[#3b82f6]"
+                            : "bg-transparent"
                         )}
-                      >
-                        {note.time}
-                      </p>
+                      />
+                      <div className="min-w-0 flex-1">
+                        <p className="leading-snug">{note.title}</p>
+                        <p
+                          className={cn(
+                            "mt-0.5 text-[11px] tabular-nums",
+                            T.mutedText
+                          )}
+                        >
+                          {note.time}
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                ))}
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+                  ))}
+                </div>
+              </PopoverPrimitive.Content>
+            </PopoverPrimitive.Portal>
+          </PopoverPrimitive.Root>
+        </div>
       </div>
     </div>
   );
 
   return (
     <div
-      ref={(node) => {
-        (shellRef as React.MutableRefObject<HTMLDivElement | null>).current =
-          node;
-        if (typeof ref === "function") {
-          ref(node);
-        } else if (ref) {
-          (ref as React.MutableRefObject<HTMLDivElement | null>).current = node;
-        }
-      }}
-      style={{
-        fontFamily:
-          '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-      }}
+      ref={ref}
+      style={fontStyle}
       className={cn(
-        "relative flex h-[740px] w-full overflow-hidden antialiased selection:bg-[#3b82f6]/30",
+        "relative flex h-[760px] w-full overflow-hidden antialiased selection:bg-[#3b82f6]/30",
         T.shellBg,
         className
       )}
@@ -1208,35 +1348,28 @@ export const CloudDashboardShell = forwardRef<
         {sidebarContent}
       </aside>
 
-      {/* Mobile Drawer Sidebar */}
-      <AnimatePresence>
-        {mobileMenuOpen && (
-          <>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.16 }}
-              onClick={() => setMobileMenuOpen(false)}
-              className="absolute inset-0 z-40 bg-black/60 backdrop-blur-[2px] md:hidden"
-            />
-            <motion.aside
-              aria-label="Mobile Navigation"
-              initial={prefersReducedMotion ? { x: 0 } : { x: -264 }}
-              animate={{ x: 0 }}
-              exit={prefersReducedMotion ? { x: 0 } : { x: -264 }}
-              transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
-              className={cn(
-                "absolute inset-y-0 left-0 z-50 flex w-[256px] flex-col border-r md:hidden",
-                T.shellBg,
-                T.border
-              )}
-            >
-              {sidebarContent}
-            </motion.aside>
-          </>
-        )}
-      </AnimatePresence>
+      {/* Mobile Navigation Sheet (shadcn Dialog/Sheet) */}
+      <DialogPrimitive.Root
+        open={mobileMenuOpen}
+        onOpenChange={setMobileMenuOpen}
+      >
+        <DialogPrimitive.Portal>
+          <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/60 backdrop-blur-[2px] md:hidden" />
+          <DialogPrimitive.Content
+            style={fontStyle}
+            className={cn(
+              "fixed inset-y-0 left-0 z-50 flex w-[256px] flex-col border-r outline-none md:hidden",
+              T.shellBg,
+              T.border
+            )}
+          >
+            <DialogPrimitive.Title className="sr-only">
+              Dashboard Navigation
+            </DialogPrimitive.Title>
+            {sidebarContent}
+          </DialogPrimitive.Content>
+        </DialogPrimitive.Portal>
+      </DialogPrimitive.Root>
 
       {/* Right Column: Top Header + Main Content Viewport */}
       <div className="flex min-w-0 flex-1 flex-col">
@@ -1247,86 +1380,66 @@ export const CloudDashboardShell = forwardRef<
             T.border
           )}
         >
-          {/* Left: Mobile Menu Trigger + Project Switcher */}
-          <div className="relative flex min-w-0 items-center gap-1.5">
+          {/* Left: Mobile Sheet Trigger + Project Switcher (shadcn DropdownMenu) */}
+          <div className="flex min-w-0 items-center gap-1.5">
             <button
               type="button"
               aria-label="Open navigation menu"
               onClick={() => setMobileMenuOpen(true)}
               className={cn(
-                "flex h-8 w-8 items-center justify-center rounded-md md:hidden",
+                "flex h-8 w-8 items-center justify-center rounded-[7px] md:hidden",
                 T.headerAction
               )}
             >
               <Menu className="h-4 w-4" />
             </button>
 
-            <button
-              type="button"
-              aria-haspopup="menu"
-              aria-expanded={activePopover === "project"}
-              onClick={() =>
-                setActivePopover((prev) =>
-                  prev === "project" ? null : "project"
-                )
-              }
-              className={cn(
-                "flex items-center gap-2 rounded-[7px] px-2 py-1.5 text-[13px] font-medium tracking-[-0.01em] transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#52525b]",
-                T.headerAction
-              )}
-            >
-              <ProjectMonogramIcon theme={theme} />
-              <span className="max-w-[140px] truncate sm:max-w-[200px]">
-                {selectedProject.name}
-              </span>
-              <ChevronsUpDown
-                className={cn("h-3.5 w-3.5 shrink-0", T.mutedText)}
-              />
-            </button>
-
-            <AnimatePresence>
-              {activePopover === "project" && (
-                <motion.div
-                  role="menu"
-                  initial={
-                    prefersReducedMotion
-                      ? { opacity: 1 }
-                      : { opacity: 0, y: -4, scale: 0.98 }
-                  }
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={
-                    prefersReducedMotion
-                      ? { opacity: 0 }
-                      : { opacity: 0, y: -4, scale: 0.98 }
-                  }
-                  transition={{ duration: 0.14, ease: [0.22, 1, 0.36, 1] }}
+            <DropdownMenuPrimitive.Root>
+              <DropdownMenuPrimitive.Trigger asChild>
+                <button
+                  type="button"
                   className={cn(
-                    "absolute left-0 top-[44px] z-40 w-[230px] rounded-lg border p-1.5",
-                    T.popover
+                    "flex items-center gap-2 rounded-[8px] px-2 py-1.5 text-[14px] font-medium leading-[20px] tracking-[-0.011em] transition-colors duration-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#52525b]",
+                    T.headerAction
                   )}
                 >
-                  <div
+                  <ProjectMonogramIcon theme={theme} />
+                  <span className="max-w-[140px] truncate sm:max-w-[200px]">
+                    {selectedProject.name}
+                  </span>
+                  <ChevronsUpDown
+                    className={cn("h-3.5 w-3.5 shrink-0", T.mutedText)}
+                  />
+                </button>
+              </DropdownMenuPrimitive.Trigger>
+
+              <DropdownMenuPrimitive.Portal>
+                <DropdownMenuPrimitive.Content
+                  align="start"
+                  sideOffset={6}
+                  style={fontStyle}
+                  className={cn(
+                    "z-50 w-[236px] rounded-[10px] border p-1.5 antialiased outline-none",
+                    T.menuSurface
+                  )}
+                >
+                  <DropdownMenuPrimitive.Label
                     className={cn(
-                      "px-2 py-1 text-[10.5px] font-medium uppercase tracking-wider",
+                      "px-2 py-1 text-[11px] font-medium uppercase tracking-wider",
                       T.mutedText
                     )}
                   >
                     Projects
-                  </div>
+                  </DropdownMenuPrimitive.Label>
                   {projectOptions.map((proj) => {
                     const isSelected = proj.name === selectedProject.name;
                     return (
-                      <button
+                      <DropdownMenuPrimitive.Item
                         key={proj.id}
-                        type="button"
-                        role="menuitem"
-                        onClick={() => {
-                          setSelectedProject(proj);
-                          setActivePopover(null);
-                        }}
+                        onSelect={() => setSelectedProject(proj)}
                         className={cn(
-                          "flex w-full items-center justify-between rounded-md px-2 py-1.5 text-[12.5px] transition-colors",
-                          T.popoverHover
+                          "flex cursor-pointer select-none items-center justify-between rounded-[7px] px-2 py-1.5 text-[13px] outline-none transition-colors",
+                          T.menuItem
                         )}
                       >
                         <span className="flex min-w-0 items-center gap-2">
@@ -1341,102 +1454,82 @@ export const CloudDashboardShell = forwardRef<
                         {isSelected && (
                           <Check className="h-3.5 w-3.5 shrink-0" />
                         )}
-                      </button>
+                      </DropdownMenuPrimitive.Item>
                     );
                   })}
-                </motion.div>
-              )}
-            </AnimatePresence>
+                </DropdownMenuPrimitive.Content>
+              </DropdownMenuPrimitive.Portal>
+            </DropdownMenuPrimitive.Root>
           </div>
 
           {/* Center: Current Page Title */}
           <div className="pointer-events-none absolute left-1/2 hidden -translate-x-1/2 sm:block">
-            <h1 className="text-[13px] font-medium tracking-[-0.01em]">
+            <h1 className="text-[14px] font-medium leading-[20px] tracking-[-0.011em]">
               {activeMeta.label}
             </h1>
           </div>
 
-          {/* Right: Create New + Agent Actions */}
-          <div className="relative flex shrink-0 items-center gap-1 sm:gap-2">
-            <button
-              type="button"
-              aria-haspopup="menu"
-              aria-expanded={activePopover === "create"}
-              onClick={() =>
-                setActivePopover((prev) =>
-                  prev === "create" ? null : "create"
-                )
-              }
-              className={cn(
-                "flex h-8 items-center gap-1.5 rounded-[7px] px-2.5 text-[13px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#52525b]",
-                T.headerAction
-              )}
-            >
-              <Plus className="h-3.5 w-3.5 stroke-[1.8]" />
-              <span>Create New</span>
-            </button>
+          {/* Right: Create New (shadcn DropdownMenu) + Agent Toggle */}
+          <div className="flex shrink-0 items-center gap-1 sm:gap-2">
+            <DropdownMenuPrimitive.Root>
+              <DropdownMenuPrimitive.Trigger asChild>
+                <button
+                  type="button"
+                  className={cn(
+                    "flex h-8 items-center gap-1.5 rounded-[8px] px-2.5 text-[14px] font-medium leading-[20px] tracking-[-0.011em] transition-colors duration-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#52525b]",
+                    T.headerAction
+                  )}
+                >
+                  <Plus className="h-4 w-4 stroke-[1.7]" />
+                  <span>Create New</span>
+                </button>
+              </DropdownMenuPrimitive.Trigger>
+
+              <DropdownMenuPrimitive.Portal>
+                <DropdownMenuPrimitive.Content
+                  align="end"
+                  sideOffset={6}
+                  style={fontStyle}
+                  className={cn(
+                    "z-50 w-[236px] rounded-[10px] border p-1.5 antialiased outline-none",
+                    T.menuSurface
+                  )}
+                >
+                  {CREATE_OPTIONS.map((opt) => (
+                    <DropdownMenuPrimitive.Item
+                      key={opt.id}
+                      onSelect={() => onCreateNew?.(opt.id)}
+                      className={cn(
+                        "flex cursor-pointer select-none flex-col rounded-[7px] px-2.5 py-1.5 text-left outline-none transition-colors",
+                        T.menuItem
+                      )}
+                    >
+                      <span className="text-[13px] font-medium">
+                        {opt.label}
+                      </span>
+                      <span className={cn("text-[11.5px]", T.mutedText)}>
+                        {opt.hint}
+                      </span>
+                    </DropdownMenuPrimitive.Item>
+                  ))}
+                </DropdownMenuPrimitive.Content>
+              </DropdownMenuPrimitive.Portal>
+            </DropdownMenuPrimitive.Root>
 
             <button
               type="button"
               aria-pressed={agentDrawerOpen}
               onClick={() => setAgentDrawerOpen((prev) => !prev)}
               className={cn(
-                "flex h-8 items-center gap-1.5 rounded-[7px] px-2.5 text-[13px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#52525b]",
+                "flex h-8 items-center gap-1.5 rounded-[8px] px-2.5 text-[14px] font-medium leading-[20px] tracking-[-0.011em] transition-colors duration-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#52525b]",
                 agentDrawerOpen
-                  ? cn(T.navActiveBg, T.navActiveText)
+                  ? cn(T.navActivePill, T.navActiveText)
                   : T.headerAction
               )}
             >
-              <AgentConstellationIcon className="h-3.5 w-3.5" />
+              <AgentConstellationIcon className="h-4 w-4" />
               <span>Agent</span>
             </button>
-
-            <AnimatePresence>
-              {activePopover === "create" && (
-                <motion.div
-                  role="menu"
-                  initial={
-                    prefersReducedMotion
-                      ? { opacity: 1 }
-                      : { opacity: 0, y: -4, scale: 0.98 }
-                  }
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={
-                    prefersReducedMotion
-                      ? { opacity: 0 }
-                      : { opacity: 0, y: -4, scale: 0.98 }
-                  }
-                  transition={{ duration: 0.14, ease: [0.22, 1, 0.36, 1] }}
-                  className={cn(
-                    "absolute right-0 top-[44px] z-40 w-[230px] rounded-lg border p-1.5",
-                    T.popover
-                  )}
-                >
-                  {CREATE_OPTIONS.map((opt) => (
-                    <button
-                      key={opt.id}
-                      type="button"
-                      role="menuitem"
-                      onClick={() => {
-                        onCreateNew?.(opt.id);
-                        setActivePopover(null);
-                      }}
-                      className={cn(
-                        "flex w-full flex-col rounded-md px-2.5 py-1.5 text-left transition-colors",
-                        T.popoverHover
-                      )}
-                    >
-                      <span className="text-[12.5px] font-medium">
-                        {opt.label}
-                      </span>
-                      <span className={cn("text-[11px]", T.mutedText)}>
-                        {opt.hint}
-                      </span>
-                    </button>
-                  ))}
-                </motion.div>
-              )}
-            </AnimatePresence>
           </div>
         </header>
 
@@ -1453,17 +1546,17 @@ export const CloudDashboardShell = forwardRef<
                     className={cn(
                       "mb-3 flex h-10 w-10 items-center justify-center rounded-xl border",
                       T.border,
-                      T.navActiveBg
+                      T.navActivePill
                     )}
                   >
                     {renderNavIcon(activeMeta.parentId, theme)}
                   </div>
-                  <p className="text-[14px] font-medium tracking-[-0.01em]">
+                  <p className="text-[14px] font-medium tracking-[-0.011em]">
                     {activeMeta.label}
                   </p>
                   <p
                     className={cn(
-                      "mt-1 max-w-[280px] text-[12.5px]",
+                      "mt-1 max-w-[280px] text-[13px]",
                       T.mutedText
                     )}
                   >
@@ -1508,7 +1601,7 @@ export const CloudDashboardShell = forwardRef<
                     T.border
                   )}
                 >
-                  <span className="flex items-center gap-2 text-[12.5px] font-medium">
+                  <span className="flex items-center gap-2 text-[13px] font-medium">
                     <AgentConstellationIcon className="h-3.5 w-3.5" />
                     Agent
                   </span>
@@ -1521,7 +1614,7 @@ export const CloudDashboardShell = forwardRef<
                     <X className="h-3.5 w-3.5" />
                   </button>
                 </div>
-                <div className="flex-1 space-y-3 p-3.5 text-[12.5px]">
+                <div className="flex-1 space-y-3 p-3.5 text-[13px]">
                   <p className={T.mutedText}>
                     Context scoped to{" "}
                     <span className={cn("font-medium", T.navActiveText)}>
@@ -1544,9 +1637,9 @@ export const CloudDashboardShell = forwardRef<
                         type="button"
                         onClick={() => onCreateNew?.(`agent:${prompt}`)}
                         className={cn(
-                          "w-full rounded-lg border px-2.5 py-2 text-left text-[12px] transition-colors",
+                          "w-full rounded-[8px] border px-2.5 py-2 text-left text-[12.5px] transition-colors",
                           T.border,
-                          T.popoverHover
+                          T.menuItem
                         )}
                       >
                         {prompt}
