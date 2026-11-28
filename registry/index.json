@@ -1,7 +1,7 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-28T15:16:04.159Z",
-  "totalComponents": 97,
+  "updatedAt": "2026-11-28T15:16:12.129Z",
+  "totalComponents": 96,
   "components": [
     {
       "id": "pocket-assistant-cards",
@@ -1860,26 +1860,6 @@
       "updatedAt": 1700000000000,
       "lastRepoSyncAt": 1795870486318,
       "path": "registry/components/aurora-ambient-hero",
-      "files": [
-        "component.tsx",
-        "default.tsx",
-        "index.css",
-        "manifest.json"
-      ],
-      "dependencies": [
-        "lucide-react"
-      ]
-    },
-    {
-      "id": "bento-metric-grid",
-      "slug": "bento-metric-grid",
-      "name": "Bento Metric Showcase Card",
-      "description": "Bento-style card showcasing real-time metrics, interactive sparkline charts, and micro-hover states.",
-      "category": "Cards",
-      "isBuiltIn": true,
-      "updatedAt": 1700000000000,
-      "lastRepoSyncAt": 1795870486318,
-      "path": "registry/components/bento-metric-grid",
       "files": [
         "component.tsx",
         "default.tsx",
