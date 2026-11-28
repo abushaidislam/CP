@@ -1,8 +1,29 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-28T14:05:56.487Z",
-  "totalComponents": 96,
+  "updatedAt": "2026-11-28T14:24:16.118Z",
+  "totalComponents": 98,
   "components": [
+    {
+      "id": "api-keys-card",
+      "slug": "api-keys-card",
+      "name": "ApiKeysCard",
+      "description": "Dual-card authentication bento showcase stacking an interactive Social Sign-On hub (glowing cyan cloud core, stepped OAuth provider conveyor tracks, dotted packet traces) above the 3D-hinged API Keys & 3U server rack card.",
+      "category": "Cards",
+      "isBuiltIn": false,
+      "updatedAt": 1795875853894,
+      "lastRepoSyncAt": 1795875854613,
+      "path": "registry/components/api-keys-card",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "index.css",
+        "manifest.json",
+        "preview.png"
+      ],
+      "dependencies": [
+        "framer-motion"
+      ]
+    },
     {
       "id": "cloud-dashboard-shell",
       "slug": "cloud-dashboard-shell",
@@ -30,35 +51,14 @@
       ]
     },
     {
-      "id": "pocket-assistant-cards",
-      "slug": "pocket-assistant-cards",
-      "name": "PocketAssistantCards",
-      "description": "A tactile 3-column stitched pocket card showcase with tilted AI assistant notes that smoothly peek on hover and pull out on click for full readability.",
-      "category": "Cards",
-      "isBuiltIn": false,
-      "updatedAt": 1795868006312,
-      "lastRepoSyncAt": 1795868013696,
-      "path": "registry/components/pocket-assistant-cards",
-      "files": [
-        "component.tsx",
-        "default.tsx",
-        "index.css",
-        "manifest.json",
-        "preview.png"
-      ],
-      "dependencies": [
-        "framer-motion"
-      ]
-    },
-    {
       "id": "kinetic-numeral",
       "slug": "kinetic-numeral",
       "name": "KineticNumeral",
       "description": "A Swiss-modernist modular 3x8 kinetic numeral specimen where solid rectangular bars elastically stretch and swim across the grid to morph seamlessly between digits 0-9.",
       "category": "Widgets",
       "isBuiltIn": false,
-      "updatedAt": 1795867907360,
-      "lastRepoSyncAt": 1795867914639,
+      "updatedAt": 1795874697762,
+      "lastRepoSyncAt": 1795874704901,
       "path": "registry/components/kinetic-numeral",
       "files": [
         "component.tsx",
@@ -71,6 +71,48 @@
         "framer-motion",
         "clsx",
         "tailwind-merge"
+      ]
+    },
+    {
+      "id": "matrix-reveal-grid",
+      "slug": "matrix-reveal-grid",
+      "name": "MatrixRevealGrid",
+      "description": "Architectural 3-column integration showcase grid where hovering or focusing each card triggers a 60fps radial dot-matrix canvas wave, crossfading monochrome wireframe marks into full-color emblems with an optical lift and label reveal.",
+      "category": "Cards",
+      "isBuiltIn": false,
+      "updatedAt": 1795874682478,
+      "lastRepoSyncAt": 1795874688675,
+      "path": "registry/components/matrix-reveal-grid",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "index.css",
+        "manifest.json",
+        "preview.png"
+      ],
+      "dependencies": [
+        "framer-motion"
+      ]
+    },
+    {
+      "id": "pocket-assistant-cards",
+      "slug": "pocket-assistant-cards",
+      "name": "PocketAssistantCards",
+      "description": "An interactive 3-column stitched pocket deck with 9 swappable AI note cards, drag-to-pull spring physics, live recipe scalers & checklists, clickable trail map waypoints, essay structure highlighters, and optional Web Audio paper-slide SFX.",
+      "category": "Cards",
+      "isBuiltIn": false,
+      "updatedAt": 1795873383294,
+      "lastRepoSyncAt": 1795873390165,
+      "path": "registry/components/pocket-assistant-cards",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "index.css",
+        "manifest.json",
+        "preview.png"
+      ],
+      "dependencies": [
+        "framer-motion"
       ]
     },
     {
