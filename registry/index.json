@@ -1,18 +1,18 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-28T14:05:05.055Z",
+  "updatedAt": "2026-11-28T14:05:21.171Z",
   "totalComponents": 96,
   "components": [
     {
-      "id": "kinetic-numeral",
-      "slug": "kinetic-numeral",
-      "name": "KineticNumeral",
-      "description": "A Swiss-modernist modular 3x8 kinetic numeral specimen where solid rectangular bars elastically stretch and swim across the grid to morph seamlessly between digits 0-9.",
-      "category": "Widgets",
+      "id": "cloud-dashboard-shell",
+      "slug": "cloud-dashboard-shell",
+      "name": "CloudDashboardShell",
+      "description": "Pitch-black developer cloud dashboard shell with workspace and project switchers, F-shortcut navigation filtering, expandable route groups, and a contextual Agent drawer.",
+      "category": "Navigation",
       "isBuiltIn": false,
-      "updatedAt": 1795874697762,
-      "lastRepoSyncAt": 1795874704901,
-      "path": "registry/components/kinetic-numeral",
+      "updatedAt": 1795874713653,
+      "lastRepoSyncAt": 1795874720960,
+      "path": "registry/components/cloud-dashboard-shell",
       "files": [
         "component.tsx",
         "default.tsx",
@@ -21,9 +21,12 @@
         "preview.png"
       ],
       "dependencies": [
+        "@radix-ui/react-collapsible",
+        "@radix-ui/react-dialog",
+        "@radix-ui/react-dropdown-menu",
+        "@radix-ui/react-popover",
         "framer-motion",
-        "clsx",
-        "tailwind-merge"
+        "lucide-react"
       ]
     },
     {
@@ -48,15 +51,15 @@
       ]
     },
     {
-      "id": "cloud-dashboard-shell",
-      "slug": "cloud-dashboard-shell",
-      "name": "CloudDashboardShell",
-      "description": "Pitch-black developer cloud dashboard shell with workspace and project switchers, F-shortcut navigation filtering, expandable route groups, and a contextual Agent drawer.",
-      "category": "Navigation",
+      "id": "kinetic-numeral",
+      "slug": "kinetic-numeral",
+      "name": "KineticNumeral",
+      "description": "A Swiss-modernist modular 3x8 kinetic numeral specimen where solid rectangular bars elastically stretch and swim across the grid to morph seamlessly between digits 0-9.",
+      "category": "Widgets",
       "isBuiltIn": false,
-      "updatedAt": 1795866967377,
-      "lastRepoSyncAt": 1795866975297,
-      "path": "registry/components/cloud-dashboard-shell",
+      "updatedAt": 1795867907360,
+      "lastRepoSyncAt": 1795867914639,
+      "path": "registry/components/kinetic-numeral",
       "files": [
         "component.tsx",
         "default.tsx",
@@ -65,12 +68,9 @@
         "preview.png"
       ],
       "dependencies": [
-        "@radix-ui/react-collapsible",
-        "@radix-ui/react-dialog",
-        "@radix-ui/react-dropdown-menu",
-        "@radix-ui/react-popover",
         "framer-motion",
-        "lucide-react"
+        "clsx",
+        "tailwind-merge"
       ]
     },
     {
