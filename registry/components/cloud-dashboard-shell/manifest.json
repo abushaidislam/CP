@@ -6,8 +6,8 @@
   "category": "Navigation",
   "isBuiltIn": false,
   "createdAt": 1795865068342,
-  "updatedAt": 1795874749370,
-  "lastRepoSyncAt": 1795874756346,
+  "updatedAt": 1795875909889,
+  "lastRepoSyncAt": 1795875909977,
   "dependencies": [
     "@radix-ui/react-collapsible",
     "@radix-ui/react-dialog",

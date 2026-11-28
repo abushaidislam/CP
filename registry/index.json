@@ -1,8 +1,34 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-28T14:24:31.880Z",
+  "updatedAt": "2026-11-28T14:25:11.366Z",
   "totalComponents": 98,
   "components": [
+    {
+      "id": "cloud-dashboard-shell",
+      "slug": "cloud-dashboard-shell",
+      "name": "CloudDashboardShell",
+      "description": "Pitch-black developer cloud dashboard shell with workspace and project switchers, F-shortcut navigation filtering, expandable route groups, and a contextual Agent drawer.",
+      "category": "Navigation",
+      "isBuiltIn": false,
+      "updatedAt": 1795875909889,
+      "lastRepoSyncAt": 1795875909977,
+      "path": "registry/components/cloud-dashboard-shell",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "index.css",
+        "manifest.json",
+        "preview.png"
+      ],
+      "dependencies": [
+        "@radix-ui/react-collapsible",
+        "@radix-ui/react-dialog",
+        "@radix-ui/react-dropdown-menu",
+        "@radix-ui/react-popover",
+        "framer-motion",
+        "lucide-react"
+      ]
+    },
     {
       "id": "api-keys-card",
       "slug": "api-keys-card",
@@ -22,32 +48,6 @@
       ],
       "dependencies": [
         "framer-motion"
-      ]
-    },
-    {
-      "id": "cloud-dashboard-shell",
-      "slug": "cloud-dashboard-shell",
-      "name": "CloudDashboardShell",
-      "description": "Pitch-black developer cloud dashboard shell with workspace and project switchers, F-shortcut navigation filtering, expandable route groups, and a contextual Agent drawer.",
-      "category": "Navigation",
-      "isBuiltIn": false,
-      "updatedAt": 1795874749370,
-      "lastRepoSyncAt": 1795874756346,
-      "path": "registry/components/cloud-dashboard-shell",
-      "files": [
-        "component.tsx",
-        "default.tsx",
-        "index.css",
-        "manifest.json",
-        "preview.png"
-      ],
-      "dependencies": [
-        "@radix-ui/react-collapsible",
-        "@radix-ui/react-dialog",
-        "@radix-ui/react-dropdown-menu",
-        "@radix-ui/react-popover",
-        "framer-motion",
-        "lucide-react"
       ]
     },
     {
