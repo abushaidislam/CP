@@ -286,3 +286,18 @@
   );
   animation: studio-shimmer 1.8s infinite;
 }
+
+/* Smooth indeterminate beam for warm sandbox updates */
+@keyframes studio-progress-slide {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(300%);
+  }
+}
+
+.animate-studio-progress {
+  animation: studio-progress-slide 1.2s cubic-bezier(0.22, 1, 0.36, 1) infinite;
+  will-change: transform;
+}

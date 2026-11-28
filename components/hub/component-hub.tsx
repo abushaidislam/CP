@@ -32,7 +32,6 @@ import {
   Moon,
   FolderSearch,
   RotateCcw,
-  ArrowRight,
   ArrowLeft,
   X,
   Keyboard,
@@ -58,7 +57,6 @@ export interface ComponentHubProps {
 const CATEGORIES = [
   "All",
   "Newest",
-  "Popular",
   "Recent Work",
   "Heroes",
   "Cards",
@@ -66,6 +64,8 @@ const CATEGORIES = [
   "Badges",
   "Custom",
 ] as const;
+
+const COMPONENTS_PER_BATCH = 24;
 
 export type CategoryType = (typeof CATEGORIES)[number];
 
@@ -130,6 +130,8 @@ export function ComponentHub({
 
   const [searchQuery, setSearchQuery] = useState(initialSearchQuery);
   const [selectedCategory, setSelectedCategory] = useState<CategoryType>(initialCategory);
+  const [visibleComponentCount, setVisibleComponentCount] = useState(COMPONENTS_PER_BATCH);
+  const loadMoreRef = useRef<HTMLDivElement | null>(null);
   const [isDark, setIsDark] = useState(true);
   const [isShortcutsOpen, setIsShortcutsOpen] = useState(false);
   const [isMcpConnectOpen, setIsMcpConnectOpen] = useState(false);
@@ -254,7 +256,7 @@ export function ComponentHub({
     return effectiveRecentComponentIds.filter((id) => existingIds.has(id)).length;
   }, [allComponents, effectiveRecentComponentIds]);
 
-  // Sorted newest & popular lists
+  // Keep the root library ordered by most recently updated component.
   const newestComponents = useMemo(
     () =>
       [...allComponents].sort(
@@ -263,24 +265,11 @@ export function ComponentHub({
     [allComponents]
   );
 
-  const popularComponents = useMemo(() => {
-    return [...allComponents].sort((a, b) => {
-      const aVariants = effectiveVariantsByTemplate[a.id]?.length || 0;
-      const bVariants = effectiveVariantsByTemplate[b.id]?.length || 0;
-      if (bVariants !== aVariants) return bVariants - aVariants;
-      const aRecent = effectiveRecentComponentIds.includes(a.id) ? 1 : 0;
-      const bRecent = effectiveRecentComponentIds.includes(b.id) ? 1 : 0;
-      if (bRecent !== aRecent) return bRecent - aRecent;
-      return (a.createdAt || 0) - (b.createdAt || 0);
-    });
-  }, [allComponents, effectiveVariantsByTemplate, effectiveRecentComponentIds]);
-
   // Category counts
   const categoryCounts = useMemo(() => {
     const counts: Record<CategoryType, number> = {
       All: allComponents.length,
       Newest: allComponents.length,
-      Popular: allComponents.length,
       "Recent Work": recentCount,
       Heroes: 0,
       Cards: 0,
@@ -312,8 +301,6 @@ export function ComponentHub({
         .filter((c): c is UserComponent => Boolean(c));
     } else if (selectedCategory === "All" || selectedCategory === "Newest") {
       list = newestComponents;
-    } else if (selectedCategory === "Popular") {
-      list = popularComponents;
     } else if (selectedCategory === "Custom") {
       list = allComponents
         .filter(
@@ -346,72 +333,32 @@ export function ComponentHub({
     effectiveUserComponents,
     allComponents,
     newestComponents,
-    popularComponents,
     effectiveRecentComponentIds,
     selectedCategory,
     searchQuery,
   ]);
 
-  // Logical, non-repetitive showcase sections when viewing "All" with no active search
-  const showcaseSections = useMemo(() => {
-    const sections: {
-      id: string;
-      eyebrow: string;
-      title: string;
-      targetCategory: CategoryType;
-      items: UserComponent[];
-    }[] = [];
+  useEffect(() => {
+    setVisibleComponentCount(COMPONENTS_PER_BATCH);
+  }, [selectedCategory, searchQuery]);
 
-    const newestSlice = newestComponents.slice(0, 4);
-    const newestIds = new Set(newestSlice.map((c) => c.id));
+  useEffect(() => {
+    const sentinel = loadMoreRef.current;
+    if (!sentinel || visibleComponentCount >= filteredComponents.length) return;
 
-    if (newestSlice.length > 0) {
-      sections.push({
-        id: "newest",
-        eyebrow: "LATEST CONSTRUCTS",
-        title: "Newest",
-        targetCategory: "Newest",
-        items: newestSlice,
-      });
-    }
-
-    const distinctPopular = popularComponents.filter((c) => !newestIds.has(c.id));
-    const popularSlice =
-      distinctPopular.length >= 4
-        ? distinctPopular.slice(0, 4)
-        : [
-            ...distinctPopular,
-            ...popularComponents.filter((c) => newestIds.has(c.id)),
-          ].slice(0, 4);
-
-    if (popularSlice.length > 0) {
-      sections.push({
-        id: "popular",
-        eyebrow: "MOST USED",
-        title: "Popular",
-        targetCategory: "Popular",
-        items: popularSlice,
-      });
-    }
-
-    const shownIds = new Set([
-      ...newestSlice.map((c) => c.id),
-      ...popularSlice.map((c) => c.id),
-    ]);
-    const remainingComponents = newestComponents.filter((c) => !shownIds.has(c.id));
-
-    if (remainingComponents.length > 0) {
-      sections.push({
-        id: "more-components",
-        eyebrow: "EXTENDED LIBRARY",
-        title: "More Components",
-        targetCategory: "Newest",
-        items: remainingComponents,
-      });
-    }
-
-    return sections;
-  }, [newestComponents, popularComponents]);
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) {
+          setVisibleComponentCount((count) =>
+            Math.min(count + COMPONENTS_PER_BATCH, filteredComponents.length)
+          );
+        }
+      },
+      { rootMargin: "600px 0px" }
+    );
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [filteredComponents.length, visibleComponentCount]);
 
   const handleOpenStudio = useCallback(
     (id: string) => {
@@ -451,8 +398,8 @@ export function ComponentHub({
   );
 
   const renderCardGrid = (items: UserComponent[], prioritizeFirstRow = false) => (
-    <div className="rounded-none border border-border overflow-hidden bg-border">
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-px bg-border">
+    <div className="overflow-hidden bg-transparent">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {items.map((component, idx) => {
           const variants = effectiveVariantsByTemplate[component.id] || [];
           const variantsCount = variants.length || 1;
@@ -481,11 +428,8 @@ export function ComponentHub({
     </div>
   );
 
-  const showCuratedSections =
-    selectedCategory === "All" && !searchQuery.trim() && filteredComponents.length > 0;
-
   return (
-      <div className="studio-grid-backdrop flex flex-col min-h-screen w-full bg-background text-foreground font-sans selection:bg-primary/20 selection:text-foreground">
+      <div className="flex flex-col min-h-screen w-full bg-background text-foreground font-sans selection:bg-primary/20 selection:text-foreground">
         {/* 1. Top Navigation Bar with Pure Icon Action Buttons */}
         <header className="studio-glass-header sticky top-0 z-20 flex h-14 shrink-0 items-center justify-between border-b border-border px-4 sm:px-6 select-none">
           {/* Brand / Title & Workspace Eyebrow */}
@@ -739,63 +683,21 @@ export function ComponentHub({
             </div>
           </section>
 
-          {/* Component Showcase Sections / Grid */}
+          {/* Single time-sorted component library */}
           <section aria-label="Component cards grid" className="space-y-8">
             {filteredComponents.length > 0 ? (
-              showCuratedSections ? (
-                showcaseSections.map((section, sectionIndex) => (
-                  <div key={section.id} className="rounded-none bg-card/80 backdrop-blur-xs">
-                    {/* Integrated Architectural Section Header Bar */}
-                    <div className="studio-toolbar-surface flex items-center justify-between border border-b-0 border-border px-4 py-2.5 rounded-none">
-                      <div className="flex items-center gap-2.5">
-                        <span className="font-mono text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-                          {section.eyebrow}
-                        </span>
-                        <span className="text-border select-none">/</span>
-                        <h2 className="font-sans text-sm sm:text-base font-semibold tracking-tight text-foreground">
-                          {section.title}
-                        </h2>
-                        <Badge
-                          variant="secondary"
-                          className="rounded-none px-1.5 py-0 text-[10px] font-sans tabular-nums"
-                        >
-                          {section.items.length}
-                        </Badge>
-                      </div>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            variant="outline"
-                            size="icon-sm"
-                            onClick={() => setSelectedCategory(section.targetCategory)}
-                            aria-label={`View all ${section.title}`}
-                            className="studio-icon-btn size-7 rounded-none border-border/80 bg-background/80 text-muted-foreground hover:text-foreground"
-                          >
-                            <ArrowRight className="size-3.5" />
-                            <span className="sr-only">View all</span>
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent side="left" className="font-sans text-xs">
-                          View all {section.title}
-                        </TooltipContent>
-                      </Tooltip>
-                    </div>
-                    {renderCardGrid(section.items, sectionIndex === 0)}
-                  </div>
-                ))
-              ) : (
-                <div className="rounded-none bg-card/80 backdrop-blur-xs">
+              <div className="rounded-none bg-transparent">
                   {/* Integrated Architectural Filtered Header Bar */}
                   <div className="studio-toolbar-surface flex items-center justify-between border border-b-0 border-border px-4 py-2.5 rounded-none">
                     <div className="flex items-center gap-2.5">
                       <span className="font-mono text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-                        {searchQuery.trim() ? "SEARCH QUERY" : "CATEGORY FILTER"}
+                        {searchQuery.trim() ? "SEARCH QUERY" : "COMPONENT LIBRARY"}
                       </span>
                       <span className="text-border select-none">/</span>
                       <h2 className="font-sans text-sm sm:text-base font-semibold tracking-tight text-foreground">
                         {searchQuery.trim()
                           ? `Search results (${filteredComponents.length})`
-                          : selectedCategory}
+                          : selectedCategory === "All" ? "All Components" : selectedCategory}
                       </h2>
                       <Badge
                         variant="secondary"
@@ -827,9 +729,15 @@ export function ComponentHub({
                       </Tooltip>
                     )}
                   </div>
-                  {renderCardGrid(filteredComponents, true)}
-                </div>
-              )
+                  {renderCardGrid(filteredComponents.slice(0, visibleComponentCount), true)}
+                  {visibleComponentCount < filteredComponents.length && (
+                    <div
+                      ref={loadMoreRef}
+                      aria-label="Loading more components as you scroll"
+                      className="h-8"
+                    />
+                  )}
+              </div>
             ) : (
               /* Clean Sharp Empty State (Zero Radius) */
               <div className="flex flex-col items-center justify-center rounded-none border border-dashed border-border p-12 text-center my-6 bg-card/60 backdrop-blur-xs">

@@ -97,6 +97,8 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
   const [fitMode, setFitMode] = useState<PreviewFitMode>("normal");
   const controlOverridesRef = useRef<Record<string, DemoControlValue>>({});
   controlOverridesRef.current = controlOverrides;
+  const canvasBgRef = useRef<CanvasBackground>(canvasBg);
+  canvasBgRef.current = canvasBg;
   const previewThemeRef = useRef<PreviewTheme>(previewTheme);
   previewThemeRef.current = previewTheme;
   const fitModeRef = useRef<PreviewFitMode>(fitMode);
@@ -115,7 +117,9 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
     useState<SandboxHydrationMode>("cold");
   const [isHydrationSlow, setIsHydrationSlow] = useState(false);
   const [runtimePackages, setRuntimePackages] = useState<string[]>([]);
-  const lastColdSignatureRef = useRef<string>("");
+  // Tracks which coldSignature has actually completed its initial mount (RENDER_SUCCESS)
+  const renderedColdSignatureRef = useRef<string>("");
+  const coldSignatureRef = useRef<string>("");
 
   // Instant Snapshot Capture States
   const [isCapturingSnapshot, setIsCapturingSnapshot] = useState(false);
@@ -128,14 +132,32 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
   const toastTimeoutRef = useRef<NodeJS.Timeout | number | null>(null);
   const autoCapturedIdsRef = useRef<Set<string>>(new Set());
 
-  // Debounce files (200ms) to ensure butter-smooth 60fps typing in CodeMirror
+  const activeVariantId =
+    activeVariantByTemplate?.[currentTemplateId] || "default";
+
+  // Debounce files (200ms) during active typing, but flush immediately on component/variant switch or initial hydration
   const [debouncedFiles, setDebouncedFiles] = useState(files);
+  const debouncedFilesRef = useRef(debouncedFiles);
+  debouncedFilesRef.current = debouncedFiles;
+  const lastDebounceScopeRef = useRef(`${currentTemplateId}::${activeVariantId}`);
   useEffect(() => {
+    const scope = `${currentTemplateId}::${activeVariantId}`;
+    const scopeChanged = lastDebounceScopeRef.current !== scope;
+    const hydratedFromEmpty =
+      !debouncedFilesRef.current["component.tsx"]?.trim() &&
+      Boolean(files["component.tsx"]?.trim());
+
+    if (scopeChanged || hydratedFromEmpty) {
+      lastDebounceScopeRef.current = scope;
+      setDebouncedFiles(files);
+      return;
+    }
+
     const timer = setTimeout(() => {
       setDebouncedFiles(files);
     }, 200);
     return () => clearTimeout(timer);
-  }, [files]);
+  }, [files, currentTemplateId, activeVariantId]);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const cardRef = useRef<HTMLDivElement>(null);
@@ -372,13 +394,13 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
       activeDemoSource,
       debouncedFiles["index.css"],
       dependencies,
-      canvasBg,
+      canvasBgRef.current,
       previewThemeRef.current,
       {
         fitMode: fitModeRef.current,
       }
     );
-  }, [debouncedFiles, activeDemoSource, dependencies, canvasBg]);
+  }, [debouncedFiles, activeDemoSource, dependencies]);
 
   // Keep live iframe theme, background & fit mode synchronized via instant postMessage without reloading srcDoc
   useEffect(() => {
@@ -408,9 +430,6 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
     }
   }, [fitMode, iframeRef]);
 
-  const activeVariantId =
-    activeVariantByTemplate?.[currentTemplateId] || "default";
-
   const coldSignature = useMemo(() => {
     const depKey = (detectedDependencies || dependencies)
       .slice()
@@ -424,6 +443,7 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
     detectedDependencies,
     dependencies,
   ]);
+  coldSignatureRef.current = coldSignature;
 
   const activeHydrationPackages = useMemo(() => {
     const base = ["react@19", "react-dom@19"];
@@ -449,8 +469,8 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
       return;
     }
 
-    const isColdStart = lastColdSignatureRef.current !== coldSignature;
-    lastColdSignatureRef.current = coldSignature;
+    // Stay in cold hydration mode until this coldSignature has completed at least one RENDER_SUCCESS
+    const isColdStart = renderedColdSignatureRef.current !== coldSignature;
 
     setIsSandboxLoading(true);
     setIsHydrationSlow(false);
@@ -471,6 +491,7 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
       }, 2200);
 
       const safetyTimer = setTimeout(() => {
+        renderedColdSignatureRef.current = coldSignature;
         setHydrationStage("ready");
         setIsSandboxLoading(false);
         setIsHydrationSlow(false);
@@ -532,12 +553,19 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
           }
         }
         if (event.data.type === "RENDER_SUCCESS") {
+          if (debouncedFilesRef.current["component.tsx"]?.trim()) {
+            renderedColdSignatureRef.current = coldSignatureRef.current;
+          }
           setHydrationStage("ready");
           setIsSandboxLoading(false);
           setIsHydrationSlow(false);
           if (iframeRef.current?.contentWindow) {
             iframeRef.current.contentWindow.postMessage(
               { type: "SET_PREVIEW_THEME", theme: previewThemeRef.current },
+              "*"
+            );
+            iframeRef.current.contentWindow.postMessage(
+              { type: "SET_CANVAS_BG", canvasBg: canvasBgRef.current },
               "*"
             );
             iframeRef.current.contentWindow.postMessage(
@@ -914,9 +942,9 @@ export function CanvasPreview({ iframeRef }: CanvasPreviewProps) {
                   {isSandboxLoading && !error && hydrationMode === "warm" && (
                     <div
                       aria-hidden="true"
-                      className="pointer-events-none absolute top-0 left-0 right-0 z-20 h-0.5 bg-muted/40 overflow-hidden"
+                      className="pointer-events-none absolute top-0 left-0 right-0 z-20 h-0.5 bg-muted/30 overflow-hidden"
                     >
-                      <div className="h-full w-2/3 bg-primary animate-shimmer" />
+                      <div className="h-full w-1/3 bg-gradient-to-r from-transparent via-primary to-transparent animate-studio-progress" />
                     </div>
                   )}
 

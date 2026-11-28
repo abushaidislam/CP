@@ -23,6 +23,32 @@ export function getCachedPreviewSync(componentId: string): string | undefined {
   return memoryPreviewCache.get(componentId);
 }
 
+export async function getCachedPreview(componentId: string): Promise<string | undefined> {
+  const cached = memoryPreviewCache.get(componentId);
+  if (cached) return cached;
+
+  const db = await openPreviewDatabase();
+  if (!db) return undefined;
+
+  return new Promise((resolve) => {
+    try {
+      const request = db.transaction(PREVIEW_STORE, "readonly").objectStore(PREVIEW_STORE).get(componentId);
+      request.onsuccess = () => {
+        const preview = request.result;
+        if (typeof preview === "string" && isValidPreview(preview)) {
+          memoryPreviewCache.set(componentId, preview);
+          resolve(preview);
+        } else {
+          resolve(undefined);
+        }
+      };
+      request.onerror = () => resolve(undefined);
+    } catch {
+      resolve(undefined);
+    }
+  });
+}
+
 export function setCachedPreviewSync(
   componentId: string,
   previewImage: string

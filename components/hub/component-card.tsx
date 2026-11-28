@@ -6,7 +6,7 @@ import {
   UserComponent,
   useStudioStore,
 } from "@/lib/store/studio-store";
-import { getCachedPreviewSync } from "@/lib/cache/preview-cache";
+import { getCachedPreview } from "@/lib/cache/preview-cache";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -155,7 +155,7 @@ function ComponentCardInner({
 }: ComponentCardProps) {
   const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
   const [failedPreviewSrcs, setFailedPreviewSrcs] = useState<string[]>([]);
-  const [isHydrated, setIsHydrated] = useState(false);
+  const [cachedBrowserPreview, setCachedBrowserPreview] = useState<string>();
   const [isImageLoaded, setIsImageLoaded] = useState(false);
   const [framing, setFraming] = useState<ThumbnailFraming>("cover-center");
   const imgRef = useRef<HTMLImageElement | null>(null);
@@ -167,8 +167,14 @@ function ComponentCardInner({
   } | null>(null);
 
   useEffect(() => {
-    setIsHydrated(true);
-  }, []);
+    let isActive = true;
+    void getCachedPreview(component.id).then((preview) => {
+      if (isActive && preview) setCachedBrowserPreview(preview);
+    });
+    return () => {
+      isActive = false;
+    };
+  }, [component.id]);
 
   const isDeleteDialogOpen = controlledOpen !== undefined ? controlledOpen : uncontrolledOpen;
   const setIsDeleteDialogOpen = (open: boolean) => {
@@ -268,9 +274,6 @@ function ComponentCardInner({
     }
   };
 
-  const cachedBrowserPreview = isHydrated
-    ? getCachedPreviewSync(component.id)
-    : undefined;
   const isBlankPlaceholder =
     !component.previewImage ||
     component.previewImage === "./preview.png" ||
@@ -352,12 +355,6 @@ function ComponentCardInner({
           aria-label={`Preview ${component.name}`}
           className="aspect-[4/3] w-full rounded-none bg-zinc-950 border-b border-border/70 relative overflow-hidden flex items-center justify-center cursor-pointer group/canvas transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
         >
-          {/* Subtle Architectural Grid Backdrop */}
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-0 opacity-20 bg-[linear-gradient(to_right,#27272a_1px,transparent_1px),linear-gradient(to_bottom,#27272a_1px,transparent_1px)] bg-[size:24px_24px]"
-          />
-
           {/* Subtle shimmer while network thumbnail is decoding */}
           {hasValidPreviewImage && !isImageLoaded && (
             <div
