@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import {
   Dialog,
@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useStudioStore } from "@/lib/store/studio-store";
+import { cn } from "@/lib/utils";
 import {
   Search,
   ArrowRight,
@@ -52,18 +53,25 @@ export function CommandPaletteDialog({
   const loadComponent = useStudioStore((s) => s.loadComponent);
 
   const [query, setQuery] = useState("");
+  const [activeIndex, setActiveIndex] = useState(0);
   const [copiedSlug, setCopiedSlug] = useState<string | null>(null);
   const [origin, setOrigin] = useState("https://cp.flinkeo.online");
+  const itemRefs = useRef<Array<HTMLDivElement | null>>([]);
+  const copyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (typeof window !== "undefined" && window.location.origin) {
       setOrigin(window.location.origin);
     }
+    return () => {
+      if (copyTimerRef.current) clearTimeout(copyTimerRef.current);
+    };
   }, []);
 
   useEffect(() => {
     if (open) {
       setQuery("");
+      setActiveIndex(0);
     }
   }, [open]);
 
@@ -88,6 +96,14 @@ export function CommandPaletteDialog({
       .slice(0, 20);
   }, [allComponents, query]);
 
+  useEffect(() => {
+    setActiveIndex(0);
+  }, [query]);
+
+  useEffect(() => {
+    itemRefs.current[activeIndex]?.scrollIntoView({ block: "nearest" });
+  }, [activeIndex]);
+
   const handleOpenInStudio = (compId: string, slug: string) => {
     loadComponent(compId);
     onOpenChange(false);
@@ -99,7 +115,29 @@ export function CommandPaletteDialog({
     const cmd = `npx shadcn@latest add ${origin}/api/registry/${slug}`;
     navigator.clipboard?.writeText(cmd);
     setCopiedSlug(slug);
-    setTimeout(() => setCopiedSlug(null), 2000);
+    if (copyTimerRef.current) clearTimeout(copyTimerRef.current);
+    copyTimerRef.current = setTimeout(() => setCopiedSlug(null), 2000);
+  };
+
+  const handleInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (filteredComponents.length === 0) return;
+
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setActiveIndex((prev) => (prev + 1) % filteredComponents.length);
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setActiveIndex(
+        (prev) => (prev - 1 + filteredComponents.length) % filteredComponents.length
+      );
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      const selected = filteredComponents[activeIndex];
+      if (selected) {
+        const slug = selected.repoSlug || toClientSlug(selected.name, selected.id);
+        handleOpenInStudio(selected.id, slug);
+      }
+    }
   };
 
   return (
@@ -111,18 +149,19 @@ export function CommandPaletteDialog({
               <Search className="size-4 text-primary" />
               Quick Command &amp; Registry Search
             </DialogTitle>
-            <Badge variant="outline" className="font-sans text-[10px] rounded-none">
+            <Badge variant="outline" className="font-sans text-[10px] rounded-none tabular-nums">
               {allComponents.length} Components
             </Badge>
           </div>
           <DialogDescription className="font-sans text-xs text-muted-foreground">
-            Jump to any component in Studio, copy its one-click shadcn CLI install command, or open MCP tools.
+            Use ↑↓ and Enter to jump to any component in Studio, or copy its one-click shadcn CLI install command.
           </DialogDescription>
           <div className="relative mt-2">
             <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
             <Input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
+              onKeyDown={handleInputKeyDown}
               placeholder="Search components by name, slug, or category..."
               className="pl-9 h-9 text-xs font-sans rounded-none bg-muted/30"
               autoFocus
@@ -178,19 +217,34 @@ export function CommandPaletteDialog({
         </div>
 
         {/* Component Results List */}
-        <div className="flex flex-col max-h-[55vh] overflow-y-auto divide-y divide-border/60">
+        <div
+          role="listbox"
+          aria-label="Component search results"
+          className="flex flex-col max-h-[55vh] overflow-y-auto divide-y divide-border/60"
+        >
           {filteredComponents.length === 0 ? (
             <div className="py-10 px-4 text-center font-sans text-xs text-muted-foreground">
               No components matched &ldquo;{query}&rdquo;.
             </div>
           ) : (
-            filteredComponents.map((comp) => {
+            filteredComponents.map((comp, index) => {
               const slug = comp.repoSlug || toClientSlug(comp.name, comp.id);
               const isCopied = copiedSlug === slug;
+              const isSelected = index === activeIndex;
               return (
                 <div
                   key={comp.id}
-                  className="flex items-center justify-between gap-3 px-4 py-2.5 hover:bg-muted/40 transition-colors"
+                  ref={(el) => {
+                    itemRefs.current[index] = el;
+                  }}
+                  role="option"
+                  aria-selected={isSelected}
+                  onMouseEnter={() => setActiveIndex(index)}
+                  onClick={() => handleOpenInStudio(comp.id, slug)}
+                  className={cn(
+                    "flex items-center justify-between gap-3 px-4 py-2.5 transition-colors cursor-pointer",
+                    isSelected ? "bg-muted/60" : "hover:bg-muted/40"
+                  )}
                 >
                   <div className="flex flex-col min-w-0 flex-1">
                     <div className="flex items-center gap-2">
@@ -211,7 +265,10 @@ export function CommandPaletteDialog({
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-1.5 shrink-0">
+                  <div
+                    className="flex items-center gap-1.5 shrink-0"
+                    onClick={(e) => e.stopPropagation()}
+                  >
                     <Button
                       variant="outline"
                       size="sm"

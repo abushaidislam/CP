@@ -121,6 +121,18 @@ mock.module(import.meta.resolve("@/components/ui/input"), () => ({
   },
 }));
 
+// Mock next/navigation for CommandPaletteDialog & ComponentHub
+mock.module("next/navigation", () => ({
+  useRouter: () => ({
+    push: () => {},
+    replace: () => {},
+    prefetch: () => {},
+    back: () => {},
+  }),
+  useParams: () => ({}),
+  usePathname: () => "/",
+}));
+
 // Mock next/image for Bun SSR test environment
 mock.module("next/image", () => ({
   default: ({ priority: _priority, ...props }: any) => <img {...props} />,
@@ -319,7 +331,7 @@ describe("ComponentCard & ComponentHub", () => {
       expect(html).toContain("<img");
       expect(html).toContain("data:image/svg+xml;utf8");
       expect(html).toContain('alt="Interactive Hologram Card"');
-      expect(html).toContain("group-hover:scale-105");
+      expect(html).toContain("group-hover:scale-[1.02]");
     });
 
     it("should render fallback placeholder when previewImage is missing", () => {
@@ -419,7 +431,7 @@ describe("ComponentCard & ComponentHub", () => {
       expect(deleteId).toBe("test-card-component");
     });
 
-    it("should omit or guard Delete Component for built-in template components", () => {
+    it("should allow Delete Component option with confirmation dialog for built-in template components", () => {
       const builtInComponent: UserComponent = {
         ...mockComponent,
         id: "ink-orbit-hero",
@@ -435,7 +447,7 @@ describe("ComponentCard & ComponentHub", () => {
       );
 
       expect(html).toContain("Duplicate Component");
-      expect(html).not.toContain("Delete Component");
+      expect(html).toContain("Delete Component");
     });
   });
 
@@ -459,12 +471,11 @@ describe("ComponentCard & ComponentHub", () => {
       expect(useStudioStore.getState().isCreateComponentDialogOpen).toBe(true);
     });
 
-    it("should render 21st.dev-style Newest and Popular showcase sections without KPI card clutter", () => {
+    it("should render unified Component Library header without KPI card clutter", () => {
       const html = renderToString(<ComponentHub />);
 
-      expect(html).toContain("Newest");
-      expect(html).toContain("Popular");
-      expect(html).toContain("View all");
+      expect(html).toContain("COMPONENT LIBRARY");
+      expect(html).toContain("All Components");
       expect(html).not.toContain("Total Components");
       expect(html).not.toContain("Saved Checkpoints");
     });
@@ -475,7 +486,6 @@ describe("ComponentCard & ComponentHub", () => {
       expect(html).toContain("Search components by name or description...");
       expect(html).toContain("All");
       expect(html).toContain("Newest");
-      expect(html).toContain("Popular");
       expect(html).toContain("Recent Work");
       expect(html).toContain("Heroes");
       expect(html).toContain("Cards");
@@ -484,12 +494,10 @@ describe("ComponentCard & ComponentHub", () => {
       expect(html).toContain("Custom");
     });
 
-    it("should render connected 4-column border grid with seeded components", () => {
+    it("should render 4-column grid with seeded components", () => {
       const html = renderToString(<ComponentHub />);
 
-      // Verify connected border grid container and 4-column grid layout with zero radius
-      expect(html).toContain("rounded-none border border-border overflow-hidden bg-border");
-      expect(html).toContain("grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-px bg-border");
+      expect(html).toContain("grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4");
 
       // Verify seeded components are rendered in the hub
       expect(html).toContain("Sample Hero");

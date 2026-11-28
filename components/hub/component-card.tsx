@@ -98,6 +98,7 @@ function ComponentCardInner({
   const [failedPreviewSrcs, setFailedPreviewSrcs] = useState<string[]>([]);
   const [cachedBrowserPreview, setCachedBrowserPreview] = useState<string>();
   const [loadedPreviewSrc, setLoadedPreviewSrc] = useState<string>();
+  const imgRef = useRef<HTMLImageElement>(null);
   const [isDownloadingZip, setIsDownloadingZip] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<{
@@ -248,6 +249,13 @@ function ComponentCardInner({
 
   const isImageLoaded = loadedPreviewSrc === effectivePreviewImage;
 
+  useEffect(() => {
+    const img = imgRef.current;
+    if (effectivePreviewImage && img?.complete && img.naturalWidth > 0) {
+      setLoadedPreviewSrc(effectivePreviewImage);
+    }
+  }, [effectivePreviewImage]);
+
   return (
     <>
       <div className="relative flex flex-col justify-between overflow-hidden rounded-none bg-card text-card-foreground transition-colors duration-200 hover:bg-muted/15 font-sans h-full group">
@@ -277,13 +285,14 @@ function ComponentCardInner({
           {hasValidPreviewImage ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
+              ref={imgRef}
               src={effectivePreviewImage}
               alt={component.name}
               loading={priority ? "eager" : "lazy"}
               fetchPriority={priority ? "high" : "auto"}
               decoding="async"
               referrerPolicy="no-referrer"
-              onLoad={(e) => {
+              onLoad={() => {
                 if (effectivePreviewImage) {
                   setLoadedPreviewSrc(effectivePreviewImage);
                 }

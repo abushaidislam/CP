@@ -24,6 +24,7 @@ export function useMcpLiveSync(activeSlug?: string) {
     let cancelled = false;
 
     const checkEvents = async () => {
+      if (typeof document !== "undefined" && document.hidden) return;
       try {
         const query = new URLSearchParams({
           mode: "events",
@@ -89,10 +90,26 @@ export function useMcpLiveSync(activeSlug?: string) {
       }
     };
 
+    const handleVisibilityChange = () => {
+      if (typeof document !== "undefined" && !document.hidden) {
+        void checkEvents();
+      }
+    };
+    const canListenVisibility =
+      typeof document !== "undefined" &&
+      typeof document.addEventListener === "function" &&
+      typeof document.removeEventListener === "function";
+    if (canListenVisibility) {
+      document.addEventListener("visibilitychange", handleVisibilityChange);
+    }
+
     const interval = setInterval(checkEvents, 3500);
     return () => {
       cancelled = true;
       clearInterval(interval);
+      if (canListenVisibility) {
+        document.removeEventListener("visibilitychange", handleVisibilityChange);
+      }
       if (dismissTimerRef.current) clearTimeout(dismissTimerRef.current);
     };
   }, [activeSlug]);

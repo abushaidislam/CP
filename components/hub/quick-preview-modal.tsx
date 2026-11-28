@@ -155,6 +155,8 @@ export function QuickPreviewModal({
   const similarSectionRef = useRef<HTMLDivElement | null>(null);
   const controlOverridesRef = useRef<Record<string, DemoControlValue>>({});
   controlOverridesRef.current = controlOverrides;
+  const previewThemeRef = useRef<PreviewTheme>(previewTheme);
+  previewThemeRef.current = previewTheme;
   const copyTimerRef = useRef<NodeJS.Timeout | null>(null);
   const cliTimerRef = useRef<NodeJS.Timeout | null>(null);
   const floatingCopyTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -397,7 +399,6 @@ export function QuickPreviewModal({
     floatingCopyTimerRef.current = setTimeout(() => setCopiedFloatingCode(false), 2000);
   };
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   const { compiledHtml, compileError } = useMemo(() => {
     if (!component) return { compiledHtml: "", compileError: null };
     try {
@@ -406,8 +407,8 @@ export function QuickPreviewModal({
         demoSourceForControls,
         component.files["index.css"] || "",
         component.dependencies || [],
-        previewTheme === "dark" ? "dark" : "light",
-        previewTheme
+        previewThemeRef.current === "dark" ? "dark" : "light",
+        previewThemeRef.current
       );
       return { compiledHtml: res.html, compileError: res.error };
     } catch (err) {
@@ -416,7 +417,19 @@ export function QuickPreviewModal({
         compileError: err instanceof Error ? err.message : String(err),
       };
     }
-  }, [component, demoSourceForControls, previewTheme, reloadKey]);
+  }, [component, demoSourceForControls]);
+
+  useEffect(() => {
+    if (!quickIframeRef.current?.contentWindow) return;
+    quickIframeRef.current.contentWindow.postMessage(
+      { type: "SET_PREVIEW_THEME", theme: previewTheme },
+      "*"
+    );
+    quickIframeRef.current.contentWindow.postMessage(
+      { type: "SET_CANVAS_BG", canvasBg: previewTheme === "dark" ? "dark" : "light" },
+      "*"
+    );
+  }, [previewTheme]);
 
   const activeCodeContent = resolveComponentFile(selectedCodeFile);
   const codeLines = useMemo(() => {
@@ -458,8 +471,23 @@ export function QuickPreviewModal({
       }
       if (e.data?.type === "RENDER_SUCCESS" || e.data?.type === "RUNTIME_ERROR") {
         setIsIframeLoading(false);
-        if (e.data?.type === "RENDER_SUCCESS" && Object.keys(controlOverridesRef.current).length > 0) {
-          pushQuickDemoProps(controlOverridesRef.current);
+        if (e.data?.type === "RENDER_SUCCESS") {
+          if (quickIframeRef.current?.contentWindow) {
+            quickIframeRef.current.contentWindow.postMessage(
+              { type: "SET_PREVIEW_THEME", theme: previewThemeRef.current },
+              "*"
+            );
+            quickIframeRef.current.contentWindow.postMessage(
+              {
+                type: "SET_CANVAS_BG",
+                canvasBg: previewThemeRef.current === "dark" ? "dark" : "light",
+              },
+              "*"
+            );
+          }
+          if (Object.keys(controlOverridesRef.current).length > 0) {
+            pushQuickDemoProps(controlOverridesRef.current);
+          }
         }
       }
     };
@@ -470,7 +498,7 @@ export function QuickPreviewModal({
       clearTimeout(advanceTimer);
       clearTimeout(timer);
     };
-  }, [isOpen, component?.id, reloadKey, previewTheme]);
+  }, [isOpen, component?.id, reloadKey]);
 
   const handleOpenChange = (open: boolean) => {
     if (!open) {
@@ -1075,7 +1103,7 @@ export function QuickPreviewModal({
 
                     <iframe
                       ref={quickIframeRef}
-                      key={`${component.id}-${reloadKey}-${previewTheme}`}
+                      key={`${component.id}-${reloadKey}`}
                       title={`${component.name} Preview`}
                       srcDoc={compiledHtml}
                       sandbox="allow-scripts allow-modals allow-popups"

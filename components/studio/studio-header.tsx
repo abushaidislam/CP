@@ -68,7 +68,6 @@ export function StudioHeader() {
   const {
     currentTemplateId,
     userComponents,
-    loadTemplate,
     loadComponent,
     setRepoSyncModalOpen,
     repoSyncStatus,
@@ -100,7 +99,6 @@ export function StudioHeader() {
     useShallow((state) => ({
       currentTemplateId: state.currentTemplateId,
       userComponents: state.userComponents,
-      loadTemplate: state.loadTemplate,
       loadComponent: state.loadComponent,
       setRepoSyncModalOpen: state.setRepoSyncModalOpen,
       repoSyncStatus: state.repoSyncStatus,
@@ -1280,12 +1278,16 @@ export function StudioHeader() {
         </div>
       )}
 
-      <McpConnectDialog open={isMcpConnectOpen} onOpenChange={setIsMcpConnectOpen} />
-      <CommandPaletteDialog
-        open={isCommandPaletteOpen}
-        onOpenChange={setIsCommandPaletteOpen}
-        onOpenMcpConnect={() => setIsMcpConnectOpen(true)}
-      />
+      {isMcpConnectOpen && (
+        <McpConnectDialog open={isMcpConnectOpen} onOpenChange={setIsMcpConnectOpen} />
+      )}
+      {isCommandPaletteOpen && (
+        <CommandPaletteDialog
+          open={isCommandPaletteOpen}
+          onOpenChange={setIsCommandPaletteOpen}
+          onOpenMcpConnect={() => setIsMcpConnectOpen(true)}
+        />
+      )}
       <EditComponentDialog />
       <CreateComponentDialog
         onCreated={(newId) => {

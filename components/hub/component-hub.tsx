@@ -324,7 +324,10 @@ export function ComponentHub({
       list = list.filter(
         (c) =>
           c.name.toLowerCase().includes(q) ||
-          (c.description && c.description.toLowerCase().includes(q))
+          (c.description && c.description.toLowerCase().includes(q)) ||
+          (c.category && c.category.toLowerCase().includes(q)) ||
+          (c.repoSlug && c.repoSlug.toLowerCase().includes(q)) ||
+          c.id.toLowerCase().includes(q)
       );
     }
 
@@ -456,6 +459,23 @@ export function ComponentHub({
                 <span>{lastSyncedEvent.message}</span>
               </Badge>
             )}
+
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setIsCommandPaletteOpen(true)}
+                  className="sm:hidden studio-icon-btn size-8 rounded-none border-border/80 bg-card/70 text-muted-foreground hover:text-foreground"
+                  aria-label="Open Command Palette (Ctrl+K)"
+                >
+                  <Search className="size-4" aria-hidden="true" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="font-sans text-xs">
+                Quick Jump (⌘K)
+              </TooltipContent>
+            </Tooltip>
 
             <Tooltip>
               <TooltipTrigger asChild>
@@ -801,12 +821,14 @@ export function ComponentHub({
         {isSecurityModalOpen && <SecurityShieldModal />}
         {(isRepoSyncModalOpen || isPublishModalOpen) && <RepoSyncModal />}
         <McpConnectDialog open={isMcpConnectOpen} onOpenChange={setIsMcpConnectOpen} />
-        <CommandPaletteDialog
-          open={isCommandPaletteOpen}
-          onOpenChange={setIsCommandPaletteOpen}
-          onOpenMcpConnect={() => setIsMcpConnectOpen(true)}
-          onOpenCreateComponent={() => setCreateComponentDialogOpen(true)}
-        />
+        {isCommandPaletteOpen && (
+          <CommandPaletteDialog
+            open={isCommandPaletteOpen}
+            onOpenChange={setIsCommandPaletteOpen}
+            onOpenMcpConnect={() => setIsMcpConnectOpen(true)}
+            onOpenCreateComponent={() => setCreateComponentDialogOpen(true)}
+          />
+        )}
       </div>
   );
 }
