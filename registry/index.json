@@ -1,7 +1,7 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-28T11:58:48.971Z",
-  "totalComponents": 93,
+  "updatedAt": "2026-11-28T11:59:22.573Z",
+  "totalComponents": 95,
   "components": [
     {
       "id": "kinetic-numeral",
@@ -10,8 +10,8 @@
       "description": "A Swiss-modernist modular 3x8 kinetic numeral specimen where solid rectangular bars elastically stretch and swim across the grid to morph seamlessly between digits 0-9.",
       "category": "Widgets",
       "isBuiltIn": false,
-      "updatedAt": 1795867120058,
-      "lastRepoSyncAt": 1795867128853,
+      "updatedAt": 1795867153553,
+      "lastRepoSyncAt": 1795867162238,
       "path": "registry/components/kinetic-numeral",
       "files": [
         "component.tsx",
@@ -24,6 +24,74 @@
         "framer-motion",
         "clsx",
         "tailwind-merge"
+      ]
+    },
+    {
+      "id": "cloud-dashboard-shell",
+      "slug": "cloud-dashboard-shell",
+      "name": "CloudDashboardShell",
+      "description": "Pitch-black developer cloud dashboard shell with workspace and project switchers, F-shortcut navigation filtering, expandable route groups, and a contextual Agent drawer.",
+      "category": "Navigation",
+      "isBuiltIn": false,
+      "updatedAt": 1795866967377,
+      "lastRepoSyncAt": 1795866975297,
+      "path": "registry/components/cloud-dashboard-shell",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "index.css",
+        "manifest.json",
+        "preview.png"
+      ],
+      "dependencies": [
+        "@radix-ui/react-collapsible",
+        "@radix-ui/react-dialog",
+        "@radix-ui/react-dropdown-menu",
+        "@radix-ui/react-popover",
+        "framer-motion",
+        "lucide-react"
+      ]
+    },
+    {
+      "id": "kinetic-poster-typography",
+      "slug": "kinetic-poster-typography",
+      "name": "KineticPosterTypography",
+      "description": "A Swiss-inspired kinetic typography poster featuring a staggered vertical letter-column swap and a 3D perspective X-axis cylinder flip driven by zero-rerender 60fps requestAnimationFrame motion.",
+      "category": "Effects",
+      "isBuiltIn": false,
+      "updatedAt": 1795763433202,
+      "lastRepoSyncAt": 1795763439459,
+      "path": "registry/components/kinetic-poster-typography",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "index.css",
+        "manifest.json",
+        "preview.png"
+      ],
+      "dependencies": [
+        "framer-motion"
+      ]
+    },
+    {
+      "id": "avatar-gender-toggle",
+      "slug": "avatar-gender-toggle",
+      "name": "AvatarGenderToggle",
+      "description": "An expressive vertical avatar toggle where an illustrated face slides between female and male states with morphing bangs, hair color crossfades, synchronized vertical-wipe labels, and subtle idle micro-animations.",
+      "category": "Forms",
+      "isBuiltIn": false,
+      "updatedAt": 1795757768596,
+      "lastRepoSyncAt": 1795757775171,
+      "path": "registry/components/avatar-gender-toggle",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "index.css",
+        "manifest.json",
+        "preview.png"
+      ],
+      "dependencies": [
+        "framer-motion"
       ]
     },
     {
@@ -58,26 +126,6 @@
       "updatedAt": 1795701889180,
       "lastRepoSyncAt": 1795701889180,
       "path": "registry/components/matrix-chevron-button",
-      "files": [
-        "component.tsx",
-        "default.tsx",
-        "index.css",
-        "manifest.json"
-      ],
-      "dependencies": [
-        "framer-motion"
-      ]
-    },
-    {
-      "id": "avatar-gender-toggle",
-      "slug": "avatar-gender-toggle",
-      "name": "AvatarGenderToggle",
-      "description": "An expressive vertical avatar toggle where an illustrated face slides between female and male states with morphing bangs, hair color crossfades, synchronized vertical-wipe labels, and subtle idle micro-animations.",
-      "category": "Forms",
-      "isBuiltIn": false,
-      "updatedAt": 1795701831943,
-      "lastRepoSyncAt": 1795701831943,
-      "path": "registry/components/avatar-gender-toggle",
       "files": [
         "component.tsx",
         "default.tsx",
