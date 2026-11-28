@@ -1,8 +1,27 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-28T14:25:44.611Z",
-  "totalComponents": 98,
+  "updatedAt": "2026-11-28T14:34:42.152Z",
+  "totalComponents": 99,
   "components": [
+    {
+      "id": "social-sign-on-card",
+      "slug": "social-sign-on-card",
+      "name": "SocialSignOnCard",
+      "description": "Interactive Social Sign-On (SSO) feature card with staggered stepped OAuth provider conveyor tracks, a hover-illuminated cyan cloud core, and animated dotted circuit data pulses.",
+      "category": "Cards",
+      "isBuiltIn": false,
+      "updatedAt": 1795876481796,
+      "lastRepoSyncAt": 1795876481796,
+      "path": "registry/components/social-sign-on-card",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "manifest.json"
+      ],
+      "dependencies": [
+        "framer-motion"
+      ]
+    },
     {
       "id": "cloud-dashboard-shell",
       "slug": "cloud-dashboard-shell",
