@@ -1,18 +1,18 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-28T14:56:00.974Z",
+  "updatedAt": "2026-11-28T14:56:22.338Z",
   "totalComponents": 99,
   "components": [
     {
-      "id": "avatar-gender-toggle",
-      "slug": "avatar-gender-toggle",
-      "name": "AvatarGenderToggle",
-      "description": "An expressive vertical avatar toggle where an illustrated face slides between female and male states with morphing bangs, hair color crossfades, synchronized vertical-wipe labels, and subtle idle micro-animations.",
-      "category": "Forms",
+      "id": "account-switcher-menu",
+      "slug": "account-switcher-menu",
+      "name": "AccountSwitcherMenu",
+      "description": "Interactive multi-account profile popover menu with smooth spring-animated hover highlights, instant account switching with animated radio selection, keyboard accessibility, and adaptive light/dark theming.",
+      "category": "Navigation",
       "isBuiltIn": false,
-      "updatedAt": 1795877567462,
-      "lastRepoSyncAt": 1795877760871,
-      "path": "registry/components/avatar-gender-toggle",
+      "updatedAt": 1795877774577,
+      "lastRepoSyncAt": 1795877782229,
+      "path": "registry/components/account-switcher-menu",
       "files": [
         "component.tsx",
         "default.tsx",
@@ -21,7 +21,8 @@
         "preview.png"
       ],
       "dependencies": [
-        "framer-motion"
+        "framer-motion",
+        "lucide-react"
       ]
     },
     {
@@ -179,15 +180,15 @@
       ]
     },
     {
-      "id": "account-switcher-menu",
-      "slug": "account-switcher-menu",
-      "name": "AccountSwitcherMenu",
-      "description": "Interactive multi-account profile popover menu with smooth spring-animated hover highlights, instant account switching with animated radio selection, keyboard accessibility, and adaptive light/dark theming.",
-      "category": "Navigation",
+      "id": "avatar-gender-toggle",
+      "slug": "avatar-gender-toggle",
+      "name": "AvatarGenderToggle",
+      "description": "An expressive vertical avatar toggle where an illustrated face slides between female and male states with morphing bangs, hair color crossfades, synchronized vertical-wipe labels, and subtle idle micro-animations.",
+      "category": "Forms",
       "isBuiltIn": false,
-      "updatedAt": 1795754527091,
-      "lastRepoSyncAt": 1795754533502,
-      "path": "registry/components/account-switcher-menu",
+      "updatedAt": 1795757768596,
+      "lastRepoSyncAt": 1795757775171,
+      "path": "registry/components/avatar-gender-toggle",
       "files": [
         "component.tsx",
         "default.tsx",
@@ -196,8 +197,7 @@
         "preview.png"
       ],
       "dependencies": [
-        "framer-motion",
-        "lucide-react"
+        "framer-motion"
       ]
     },
     {
