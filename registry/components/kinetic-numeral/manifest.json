@@ -6,8 +6,8 @@
   "category": "Widgets",
   "isBuiltIn": false,
   "createdAt": 1795763211861,
-  "updatedAt": 1795867153553,
-  "lastRepoSyncAt": 1795867162238,
+  "updatedAt": 1795867907360,
+  "lastRepoSyncAt": 1795867914639,
   "dependencies": [
     "framer-motion",
     "clsx",
