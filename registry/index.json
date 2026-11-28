@@ -1,8 +1,47 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-27T07:59:53.767Z",
-  "totalComponents": 93,
+  "updatedAt": "2026-11-28T11:24:28.886Z",
+  "totalComponents": 95,
   "components": [
+    {
+      "id": "cloud-dashboard-shell",
+      "slug": "cloud-dashboard-shell",
+      "name": "CloudDashboardShell",
+      "description": "Pitch-black developer cloud dashboard shell with workspace and project switchers, F-shortcut navigation filtering, expandable route groups, and a contextual Agent drawer.",
+      "category": "Navigation",
+      "isBuiltIn": false,
+      "updatedAt": 1795865068342,
+      "lastRepoSyncAt": 1795865068342,
+      "path": "registry/components/cloud-dashboard-shell",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "manifest.json"
+      ],
+      "dependencies": [
+        "framer-motion",
+        "lucide-react"
+      ]
+    },
+    {
+      "id": "kinetic-poster-typography",
+      "slug": "kinetic-poster-typography",
+      "name": "KineticPosterTypography",
+      "description": "A full-screen Swiss kinetic typography hero section and poster block featuring a staggered slit-masked vertical word swap, dramatic 3D perspective X-axis cylinder flip, and effortless zero-config customization.",
+      "category": "Hero",
+      "isBuiltIn": false,
+      "updatedAt": 1795772758243,
+      "lastRepoSyncAt": 1795772758243,
+      "path": "registry/components/kinetic-poster-typography",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "manifest.json"
+      ],
+      "dependencies": [
+        "framer-motion"
+      ]
+    },
     {
       "id": "kinetic-numeral",
       "slug": "kinetic-numeral",
@@ -16,7 +55,6 @@
       "files": [
         "component.tsx",
         "default.tsx",
-        "index.css",
         "manifest.json"
       ],
       "dependencies": [
@@ -1723,7 +1761,7 @@
       "category": "Heroes",
       "isBuiltIn": true,
       "updatedAt": 1700000000000,
-      "lastRepoSyncAt": 1795756539149,
+      "lastRepoSyncAt": 1795265384870,
       "path": "registry/components/aurora-ambient-hero",
       "files": [
         "component.tsx",
@@ -1743,7 +1781,7 @@
       "category": "Cards",
       "isBuiltIn": true,
       "updatedAt": 1700000000000,
-      "lastRepoSyncAt": 1795756539149,
+      "lastRepoSyncAt": 1795265384870,
       "path": "registry/components/bento-metric-grid",
       "files": [
         "component.tsx",
@@ -1763,7 +1801,7 @@
       "category": "Heroes",
       "isBuiltIn": true,
       "updatedAt": 1700000000000,
-      "lastRepoSyncAt": 1795756539149,
+      "lastRepoSyncAt": 1795265384870,
       "path": "registry/components/ink-orbit-hero",
       "files": [
         "component.tsx",
@@ -1781,7 +1819,7 @@
       "category": "Badges",
       "isBuiltIn": true,
       "updatedAt": 1700000000000,
-      "lastRepoSyncAt": 1795756539149,
+      "lastRepoSyncAt": 1795265384870,
       "path": "registry/components/live-ping-status-pill",
       "files": [
         "component.tsx",
@@ -1801,7 +1839,7 @@
       "category": "Badges",
       "isBuiltIn": true,
       "updatedAt": 1700000000000,
-      "lastRepoSyncAt": 1795756539149,
+      "lastRepoSyncAt": 1795265384870,
       "path": "registry/components/metric-badge",
       "files": [
         "component.tsx",
@@ -1821,7 +1859,7 @@
       "category": "Buttons",
       "isBuiltIn": true,
       "updatedAt": 1700000000000,
-      "lastRepoSyncAt": 1795756539149,
+      "lastRepoSyncAt": 1795265384870,
       "path": "registry/components/neon-glow-button",
       "files": [
         "component.tsx",
@@ -1841,7 +1879,7 @@
       "category": "Buttons",
       "isBuiltIn": true,
       "updatedAt": 1700000000000,
-      "lastRepoSyncAt": 1795756539149,
+      "lastRepoSyncAt": 1795265384870,
       "path": "registry/components/shimmer-button",
       "files": [
         "component.tsx",
@@ -1862,7 +1900,7 @@
       "category": "Cards",
       "isBuiltIn": true,
       "updatedAt": 1700000000000,
-      "lastRepoSyncAt": 1795756539149,
+      "lastRepoSyncAt": 1795265384870,
       "path": "registry/components/spotlight-card",
       "files": [
         "component.tsx",
