@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-28T14:20:35.881Z",
+  "updatedAt": "2026-11-28T14:23:45.528Z",
   "totalComponents": 98,
   "components": [
     {
@@ -10,8 +10,8 @@
       "description": "Dual-card authentication bento showcase stacking an interactive Social Sign-On hub (glowing cyan cloud core, stepped OAuth provider conveyor tracks, dotted packet traces) above the 3D-hinged API Keys & 3U server rack card.",
       "category": "Cards",
       "isBuiltIn": false,
-      "updatedAt": 1795875628727,
-      "lastRepoSyncAt": 1795875635566,
+      "updatedAt": 1795875817943,
+      "lastRepoSyncAt": 1795875825116,
       "path": "registry/components/api-keys-card",
       "files": [
         "component.tsx",
