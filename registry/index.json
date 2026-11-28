@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-28T15:16:12.129Z",
+  "updatedAt": "2026-11-28T15:33:54.069Z",
   "totalComponents": 96,
   "components": [
     {
@@ -32,7 +32,7 @@
       "category": "Cards",
       "isBuiltIn": false,
       "updatedAt": 1795876786666,
-      "lastRepoSyncAt": 1795876795266,
+      "lastRepoSyncAt": 1795880031301,
       "path": "registry/components/social-sign-on-card",
       "files": [
         "component.tsx",
