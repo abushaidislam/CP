@@ -4,16 +4,22 @@ import React from "react";
 import { KineticPosterTypography } from "@/components/ui/component";
 
 const settings = {
+  layout: "section",
   topWord: "ENERGY",
   middleWord: "IN",
   bottomWord: "MOTION",
-  cycleDuration: 4.2,
+  subtitle: "»Energy in Motion« — Principles of Kinetic Graphic Design & Typography",
+  cycleDuration: 4.5,
   autoPlay: true,
-  theme: "auto",
+  cameraZoom: true,
+  theme: "dark",
 };
 
-type ThemeOption = "auto" | "dark" | "light";
-const VALID_THEMES: ThemeOption[] = ["auto", "dark", "light"];
+type ThemeOption = "dark" | "light" | "auto";
+type LayoutOption = "section" | "poster";
+
+const VALID_THEMES: ThemeOption[] = ["dark", "light", "auto"];
+const VALID_LAYOUTS: LayoutOption[] = ["section", "poster"];
 
 export default function KineticPosterTypographyDemo(
   props: Partial<typeof settings>
@@ -22,21 +28,34 @@ export default function KineticPosterTypographyDemo(
 
   const theme: ThemeOption = VALID_THEMES.includes(config.theme as ThemeOption)
     ? (config.theme as ThemeOption)
-    : "auto";
+    : "dark";
+
+  const layout: LayoutOption = VALID_LAYOUTS.includes(config.layout as LayoutOption)
+    ? (config.layout as LayoutOption)
+    : "section";
 
   const cycleDuration =
     typeof config.cycleDuration === "number" && Number.isFinite(config.cycleDuration)
-      ? Math.max(1.6, Math.min(12, config.cycleDuration))
-      : 4.2;
+      ? Math.max(2.0, Math.min(12, config.cycleDuration))
+      : 4.5;
 
   return (
-    <div className="flex min-h-[420px] w-full items-center justify-center p-6 sm:p-8">
+    <div
+      className={
+        layout === "section"
+          ? "w-full"
+          : "flex min-h-[420px] w-full items-center justify-center p-6 sm:p-8"
+      }
+    >
       <KineticPosterTypography
+        layout={layout}
         topWord={String(config.topWord || "ENERGY")}
         middleWord={String(config.middleWord || "IN")}
         bottomWord={String(config.bottomWord || "MOTION")}
+        subtitle={String(config.subtitle ?? "")}
         cycleDuration={cycleDuration}
         autoPlay={Boolean(config.autoPlay)}
+        cameraZoom={Boolean(config.cameraZoom)}
         theme={theme}
       />
     </div>

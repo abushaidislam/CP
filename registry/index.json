@@ -1,8 +1,29 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-28T14:39:55.414Z",
+  "updatedAt": "2026-11-28T14:51:30.029Z",
   "totalComponents": 99,
   "components": [
+    {
+      "id": "kinetic-poster-typography",
+      "slug": "kinetic-poster-typography",
+      "name": "KineticPosterTypography",
+      "description": "A full-screen Swiss kinetic typography hero section and poster block featuring a staggered slit-masked vertical word swap, dramatic 3D perspective X-axis cylinder flip, and effortless zero-config customization.",
+      "category": "Hero",
+      "isBuiltIn": false,
+      "updatedAt": 1795877482818,
+      "lastRepoSyncAt": 1795877489610,
+      "path": "registry/components/kinetic-poster-typography",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "index.css",
+        "manifest.json",
+        "preview.png"
+      ],
+      "dependencies": [
+        "framer-motion"
+      ]
+    },
     {
       "id": "social-sign-on-card",
       "slug": "social-sign-on-card",
@@ -125,27 +146,6 @@
       "updatedAt": 1795873383294,
       "lastRepoSyncAt": 1795873390165,
       "path": "registry/components/pocket-assistant-cards",
-      "files": [
-        "component.tsx",
-        "default.tsx",
-        "index.css",
-        "manifest.json",
-        "preview.png"
-      ],
-      "dependencies": [
-        "framer-motion"
-      ]
-    },
-    {
-      "id": "kinetic-poster-typography",
-      "slug": "kinetic-poster-typography",
-      "name": "KineticPosterTypography",
-      "description": "A Swiss-inspired kinetic typography poster featuring a staggered vertical letter-column swap and a 3D perspective X-axis cylinder flip driven by zero-rerender 60fps requestAnimationFrame motion.",
-      "category": "Effects",
-      "isBuiltIn": false,
-      "updatedAt": 1795763433202,
-      "lastRepoSyncAt": 1795763439459,
-      "path": "registry/components/kinetic-poster-typography",
       "files": [
         "component.tsx",
         "default.tsx",
