@@ -6,8 +6,8 @@
   "category": "Navigation",
   "isBuiltIn": false,
   "createdAt": 1795702008169,
-  "updatedAt": 1795877774577,
-  "lastRepoSyncAt": 1795877782229,
+  "updatedAt": 1795877782744,
+  "lastRepoSyncAt": 1795877790321,
   "dependencies": [
     "framer-motion",
     "lucide-react"

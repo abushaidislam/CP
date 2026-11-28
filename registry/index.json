@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-28T14:56:22.338Z",
+  "updatedAt": "2026-11-28T14:56:30.437Z",
   "totalComponents": 99,
   "components": [
     {
@@ -10,8 +10,8 @@
       "description": "Interactive multi-account profile popover menu with smooth spring-animated hover highlights, instant account switching with animated radio selection, keyboard accessibility, and adaptive light/dark theming.",
       "category": "Navigation",
       "isBuiltIn": false,
-      "updatedAt": 1795877774577,
-      "lastRepoSyncAt": 1795877782229,
+      "updatedAt": 1795877782744,
+      "lastRepoSyncAt": 1795877790321,
       "path": "registry/components/account-switcher-menu",
       "files": [
         "component.tsx",
