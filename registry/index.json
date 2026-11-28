@@ -1,18 +1,18 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-28T14:04:48.733Z",
-  "totalComponents": 97,
+  "updatedAt": "2026-11-28T14:05:05.055Z",
+  "totalComponents": 96,
   "components": [
     {
-      "id": "matrix-reveal-grid",
-      "slug": "matrix-reveal-grid",
-      "name": "MatrixRevealGrid",
-      "description": "Architectural 3-column integration showcase grid where hovering or focusing each card triggers a 60fps radial dot-matrix canvas wave, crossfading monochrome wireframe marks into full-color emblems with an optical lift and label reveal.",
-      "category": "Cards",
+      "id": "kinetic-numeral",
+      "slug": "kinetic-numeral",
+      "name": "KineticNumeral",
+      "description": "A Swiss-modernist modular 3x8 kinetic numeral specimen where solid rectangular bars elastically stretch and swim across the grid to morph seamlessly between digits 0-9.",
+      "category": "Widgets",
       "isBuiltIn": false,
-      "updatedAt": 1795874682478,
-      "lastRepoSyncAt": 1795874688675,
-      "path": "registry/components/matrix-reveal-grid",
+      "updatedAt": 1795874697762,
+      "lastRepoSyncAt": 1795874704901,
+      "path": "registry/components/kinetic-numeral",
       "files": [
         "component.tsx",
         "default.tsx",
@@ -21,7 +21,9 @@
         "preview.png"
       ],
       "dependencies": [
-        "framer-motion"
+        "framer-motion",
+        "clsx",
+        "tailwind-merge"
       ]
     },
     {
@@ -43,29 +45,6 @@
       ],
       "dependencies": [
         "framer-motion"
-      ]
-    },
-    {
-      "id": "kinetic-numeral",
-      "slug": "kinetic-numeral",
-      "name": "KineticNumeral",
-      "description": "A Swiss-modernist modular 3x8 kinetic numeral specimen where solid rectangular bars elastically stretch and swim across the grid to morph seamlessly between digits 0-9.",
-      "category": "Widgets",
-      "isBuiltIn": false,
-      "updatedAt": 1795867907360,
-      "lastRepoSyncAt": 1795867914639,
-      "path": "registry/components/kinetic-numeral",
-      "files": [
-        "component.tsx",
-        "default.tsx",
-        "index.css",
-        "manifest.json",
-        "preview.png"
-      ],
-      "dependencies": [
-        "framer-motion",
-        "clsx",
-        "tailwind-merge"
       ]
     },
     {
