@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-28T12:12:56.273Z",
+  "updatedAt": "2026-11-28T12:13:33.954Z",
   "totalComponents": 96,
   "components": [
     {
@@ -10,13 +10,15 @@
       "description": "A tactile 3-column stitched pocket card showcase with tilted AI assistant notes that smoothly peek on hover and pull out on click for full readability.",
       "category": "Cards",
       "isBuiltIn": false,
-      "updatedAt": 1795867976070,
-      "lastRepoSyncAt": 1795867976070,
+      "updatedAt": 1795868006312,
+      "lastRepoSyncAt": 1795868013696,
       "path": "registry/components/pocket-assistant-cards",
       "files": [
         "component.tsx",
         "default.tsx",
-        "manifest.json"
+        "index.css",
+        "manifest.json",
+        "preview.png"
       ],
       "dependencies": [
         "framer-motion"
@@ -58,7 +60,9 @@
       "files": [
         "component.tsx",
         "default.tsx",
-        "manifest.json"
+        "index.css",
+        "manifest.json",
+        "preview.png"
       ],
       "dependencies": [
         "@radix-ui/react-collapsible",
@@ -73,16 +77,39 @@
       "id": "kinetic-poster-typography",
       "slug": "kinetic-poster-typography",
       "name": "KineticPosterTypography",
-      "description": "A full-screen Swiss kinetic typography hero section and poster block featuring a staggered slit-masked vertical word swap, dramatic 3D perspective X-axis cylinder flip, and effortless zero-config customization.",
-      "category": "Hero",
+      "description": "A Swiss-inspired kinetic typography poster featuring a staggered vertical letter-column swap and a 3D perspective X-axis cylinder flip driven by zero-rerender 60fps requestAnimationFrame motion.",
+      "category": "Effects",
       "isBuiltIn": false,
-      "updatedAt": 1795772758243,
-      "lastRepoSyncAt": 1795772758243,
+      "updatedAt": 1795763433202,
+      "lastRepoSyncAt": 1795763439459,
       "path": "registry/components/kinetic-poster-typography",
       "files": [
         "component.tsx",
         "default.tsx",
-        "manifest.json"
+        "index.css",
+        "manifest.json",
+        "preview.png"
+      ],
+      "dependencies": [
+        "framer-motion"
+      ]
+    },
+    {
+      "id": "avatar-gender-toggle",
+      "slug": "avatar-gender-toggle",
+      "name": "AvatarGenderToggle",
+      "description": "An expressive vertical avatar toggle where an illustrated face slides between female and male states with morphing bangs, hair color crossfades, synchronized vertical-wipe labels, and subtle idle micro-animations.",
+      "category": "Forms",
+      "isBuiltIn": false,
+      "updatedAt": 1795757768596,
+      "lastRepoSyncAt": 1795757775171,
+      "path": "registry/components/avatar-gender-toggle",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "index.css",
+        "manifest.json",
+        "preview.png"
       ],
       "dependencies": [
         "framer-motion"
@@ -120,26 +147,6 @@
       "updatedAt": 1795701889180,
       "lastRepoSyncAt": 1795701889180,
       "path": "registry/components/matrix-chevron-button",
-      "files": [
-        "component.tsx",
-        "default.tsx",
-        "index.css",
-        "manifest.json"
-      ],
-      "dependencies": [
-        "framer-motion"
-      ]
-    },
-    {
-      "id": "avatar-gender-toggle",
-      "slug": "avatar-gender-toggle",
-      "name": "AvatarGenderToggle",
-      "description": "An expressive vertical avatar toggle where an illustrated face slides between female and male states with morphing bangs, hair color crossfades, synchronized vertical-wipe labels, and subtle idle micro-animations.",
-      "category": "Forms",
-      "isBuiltIn": false,
-      "updatedAt": 1795701831943,
-      "lastRepoSyncAt": 1795701831943,
-      "path": "registry/components/avatar-gender-toggle",
       "files": [
         "component.tsx",
         "default.tsx",
