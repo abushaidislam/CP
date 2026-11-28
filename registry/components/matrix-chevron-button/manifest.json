@@ -6,8 +6,8 @@
   "category": "Buttons",
   "isBuiltIn": false,
   "createdAt": 1795701889180,
-  "updatedAt": 1795878538374,
-  "lastRepoSyncAt": 1795878545204,
+  "updatedAt": 1795878622831,
+  "lastRepoSyncAt": 1795878629471,
   "dependencies": [
     "framer-motion"
   ],
