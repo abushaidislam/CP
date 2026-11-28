@@ -1,17 +1,17 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-28T14:09:25.260Z",
+  "updatedAt": "2026-11-28T14:20:35.881Z",
   "totalComponents": 98,
   "components": [
     {
       "id": "api-keys-card",
       "slug": "api-keys-card",
       "name": "ApiKeysCard",
-      "description": "Interactive API authentication bento card featuring a 3D-hinged laptop lid, recessed radial-spinner status pill, synchronized indigo-to-cyan dotted packet routing, and a 3U server rack with live LED and dot-matrix telemetry.",
+      "description": "Dual-card authentication bento showcase stacking an interactive Social Sign-On hub (glowing cyan cloud core, stepped OAuth provider conveyor tracks, dotted packet traces) above the 3D-hinged API Keys & 3U server rack card.",
       "category": "Cards",
       "isBuiltIn": false,
-      "updatedAt": 1795874958005,
-      "lastRepoSyncAt": 1795874964945,
+      "updatedAt": 1795875628727,
+      "lastRepoSyncAt": 1795875635566,
       "path": "registry/components/api-keys-card",
       "files": [
         "component.tsx",

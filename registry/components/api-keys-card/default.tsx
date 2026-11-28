@@ -1,9 +1,12 @@
 "use client";
 
 import React from "react";
-import { ApiKeysCard, type ApiKeysCardTheme } from "@/components/ui/component";
+import { ApiKeysCard, type AuthBentoTheme } from "@/components/ui/component";
 
 const settings = {
+  ssoTitle: "Social Sign-On",
+  ssoDescription:
+    "Add high-conversion Social Sign-on (SSO) to your application in minutes. 20+ options and growing.",
   title: "API Keys",
   description:
     "Give every user secure, production-ready API keys without building any of the underlying boilerplate code or UI.",
@@ -12,20 +15,22 @@ const settings = {
   theme: "auto",
 };
 
-const VALID_THEMES: ApiKeysCardTheme[] = ["auto", "dark", "light"];
+const VALID_THEMES: AuthBentoTheme[] = ["auto", "dark", "light"];
 
 export default function ApiKeysCardDemo(props: Partial<typeof settings>) {
   const config = { ...settings, ...props };
 
-  const theme: ApiKeysCardTheme = VALID_THEMES.includes(
-    config.theme as ApiKeysCardTheme
+  const theme: AuthBentoTheme = VALID_THEMES.includes(
+    config.theme as AuthBentoTheme
   )
-    ? (config.theme as ApiKeysCardTheme)
+    ? (config.theme as AuthBentoTheme)
     : "auto";
 
   return (
     <div className="w-full min-h-[400px] flex items-center justify-center p-6 sm:p-8">
       <ApiKeysCard
+        ssoTitle={String(config.ssoTitle)}
+        ssoDescription={String(config.ssoDescription)}
         title={String(config.title)}
         description={String(config.description)}
         statusText={String(config.statusText)}
