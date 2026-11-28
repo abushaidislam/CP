@@ -1,18 +1,18 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-28T16:39:50.040Z",
+  "updatedAt": "2026-11-28T16:56:08.405Z",
   "totalComponents": 96,
   "components": [
     {
-      "id": "avatar-gender-toggle",
-      "slug": "avatar-gender-toggle",
-      "name": "AvatarGenderToggle",
-      "description": "An expressive vertical avatar toggle where an illustrated face slides between female and male states with morphing bangs, hair color crossfades, synchronized vertical-wipe labels, and subtle idle micro-animations.",
-      "category": "Forms",
+      "id": "matrix-reveal-grid",
+      "slug": "matrix-reveal-grid",
+      "name": "MatrixRevealGrid",
+      "description": "Architectural 3-column integration showcase grid where hovering or focusing each card triggers a 60fps radial dot-matrix canvas wave, crossfading monochrome wireframe marks into full-color emblems with an optical lift and label reveal.",
+      "category": "Cards",
       "isBuiltIn": false,
-      "updatedAt": 1795883974931,
-      "lastRepoSyncAt": 1795883989936,
-      "path": "registry/components/avatar-gender-toggle",
+      "updatedAt": 1795884959809,
+      "lastRepoSyncAt": 1795884968065,
+      "path": "registry/components/matrix-reveal-grid",
       "files": [
         "component.tsx",
         "default.tsx",
@@ -86,6 +86,27 @@
       "dependencies": [
         "framer-motion",
         "lucide-react"
+      ]
+    },
+    {
+      "id": "avatar-gender-toggle",
+      "slug": "avatar-gender-toggle",
+      "name": "AvatarGenderToggle",
+      "description": "An expressive vertical avatar toggle where an illustrated face slides between female and male states with morphing bangs, hair color crossfades, synchronized vertical-wipe labels, and subtle idle micro-animations.",
+      "category": "Forms",
+      "isBuiltIn": false,
+      "updatedAt": 1795877567462,
+      "lastRepoSyncAt": 1795877760871,
+      "path": "registry/components/avatar-gender-toggle",
+      "files": [
+        "component.tsx",
+        "default.tsx",
+        "index.css",
+        "manifest.json",
+        "preview.png"
+      ],
+      "dependencies": [
+        "framer-motion"
       ]
     },
     {
@@ -198,27 +219,6 @@
         "framer-motion",
         "clsx",
         "tailwind-merge"
-      ]
-    },
-    {
-      "id": "matrix-reveal-grid",
-      "slug": "matrix-reveal-grid",
-      "name": "MatrixRevealGrid",
-      "description": "Architectural 3-column integration showcase grid where hovering or focusing each card triggers a 60fps radial dot-matrix canvas wave, crossfading monochrome wireframe marks into full-color emblems with an optical lift and label reveal.",
-      "category": "Cards",
-      "isBuiltIn": false,
-      "updatedAt": 1795874682478,
-      "lastRepoSyncAt": 1795874688675,
-      "path": "registry/components/matrix-reveal-grid",
-      "files": [
-        "component.tsx",
-        "default.tsx",
-        "index.css",
-        "manifest.json",
-        "preview.png"
-      ],
-      "dependencies": [
-        "framer-motion"
       ]
     },
     {

@@ -6,8 +6,8 @@
   "category": "Cards",
   "isBuiltIn": false,
   "createdAt": 1795874567307,
-  "updatedAt": 1795874682478,
-  "lastRepoSyncAt": 1795874688675,
+  "updatedAt": 1795884959809,
+  "lastRepoSyncAt": 1795884968065,
   "dependencies": [
     "framer-motion"
   ],
