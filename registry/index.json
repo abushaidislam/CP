@@ -1,7 +1,7 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-11-28T11:24:28.886Z",
-  "totalComponents": 95,
+  "updatedAt": "2026-11-28T11:34:30.080Z",
+  "totalComponents": 93,
   "components": [
     {
       "id": "cloud-dashboard-shell",
@@ -10,55 +10,19 @@
       "description": "Pitch-black developer cloud dashboard shell with workspace and project switchers, F-shortcut navigation filtering, expandable route groups, and a contextual Agent drawer.",
       "category": "Navigation",
       "isBuiltIn": false,
-      "updatedAt": 1795865068342,
-      "lastRepoSyncAt": 1795865068342,
+      "updatedAt": 1795865662313,
+      "lastRepoSyncAt": 1795865669781,
       "path": "registry/components/cloud-dashboard-shell",
       "files": [
         "component.tsx",
         "default.tsx",
-        "manifest.json"
+        "index.css",
+        "manifest.json",
+        "preview.png"
       ],
       "dependencies": [
         "framer-motion",
         "lucide-react"
-      ]
-    },
-    {
-      "id": "kinetic-poster-typography",
-      "slug": "kinetic-poster-typography",
-      "name": "KineticPosterTypography",
-      "description": "A full-screen Swiss kinetic typography hero section and poster block featuring a staggered slit-masked vertical word swap, dramatic 3D perspective X-axis cylinder flip, and effortless zero-config customization.",
-      "category": "Hero",
-      "isBuiltIn": false,
-      "updatedAt": 1795772758243,
-      "lastRepoSyncAt": 1795772758243,
-      "path": "registry/components/kinetic-poster-typography",
-      "files": [
-        "component.tsx",
-        "default.tsx",
-        "manifest.json"
-      ],
-      "dependencies": [
-        "framer-motion"
-      ]
-    },
-    {
-      "id": "kinetic-numeral",
-      "slug": "kinetic-numeral",
-      "name": "KineticNumeral",
-      "description": "A Swiss-modernist modular 3x8 kinetic numeral specimen where solid rectangular bars elastically stretch and swim across the grid to morph seamlessly between digits 0-9.",
-      "category": "Widgets",
-      "isBuiltIn": false,
-      "updatedAt": 1795766385643,
-      "lastRepoSyncAt": 1795766393455,
-      "path": "registry/components/kinetic-numeral",
-      "files": [
-        "component.tsx",
-        "default.tsx",
-        "manifest.json"
-      ],
-      "dependencies": [
-        "framer-motion"
       ]
     },
     {
@@ -1761,7 +1725,7 @@
       "category": "Heroes",
       "isBuiltIn": true,
       "updatedAt": 1700000000000,
-      "lastRepoSyncAt": 1795265384870,
+      "lastRepoSyncAt": 1795756539149,
       "path": "registry/components/aurora-ambient-hero",
       "files": [
         "component.tsx",
@@ -1781,7 +1745,7 @@
       "category": "Cards",
       "isBuiltIn": true,
       "updatedAt": 1700000000000,
-      "lastRepoSyncAt": 1795265384870,
+      "lastRepoSyncAt": 1795756539149,
       "path": "registry/components/bento-metric-grid",
       "files": [
         "component.tsx",
@@ -1801,7 +1765,7 @@
       "category": "Heroes",
       "isBuiltIn": true,
       "updatedAt": 1700000000000,
-      "lastRepoSyncAt": 1795265384870,
+      "lastRepoSyncAt": 1795756539149,
       "path": "registry/components/ink-orbit-hero",
       "files": [
         "component.tsx",
@@ -1819,7 +1783,7 @@
       "category": "Badges",
       "isBuiltIn": true,
       "updatedAt": 1700000000000,
-      "lastRepoSyncAt": 1795265384870,
+      "lastRepoSyncAt": 1795756539149,
       "path": "registry/components/live-ping-status-pill",
       "files": [
         "component.tsx",
@@ -1839,7 +1803,7 @@
       "category": "Badges",
       "isBuiltIn": true,
       "updatedAt": 1700000000000,
-      "lastRepoSyncAt": 1795265384870,
+      "lastRepoSyncAt": 1795756539149,
       "path": "registry/components/metric-badge",
       "files": [
         "component.tsx",
@@ -1859,7 +1823,7 @@
       "category": "Buttons",
       "isBuiltIn": true,
       "updatedAt": 1700000000000,
-      "lastRepoSyncAt": 1795265384870,
+      "lastRepoSyncAt": 1795756539149,
       "path": "registry/components/neon-glow-button",
       "files": [
         "component.tsx",
@@ -1879,7 +1843,7 @@
       "category": "Buttons",
       "isBuiltIn": true,
       "updatedAt": 1700000000000,
-      "lastRepoSyncAt": 1795265384870,
+      "lastRepoSyncAt": 1795756539149,
       "path": "registry/components/shimmer-button",
       "files": [
         "component.tsx",
@@ -1900,7 +1864,7 @@
       "category": "Cards",
       "isBuiltIn": true,
       "updatedAt": 1700000000000,
-      "lastRepoSyncAt": 1795265384870,
+      "lastRepoSyncAt": 1795756539149,
       "path": "registry/components/spotlight-card",
       "files": [
         "component.tsx",
